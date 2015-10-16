@@ -50,6 +50,12 @@ public enum AndesConfiguration implements ConfigurationProperty {
     COORDINATOR_THRIFT_RECONNECT_TIMEOUT("coordination/thriftServerReconnectTimeout", "5", Long.class),
 
     /**
+     * We use Hazelcast reliable topics to share all notifications across the cluster (e.g. subscription changes).
+     * And this property defines the time-to-live for a notification since its creation. (in Seconds)
+     */
+    COORDINATION_CLUSTER_NOTIFICATION_TIMEOUT("coordination/clusterNotificationTimeout", "10", Integer.class),
+
+    /**
      * Node ID is the unique identifier of a node within a cluster. By default, its generated using the IP of the node.
      * However, with this property, the Node ID can be explicitly set.
      */
