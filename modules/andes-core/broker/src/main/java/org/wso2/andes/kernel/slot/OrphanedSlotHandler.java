@@ -106,7 +106,7 @@ public class OrphanedSlotHandler implements SubscriptionListener {
             SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
             String destination = subscription.getSubscribedDestination();
             Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore
-                    .getActiveLocalSubscribers(destination, false);
+                    .getActiveLocalSubscribers(destination, subscription.isBoundToTopic());
             if (localSubscribersForQueue.size() == 0) {
                 scheduleSlotToReassign(subscription.getStorageQueueName());
             } else {
