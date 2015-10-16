@@ -542,8 +542,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         }
 
         // Inside Andes, it is considered as there's only one subscriber per channel. Hence this will run only once.
-        _unacknowledgedMessageMap = new UnacknowledgedMessageMapImpl(DEFAULT_PREFETCH, this, queue
-                .checkIfBoundToTopicExchange());
+        _unacknowledgedMessageMap = new UnacknowledgedMessageMapImpl(DEFAULT_PREFETCH, this, queue.isDurable());
 
         Subscription subscription =
                 SubscriptionFactoryImpl.INSTANCE.createSubscription(_channelId, _session, tag, acks, filters, noLocal, _creditManager);
