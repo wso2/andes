@@ -66,6 +66,11 @@ public class AndesContextInformationManager {
     private SubscriptionStore subscriptionStore;
 
     /**
+     * Manages all operations related to subscription changes such as addition, disconnection and deletion
+     */
+    AndesSubscriptionManager subscriptionManager;
+
+    /**
      * Initializes the andes context information manager
      *
      * @param subscriptionStore The subscriptions store
@@ -75,6 +80,7 @@ public class AndesContextInformationManager {
                                           AndesContextStore contextStore,
                                           MessageStore messageStore) {
 
+        this.subscriptionManager = ClusterResourceHolder.getInstance().getSubscriptionManager();
         this.subscriptionStore = subscriptionStore;
         this.messageStore = messageStore;
         this.contextStore = contextStore;
@@ -187,9 +193,9 @@ public class AndesContextInformationManager {
         //purge the queue cluster-wide
         MessagingEngine.getInstance().purgeMessages(queueName, null, false);
 
-        //delete all subscription entries if remaining (inactive entries)
-        ClusterResourceHolder.getInstance().getSubscriptionManager()
-                .deleteAllLocalSubscriptionsOfBoundQueue(queueName);
+        //delete all local and cluster subscription entries if remaining (inactive entries)
+        subscriptionManager.deleteAllLocalSubscriptionsOfBoundQueue(queueName);
+        subscriptionManager.deleteAllClusterSubscriptionsOfBoundQueue(queueName);
 
         // delete queue from construct store
         constructStore.removeQueue(queueName, true);
