@@ -106,7 +106,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
                 Set<String> uniqueueSubscriptionIDs = new HashSet<String>();
                 for (AndesSubscription s : subscriptions) {
 
-                    Long pendingMessageCount = MessagingEngine.getInstance().getMessageCountOfQueue(s.getTargetQueue());
+                    Long pendingMessageCount = MessagingEngine.getInstance().getMessageCountOfQueue(s.getStorageQueueName());
                     if (!isDurable.equals(ALL_WILDCARD) && (Boolean.parseBoolean(isDurable) != s.isDurable())) {
                         continue;
                     }
