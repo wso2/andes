@@ -22,7 +22,13 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesContent;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.AndesMessagePart;
+import org.wso2.andes.kernel.AndesUtils;
+import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.kernel.disruptor.inbound.InboundBindingEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundExchangeEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
@@ -49,7 +55,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -403,10 +408,6 @@ public class AMQPUtils {
             exchangeName = TopicExchange.TYPE.getDefaultExchangeName().toString();
         }
         return new InboundBindingEvent(exchangeName, AMQPUtils.createAndesQueue(queue), routingKey.toString());
-    }
-
-    public static String generateQueueName() {
-        return "tmp_" + ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID() + UUID.randomUUID();
     }
 
     public static boolean isTargetQueueBoundByMatchingToRoutingKey(String queueBoundRoutingKey, String messageRoutingKey) {
