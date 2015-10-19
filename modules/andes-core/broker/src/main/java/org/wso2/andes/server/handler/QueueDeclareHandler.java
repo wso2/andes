@@ -19,7 +19,6 @@ package org.wso2.andes.server.handler;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
-import org.wso2.andes.AMQInternalException;
 import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.MethodRegistry;
@@ -41,9 +40,8 @@ import org.wso2.andes.server.store.DurableConfigurationStore;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 
 import java.util.Collections;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.wso2.andes.amqp.AMQPUtils.generateQueueName;
 
 public class QueueDeclareHandler implements StateAwareMethodListener<QueueDeclareBody>
 {
@@ -216,7 +214,7 @@ public class QueueDeclareHandler implements StateAwareMethodListener<QueueDeclar
 
     protected AMQShortString createName()
     {
-        return new AMQShortString(generateQueueName());
+        return new AMQShortString("tmp_" + UUID.randomUUID());
     }
 
     protected AMQQueue createQueue(final AMQShortString queueName,
