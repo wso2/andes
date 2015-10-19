@@ -107,7 +107,6 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     private static final boolean MSG_AUTH =
             ApplicationRegistry.getInstance().getConfiguration().getMsgAuth();
 
-
     private final int _channelId;
 
 
@@ -178,6 +177,10 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
     private final AtomicBoolean _blocking = new AtomicBoolean(false);
 
+    private long lastRejectedMessageId = -1;
+    private long lastRollbackedMessageId = -1;
+    private long lastAckedMessageId = -1;
+    private long lastCommittedMessageId = -1;
 
     private LogActor _actor;
     private LogSubject _logSubject;
@@ -1666,5 +1669,30 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         }
         return new StoredAMQPMessage(mid, metaData);
     }
+
+    public void setLastRejectedMessageId(long lastRejectedMessageId) {
+        this.lastRejectedMessageId = lastRejectedMessageId;
+    }
+
+    public void setLastAckedMessageId(long lastAckedMessageId) {
+        this.lastAckedMessageId = lastAckedMessageId;
+    }
+
+    public void setLastRollbackedMessageId() {
+        this.lastRollbackedMessageId = this.lastRejectedMessageId;
+    }
+
+    public void setLastCommittedMessageId() {
+        this.lastCommittedMessageId = this.lastAckedMessageId;
+    }
+
+    public long getLastRollbackedMessageId() {
+        return lastRollbackedMessageId;
+    }
+
+    public long getLastCommittedMessageId() {
+        return lastCommittedMessageId;
+    }
+
 
 }

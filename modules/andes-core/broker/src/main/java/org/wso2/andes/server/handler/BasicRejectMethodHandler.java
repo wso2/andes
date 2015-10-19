@@ -71,6 +71,8 @@ public class BasicRejectMethodHandler implements StateAwareMethodListener<BasicR
 
         QueueEntry message = channel.getUnacknowledgedMessageMap().get(deliveryTag);
 
+        channel.setLastRejectedMessageId(message.getMessage().getMessageNumber());
+
         if (message == null)
         {
             _logger.warn("Dropping reject request as message is null for tag:" + deliveryTag);
