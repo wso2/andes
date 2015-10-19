@@ -37,6 +37,7 @@ import org.wso2.andes.jms.Session;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageListener;
+import javax.jms.TextMessage;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -662,8 +663,8 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
         {
             try
             {
-                _logger.debug("dest="+ _destination.getQueueName()+  " added message in close [" + _synchronousQueue.size() + "]"); 
-
+                _logger.debug("dest="+ _destination.getQueueName()+  " added message in close [" + _synchronousQueue.size() + "]");
+                System.out.println("dest="+ _destination.getQueueName()+  " added message in close [" + _synchronousQueue.size() + "]");
                 _synchronousQueue.put(closeMessage);
             }
             catch (InterruptedException e)
@@ -733,7 +734,8 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
                 // we should not be allowed to add a message is the
                 // consumer is closed
                 _synchronousQueue.put(jmsMessage);
-                _logger.debug("dest="+ _destination.getQueueName()+  " added message " + _synchronousQueue.size() + "]"); 
+                _logger.debug("dest="+ _destination.getQueueName()+  " added message " + _synchronousQueue.size() + "]");
+                System.out.println("dest="+ _destination.getQueueName()+  " added message " + _synchronousQueue.size() + "]");
             }
         }
         catch (Exception e)
@@ -971,6 +973,7 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
 
     public void rollback()
     {
+        System.out.println("BUBAAAA");
         rollbackPendingMessages();
     }
 
@@ -979,7 +982,8 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
 
         if (_synchronousQueue.size() > 0)
         {
-            _logger.debug("dest="+ _destination.getQueueName()+  " rolling back messages [" + _synchronousQueue.size() + "]"); 
+            _logger.debug("dest="+ _destination.getQueueName()+  " rolling back messages [" + _synchronousQueue.size() + "]");
+            System.out.println("dest="+ _destination.getQueueName()+  " rolling back messages [" + _synchronousQueue.size() + "]");
 
             if (_logger.isDebugEnabled())
             {
@@ -998,6 +1002,11 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
                 Object o = iterator.next();
                 if (o instanceof AbstractJMSMessage)
                 {
+                    try {
+                        System.out.println("Rejecting Message : " + ((TextMessage)o).getText());
+                    } catch (JMSException e) {
+                        e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                    }
                     _session.rejectMessage(((AbstractJMSMessage) o), true);
 
                     if (_logger.isDebugEnabled())

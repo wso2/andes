@@ -36,6 +36,7 @@ import javax.jms.InvalidSelectorException;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageListener;
+import javax.jms.TextMessage;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -376,6 +377,7 @@ public class BasicMessageConsumer_0_10 extends BasicMessageConsumer<UnprocessedM
             {
                 AbstractJMSMessage message=(AbstractJMSMessage) messages.next();
                 messages.remove();
+                System.out.println("Special Reject : " + ((TextMessage)message).getText());
                 _session.rejectMessage(message, true);
             }
         }

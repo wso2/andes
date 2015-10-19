@@ -646,6 +646,7 @@ public class ServerMethodDispatcherImpl implements MethodDispatcher
 
     public boolean dispatchTxRollback(TxRollbackBody body, int channelId) throws AMQException
     {
+        System.out.println("Rollback Received.");
         _txRollbackHandler.methodReceived(_stateManager, body, channelId);
         return true;
     }

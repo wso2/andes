@@ -321,6 +321,7 @@ public class InboundTransactionEvent implements AndesInboundStateEvent {
             if(messagesStoredNotCommitted) {
                 List<AndesMessageMetadata> messagesToRemove = new ArrayList<>();
                 for (AndesMessage message : messageQueue) {
+                    log.debug("Removing messagesStoredNotCommitted : " + message.getMetadata().getProperty("messageNo").toString());
                     messagesToRemove.add(message.getMetadata());
                 }
                 messagingEngine.deleteMessages(messagesToRemove);

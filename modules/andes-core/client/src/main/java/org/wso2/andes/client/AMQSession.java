@@ -1898,9 +1898,24 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
 
                 syncDispatchQueue();
 
-                _dispatcher.rollback();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
                 releaseForRollback();
+
+                _dispatcher.rollback();
 
                 sendRollback();
 
