@@ -115,7 +115,7 @@ public class QueueBindHandler implements StateAwareMethodListener<QueueBindBody>
                 if (session == null || session.getConnectionModel() != protocolConnection)
                 {
                     throw body.getConnectionException(AMQConstant.NOT_ALLOWED,
-                                                      "Queue " + queue.getNameShortString() + " is exclusive, but not created on this Connection.");
+                        "Queue " + queue.getNameShortString() + " is exclusive, but not created on this Connection.");
                 }
             }
 

@@ -19,6 +19,7 @@ package org.wso2.andes.amqp;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.AMQInternalException;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.framing.AMQShortString;
@@ -76,6 +77,14 @@ public class AMQPUtils {
     /* Store previously queried message part as a cache so when the same part was required
      for the next chunk it can be retrieved without accessing the database */
     private static Map<Long, AndesMessagePart> messagePartCache = new HashMap<Long, AndesMessagePart>();
+
+    /* Pattern to validate the topic name. Pattern can starts with star(*) or any alphanumeric character(a-z A-Z 0-9),
+    *  0 or more times, delimited by dots. Pattern can ends with star, alphanumeric character or with a hash (#). */
+    private static final Pattern topicNamePattern = Pattern.compile("^(((\\*|\\w+)\\.)*(\\*|\\w+|#))$");
+
+    /* Pattern to validate the queue name. Queue name cannot contain any of following
+     * symbols ~!@#;%^*()+={}|<>"', and space. */
+    private static final Pattern queueNamePattern = Pattern.compile("[[a-zA-Z]+[^(\\x00-\\x80)]+[0-9_\\-/#*:.?&()]+]+");
 
     /**
      * convert Andes metadata list to qpid queue entry list
@@ -366,6 +375,10 @@ public class AMQPUtils {
      * @return andes queue
      */
     public static InboundQueueEvent createAndesQueue(AMQQueue amqQueue) {
+        if(log.isDebugEnabled()){
+            log.debug("Create andes Queue : " + amqQueue);
+        }
+
         return new InboundQueueEvent(amqQueue.getName(),
                 (amqQueue.getOwner() != null) ? amqQueue.getOwner().toString() : "null",
                 amqQueue.isExclusive(), amqQueue.isDurable());
@@ -390,19 +403,71 @@ public class AMQPUtils {
      * @param routingKey routing key
      * @return InboundBindingEvent binding event that wrap AndesBinding
      */
-    public static InboundBindingEvent createAndesBinding(Exchange exchange, AMQQueue queue, AMQShortString routingKey) {
+    public static InboundBindingEvent createAndesBinding(Exchange exchange, AMQQueue queue, AMQShortString routingKey)
+            throws AMQInternalException {
         /**
          * we are checking the type of exchange to avoid the confusion
          * <<default>> exchange is actually a direct exchange. No need to keep two bindings
          */
         //TODO: extend to other types of exchanges
         String exchangeName = "";
+        if (log.isDebugEnabled()) {
+            log.debug("Create andes binding for AMQ Queue : " + queue + ", Routing Key is " + routingKey);
+        }
+
         if (exchange.getType().equals(DirectExchange.TYPE)) {
             exchangeName = DirectExchange.TYPE.getDefaultExchangeName().toString();
+            if(!isValidQueueName(queue.getName())){
+                // Prevent creating queues, if queue name is invalid
+                throw new AMQInternalException("Queue name : " + queue.getName()
+                        + " cannot contain any of following symbols"
+                        + " ~!@#;%^*()+={}|<>\"', and space \n");
+            }
         } else if (exchange.getType().equals(TopicExchange.TYPE)) {
             exchangeName = TopicExchange.TYPE.getDefaultExchangeName().toString();
+            if(!isValidTopicName(routingKey)){
+                // Prevent creating topics, if topic name is invalid
+                throw new AMQInternalException("\nTopic name: "
+                        + AndesUtils.getTopicNameWithoutTenantDomain(routingKey.asString())
+                        + " can contain only alphanumeric characters and star(*) "
+                        + "delimited by dots. Names can ends with any of these or, with '#' ");
+            }
         }
+
         return new InboundBindingEvent(exchangeName, AMQPUtils.createAndesQueue(queue), routingKey.toString());
+    }
+
+    /**
+     * When creating queues by jms clients, checks whether a given queue name is valid or not.
+     * Since exchange type is direct, can evaluate using queue name
+     *
+     * @param queueName Given queue name
+     * @return true, if it is a valid queue name, false otherwise
+     */
+    public static boolean isValidQueueName(String queueName){
+        /* Store queue name. */
+        Matcher nameMatcher = queueNamePattern.matcher(queueName);
+
+        /* After validating the queue name, return if the given name is valid or not.*/
+        return nameMatcher.matches();
+    }
+
+    /**
+     * When creating topics by jms clients, checks whether a given topic name is valid or not.
+     * Since exchange is a topic exchange, evaluate using the routing key
+     *
+     * @param routingKey Routing key
+     * @return true, if it is a valid topic name, false otherwise
+     */
+    public static boolean isValidTopicName(AMQShortString routingKey){
+        /* Get the topic name part, if it is going to creates by a tenant.*/
+        String topicName = AndesUtils.getTopicNameWithoutTenantDomain(routingKey.asString());
+
+        /* Store routing key. */
+        Matcher nameMatcher = topicNamePattern.matcher(topicName);
+
+        /* After validating the routing key, return if the given name is valid or not.*/
+        return nameMatcher.matches();
     }
 
     public static String generateQueueName() {

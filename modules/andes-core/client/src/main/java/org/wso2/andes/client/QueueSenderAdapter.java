@@ -42,9 +42,8 @@ public class QueueSenderAdapter implements QueueSender
         _delegate = msgProducer;
         _queue = queue;
         
-        verifyQueueBindingBeforePublish =
-                                          Boolean.parseBoolean(System.getProperty("org.wso2.andes.client.verifyQueueBindingBeforePublish",
-                                                                                  "true"));
+        verifyQueueBindingBeforePublish = Boolean.parseBoolean(System.getProperty(
+                "org.wso2.andes.client.verifyQueueBindingBeforePublish", "true"));
     }
 
     public Queue getQueue() throws JMSException
@@ -220,7 +219,7 @@ public class QueueSenderAdapter implements QueueSender
                else
                {
                    throw new InvalidDestinationException("Queue: " + queue
-                       + " is not a valid destination (no bindings on server");
+                       + " is not a valid destination (no bindings on the server)");
                }
            }
        }
