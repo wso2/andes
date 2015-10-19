@@ -28,6 +28,8 @@ import com.hazelcast.core.IMap;
 import com.hazelcast.core.ITopic;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.slot.Slot;
@@ -85,7 +87,6 @@ public class HazelcastAgent implements SlotAgent {
      */
     private ITopic<ClusterNotification> queueChangedNotifierChannel;
 
-
     /**
      * Distributed topic to communicate exchange change notification among cluster nodes.
      */
@@ -94,7 +95,6 @@ public class HazelcastAgent implements SlotAgent {
     /**
      * These distributed maps are used for slot management
      */
-
 
     /**
      * distributed Map to store message ID list against queue name
@@ -168,16 +168,6 @@ public class HazelcastAgent implements SlotAgent {
     private final int HAZELCAST_RING_BUFFER_CAPACITY = 1000;
 
     /**
-     * Defines the time it takes for a message published to a Hazelcast reliable topic to be expired.
-     * The messages that are published to these topics should ideally be read at the same time. One instance where this
-     * would not happen is when a node gets disconnected. Since all the messages that are published to these topics are
-     * stored in the database, this situation is handled by synchronizing the information in
-     * the databases when the node recovers. Therefore, we do not need undelivered messages to delivered after a while.
-     * Therefore, we need messages to be held in the buffer onle for a very little time
-     */
-    private final int HAZELCAST_RING_BUFFER_TTL = 1;
-
-    /**
      * Disables statistics on the messages published to Hazelcast Reliable Topics.
      * We don't need statistics on the messages that are published, therefore, we have disabled statistics.
      */
@@ -213,6 +203,15 @@ public class HazelcastAgent implements SlotAgent {
         clusterAgent = new HazelcastClusterAgent(hazelcastInstance);
         AndesContext.getInstance().setClusterAgent(clusterAgent);
 
+        // Defines the time it takes for a message published to a Hazelcast reliable topic to be expired.
+        // The messages that are published to these topics should ideally be read at the same time. One instance
+        // where this would not happen is when a node gets disconnected. Since all the messages that are published
+        // to these topics are stored in the database, this situation is handled by synchronizing the information in
+        // the databases when the node recovers. Therefore, we do not need undelivered messages to delivered
+        // after a while. Therefore, we need messages to be held in the buffer onle for a very little time.
+        int hazelcastRingBufferTTL = AndesConfigurationManager.readValue(AndesConfiguration
+                .COORDINATION_CLUSTER_NOTIFICATION_TIMEOUT);
+
         /**
          * subscription changes
          */
@@ -220,7 +219,7 @@ public class HazelcastAgent implements SlotAgent {
         addReliableTopicConfig(CoordinationConstants.HAZELCAST_SUBSCRIPTION_CHANGED_NOTIFIER_TOPIC_NAME,
                                ENABLE_STATISTICS, HAZELCAST_RELIABLE_TOPIC_READ_BACH_SIZE);
         addRingBufferConfig(CoordinationConstants.HAZELCAST_SUBSCRIPTION_CHANGED_NOTIFIER_TOPIC_NAME,
-                            HAZELCAST_RING_BUFFER_CAPACITY, HAZELCAST_RING_BUFFER_TTL);
+                            HAZELCAST_RING_BUFFER_CAPACITY, hazelcastRingBufferTTL);
 
         //add listener for subscription changes
         this.subscriptionChangedNotifierChannel = this.hazelcastInstance.getReliableTopic(
@@ -239,7 +238,7 @@ public class HazelcastAgent implements SlotAgent {
         addReliableTopicConfig(CoordinationConstants.HAZELCAST_EXCHANGE_CHANGED_NOTIFIER_TOPIC_NAME,
                                ENABLE_STATISTICS, HAZELCAST_RELIABLE_TOPIC_READ_BACH_SIZE);
         addRingBufferConfig(CoordinationConstants.HAZELCAST_EXCHANGE_CHANGED_NOTIFIER_TOPIC_NAME,
-                            HAZELCAST_RING_BUFFER_CAPACITY, HAZELCAST_RING_BUFFER_TTL);
+                            HAZELCAST_RING_BUFFER_CAPACITY, hazelcastRingBufferTTL);
 
         //add listener for exchange changes
         this.exchangeChangeNotifierChannel = this.hazelcastInstance.getReliableTopic(
@@ -257,7 +256,7 @@ public class HazelcastAgent implements SlotAgent {
         addReliableTopicConfig(CoordinationConstants.HAZELCAST_QUEUE_CHANGED_NOTIFIER_TOPIC_NAME,
                                ENABLE_STATISTICS, HAZELCAST_RELIABLE_TOPIC_READ_BACH_SIZE);
         addRingBufferConfig(CoordinationConstants.HAZELCAST_QUEUE_CHANGED_NOTIFIER_TOPIC_NAME,
-                            HAZELCAST_RING_BUFFER_CAPACITY, HAZELCAST_RING_BUFFER_TTL);
+                            HAZELCAST_RING_BUFFER_CAPACITY, hazelcastRingBufferTTL);
 
         //add listener for queue changes
         this.queueChangedNotifierChannel = this.hazelcastInstance.getReliableTopic(
@@ -274,7 +273,7 @@ public class HazelcastAgent implements SlotAgent {
         addReliableTopicConfig(CoordinationConstants.HAZELCAST_BINDING_CHANGED_NOTIFIER_TOPIC_NAME,
                                ENABLE_STATISTICS, HAZELCAST_RELIABLE_TOPIC_READ_BACH_SIZE);
         addRingBufferConfig(CoordinationConstants.HAZELCAST_BINDING_CHANGED_NOTIFIER_TOPIC_NAME,
-                            HAZELCAST_RING_BUFFER_CAPACITY, HAZELCAST_RING_BUFFER_TTL);
+                            HAZELCAST_RING_BUFFER_CAPACITY, hazelcastRingBufferTTL);
 
         //add listener for binding changes
         this.bindingChangeNotifierChannel = this.hazelcastInstance.getReliableTopic(
