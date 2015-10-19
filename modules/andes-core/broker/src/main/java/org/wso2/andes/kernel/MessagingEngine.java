@@ -192,7 +192,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public void messageRejected(DeliverableAndesMetadata andesMetadata, UUID channelID) throws AndesException {
-        andesMetadata.markAsRejectedByClient(channelID);
+        andesMetadata.markAsNackedByClient(channelID);
         LocalSubscription subToResend = subscriptionStore.getLocalSubscriptionForChannelId(channelID);
         if (subToResend != null) {
             subToResend.msgRejectReceived(andesMetadata.messageID);

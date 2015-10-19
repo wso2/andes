@@ -44,15 +44,21 @@ public enum  ChannelMessageStatus {
     ACKED(3),
 
     /**
-     * Consumer has rejected the message ad it has been buffered again for delivery (possibly to another waiting
-     * consumer)
+     * Consumer has rejected (NACKED) the message ad it has been buffered again for
+     * delivery (possibly to another waiting consumer)
      */
-    CLIENT_REJECTED(4),
+    NACKED(4),
+
+    /**
+     * Consumer has rejected (NACKED)  the message repeatedly. Consider message is rejected
+     * permanently by client. No need to consider for delivery again.
+     */
+    CLIENT_REJECTED(5),
 
     /**
      * Consumer is closed
      */
-    CLOSED(5);
+    CLOSED(6);
 
 
     private int code;
@@ -120,14 +126,17 @@ public enum  ChannelMessageStatus {
         DISPATCHED.next = EnumSet.of(SEND_FAILED, ACKED, CLIENT_REJECTED, CLOSED);
         DISPATCHED.previous = EnumSet.complementOf(EnumSet.allOf(ChannelMessageStatus.class));
 
-        SEND_FAILED.next = EnumSet.of(DISPATCHED, CLOSED);
+        SEND_FAILED.next = EnumSet.of(DISPATCHED, CLIENT_REJECTED, CLOSED);
         SEND_FAILED.previous = EnumSet.of(DISPATCHED);
 
         ACKED.next = EnumSet.of(CLOSED);
         ACKED.previous = EnumSet.of(DISPATCHED);
 
-        CLIENT_REJECTED.next = EnumSet.of(DISPATCHED, CLOSED);
-        CLIENT_REJECTED.previous = EnumSet.of(DISPATCHED);
+        NACKED.next = EnumSet.of(DISPATCHED, CLIENT_REJECTED, CLOSED);
+        NACKED.previous = EnumSet.of(DISPATCHED);
+
+        CLIENT_REJECTED.next = EnumSet.complementOf(EnumSet.allOf(ChannelMessageStatus.class));
+        CLIENT_REJECTED.previous = EnumSet.of(SEND_FAILED);
 
         //this is because we directly mark close on channel close
         CLOSED.next = EnumSet.of(SEND_FAILED, CLOSED);
