@@ -205,12 +205,13 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
 
         //Handle will flag
         if (msg.isWillFlag()) {
-            AbstractMessage.QOSType willQos = AbstractMessage.QOSType.values()[msg.getWillQos()];
-            byte[] willPayload = msg.getWillMessage().getBytes();
-            ByteBuffer bb = (ByteBuffer) ByteBuffer.allocate(willPayload.length).put(willPayload).flip();
-            PublishEvent pubEvt = new PublishEvent(msg.getWillTopic(), willQos,
-                    bb, msg.isWillRetain(), msg.getClientID(), session);
-            processPublish(pubEvt);
+            log.warn("Andes does not support last will operation");
+//            AbstractMessage.QOSType willQos = AbstractMessage.QOSType.values()[msg.getWillQos()];
+//            byte[] willPayload = msg.getWillMessage().getBytes();
+//            ByteBuffer bb = (ByteBuffer) ByteBuffer.allocate(willPayload.length).put(willPayload).flip();
+//            PublishEvent pubEvt = new PublishEvent(msg.getWillTopic(), willQos,
+//                    bb, msg.isWillRetain(), msg.getClientID(), session);
+//            processPublish(pubEvt);
         }
 
         MQTTAuthorizationSubject authSubject = new MQTTAuthorizationSubject(msg.getClientID(), msg.isUserFlag());

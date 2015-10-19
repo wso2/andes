@@ -198,7 +198,13 @@ public class MQTTLocalSubscription implements OutboundSubscription {
      */
     @Override
     public String getStorageQueueName(String destination, String subscribedNode) {
-        // Inside Andes, MQTT subscription ID consists of client ID and topic details, hence using the same
-        return mqttSubscriptionID;
+        String storageQueueName;
+        if (subscriberQOS > 0) {
+            storageQueueName = MQTTUtils.getTopicSpecificQueueName(mqttSubscriptionID, destination);
+        } else {
+            storageQueueName = AndesUtils.getStorageQueueForDestination(destination, subscribedNode, true);
+        }
+
+        return storageQueueName;
     }
 }
