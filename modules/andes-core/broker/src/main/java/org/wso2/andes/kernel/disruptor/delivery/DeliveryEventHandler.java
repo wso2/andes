@@ -226,7 +226,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
 
         // If message is a queue message we move the message to the Dead Letter Channel
         // since topics doesn't have a Dead Letter Channel
-        if (!subscription.isDurable()) {
+        if (subscription.isDurable()) {
             log.warn("Moving message to Dead Letter Channel Due to Send Error. Message ID " + message.getMessageID());
             try {
                 Andes.getInstance().moveMessageToDeadLetterChannel(message, message.getDestination());

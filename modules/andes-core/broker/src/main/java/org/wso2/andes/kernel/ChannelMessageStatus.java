@@ -123,7 +123,7 @@ public enum  ChannelMessageStatus {
         //Channel wise message status begins at DISPATCHED state.
         //If message CLOSED there is no next state for message.
 
-        DISPATCHED.next = EnumSet.of(SEND_FAILED, ACKED, CLIENT_REJECTED, CLOSED);
+        DISPATCHED.next = EnumSet.of(SEND_FAILED, ACKED, NACKED, CLOSED);
         DISPATCHED.previous = EnumSet.complementOf(EnumSet.allOf(ChannelMessageStatus.class));
 
         SEND_FAILED.next = EnumSet.of(DISPATCHED, CLIENT_REJECTED, CLOSED);
@@ -132,7 +132,7 @@ public enum  ChannelMessageStatus {
         ACKED.next = EnumSet.of(CLOSED);
         ACKED.previous = EnumSet.of(DISPATCHED);
 
-        NACKED.next = EnumSet.of(DISPATCHED, CLIENT_REJECTED, CLOSED);
+        NACKED.next = EnumSet.of(DISPATCHED, CLOSED);
         NACKED.previous = EnumSet.of(DISPATCHED);
 
         CLIENT_REJECTED.next = EnumSet.complementOf(EnumSet.allOf(ChannelMessageStatus.class));
