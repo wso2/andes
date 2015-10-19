@@ -18,23 +18,19 @@
 
 package org.wso2.andes.subscription;
 
-import com.ctc.wstx.util.StringUtil;
+import java.util.UUID;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.HashCodeBuilder;
-import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesSubscription;
-import org.wso2.andes.kernel.AndesUtils;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentSkipListMap;
 
 /**
  * This represents Basic Andes Subscription. Any type of subscription
  * (AMQP,MQTT) is inherited from this template
  */
 public class BasicSubscription implements AndesSubscription {
+    
+    
     // The id of the subscriber cluster wide this will be unique - MANDOTORY
     protected String subscriptionID;
     // The target queue or topic name - MANDOTORY
