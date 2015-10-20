@@ -60,7 +60,7 @@ public class MaximumNumOfDeliveryRuleAMQP implements AMQPDeliveryRule {
         int numOfDeliveriesOfCurrentMsg = protocolMessage.getNumberOfDeliveriesForProtocolChannel();
 
         if (numOfDeliveriesOfCurrentMsg > maximumRedeliveryTimes + 1) {
-            log.warn("Number of Maximum Redelivery Tries Has Breached. Routing Message to DLC : id= " + messageID);
+            log.warn("Number of Maximum Redelivery Tries Has Breached. Message id = " + messageID);
             return false;
         } else {
             return true;

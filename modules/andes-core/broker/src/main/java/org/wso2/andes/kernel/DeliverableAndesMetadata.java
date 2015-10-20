@@ -228,6 +228,18 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
 
     /**
      * Record the NAK/REJECT by a channel
+     *
+     * @param channelID ID of the channel
+     */
+    public void markAsNackedByClient(UUID channelID) {
+        ChannelInformation channelInformation = channelDeliveryInfo.get(channelID);
+        channelInformation.addChannelStatus(ChannelMessageStatus.NACKED);
+    }
+
+    /**
+     * NAK has received repeatedly by channel. Mark message as permanently rejected
+     * by subscriber associated with channel.
+     *
      * @param channelID ID of the channel
      */
     public void markAsRejectedByClient(UUID channelID) {
@@ -392,6 +404,10 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
 
             //if channel is closed ignore it from considering
             if(null != messageStatus && messageStatus.equals(ChannelMessageStatus.CLOSED)) {
+                continue;
+            }
+            //if message is rejected by client repeatedly ignore it from considering
+            if(null != messageStatus && messageStatus.equals(ChannelMessageStatus.CLIENT_REJECTED)) {
                 continue;
             }
             if(null == messageStatus || !messageStatus.equals(ChannelMessageStatus.ACKED)) {

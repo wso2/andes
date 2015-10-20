@@ -23,6 +23,7 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
+import org.wso2.andes.kernel.MessageStatus;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolDeliveryFailureException;
 import org.wso2.andes.kernel.ProtocolDeliveryRulesFailureException;
@@ -87,7 +88,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
             try {
                 if (deliveryEventData.isErrorOccurred()) {
                     onSendError(message, subscription);
-                    routeMessageToDLC(message);
+                    routeMessageToDLC(message, subscription);
                     return;
                 }
                 if (!message.isStale()) {
@@ -118,7 +119,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                 }
             } catch (ProtocolDeliveryRulesFailureException e) {
                 onSendError(message, subscription);
-                routeMessageToDLC(message);
+                routeMessageToDLC(message, subscription);
 
             } catch (SubscriptionAlreadyClosedException ex) {
                 //we do not log the error as subscriber is closing this is an expected exception.
@@ -220,10 +221,12 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
      *
      * @param message Meta data for the message
      */
-    private void routeMessageToDLC(DeliverableAndesMetadata message) {
+    private void routeMessageToDLC(DeliverableAndesMetadata message, LocalSubscription subscription)
+            throws AndesException {
+
         // If message is a queue message we move the message to the Dead Letter Channel
         // since topics doesn't have a Dead Letter Channel
-        if (!message.isTopic()) {
+        if (subscription.isDurable()) {
             log.warn("Moving message to Dead Letter Channel Due to Send Error. Message ID " + message.getMessageID());
             try {
                 Andes.getInstance().moveMessageToDeadLetterChannel(message, message.getDestination());
@@ -235,8 +238,15 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                 log.error("Error moving message " + message.getMessageID() + " to dead letter channel.", dlcException);
             }
         } else {
-            //TODO: do we need to reschedule message for topic?
+            //for non durable topic messages see if we can delete the message
             log.warn("Discarding topic message id = " + message.getMessageID() + " as delivery failed");
+            message.markAsRejectedByClient(subscription.getChannelID());
+            List<DeliverableAndesMetadata> messagesToRemove = new ArrayList<>();
+            message.evaluateMessageAcknowledgement();
+            if (message.getLatestState().equals(MessageStatus.ACKED_BY_ALL)) {
+                messagesToRemove.add(message);
+            }
+            MessagingEngine.getInstance().deleteMessages(messagesToRemove);
         }
     }
 }
