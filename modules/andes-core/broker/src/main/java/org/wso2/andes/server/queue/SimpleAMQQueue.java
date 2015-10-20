@@ -24,6 +24,7 @@ import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.configuration.qpid.*;
+import org.wso2.andes.exchange.ExchangeDefaults;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.pool.ReadWriteRunnable;
@@ -322,7 +323,7 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
     {
         return _exclusive;
     }
-    
+
     public void setExclusive(boolean exclusive) throws AMQException
     {
         _exclusive = exclusive;
@@ -455,14 +456,14 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
                 subscription.setNoLocal(_nolocal);
             }
             _subscriptionList.add(subscription);
-            
+
             //Increment consumerCountHigh if necessary. (un)registerSubscription are both
             //synchronized methods so we don't need additional synchronization here
             if(_counsumerCountHigh.get() < getConsumerCount())
             {
                 _counsumerCountHigh.incrementAndGet();
             }
-            
+
             if (isDeleted())
             {
                 subscription.queueDeleted(this);
@@ -522,8 +523,34 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
         _deleteOnNoConsumers = b;
     }
 
-    public void addBinding(final Binding binding)
-    {
+    /**
+     * Add binding for the queue. Check if there are more than 1 binding other than the default
+     * binding. If so thrown an exception.
+     * @param binding  binding to be added
+     * @throws AndesException
+     */
+    public void addBinding(final Binding binding) throws AndesException {
+        if (_bindings.size() == 0) {
+            addBindingToQueue(binding);
+        } else if (_bindings.size() == 1) {
+            Binding existingBinding = _bindings.get(0);
+            if (existingBinding.getExchange().getNameShortString().equals(ExchangeDefaults.DEFAULT_EXCHANGE_NAME.toString())) {
+                addBindingToQueue(binding);
+            } else {
+                _logger.error("Binding already exists for the queue. Cannot be permitted");
+                throw new AndesException("Binding already exists for the queue");
+            }
+        } else if (_bindings.size() > 1) {
+            _logger.error("Binding already exists for the queue. Cannot be permitted");
+            throw new AndesException("Binding already exists for the queue ");
+        }
+    }
+
+    /**
+     * If binding is permitted, add it
+     * @param binding binding to be added
+     */
+    private void addBindingToQueue(final Binding binding){
         _bindings.add(binding);
         int bindingCount = _bindings.size();
         int bindingCountHigh;
@@ -534,10 +561,9 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
                 break;
             }
         }
-        
         reconfigure();
     }
-    
+
     private void reconfigure()
     {
         //Reconfigure the queue for to reflect this new binding.
@@ -563,7 +589,7 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
     public void removeBinding(final Binding binding)
     {
         _bindings.remove(binding);
-        
+
         reconfigure();
     }
 
@@ -748,20 +774,20 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
     {
         getAtomicQueueCount().incrementAndGet();
     }
-    
+
     private void incrementTxnEnqueueStats(final ServerMessage message)
     {
         SessionConfig session = message.getSessionConfig();
-        
+
         if(session !=null && session.isTransactional())
         {
             _msgTxnEnqueues.incrementAndGet();
             _byteTxnEnqueues.addAndGet(message.getSize());
         }
     }
-    
+
     private void incrementTxnDequeueStats(QueueEntry entry)
-    {      
+    {
         _msgTxnDequeues.incrementAndGet();
         _byteTxnDequeues.addAndGet(entry.getSize());
     }
@@ -841,7 +867,7 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
         {
             _deliveredMessages.decrementAndGet();
         }
-        
+
         if(sub != null && sub.isSessionTransactional())
         {
             incrementTxnDequeueStats(entry);
@@ -898,7 +924,7 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
     {
         return _subscriptionList.size();
     }
-    
+
     public int getConsumerCountHigh()
     {
         return _counsumerCountHigh.get();
@@ -1314,7 +1340,7 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
     }
 
     public long clearQueue() throws AMQException
-    {         
+    {
         return clear(0l);
     }
 
@@ -1325,7 +1351,7 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
         {
             throw new AMQSecurityException("Permission denied: queue " + getName());
         }
-        
+
         QueueEntryIterator queueListIterator = _entries.iterator();
         long count = 0;
 
@@ -1392,7 +1418,7 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
         {
             throw new AMQSecurityException("Permission denied: " + getName());
         }
-        
+
         if (!_deleted.getAndSet(true))
         {
 
@@ -2196,22 +2222,22 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
     {
         return _dequeueSize.get();
     }
-    
+
     public long getByteTxnEnqueues()
     {
         return _byteTxnEnqueues.get();
     }
-    
+
     public long getByteTxnDequeues()
     {
         return _byteTxnDequeues.get();
     }
-    
+
     public long getMsgTxnEnqueues()
     {
         return _msgTxnEnqueues.get();
     }
-    
+
     public long getMsgTxnDequeues()
     {
         return _msgTxnDequeues.get();
@@ -2248,21 +2274,21 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
     {
         return _unackedMsgCountHigh.get();
     }
-    
+
     public long getUnackedMessageCount()
     {
         return _unackedMsgCount.get();
     }
-    
+
     public void decrementUnackedMsgCount()
     {
         _unackedMsgCount.decrementAndGet();
     }
-    
+
     private void incrementUnackedMsgCount()
     {
         long unackedMsgCount = _unackedMsgCount.incrementAndGet();
-        
+
         long unackedMsgCountHigh;
         while(unackedMsgCount > (unackedMsgCountHigh = _unackedMsgCountHigh.get()))
         {

@@ -182,10 +182,15 @@ public class BindingFactory {
 
             queue.addQueueDeleteTask(binding);
             exchange.addCloseTask(binding);
-            queue.addBinding(binding);
-            exchange.addBinding(binding);
-            getConfigStore().addConfiguredObject(binding);
-            binding.logCreation();
+            try {
+                queue.addBinding(binding);
+                exchange.addBinding(binding);
+                getConfigStore().addConfiguredObject(binding);
+                binding.logCreation();
+            } catch (AndesException e) {
+                _bindings.remove(binding);
+                throw new AMQInternalException("Not permitted. Binding Already exists for this queue", e);
+            }
 
             return true;
         } else {
