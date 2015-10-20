@@ -190,7 +190,7 @@ public class MQTTopicManager {
         } catch (MQTTException ex) {
             //In case if an error occurs we need to rollback the subscription created cluster wide
             connector.removeSubscriber(this, topicName, subscriptionID, username, subscriptionChannelID,
-                    isCleanSession, mqttClientChannelID);
+                    isCleanSession, mqttClientChannelID, qos);
             final String message = "Error while adding the subscriber to the cluster";
             log.error(message, ex);
             throw ex;
@@ -232,18 +232,18 @@ public class MQTTopicManager {
                 String subscriberChannelID = subscription.getSubscriberChannelID();
                 UUID subscriberChannel = subscription.getSubscriptionChannel();
                 boolean isCleanSession = subscription.isCleanSession();
+                QOSLevel qos = subscription.getQOSLevel();
                 //The corresponding subscription created cluster wide will be topic name and the local channel id
                 //Will remove the subscriber cluster wide
                 try {
                     //Will indicate the disconnection of the topic
-                    if (action == SubscriptionEvent.DISCONNECT && !(subscription.getQOSLevel() == QOSLevel.AT_MOST_ONCE
-                            && !subscription.isCleanSession())) {
+                    if (action == SubscriptionEvent.DISCONNECT && MQTTUtils.isDurable(isCleanSession, qos.getValue())) {
                         connector.disconnectSubscriber(this, topic, username, subscriberChannelID, subscriberChannel,
-                                isCleanSession, mqttClientChannelID);
+                                isCleanSession, mqttClientChannelID, qos);
                     } else {
                         //If un-subscribed we need to remove the subscription off
                         connector.removeSubscriber(this, topic, username, subscriberChannelID, subscriberChannel,
-                                isCleanSession, mqttClientChannelID);
+                                isCleanSession, mqttClientChannelID, qos);
                     }
                     if (log.isDebugEnabled()) {
                         final String message = "Subscription with cluster id " + subscriberChannelID + " disconnected " +
