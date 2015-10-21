@@ -592,12 +592,12 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
             try {
                 // Block the thread until the store becomes operational
                 messageStoresUnavailable.get();
+                messageStoresUnavailable = null;
             } catch (InterruptedException e) {
                 throw new AndesException("Thread interrupted while waiting for message stores to come online", e);
             } catch (ExecutionException e) {
                 throw new AndesException("Error occurred while waiting for message stores to come online", e);
             }
-            messageStoresUnavailable = null;
         }
     }
 
@@ -630,8 +630,7 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
     @Override
     public void storeOperational(HealthAwareStore store) {
         log.info("Context store became operational. Therefore, resuming Database Slot Agent");
-        // Setting messageStoresUnavailable to null indicates that the store is operational
-        messageStoresUnavailable = null;
+        messageStoresUnavailable.set(false);
     }
 
     /**

@@ -26,7 +26,6 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.MessageStatus;
-import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.slot.SlotMessageCounter;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.tools.utils.MessageTracer;
@@ -42,15 +41,6 @@ import java.util.List;
 public class StateEventHandler implements EventHandler<InboundEventContainer> {
 
     private static Log log = LogFactory.getLog(StateEventHandler.class);
-
-    /**
-     * reference to MessagingEngine
-     */
-    private final MessagingEngine messagingEngine;
-
-    StateEventHandler(MessagingEngine messagingEngine) {
-        this.messagingEngine = messagingEngine;
-    }
 
     @Override
     public void onEvent(InboundEventContainer event, long sequence, boolean endOfBatch) throws Exception {
