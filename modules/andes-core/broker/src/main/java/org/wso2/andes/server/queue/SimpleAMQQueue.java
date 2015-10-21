@@ -529,20 +529,21 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
      * @param binding  binding to be added
      * @throws AndesException
      */
-    public void addBinding(final Binding binding) throws AndesException {
+    public void addBinding(final Binding binding) throws AMQException {
         if (_bindings.size() == 0) {
             addBindingToQueue(binding);
         } else if (_bindings.size() == 1) {
             Binding existingBinding = _bindings.get(0);
-            if (existingBinding.getExchange().getNameShortString().equals(ExchangeDefaults.DEFAULT_EXCHANGE_NAME.toString())) {
+            AMQShortString exchangeName = existingBinding.getExchange().getNameShortString();
+            if (ExchangeDefaults.DEFAULT_EXCHANGE_NAME.equals(exchangeName)) {
                 addBindingToQueue(binding);
             } else {
                 _logger.error("Binding already exists for the queue. Cannot be permitted");
-                throw new AndesException("Binding already exists for the queue");
+                throw new AMQException("Binding already exists for the queue");
             }
         } else if (_bindings.size() > 1) {
             _logger.error("Binding already exists for the queue. Cannot be permitted");
-            throw new AndesException("Binding already exists for the queue ");
+            throw new AMQException("Binding already exists for the queue ");
         }
     }
 
