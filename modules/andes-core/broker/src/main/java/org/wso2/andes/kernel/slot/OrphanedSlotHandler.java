@@ -87,7 +87,7 @@ public class OrphanedSlotHandler implements SubscriptionListener {
                 if (null != matchingSubscription) {
                     reAssignSlotsIfNeeded(matchingSubscription);
                 } else {
-                    log.error("Deleting or disconnection a subscription which was not added previously");
+                    log.warn("Deleting or disconnection a subscription which was not added previously");
                 }
                 break;
         }

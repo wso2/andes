@@ -19,6 +19,7 @@ package org.wso2.andes.server.queue;
 
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.AMQShortString;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 import org.wso2.andes.server.logging.LogSubject;
@@ -46,7 +47,7 @@ public interface AMQQueue extends Managable, Comparable<AMQQueue>, ExchangeRefer
 
     void setDeleteOnNoConsumers(boolean b);
 
-    void addBinding(Binding binding);
+    void addBinding(Binding binding) throws AndesException;
 
     void removeBinding(Binding binding);
 
