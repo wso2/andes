@@ -90,11 +90,13 @@ public interface MQTTConnector {
      * @param subscriberChannel     the cluster wide unique identification of the subscription
      * @param isCleanSession        durability of the subscription
      * @param mqttClientID          the id of the client who subscribed to the topic
+     * @param qosLevel              the quality of service level subscribed to
+     *
      * @throws MQTTException
      */
-    public void removeSubscriber(MQTTopicManager channel, String subscribedTopic, String username, String subscriptionChannelID,
-                                 UUID subscriberChannel, boolean isCleanSession, String mqttClientID)
-            throws MQTTException;
+    public void removeSubscriber(MQTTopicManager channel, String subscribedTopic, String username, String
+            subscriptionChannelID, UUID subscriberChannel, boolean isCleanSession, String mqttClientID, QOSLevel
+            qosLevel) throws MQTTException;
 
     /**
      * Will trigger the subscription disconnect event
@@ -106,11 +108,13 @@ public interface MQTTConnector {
      * @param subscriberChannel     the cluster wide unique identification of the subscription
      * @param isCleanSession        durability of the subscription
      * @param mqttClientID          the id of the client who subscribed to the topic
+     * @param qosLevel              the quality of service level subscribed to
+     *
      * @throws MQTTException
      */
     public void disconnectSubscriber(MQTTopicManager channel, String subscribedTopic, String username,
                                      String subscriptionChannelID, UUID subscriberChannel,
-                                     boolean isCleanSession, String mqttClientID)
+                                     boolean isCleanSession, String mqttClientID, QOSLevel qosLevel)
             throws MQTTException;
 
     /**

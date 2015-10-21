@@ -274,4 +274,22 @@ public class MQTTUtils {
         return "carbon:" + clientId + ":" + topic;
     }
 
+    /**
+     * Given the clean session value and qos level, decide whether it if falling into durable path.
+     *
+     * @param cleanSession The clean session value
+     * @param qos The quality of service level
+     *
+     * @return true if this falls into durable path
+     */
+    public static boolean isDurable(boolean cleanSession, int qos) {
+        boolean durable = false;
+
+        if (!cleanSession && qos > 0) {
+            durable = true;
+        }
+
+        return durable;
+    }
+
 }

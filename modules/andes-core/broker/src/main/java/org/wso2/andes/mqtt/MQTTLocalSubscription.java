@@ -35,25 +35,46 @@ import java.util.UUID;
  * engine to inform the relevant subscriptions which are channel bound
  */
 public class MQTTLocalSubscription implements OutboundSubscription {
-    //Will log the flows in relevant for this class
+
+    /**
+     * Will log the flows in relevant for this class
+     */
     private static Log log = LogFactory.getLog(MQTTLocalSubscription.class);
 
-    //The reference to the bridge object
+    /**
+     * The reference to the bridge object
+     */
     private MQTTopicManager mqqtServerChannel;
 
-    //Will store the MQTT channel id
+    /**
+     * Will store the MQTT channel id
+     */
     private String mqttSubscriptionID;
 
-    //Will set unique uuid as the channel of the subscription this will be used to track the delivery of messages
+    /**
+     * Will set unique uuid as the channel of the subscription this will be used to track the delivery of messages
+     */
     private UUID channelID;
 
-    //The QOS level the subscription is bound to
+    /**
+     * The QOS level the subscription is bound to
+     */
     private int subscriberQOS;
 
+    /**
+     * The destination subscriber subscribed to
+     */
     private String wildcardDestination;
 
-    //keep if the underlying subscription is active
+    /**
+     * keep if the underlying subscription is active
+     */
     private boolean isActive;
+
+    /**
+     * Should this subscriber act as a durable one
+     */
+    private boolean isDurable;
 
     /**
      * Track messages sent as retained messages
@@ -100,14 +121,17 @@ public class MQTTLocalSubscription implements OutboundSubscription {
     /**
      *  The relevant subscription will be registered
      *
+     * @param wildCardDestination The original destination subscriber subscribed to
      * @param channelID ID of the underlying subscription channel
      * @param isActive true if subscription is active (TCP connection is live)
+     * @param isDurable Should this subscriber fall into durable path
      */
-    public MQTTLocalSubscription(String wildCardDestination, UUID channelID, boolean isActive) {
+    public MQTTLocalSubscription(String wildCardDestination, UUID channelID, boolean isActive, boolean isDurable) {
 
         this.channelID = channelID;
         this.isActive = isActive;
         this.wildcardDestination = wildCardDestination;
+        this.isDurable = isDurable;
     }
 
     /**
@@ -194,12 +218,21 @@ public class MQTTLocalSubscription implements OutboundSubscription {
     }
 
     /**
+     * Should this subscription act as a durable subscription
+     *
+     * @return True if this falls into durable path
+     */
+    public boolean isDurable() {
+        return isDurable;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
     public String getStorageQueueName(String destination, String subscribedNode) {
         String storageQueueName;
-        if (subscriberQOS > 0) {
+        if (isDurable) {
             storageQueueName = MQTTUtils.getTopicSpecificQueueName(mqttSubscriptionID, destination);
         } else {
             storageQueueName = AndesUtils.getStorageQueueForDestination(destination, subscribedNode, true);

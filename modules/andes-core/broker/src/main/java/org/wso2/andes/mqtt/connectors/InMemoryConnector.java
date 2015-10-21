@@ -105,7 +105,7 @@ public class InMemoryConnector implements MQTTConnector {
     @Override
     public void removeSubscriber(MQTTopicManager channel, String subscribedTopic,String username,
                                  String subscriptionChannelID, UUID subscriberChannel,
-                                 boolean isCleanSession, String mqttClientID)
+                                 boolean isCleanSession, String mqttClientID, QOSLevel qosLevel)
             throws MQTTException {
 
         handleSubscriptionRemoval(subscribedTopic, mqttClientID);
@@ -117,9 +117,9 @@ public class InMemoryConnector implements MQTTConnector {
      * {@inheritDoc}
      */
     @Override
-    public void disconnectSubscriber(MQTTopicManager channel, String subscribedTopic,String username, String subscriptionChannelID,
-                                     UUID subscriberChannel, boolean isCleanSession, String mqttClientID)
-            throws MQTTException {
+    public void disconnectSubscriber(MQTTopicManager channel, String subscribedTopic, String username, String
+            subscriptionChannelID, UUID subscriberChannel, boolean isCleanSession, String mqttClientID, QOSLevel
+            qosLevel) throws MQTTException {
 
         handleSubscriptionRemoval(subscribedTopic, mqttClientID);
         log.info("Subscription with id " + mqttClientID + " removed from " + subscribedTopic);
