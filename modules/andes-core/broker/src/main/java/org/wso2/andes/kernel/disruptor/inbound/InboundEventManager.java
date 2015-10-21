@@ -156,7 +156,7 @@ public class InboundEventManager {
 
         // State event handler should run at last.
         // State event handler update the state of Andes after other handlers work is done.
-        disruptor.after(concurrentBatchEventHandlers).handleEventsWith(new StateEventHandler(messagingEngine));
+        disruptor.after(concurrentBatchEventHandlers).handleEventsWith(new StateEventHandler());
         ringBuffer = disruptor.start();
 
         //Will add the gauge to metrics manager
