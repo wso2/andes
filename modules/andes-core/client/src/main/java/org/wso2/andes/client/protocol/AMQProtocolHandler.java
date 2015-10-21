@@ -575,7 +575,7 @@ public class AMQProtocolHandler implements ProtocolEngine
         });
         if (PROTOCOL_DEBUG)
         {
-            _protocolLogger.debug(String.format("SEND: [%s] %s", this, frame));
+            _protocolLogger.info(String.format("SEND: [%s] %s", this, frame));
         }
 
         final long sentMessages = _messagesOut++;
