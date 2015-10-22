@@ -82,13 +82,22 @@ public class OrphanedSlotHandler implements SubscriptionListener {
                 trackedSubscriptions.put(subscription.getSubscriptionID(), subscription);
                 break;
             case DELETED:
-            case DISCONNECTED:
-                LocalSubscription matchingSubscription = trackedSubscriptions.remove(subscription.getSubscriptionID());
-                if (null != matchingSubscription) {
-                    reAssignSlotsIfNeeded(matchingSubscription);
+                LocalSubscription matchingDeletedSubscription = trackedSubscriptions.remove(subscription.getSubscriptionID());
+                if (null != matchingDeletedSubscription) {
+                    reAssignSlotsIfNeeded(matchingDeletedSubscription);
                 } else {
-                    log.error("Deleting or disconnection a subscription which was not added previously");
+                    log.warn("Deleting a subscription which was not added previously");
                 }
+
+                break;
+            case DISCONNECTED:
+                LocalSubscription matchingDisconnectedSubscription = trackedSubscriptions.get(subscription.getSubscriptionID());
+                if (null != matchingDisconnectedSubscription) {
+                    reAssignSlotsIfNeeded(matchingDisconnectedSubscription);
+                } else {
+                    log.warn("Disconnection a subscription which was not added previously");
+                }
+
                 break;
         }
     }
