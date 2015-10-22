@@ -59,11 +59,11 @@ import org.wso2.andes.server.subscription.SubscriptionImpl;
 import org.wso2.andes.subscription.LocalSubscription;
 
 import java.nio.ByteBuffer;
-import java.util.UUID;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -466,24 +466,21 @@ public class QpidAndesBridge {
      * @param subscription subscription
      * @throws AndesException
      */
-    private static void addLocalSubscriptionsForAllBindingsOfQueue(AMQQueue queue,
-                                                                   Subscription subscription) throws SubscriptionAlreadyExistsException, AMQException, AndesException {
+    private static void addLocalSubscriptionsForAllBindingsOfQueue(AMQQueue queue, Subscription subscription) throws AndesException, SubscriptionAlreadyExistsException {
 
         List<Binding> bindingList = queue.getBindings();
         if (bindingList != null && !bindingList.isEmpty()) {
             Set<AndesBinding> uniqueBindings = new HashSet<AndesBinding>();
             List<InboundSubscriptionEvent> alreadyAddedSubscriptions = new ArrayList<>();
-            List<Binding> validBindings = new ArrayList<Binding>();
+
             // Iterate unique bindings of the queue and add subscription entries.
             try {
                 for (Binding b : bindingList) {
                     // We ignore default exchange events. Andes doesn't honor creation of AMQ default exchange bindings
-                    if (!(b.getExchange().getNameShortString().equals(ExchangeDefaults.DEFAULT_EXCHANGE_NAME.toString()))) {
-                        validBindings.add(b);
+                    if (b.getExchange().getNameShortString().equals(ExchangeDefaults.DEFAULT_EXCHANGE_NAME.toString())) {
+                        continue;
                     }
-                }
-                if (validBindings.size() == 1) {
-                    Binding b = validBindings.get(0);
+
                     AndesBinding andesBinding = AMQPUtils.createAndesBinding(b.getExchange(), b.getQueue(), new AMQShortString(b.getBindingKey()));
                     if (uniqueBindings.add(andesBinding)) {
                         LocalSubscription localSubscription = AMQPUtils.createAMQPLocalSubscription(queue, subscription, b);
@@ -491,10 +488,7 @@ public class QpidAndesBridge {
                         Andes.getInstance().openLocalSubscription(subscriptionEvent);
                         alreadyAddedSubscriptions.add(subscriptionEvent);
                     }
-                } else {
-                    throw new AMQException("Binding already exists for the queue " + queue.getName());
                 }
-
             } catch (AndesException e) {
                 log.warn("Reverting already created subscription entries for subscription " + subscription, e);
                 for (InboundSubscriptionEvent alreadyAddedSub : alreadyAddedSubscriptions) {
