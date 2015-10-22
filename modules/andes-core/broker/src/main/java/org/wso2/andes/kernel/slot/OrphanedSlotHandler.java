@@ -102,11 +102,26 @@ public class OrphanedSlotHandler implements SubscriptionListener {
      */
     private void reAssignSlotsIfNeeded(LocalSubscription subscription) throws AndesException {
         if (subscription.isDurable()) {
-            // Problem happens only with Queues
+            // Problem happens only with Queues and durable topic subscriptions and shared durable topic subscriptions
+            
+            String destination = null;
+            
+            if (subscription.isBoundToTopic()){ 
+                // ( effectively at this point (isDurable && isBoundToTopic()) evaluates to true
+                // Durable topics subscriptions, and shared durable subscriptions
+                // refer to : https://github.com/wso2/andes/wiki/Subscription-Types-and-Attributes
+                destination = subscription.getTargetQueue();
+            } else {
+              //Queues and Topics
+              destination = subscription.getSubscribedDestination();  
+            }
+            
             SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
-            String destination = subscription.getSubscribedDestination();
+            
+            // (!isDurable && isBoundToTopic) is a tautology for ( !  isDurable() ) 
+            // for queues, durable topic subscriptions, shared durable topic subscriptions scenarios
             Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore
-                    .getActiveLocalSubscribers(destination, subscription.isBoundToTopic());
+                    .getActiveLocalSubscribers(destination, ! subscription.isDurable());
             if (localSubscribersForQueue.size() == 0) {
                 scheduleSlotToReassign(subscription.getStorageQueueName());
             } else {

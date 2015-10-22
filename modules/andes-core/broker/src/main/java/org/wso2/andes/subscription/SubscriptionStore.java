@@ -189,17 +189,19 @@ public class SubscriptionStore {
      */
     public Set<LocalSubscription> getActiveLocalSubscribers(String destination, boolean isTopic) throws AndesException {
         Set<LocalSubscription> localSubscriptionMap = getLocalSubscriptionMap(destination, isTopic);
-        Set<LocalSubscription> list = new HashSet<>();
-        if (localSubscriptionMap != null) {
-            list = getLocalSubscriptionMap(destination, isTopic);
-        }
-
+        
         Set<LocalSubscription> activeLocalSubscriptionList = new HashSet<>();
-        for (LocalSubscription localSubscription : list) {
-            if (localSubscription.hasExternalSubscriptions()) {
-                activeLocalSubscriptionList.add(localSubscription);
+        
+        if (null != localSubscriptionMap ) {
+            
+            for (LocalSubscription localSubscription : localSubscriptionMap) {
+                if (localSubscription.hasExternalSubscriptions()) {
+                    activeLocalSubscriptionList.add(localSubscription);
+                }
             }
+            
         }
+        
         return activeLocalSubscriptionList;
     }
 
