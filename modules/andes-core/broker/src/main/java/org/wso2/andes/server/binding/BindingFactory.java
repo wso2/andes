@@ -187,9 +187,9 @@ public class BindingFactory {
                 exchange.addBinding(binding);
                 getConfigStore().addConfiguredObject(binding);
                 binding.logCreation();
-            } catch (AMQException e) {
+            } catch (AndesException e) {
                 _bindings.remove(binding);
-                throw new AMQInternalException("Not permitted. Adding binding failed", e);
+                throw new AMQInternalException("Not permitted. Binding Already exists for this queue", e);
             }
 
             return true;

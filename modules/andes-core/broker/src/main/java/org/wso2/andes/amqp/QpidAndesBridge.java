@@ -473,8 +473,7 @@ public class QpidAndesBridge {
      * @param subscription subscription
      * @throws AndesException
      */
-    private static void addLocalSubscriptionsForAllBindingsOfQueue(AMQQueue queue,
-                                                                   Subscription subscription) throws SubscriptionAlreadyExistsException, AMQException, AndesException {
+    private static void addLocalSubscriptionsForAllBindingsOfQueue(AMQQueue queue, Subscription subscription) throws AndesException, SubscriptionAlreadyExistsException {
 
         List<Binding> bindingList = queue.getBindings();
         if (bindingList != null && !bindingList.isEmpty()) {
@@ -499,7 +498,7 @@ public class QpidAndesBridge {
                         alreadyAddedSubscriptions.add(subscriptionEvent);
                     }
                 } else {
-                    throw new AMQException("Binding already exists for the queue " + queue.getName());
+                    throw new AndesException("Binding already exists for the queue " + queue.getName());
                 }
 
             } catch (AndesException e) {
