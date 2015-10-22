@@ -17,10 +17,12 @@
  */
 package org.wso2.andes.server.queue;
 
+import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
+import org.wso2.andes.server.NameValidationUtils;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.configuration.qpid.QueueConfiguration;
 
@@ -33,6 +35,7 @@ public class AMQQueueFactory
     public static final String QPID_LVQ_KEY = "qpid.LVQ_key";
     public static final String QPID_LAST_VALUE_QUEUE = "qpid.last_value_queue";
     public static final String QPID_LAST_VALUE_QUEUE_KEY = "qpid.last_value_queue_key";
+    private static final Logger _logger = Logger.getLogger(AMQQueueFactory.class);
 
     private abstract static class QueueProperty
     {
@@ -148,6 +151,28 @@ public class AMQQueueFactory
                                               boolean exclusive,
                                               VirtualHost virtualHost, Map<String, Object> arguments) throws AMQSecurityException
     {
+        if (_logger.isDebugEnabled()) {
+            _logger.debug("Queue name is: " + queueName + ", durable=" + durable + ", owner: " + owner);
+        }
+
+        // Prevent creating queue, when queue name/subscription id is invalid
+        if (!NameValidationUtils.isValidQueueName(queueName)) {
+            virtualHost.getQueueRegistry().unregisterQueue(new AMQShortString(queueName));
+
+            String queueTypeIndicator;
+            if (durable) {
+                queueTypeIndicator = "Subscription ID: ";
+                _logger.info("Durable. Mapping to: " + arguments.containsKey(queueName) + " " + arguments.containsValue(queueName));
+            } else {
+                queueTypeIndicator = "Queue name: ";
+            }
+
+            throw new AMQSecurityException(queueTypeIndicator
+                    + NameValidationUtils.getNameWithoutTenantDomain(queueName)
+                    + " cannot contain any of following symbols ~!@#;%^*()+={}|<>\"', and space. "
+                    + "\" / \" can only use as the tenant separator\n");
+        }
+
         // Access check
         if (!virtualHost.getSecurityManager().authoriseCreateQueue(autoDelete, durable, exclusive, null, null, new AMQShortString(queueName), owner))
         {
