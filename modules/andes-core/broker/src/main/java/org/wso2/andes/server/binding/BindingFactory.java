@@ -182,15 +182,10 @@ public class BindingFactory {
 
             queue.addQueueDeleteTask(binding);
             exchange.addCloseTask(binding);
-            try {
-                queue.addBinding(binding);
-                exchange.addBinding(binding);
-                getConfigStore().addConfiguredObject(binding);
-                binding.logCreation();
-            } catch (AMQException e) {
-                _bindings.remove(binding);
-                throw new AMQInternalException("Not permitted. Adding binding failed", e);
-            }
+            queue.addBinding(binding);
+            exchange.addBinding(binding);
+            getConfigStore().addConfiguredObject(binding);
+            binding.logCreation();
 
             return true;
         } else {
