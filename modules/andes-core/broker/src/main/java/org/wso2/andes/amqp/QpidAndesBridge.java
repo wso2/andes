@@ -370,6 +370,12 @@ public class QpidAndesBridge {
             log.debug("AMQP BRIDGE: create queue: " + queue.getName());
         }
         try {
+            List<String> queues = AndesContext.getInstance().getAMQPConstructStore().getQueueNames();
+            for (String queueName : queues) {
+                if (queueName.equalsIgnoreCase(queue.getName())) {
+                    throw new AMQException("Cannot create already existing queue: " + queue.getName());
+                }
+            }
             Andes.getInstance().createQueue(AMQPUtils.createAndesQueue(queue));
         } catch (AndesException e) {
             log.error("error while creating queue", e);
