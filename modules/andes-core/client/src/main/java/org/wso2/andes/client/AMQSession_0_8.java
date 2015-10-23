@@ -244,6 +244,7 @@ public final class AMQSession_0_8 extends AMQSession<BasicMessageConsumer_0_8, B
         // Otherwise messages will be able to arrive out of order to a second
         // consumer on the queue. Whilst this is within the JMS spec it is not
         // user friendly and avoidable.
+
         while (true)
         {
             Long tag = _deliveredMessageTags.poll();

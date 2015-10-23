@@ -22,6 +22,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.subscription.LocalSubscription;
+import org.wso2.andes.tools.utils.MessageTracer;
+
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -48,6 +50,14 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
      * Time stamp message is read from the store
      */
     private long timeMessageIsRead;
+
+    /**
+     * In a session-transacted consumer scenario, a rollback will reject even the messages beyond the rollback point,
+     * since they have been pre-fetched from the server to the client buffer. This property marks such messages.
+     * Attempt to re-send a message beyond a rollback point should not be added to the deliveryAttempts. (Since such
+     * messages have not yet been visible to the consumer through the client.)
+     */
+    private boolean isBeyondLastRollbackedMessage;
 
     /**
      * Indicate if the metadata should not be used.
@@ -215,7 +225,14 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
     public void markAsDispatchedToDeliver(UUID channelID) {
         ChannelInformation channelInformation = channelDeliveryInfo.get(channelID);
         channelInformation.addChannelStatus(ChannelMessageStatus.DISPATCHED);
-        channelInformation.incrementDeliveryCount();
+
+        if (!this.isBeyondLastRollbackedMessage) {
+            channelInformation.incrementDeliveryCount();
+            System.out.println("Incremented Delivery count to " + channelInformation.getDeliveryCount());
+        } else {
+            // No need to increase deliveryCount if this message is beyond the last rollback.
+            MessageTracer.trace(getMessageID(), getDestination(),MessageTracer.MESSAGE_BEYOND_LAST_ROLLBACK);
+        }
     }
 
 
@@ -606,5 +623,13 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
 
     }
 
+    /**
+     * Set beyondLastRollbackedMessage
+     * @param beyondLastRollbackedMessage true if this message is beyond the last rollbacked message.
+     */
+    public void setIsBeyondLastRollbackedMessage(boolean beyondLastRollbackedMessage) {
+        log.info("setIsBeyondLastRollbackedMessage : " + beyondLastRollbackedMessage);
+        isBeyondLastRollbackedMessage = beyondLastRollbackedMessage;
+    }
 
 }

@@ -56,7 +56,7 @@ public class TxRollbackHandler implements StateAwareMethodListener<TxRollbackBod
                 throw body.getChannelNotFoundException(channelId);
             }
 
-
+            channel.setLastRollbackedMessageId();
 
             final MethodRegistry methodRegistry = session.getMethodRegistry();
             final AMQMethodBody responseBody = methodRegistry.createTxRollbackOkBody();

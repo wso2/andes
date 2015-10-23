@@ -177,10 +177,15 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
     private final AtomicBoolean _blocking = new AtomicBoolean(false);
 
+    /**
+     * Message ID that was rejected last until the current time.
+     */
     private long lastRejectedMessageId = -1;
+
+    /**
+     * Message ID that was rollbacked last until the current time.
+     */
     private long lastRollbackedMessageId = -1;
-    private long lastAckedMessageId = -1;
-    private long lastCommittedMessageId = -1;
 
     private LogActor _actor;
     private LogSubject _logSubject;
@@ -1670,28 +1675,53 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         return new StoredAMQPMessage(mid, metaData);
     }
 
+    /**
+     * Set the message ID of the last rejected message.
+     * Currently called by QpidAndesBridge.rejectMessage.
+     * @param lastRejectedMessageId
+     */
     public void setLastRejectedMessageId(long lastRejectedMessageId) {
         this.lastRejectedMessageId = lastRejectedMessageId;
     }
 
-    public void setLastAckedMessageId(long lastAckedMessageId) {
-        this.lastAckedMessageId = lastAckedMessageId;
-    }
-
+    /**
+     * Mark the lastRejectedMessageID as the lastRollbackedID.
+     * Called upon receiving a rollback request from client. (TxRollbackHandler.methodReceived)
+     */
     public void setLastRollbackedMessageId() {
+        if (_logger.isDebugEnabled()) {
+            _logger.debug("set LastRollbackedMessageId to : " + lastRejectedMessageId);
+        }
         this.lastRollbackedMessageId = this.lastRejectedMessageId;
     }
 
-    public void setLastCommittedMessageId() {
-        this.lastCommittedMessageId = this.lastAckedMessageId;
+    /**
+     * Reset lastRollbackedMessageId upon a commit request from client. (TxCommitHandler.methodReceived)
+     */
+    public void resetLastRollbackedMessageId() {
+        if (_logger.isDebugEnabled()) {
+            _logger.debug("reset LastRollbackedMessageId to : " + lastRejectedMessageId);
+        }
+        this.lastRollbackedMessageId = -1;
     }
 
-    public long getLastRollbackedMessageId() {
-        return lastRollbackedMessageId;
-    }
+    /**
+     * This is to handle the extra messages beyond the actual rollback point, which are rejected from the client side
+     * message buffer.
+     * @param messageId message Id
+     * @return true if the message is placed after the last rollbacked message.
+     */
+    public boolean isMessageBeyondLastRollback(long messageId) {
 
-    public long getLastCommittedMessageId() {
-        return lastCommittedMessageId;
+        if (lastRollbackedMessageId < 0) {
+            // (1) Message is either within the last committed transaction or,
+            // (2) this channel is not session-transacted.
+            return false;
+        } else {
+            // True if the message is placed after the last rollbacked message, in which case it's redelivery should
+            // not be counted.
+            return (messageId > lastRollbackedMessageId);
+        }
     }
 
 

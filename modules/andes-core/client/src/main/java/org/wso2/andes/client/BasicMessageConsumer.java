@@ -153,6 +153,16 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
     private AMQShortString _queuename;
 
     /**
+     * JMS timestamp of the last message that was read and dispatched out of the client buffer.
+     */
+    private long lastDispatchedMessageTimestamp = -1;
+
+    /**
+     * JMS timestamp of the last rollbacked ID. Needed for processing the client buffer in a rollback scenario.
+     */
+    private long lastRollbackedMessageTimestamp = -1;
+
+    /**
      * autoClose denotes that the consumer will automatically cancel itself when there are no more messages to receive
      * on the queue.  This is used for queue browsing.
      */
@@ -440,8 +450,17 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
              o = _synchronousQueue.take();
          }
          if(o != null){
-             _logger.debug("dest="+ _destination.getQueueName()+  " took message [" + _synchronousQueue.size() + "]"); 
+             _logger.debug("dest="+ _destination.getQueueName()+  " took message [" + _synchronousQueue.size() + "]");
+
+             try {
+                lastDispatchedMessageTimestamp = ((AbstractJMSMessage)o).getJMSTimestamp();
+             } catch (JMSException e) {
+                _logger.error("Error when reading the message at the point of dispatch from client buffer." + e);
+             }
          }
+
+
+
          return o;
     }
 
@@ -664,7 +683,6 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
             try
             {
                 _logger.debug("dest="+ _destination.getQueueName()+  " added message in close [" + _synchronousQueue.size() + "]");
-                System.out.println("dest="+ _destination.getQueueName()+  " added message in close [" + _synchronousQueue.size() + "]");
                 _synchronousQueue.put(closeMessage);
             }
             catch (InterruptedException e)
@@ -735,7 +753,6 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
                 // consumer is closed
                 _synchronousQueue.put(jmsMessage);
                 _logger.debug("dest="+ _destination.getQueueName()+  " added message " + _synchronousQueue.size() + "]");
-                System.out.println("dest="+ _destination.getQueueName()+  " added message " + _synchronousQueue.size() + "]");
             }
         }
         catch (Exception e)
@@ -973,8 +990,7 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
 
     public void rollback()
     {
-        System.out.println("BUBAAAA");
-        rollbackPendingMessages();
+            rollbackPendingMessages();
     }
 
     public void rollbackPendingMessages()
@@ -983,7 +999,6 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
         if (_synchronousQueue.size() > 0)
         {
             _logger.debug("dest="+ _destination.getQueueName()+  " rolling back messages [" + _synchronousQueue.size() + "]");
-            System.out.println("dest="+ _destination.getQueueName()+  " rolling back messages [" + _synchronousQueue.size() + "]");
 
             if (_logger.isDebugEnabled())
             {
@@ -1000,23 +1015,33 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
             {
 
                 Object o = iterator.next();
+
                 if (o instanceof AbstractJMSMessage)
                 {
                     try {
-                        System.out.println("Rejecting Message : " + ((TextMessage)o).getText());
+                        if ((lastRollbackedMessageTimestamp > 0) && (lastRollbackedMessageTimestamp >= ((AbstractJMSMessage) o).getJMSTimestamp())) {
+                            if (_logger.isDebugEnabled())
+                            {
+                                if (o instanceof TextMessage) {
+                                    _logger.debug("Did not remove message " + ((TextMessage)o).getText() +" since its new relative to the rollback point.");
+                                }
+                            }
+                        } else {
+
+                            _session.rejectMessage(((AbstractJMSMessage) o), true);
+
+                            if (_logger.isDebugEnabled())
+                            {
+                                _logger.debug("Rejected message:" + ((AbstractJMSMessage) o).getDeliveryTag());
+                            }
+
+                            iterator.remove();
+                            removed = true;
+                       }
                     } catch (JMSException e) {
-                        e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                        // Should continue. Cannot let one faulty message crash the flow.
+                        _logger.error("Error when trying to rejecting messages in client buffer : " + e.getMessage());
                     }
-                    _session.rejectMessage(((AbstractJMSMessage) o), true);
-
-                    if (_logger.isDebugEnabled())
-                    {
-                        _logger.debug("Rejected message:" + ((AbstractJMSMessage) o).getDeliveryTag());
-                    }
-
-                    iterator.remove();
-                    removed = true;
-
                 }
                 else
                 {
@@ -1025,21 +1050,13 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
                     iterator.remove();
                     removed = true;
                 }
-                }
+            }
 
             if (removed && (initialSize == _synchronousQueue.size()))
             {
                 _logger.error("Queue had content removed but didn't change in size." + initialSize);
             }
 
-
-            if (_synchronousQueue.size() != 0)
-            {
-                _logger.warn("Queue was not empty after rejecting all messages Remaining:" + _synchronousQueue.size());
-                rollback();
-            }
-
-            clearReceiveQueue();
         }
     }
 
@@ -1096,4 +1113,10 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
 
     public void failedOverPost() {}
 
+    /**
+     * Set the last rollbacked message's JMS timestamp for reference to process the client buffer.
+     */
+    public void setLastRollbackedMessageTimestamp() {
+        this.lastRollbackedMessageTimestamp = lastDispatchedMessageTimestamp;
+    }
 }

@@ -258,6 +258,10 @@ public class QpidAndesBridge {
                     getSubscriptionStore().getLocalSubscriptionForChannelId(channel.getId());
             DeliverableAndesMetadata rejectedMessage = localSubscription.getMessageByMessageID(message.getMessageId());
 
+            channel.setLastRejectedMessageId(message.getMessageNumber());
+
+            rejectedMessage.setIsBeyondLastRollbackedMessage(channel.isMessageBeyondLastRollback(message.getMessageId()));
+
             log.debug("AMQP BRIDGE: rejected message id= " + rejectedMessage.getMessageID()
                     + " channel = " + channel.getId());
 

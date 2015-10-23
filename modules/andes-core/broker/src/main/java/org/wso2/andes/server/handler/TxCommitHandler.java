@@ -54,12 +54,13 @@ public class TxCommitHandler implements StateAwareMethodListener<TxCommitBody>
             }
             AMQChannel channel = session.getChannel(channelId);
 
-            channel.setLastCommittedMessageId(channel.get);
-
             if (channel == null)
             {
                 throw body.getChannelNotFoundException(channelId);
             }
+
+            channel.resetLastRollbackedMessageId();
+
             channel.commit();
 
             MethodRegistry methodRegistry = session.getMethodRegistry();

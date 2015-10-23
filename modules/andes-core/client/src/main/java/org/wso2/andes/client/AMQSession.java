@@ -30,6 +30,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -304,6 +305,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
 
     /** Holds the highest received delivery tag. */
     private final AtomicLong _highestDeliveryTag = new AtomicLong(-1);
+
     private final AtomicLong _rollbackMark = new AtomicLong(-1);
     
     /** All the not yet acknowledged message tags */
@@ -408,7 +410,12 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
 
     /** Indicates that runtime exceptions should be generated on vilations of the strict AMQP. */
     protected final boolean _strictAMQPFATAL;
-    private final Object _messageDeliveryLock = new Object();
+
+    /**
+     * Using ReentrantLock to ensure that the longest waiting thread gets priority of execution.
+     * (using fair policy = true)
+     */
+    private final Lock messageDeliveryLock = new ReentrantLock(true);
 
     /** Session state : used to detect if commit is a) required b) allowed , i.e. does the tx span failover. */
     private boolean _dirty;
@@ -589,7 +596,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
                             }
                         }
                     }catch (Exception ex){
-                        System.out.println("Exception Occured When Sending the Reject Message to the Server : " + ex);
+                        _dispatcherLogger.error("Exception occurred when sending the reject message to the server : " + ex);
                     }
                 }
             }
@@ -796,8 +803,8 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
             {
                 // We must close down all producers and consumers in an orderly fashion. This is the only method
                 // that can be called from a different thread of control from the one controlling the session.
-                synchronized (_messageDeliveryLock)
-                {
+                messageDeliveryLock.lock();
+                try {
                     // we pass null since this is not an error case
                     closeProducersAndConsumers(null);
 
@@ -832,6 +839,8 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
                     {
                         _connection.deregisterSession(_channelId);
                     }
+                } finally {
+                    messageDeliveryLock.unlock();
                 }
             }
         }
@@ -868,8 +877,8 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
 
         if (!_closed.getAndSet(true))
         {
-            synchronized (_messageDeliveryLock)
-            {
+            messageDeliveryLock.lock();
+            try {
                 // An AMQException has an error code and message already and will be passed in when closure occurs as a
                 // result of a channel close request
                 AMQException amqe;
@@ -884,6 +893,8 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
 
                 _connection.deregisterSession(_channelId);
                 closeProducersAndConsumers(amqe);
+            } finally {
+                messageDeliveryLock.unlock();
             }
         }
     }
@@ -1892,32 +1903,27 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
                     suspendChannel(true);
                 }
 
-                // Let the dispatcher know that all the incomming messages
+                // Let the dispatcher know that all the incoming messages
                 // should be rolled back(reject/release)
                 _rollbackMark.set(_highestDeliveryTag.get());
 
                 syncDispatchQueue();
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 releaseForRollback();
 
-                _dispatcher.rollback();
+                for (C consumer : _consumers.values())
+                {
+                    if (!consumer.isNoConsume())
+                    {
+                        //Assign the JMS timestamp of the actually rollbacked message in order to skip messages
+                        // beyond that point in the client buffer..
+                        consumer.setLastRollbackedMessageTimestamp();
+                    }
+                }
 
                 sendRollback();
+
+                _dispatcher.rollback();
 
                 markClean();
 
@@ -3133,9 +3139,9 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
 
     public abstract void sendSuspendChannel(boolean suspend) throws AMQException, FailoverException;
 
-    Object getMessageDeliveryLock()
+    Lock getMessageDeliveryLock()
     {
-        return _messageDeliveryLock;
+        return messageDeliveryLock;
     }
 
     /**
@@ -3255,6 +3261,15 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
         private final AtomicBoolean _closed = new AtomicBoolean(false);
 
         private final Object _lock = new Object();
+
+        /**
+         * Using ReentrantLock to ensure that the longest waiting thread gets priority of execution.
+         * (using fair policy = true)
+         * This is used to synchronize rollbacks, dispatching messages to the client, and server connection status.
+         */
+        private final Lock dispatcherLock = new ReentrantLock(true);
+        private final Condition connectionStoppedCondition = dispatcherLock.newCondition();
+
         private String dispatcherID = "" + System.identityHashCode(this);
 
         public Dispatcher()
@@ -3279,8 +3294,8 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
 
         public void rejectPending(C consumer)
         {
-            synchronized (_lock)
-            {
+            dispatcherLock.lock();
+            try {
                 boolean stopped = _dispatcher.connectionStopped();
 
                 if (!stopped)
@@ -3300,22 +3315,23 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
 
                 _dispatcher.setConnectionStopped(stopped);
 
+            } finally {
+                dispatcherLock.unlock();
             }
         }
 
         public void rollback()
         {
 
-            synchronized (_lock)
-            {
+            dispatcherLock.lock();
+            try {
                 boolean isStopped = connectionStopped();
 
                 if (!isStopped)
+
                 {
                     setConnectionStopped(true);
                 }
-
-                _rollbackMark.set(_highestDeliveryTag.get());
 
                 _dispatcherLogger.debug("Session Pre Dispatch Queue cleared");
 
@@ -3342,15 +3358,16 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
                 }
 
                 setConnectionStopped(isStopped);
+            } finally {
+                dispatcherLock.unlock();
             }
 
         }
 
         public void recover()
         {
-
-            synchronized (_lock)
-            {
+            dispatcherLock.lock();
+            try {
                 boolean isStopped = connectionStopped();
 
                 if (!isStopped)
@@ -3371,6 +3388,8 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
                 }
 
                 setConnectionStopped(isStopped);
+            } finally {
+                dispatcherLock.unlock();
             }
 
         }
@@ -3385,20 +3404,22 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
 
             UnprocessedMessage message;
 
-            // Allow disptacher to start stopped
-            synchronized (_lock)
-            {
+            // Allow dispatcher to start stopped
+            dispatcherLock.lock();
+            try {
                 while (!_closed.get() && connectionStopped())
                 {
                     try
                     {
-                        _lock.wait();
+                        connectionStoppedCondition.await();
                     }
                     catch (InterruptedException e)
                     {
                         // ignore
                     }
                 }
+            } finally {
+                dispatcherLock.unlock();
             }
 
             try
@@ -3430,17 +3451,20 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
         boolean setConnectionStopped(boolean connectionStopped)
         {
             boolean currently;
-            synchronized (_lock)
-            {
+
+            dispatcherLock.lock();
+            try {
                 currently = _connectionStopped;
                 _connectionStopped = connectionStopped;
-                _lock.notify();
+                connectionStoppedCondition.signal();
 
                 if (_dispatcherLogger.isDebugEnabled())
                 {
                     _dispatcherLogger.debug("Set Dispatcher Connection " + (connectionStopped ? "Stopped" : "Started")
                                             + ": Currently " + (currently ? "Stopped" : "Started"));
                 }
+            } finally {
+                dispatcherLock.unlock();
             }
 
             return currently;
@@ -3450,14 +3474,14 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
         {
             long deliveryTag = message.getDeliveryTag();
 
-            synchronized (_lock)
-            {
+            dispatcherLock.lock();
+            try {
 
                 try
                 {
                     while (connectionStopped())
                     {
-                        _lock.wait();
+                        connectionStoppedCondition.await();
                     }
                 }
                 catch (InterruptedException e)
@@ -3468,6 +3492,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
                 if (!(message instanceof CloseConsumerMessage)
                     && tagLE(deliveryTag, _rollbackMark.get()))
                 {
+
                     rejectMessage(message, true);
                 }
                 else if (isInRecovery())
@@ -3478,11 +3503,15 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
                 }
                 else
                 {
-                    synchronized (_messageDeliveryLock)
-                    {
+                    messageDeliveryLock.lock();
+                    try {
                         notifyConsumer(message);
+                    } finally {
+                        messageDeliveryLock.unlock();
                     }
                 }
+            } finally {
+                dispatcherLock.unlock();
             }
 
             long current = _rollbackMark.get();
