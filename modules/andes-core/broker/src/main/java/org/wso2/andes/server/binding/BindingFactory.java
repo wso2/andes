@@ -18,6 +18,7 @@
 
 package org.wso2.andes.server.binding;
 
+import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQInternalException;
 import org.wso2.andes.AMQSecurityException;
@@ -30,7 +31,9 @@ import org.wso2.andes.configuration.qpid.ConfiguredObject;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.server.NameValidationUtils;
 import org.wso2.andes.server.exchange.Exchange;
+import org.wso2.andes.server.exchange.TopicExchange;
 import org.wso2.andes.server.logging.actors.CurrentActor;
 import org.wso2.andes.server.logging.messages.BindingMessages;
 import org.wso2.andes.server.logging.subjects.BindingLogSubject;
@@ -48,6 +51,7 @@ public class BindingFactory {
     private final DurableConfigurationStore.Source _configSource;
     private final Exchange _defaultExchange;
 
+    private static final Logger _logger = Logger.getLogger(BindingFactory.class);
     private final ConcurrentHashMap<BindingImpl, BindingImpl> _bindings = new ConcurrentHashMap<BindingImpl, BindingImpl>();
 
 
@@ -162,6 +166,21 @@ public class BindingFactory {
             if (existingMapping != null) {
                 //TODO - we should not remove the existing binding
                 removeBinding(existingMapping);
+            }
+
+            if (_logger.isDebugEnabled()) {
+                _logger.debug("bindingKey: " + bindingKey + ", queue: " + queue + ", exchange: " + exchange);
+            }
+
+            // Prevent creating topics, if topic name is invalid
+            if (exchange.getType() == TopicExchange.TYPE) {
+                if (!NameValidationUtils.isValidTopicName(bindingKey)) {
+                    _virtualHost.getQueueRegistry().unregisterQueue(queue.getNameShortString());
+                    throw new AMQInternalException("\nTopic name: "
+                            + NameValidationUtils.getNameWithoutTenantDomain(bindingKey)
+                            + " can contain only alphanumeric characters and star(*) "
+                            + "delimited by dots. Names can ends with any of these or, with '#' ");
+                }
             }
 
             //Perform ACLs ONLY after removing/updating any existing bindings.
