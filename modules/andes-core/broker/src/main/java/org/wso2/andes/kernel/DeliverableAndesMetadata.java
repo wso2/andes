@@ -76,6 +76,17 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
     }
 
     /**
+     * Change the belonging slot to a new one. Used when the current slot is overlapping with a slot tracked in the
+     * SlotDeliveryWorker.
+     *
+     * @param slot
+     *         New Slot
+     */
+    public void changeSlot(Slot slot) {
+        this.slot = slot;
+    }
+
+    /**
      * Check if message is expired
      * @return check expire result
      */
