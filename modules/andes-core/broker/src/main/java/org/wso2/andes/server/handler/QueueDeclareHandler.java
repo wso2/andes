@@ -60,7 +60,7 @@ public class QueueDeclareHandler implements StateAwareMethodListener<QueueDeclar
 
     public void methodReceived(AMQStateManager stateManager, QueueDeclareBody body, int channelId) throws AMQException
     {
-
+        try {
             final AMQProtocolSession protocolConnection = stateManager.getProtocolSession();
             final AMQSessionModel session = protocolConnection.getChannel(channelId);
             VirtualHost virtualHost = protocolConnection.getVirtualHost();
@@ -81,7 +81,7 @@ public class QueueDeclareHandler implements StateAwareMethodListener<QueueDeclar
             }
 
             AMQQueue queue;
-        try {
+
             //TODO: do we need to check that the queue already exists with exactly the same "configuration"?
 
             synchronized (queueRegistry)
@@ -208,7 +208,6 @@ public class QueueDeclareHandler implements StateAwareMethodListener<QueueDeclar
                 _logger.info("Queue " + queueName + " declared successfully");
             }
         } catch (AMQException e) {
-            queueRegistry.unregisterQueue(queueName);
             throw body.getChannelException(AMQConstant.INTERNAL_ERROR, e.getMessage());
         }
     }
