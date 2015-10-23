@@ -259,6 +259,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                 }
                 readMessageIterator.remove();
             } else {
+                currentMessage.changeSlot(slot);
                 slot.addMessageToSlotIfAbsent(currentMessage);
             }
         }
