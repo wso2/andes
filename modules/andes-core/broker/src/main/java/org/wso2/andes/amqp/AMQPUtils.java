@@ -256,7 +256,8 @@ public class AMQPUtils {
          * Thus we are redefining the subscription id to client ID
          * But durable subscription ID form as queue subscription ID if durable topic has enabled shared subscription.
          */
-        Boolean allowSharedSubscribers = AndesConfigurationManager.readValue(AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
+        Boolean allowSharedSubscribers = AndesConfigurationManager.readValue(
+                AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
         if (queue.isDurable() && isBoundToTopic && !allowSharedSubscribers) {
             subscriptionID = queue.getName();
         }
