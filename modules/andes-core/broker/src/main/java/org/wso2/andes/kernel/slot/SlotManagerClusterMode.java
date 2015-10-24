@@ -321,11 +321,10 @@ public class SlotManagerClusterMode {
 							          "(RightExtraSlot). Current values in " +
 							          "store " + messageIdSet);
 						}
-						slotAgent.setNodeToLastPublishedId(nodeId, lastMessageIdInTheSlot);
 					}
 				} else {
-                    slotAgent.addMessageId(queueName, lastMessageIdInTheSlot);
-                }
+					slotAgent.addMessageId(queueName, lastMessageIdInTheSlot);
+				}
 			} else {
 				//Update the store only if the last assigned message ID is less than the new start message ID
 				slotAgent.addMessageId(queueName, lastMessageIdInTheSlot);
@@ -335,10 +334,9 @@ public class SlotManagerClusterMode {
 					          lastMessageIdInTheSlot + ". Added msgID " +
 					          lastMessageIdInTheSlot + " to store");
 				}
-
-				//record last published message ID
-				slotAgent.setNodeToLastPublishedId(nodeId, lastMessageIdInTheSlot);
 			}
+			//record last published message ID
+			slotAgent.setNodeToLastPublishedId(nodeId, lastMessageIdInTheSlot);
 		}
 	}
 
