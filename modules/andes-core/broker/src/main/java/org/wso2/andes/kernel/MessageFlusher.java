@@ -522,7 +522,9 @@ public class MessageFlusher {
                 log.debug("Scheduled message id= " + message.getMessageID() + " to be sent to subscription= " + subscription);
             }
             //mark message as came into the subscription for deliver
+
             message.markAsDispatchedToDeliver(subscription.getChannelID());
+
             ProtocolMessage protocolMessage = message.generateProtocolDeliverableMessage(subscription.getChannelID());
             flusherExecutor.submit(subscription, protocolMessage);
         }

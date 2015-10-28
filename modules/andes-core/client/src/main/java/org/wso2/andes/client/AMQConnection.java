@@ -908,9 +908,12 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
             if (!sessions.isEmpty())
             {
                 AMQSession session = sessions.remove(0);
-                synchronized (session.getMessageDeliveryLock())
-                {
+
+                session.getMessageDeliveryLock().lock();
+                try {
                     doClose(sessions, timeout);
+                } finally {
+                    session.getMessageDeliveryLock().unlock();
                 }
             }
             else

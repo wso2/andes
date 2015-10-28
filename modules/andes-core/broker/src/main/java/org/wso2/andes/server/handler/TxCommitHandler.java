@@ -58,6 +58,9 @@ public class TxCommitHandler implements StateAwareMethodListener<TxCommitBody>
             {
                 throw body.getChannelNotFoundException(channelId);
             }
+
+            channel.resetLastRollbackedMessageId();
+
             channel.commit();
 
             MethodRegistry methodRegistry = session.getMethodRegistry();

@@ -50,6 +50,8 @@ public class MessageTracer {
     public static final String ACK_PUBLISHED_TO_DISRUPTOR = "ACK event submitted to disruptor";
     public static final String MESSAGE_REQUEUED_BUFFER = "message re-queued to buffer";
     public static final String DISCARD_STALE_MESSAGE = "discarding delivery as message is stale";
+    public static final String MESSAGE_BEYOND_LAST_ROLLBACK = "Message is beyond the last rollback point. Therefore " +
+            "deliveryCount is not increased.";
 
     /**
      * This method will print debug logs for message activities. This will accept parameters for
