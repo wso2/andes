@@ -377,7 +377,6 @@ public class BasicMessageConsumer_0_10 extends BasicMessageConsumer<UnprocessedM
             {
                 AbstractJMSMessage message=(AbstractJMSMessage) messages.next();
                 messages.remove();
-                System.out.println("Special Reject : " + ((TextMessage)message).getText());
                 _session.rejectMessage(message, true);
             }
         }

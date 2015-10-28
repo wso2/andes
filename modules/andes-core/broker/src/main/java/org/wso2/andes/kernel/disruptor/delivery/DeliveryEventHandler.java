@@ -198,7 +198,6 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
         //Send failed. Rollback changes done that assumed send would be success
         UUID channelID = localSubscription.getChannelID();
         messageMetadata.markDeliveryFailureOfASentMessage(channelID);
-        log.info("Send Error : " + messageMetadata.getMessageID());
         localSubscription.removeSentMessageFromTracker(messageMetadata.getMessageID());
     }
 

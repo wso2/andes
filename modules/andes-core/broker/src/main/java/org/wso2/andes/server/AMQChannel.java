@@ -1700,7 +1700,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
      */
     public void resetLastRollbackedMessageId() {
         if (_logger.isDebugEnabled()) {
-            _logger.debug("reset LastRollbackedMessageId to : " + lastRejectedMessageId);
+            _logger.debug("reset LastRollbackedMessageId to -1");
         }
         this.lastRollbackedMessageId = -1;
     }
