@@ -810,8 +810,8 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
                     SubAckMessage response = new SubAckMessage();
                     response.setreturnCode(SubAckMessage.FORBIDDEN_SUBSCRIPTION);
                     session.write(response);
-                    return;
                 }
+                continue;
             }
 
             AbstractMessage.QOSType qos = AbstractMessage.QOSType.values()[req.getQos()];
