@@ -58,137 +58,118 @@ public class QueueDeclareHandler implements StateAwareMethodListener<QueueDeclar
 
     private final AtomicInteger _counter = new AtomicInteger();
 
-    public void methodReceived(AMQStateManager stateManager, QueueDeclareBody body, int channelId) throws AMQException
-    {
+    public void methodReceived(AMQStateManager stateManager, QueueDeclareBody body, int channelId) throws AMQException {
+
+        final AMQProtocolSession protocolConnection = stateManager.getProtocolSession();
+        final AMQSessionModel session = protocolConnection.getChannel(channelId);
+        VirtualHost virtualHost = protocolConnection.getVirtualHost();
+        ExchangeRegistry exchangeRegistry = virtualHost.getExchangeRegistry();
+        QueueRegistry queueRegistry = virtualHost.getQueueRegistry();
+        DurableConfigurationStore store = virtualHost.getDurableConfigurationStore();
+
+        final AMQShortString queueName;
+
+        // if we aren't given a queue name, we create one which we return to the client
+        if ((null == body.getQueue()) || (0 == body.getQueue().length())) {
+            queueName = createName();
+        } else {
+            queueName = body.getQueue().intern();
+        }
+        AMQQueue queue;
         try {
-            final AMQProtocolSession protocolConnection = stateManager.getProtocolSession();
-            final AMQSessionModel session = protocolConnection.getChannel(channelId);
-            VirtualHost virtualHost = protocolConnection.getVirtualHost();
-            ExchangeRegistry exchangeRegistry = virtualHost.getExchangeRegistry();
-            QueueRegistry queueRegistry = virtualHost.getQueueRegistry();
-            DurableConfigurationStore store = virtualHost.getDurableConfigurationStore();
-
-            final AMQShortString queueName;
-
-            // if we aren't given a queue name, we create one which we return to the client
-            if ((body.getQueue() == null) || (body.getQueue().length() == 0))
-            {
-                queueName = createName();
-            }
-            else
-            {
-                queueName = body.getQueue().intern();
-            }
-
-            AMQQueue queue;
-
             //TODO: do we need to check that the queue already exists with exactly the same "configuration"?
 
-            synchronized (queueRegistry)
-            {
+            synchronized (queueRegistry) {
                 queue = queueRegistry.getQueue(queueName);
 
                 AMQSessionModel owningSession = null;
 
-                if (queue != null)
-                {
+                if (null != queue) {
                     owningSession = queue.getExclusiveOwningSession();
                 }
 
-                if (queue == null)
-                {
-                    if (body.getPassive())
-                    {
+                if (null == queue) {
+                    if (body.getPassive()) {
                         String msg = "Queue: " + queueName + " not found on VirtualHost(" + virtualHost + ").";
                         throw body.getChannelException(AMQConstant.NOT_FOUND, msg);
-                    }
-                    else
-                    {
+                    } else {
                         queue = createQueue(queueName, body, virtualHost, protocolConnection);
                         queue.setAuthorizationHolder(protocolConnection);
-                        if (queue.isDurable() && !queue.isAutoDelete())
-                        {
+                        if (queue.isDurable() && !queue.isAutoDelete()) {
                             store.createQueue(queue, body.getArguments());
 
                             //Tell Andes kernel to create queue
                             QpidAndesBridge.createQueue(queue);
                         }
-                        if(body.getAutoDelete())
-                        {
+                        if (body.getAutoDelete()) {
                             queue.setDeleteOnNoConsumers(true);
                         }
                         queueRegistry.registerQueue(queue);
-                        if (body.getExclusive())
-                        {
+                        if (body.getExclusive()) {
                             queue.setExclusiveOwningSession(protocolConnection.getChannel(channelId));
                             queue.setAuthorizationHolder(protocolConnection);
 
-                            if(!body.getDurable())
-                            {
+                            if (!body.getDurable()) {
                                 final AMQQueue q = queue;
-                                final AMQProtocolSession.Task sessionCloseTask = new AMQProtocolSession.Task()
-                                {
-                                    public void doTask(AMQProtocolSession session) throws AMQException
-                                    {
+                                final AMQProtocolSession.Task sessionCloseTask = new AMQProtocolSession.Task() {
+                                    public void doTask(AMQProtocolSession session) throws AMQException {
                                         q.setExclusiveOwningSession(null);
                                     }
                                 };
                                 protocolConnection.addSessionCloseTask(sessionCloseTask);
                                 queue.addQueueDeleteTask(new AMQQueue.Task() {
-                                    public void doTask(AMQQueue queue) throws AMQException
-                                    {
+                                    public void doTask(AMQQueue queue) throws AMQException {
                                         protocolConnection.removeSessionCloseTask(sessionCloseTask);
                                     }
                                 });
                             }
                         }
-                        if (autoRegister)
-                        {
+                        if (autoRegister) {
                             Exchange defaultExchange = exchangeRegistry.getDefaultExchange();
 
-                            virtualHost.getBindingFactory().addBinding(String.valueOf(queueName), queue, defaultExchange, Collections.EMPTY_MAP);
-                            _logger.info("Queue " + queueName + " bound to default exchange(" + defaultExchange.getNameShortString() + ")");
+                            virtualHost.getBindingFactory().addBinding(String.valueOf(queueName), queue,
+                                    defaultExchange, Collections.EMPTY_MAP);
+                            _logger.info("Queue " + queueName + " bound to default exchange("
+                                         + defaultExchange.getNameShortString() + ")");
                         }
                     }
-                }
-                else if (queue.isExclusive() && !queue.isDurable() && (owningSession == null || owningSession.getConnectionModel() != protocolConnection))
-                {
+                } else if (queue.isExclusive() && !queue.isDurable() && (owningSession == null
+                                                                         || owningSession.getConnectionModel()
+                                                                            != protocolConnection)) {
                     throw body.getConnectionException(AMQConstant.NOT_ALLOWED,
-                            "Queue " + queue.getNameShortString() + " is exclusive, but not created on this Connection.");
-                }
-                else if(!body.getPassive() && ((queue.isExclusive()) != body.getExclusive()))
-                {
+                            "Queue " + queue.getNameShortString()
+                            + " is exclusive, but not created on this Connection.");
+                } else if (!body.getPassive() && ((queue.isExclusive()) != body.getExclusive())) {
 
                     throw body.getChannelException(AMQConstant.ALREADY_EXISTS,
-                            "Cannot re-declare queue '" + queue.getNameShortString() + "' with different exclusivity (was: "
-                                    + queue.isExclusive() + " requested " + body.getExclusive() + ")");
-                }
-                else if (!body.getPassive() && body.getExclusive() && !(queue.isDurable() ? String.valueOf(queue.getOwner()).equals(session.getClientID()) : (owningSession == null || owningSession.getConnectionModel() == protocolConnection)))
-                {
-                    throw body.getChannelException(AMQConstant.ALREADY_EXISTS, "Cannot declare queue('" + queueName + "'), "
+                            "Cannot re-declare queue '" + queue.getNameShortString()
+                            + "' with different exclusivity (was: "
+                            + queue.isExclusive() + " requested " + body.getExclusive() + ")");
+                } else if (!body.getPassive() && body.getExclusive()
+                           && !(queue.isDurable() ? String.valueOf(queue.getOwner()).equals(session.getClientID()) : (
+                        null == owningSession || owningSession.getConnectionModel() == protocolConnection))) {
+                    throw body.getChannelException(AMQConstant.ALREADY_EXISTS,
+                            "Cannot declare queue('" + queueName + "'), "
                             + "as exclusive queue with same name "
                             + "declared on another client ID('"
                             + queue.getOwner() + "') your clientID('" + session.getClientID() + "')");
 
-                }
-                else if(!body.getPassive() && queue.isAutoDelete() != body.getAutoDelete())
-                {
+                } else if (!body.getPassive() && queue.isAutoDelete() != body.getAutoDelete()) {
                     throw body.getChannelException(AMQConstant.ALREADY_EXISTS,
-                            "Cannot re-declare queue '" + queue.getNameShortString() + "' with different auto-delete (was: "
-                                    + queue.isAutoDelete() + " requested " + body.getAutoDelete() + ")");
-                }
-                else if(!body.getPassive() && queue.isDurable() != body.getDurable())
-                {
+                            "Cannot re-declare queue '" + queue.getNameShortString()
+                            + "' with different auto-delete (was: "
+                            + queue.isAutoDelete() + " requested " + body.getAutoDelete() + ")");
+                } else if (!body.getPassive() && queue.isDurable() != body.getDurable()) {
                     throw body.getChannelException(AMQConstant.ALREADY_EXISTS,
-                            "Cannot re-declare queue '" + queue.getNameShortString() + "' with different durability (was: "
-                                    + queue.isDurable() + " requested " + body.getDurable() + ")");
+                            "Cannot re-declare queue '" + queue.getNameShortString()
+                            + "' with different durability (was: "
+                            + queue.isDurable() + " requested " + body.getDurable() + ")");
                 }
 
 
                 AMQChannel channel = protocolConnection.getChannel(channelId);
 
-                if (channel == null)
-                {
+                if (null == channel) {
                     throw body.getChannelNotFoundException(channelId);
                 }
 
@@ -196,8 +177,7 @@ public class QueueDeclareHandler implements StateAwareMethodListener<QueueDeclar
                 channel.setDefaultQueue(queue);
             }
 
-            if (!body.getNowait())
-            {
+            if (!body.getNowait()) {
                 MethodRegistry methodRegistry = protocolConnection.getMethodRegistry();
                 QueueDeclareOkBody responseBody =
                         methodRegistry.createQueueDeclareOkBody(queueName,
