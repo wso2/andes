@@ -499,7 +499,8 @@ public class RDBMSConstants {
     protected static final String PS_DELETE_SLOT =
             "DELETE FROM " + SLOT_TABLE
             + " WHERE " + START_MESSAGE_ID + "=?"
-            + " AND " + END_MESSAGE_ID + "=?";
+            + " AND " + END_MESSAGE_ID + "=?"
+            + " AND " + SLOT_STATE + "!=" + SlotState.OVERLAPPED.getCode();
 
     /**
      * Prepared statement to delete a slot by queue name

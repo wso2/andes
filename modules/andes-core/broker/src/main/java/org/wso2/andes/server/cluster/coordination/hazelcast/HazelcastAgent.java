@@ -454,15 +454,15 @@ public class HazelcastAgent implements SlotAgent {
                 if (null != currentSlotList) {
                     // com.google.gson.Gson gson = new GsonBuilder().create();
                     //get the actual reference of the slot to be removed
-                    Slot slotInAssignmentMap = null; //currentSlotList.ceiling(emptySlot);
+                    Slot matchingSlot = null; //currentSlotList.ceiling(emptySlot);
                     for (Slot slot : currentSlotList) {
                         if (slot.getStartMessageId() == startMessageId) {
-                            slotInAssignmentMap = slot;
+                            matchingSlot = slot;
                         }
                     }
-                    if (null != slotInAssignmentMap) {
-                        if (slotInAssignmentMap.addState(SlotState.DELETED)) {
-                            currentSlotList.remove(slotInAssignmentMap);
+                    if (null != matchingSlot) {
+                        if (matchingSlot.addState(SlotState.DELETED)) {
+                            currentSlotList.remove(matchingSlot);
                             queueToSlotMap.put(queueName, currentSlotList);
                             wrapper.setStringListHashMap(queueToSlotMap);
                             slotAssignmentMap.set(nodeId, wrapper);
