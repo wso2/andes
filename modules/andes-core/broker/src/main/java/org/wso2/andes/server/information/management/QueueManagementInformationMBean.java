@@ -97,7 +97,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
     // OpenMBean data types for viewMessageContent method
     private static CompositeType _msgContentType = null;
-    private static OpenType[] _msgContentAttributeTypes = new OpenType[9];
+    private static OpenType[] _msgContentAttributeTypes = new OpenType[8];
 
     /**
      * Publisher Acknowledgements are disabled for this MBean
@@ -192,10 +192,9 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
         _msgContentAttributeTypes[2] = new ArrayType(1, SimpleType.STRING); // For message content
         _msgContentAttributeTypes[3] = SimpleType.STRING; // For JMS message id
         _msgContentAttributeTypes[4] = SimpleType.BOOLEAN; // For redelivered
-        _msgContentAttributeTypes[5] = SimpleType.INTEGER; // For delivered mode
-        _msgContentAttributeTypes[6] = SimpleType.LONG; // For JMS timeStamp
-        _msgContentAttributeTypes[7] = SimpleType.STRING; // For dlc message destination
-        _msgContentAttributeTypes[8] = SimpleType.LONG; // For andes message metadata id
+        _msgContentAttributeTypes[5] = SimpleType.LONG; // For JMS timeStamp
+        _msgContentAttributeTypes[6] = SimpleType.STRING; // For dlc message destination
+        _msgContentAttributeTypes[7] = SimpleType.LONG; // For andes message metadata id
         _msgContentType = new CompositeType("Message Content", "Message content for queue browse",
                 VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.toArray(new String[VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.size()]),
                 VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.toArray(new String[VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.size()]),
@@ -877,8 +876,6 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             String messageId = properties.getMessageIdAsString();
             //get redelivered
             Boolean redelivered = false;
-            //get delivery mode
-            Integer deliveredMode = (int) properties.getDeliveryMode();
             //get timestamp
             Long timeStamp = properties.getTimestamp();
             //get destination
@@ -914,11 +911,11 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
                 //set CompositeData of message
                 itemValues = new Object[]{msgProperties, contentType, content, messageId, redelivered,
-                        deliveredMode, timeStamp, destination, andesMessageMetadataId};
+                        timeStamp, destination, andesMessageMetadataId};
 
             } else if (bodySize == 0) { //empty message
                 itemValues = new Object[]{msgProperties, contentType, "", messageId, redelivered,
-                        deliveredMode, timeStamp, destination, andesMessageMetadataId};
+                        timeStamp, destination, andesMessageMetadataId};
 
             }
             return itemValues;
