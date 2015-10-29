@@ -142,7 +142,7 @@ public class AMQTopic extends AMQDestination implements Topic
 
     public static AMQShortString getDurableTopicQueueName(String subscriptionName, AMQConnection connection) throws JMSException
     {
-        return new AMQShortString(connection.getClientID() + ":" + subscriptionName);
+        return new AMQShortString(connection.getVirtualHost() + ":" + subscriptionName);
     }
 
     public String getTopicName() throws JMSException

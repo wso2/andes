@@ -197,7 +197,8 @@ public class AndesUtils {
      * durable topic subscription
      */
     private static boolean isPersistentQueue(String destination) {
-        if (destination.startsWith("tmp_") || destination.contains(":") || destination.startsWith("TempQueue")) {
+        if (destination.startsWith("tmp_") || destination.contains("carbon:") || destination
+                .startsWith("TempQueue")) {
             return false;
         }
         return true;
