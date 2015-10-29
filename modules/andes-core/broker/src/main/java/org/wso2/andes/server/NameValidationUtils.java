@@ -18,6 +18,8 @@
 
 package org.wso2.andes.server;
 
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesConstants;
 
 import java.util.regex.Matcher;
@@ -28,17 +30,32 @@ import java.util.regex.Pattern;
  */
 public class NameValidationUtils {
 
-    /* Pattern to validate the topic name. Pattern can starts with star(*) or any alphanumeric character(a-z A-Z 0-9),
-    *  0 or more times, delimited by dots. Pattern can ends with star, alphanumeric character or with a hash (#).
-    *  Can use the TENANT_SEPARATOR only to separate tenant domain from the topic name, only when create topics from
-    *  jms clients. */
-    private static final Pattern topicNamePattern = Pattern.compile("^(((\\*|\\w+)\\.)*(\\*|\\w+|#))$");
+    /**
+     * Whether strict validation against queue name or topic name is enabled
+     */
+    private static Boolean isStrictValidationEnabled = AndesConfigurationManager.readValue
+            (AndesConfiguration.ALLOW_STRICT_NAME_VALIDATION);
+
+   /* Pattern to validate the topic name. Pattern can starts with star(*) or any alphanumeric
+    character(a-z A-Z 0-9),
+  *  0 or more times, delimited by dots. Pattern can ends with star, alphanumeric character or with a hash (#).
+  *  Can use the TENANT_SEPARATOR only to separate tenant domain from the topic name, only when create topics from
+  *  jms clients. */
+
+    private static Pattern topicNamePattern; static {
+
+        if (isStrictValidationEnabled) {
+            topicNamePattern = Pattern.compile("^(((\\*|\\w+)\\.)*(\\*|\\w+|#))$");
+        } else {
+            topicNamePattern = Pattern.compile("^(((\\*|(\\w|:)+)\\.)*(\\*|(\\w|:)+|#))$");
+
+        }
+    }
+
 
     /* Pattern to validate the queue name. Queue name cannot contain any of following symbols ~!@#;%^*()+={}|<>"',
     *  and space. Can use the TENANT_SEPARATOR only to separate tenant domain from the queue name. */
     private static final Pattern queueNamePattern = Pattern.compile("[[a-zA-Z]+[^(\\x00-\\x80)]+[0-9_\\-#*:.?&()]+]+");
-
-
     /**
      * When creating queues by jms clients, checks whether a given queue name is valid or not.
      *
