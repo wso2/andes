@@ -190,12 +190,12 @@ public class AndesContextInformationManager {
             }
         }
 
-        //purge the queue cluster-wide
-        MessagingEngine.getInstance().purgeMessages(queueName, null, false);
-
         //delete all local and cluster subscription entries if remaining (inactive entries)
         subscriptionManager.deleteAllLocalSubscriptionsOfBoundQueue(queueName);
         subscriptionManager.deleteAllClusterSubscriptionsOfBoundQueue(queueName);
+
+        //purge the queue cluster-wide
+        MessagingEngine.getInstance().purgeMessages(queueName, null, false);
 
         // delete queue from construct store
         constructStore.removeQueue(queueName, true);
