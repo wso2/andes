@@ -53,7 +53,7 @@ public interface QueueManagementInformation {
     String ANDES_MSG_METADATA_ID = "AndesMessageMetadataId";
 
     List<String> VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC = Collections.unmodifiableList(Arrays.asList(JMS_PROPERTIES,
-            CONTENT_TYPE, CONTENT, JMS_MESSAGE_ID, JMS_REDELIVERED, JMS_DELIVERY_MODE,
+            CONTENT_TYPE, CONTENT, JMS_MESSAGE_ID, JMS_REDELIVERED,
             TIME_STAMP, MSG_DESTINATION, ANDES_MSG_METADATA_ID));
 
     /***
