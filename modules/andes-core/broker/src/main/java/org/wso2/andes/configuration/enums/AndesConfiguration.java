@@ -134,6 +134,14 @@ public enum AndesConfiguration implements ConfigurationProperty {
              "false", Boolean.class),
 
     /**
+     * Topics and queue names are validated according to AMQP specification. Therefore special
+     * characters are not allowed in the topic and queue names. By enabling this property strict
+     * validation will not be done against topic and queue names.
+     */
+    ALLOW_STRICT_NAME_VALIDATION("transports/amqp/allowStrictNameValidation",
+            "true", Boolean.class),
+
+    /**
      * Enable this to support lightweight messaging with the MQTT protocol.
      */
     TRANSPORTS_MQTT_ENABLED("transports/mqtt/@enabled", "true", Boolean.class),
