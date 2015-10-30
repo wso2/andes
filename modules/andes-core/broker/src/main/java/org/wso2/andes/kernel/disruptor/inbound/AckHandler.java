@@ -49,7 +49,12 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
     private final MessagingEngine messagingEngine;
 
     private final SubscriptionStore subscriptionStore;
-    
+
+    /**
+     * Maximum number to retries to delete messages from message store
+     */
+    private static final int MAX_MESSAGE_DELETION_COUNT = 5;
+
     /**
      * Indicates and provides a barrier if messages stores become offline.
      * marked as volatile since this value could be set from a different thread
@@ -140,6 +145,18 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
             }
         }
 
+        deleteMessagesFromStore(0);
+    }
+
+    /**
+     * Delete acknowledged messages from message store. Deletion is retried if it failed due to a
+     * AndesTransactionRollbackException.
+     *
+     * @param numberOfRetriesBefore
+     *         number of recursive calls
+     * @throws AndesException
+     */
+    private void deleteMessagesFromStore(int numberOfRetriesBefore) throws AndesException {
         try {
             messagingEngine.deleteMessages(messagesToRemove);
 
@@ -148,19 +165,24 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
                 for (DeliverableAndesMetadata metadata : messagesToRemove) {
                     messageIDsString.append(metadata.getMessageID()).append(" , ");
                 }
-                log.trace(eventList.size() + " message ok to remove : " + messageIDsString);
+                log.trace(messagesToRemove.size() + " message ok to remove : " + messageIDsString);
             }
             messagesToRemove.clear();
         } catch (AndesTransactionRollbackException txRollback) {
-            log.warn(
-               String.format("unable to delete messages, due to transaction roll back : %d, "
-                               + "operation will be attempted again",
-                       messagesToRemove.size()));
+            if (numberOfRetriesBefore <= MAX_MESSAGE_DELETION_COUNT) {
+
+                log.warn("unable to delete messages (" + messagesToRemove.size()
+                         + "), due to transaction roll back. Operation will be attempted again", txRollback);
+                deleteMessagesFromStore(numberOfRetriesBefore + 1);
+            } else {
+                throw new AndesException("Unable to delete acked messages, in final attempt " + numberOfRetriesBefore
+                                         + ". This might lead to message duplication.");
+            }
         } catch (AndesException ex) {
-            log.warn(
-               String.format("unable to delete messages, probably due to errors in message stores."
-                               + "messages count : %d, operation will be attempted again",
-                       messagesToRemove.size()));
+            log.warn(String.format(
+                    "unable to delete messages, probably due to errors in message stores.messages count : %d, "
+                    + "operation will be attempted again",
+                    messagesToRemove.size()));
             throw ex;
         }
     }
