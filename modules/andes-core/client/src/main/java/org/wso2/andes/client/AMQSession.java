@@ -3017,16 +3017,18 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
         AMQProtocolHandler protocolHandler = getProtocolHandler();
         boolean noWait = false;
 
-        if (DECLARE_EXCHANGES) {
-            declareExchange(amqDestination, protocolHandler, noWait);
+        if (producer._destination.isQueue()) {
+            if (DECLARE_EXCHANGES) {
+                declareExchange(amqDestination, protocolHandler, noWait);
+            }
+            if (DECLARE_QUEUES || amqDestination.isNameRequired()) {
+                declareQueue(amqDestination, protocolHandler, false, noWait);
+            }
+            bindQueue(amqDestination.getAMQQueueName(), amqDestination.getRoutingKey(), FieldTableFactory
+                    .newFieldTable(), amqDestination.getExchangeName(), amqDestination, noWait);
         }
-        if (DECLARE_QUEUES || amqDestination.isNameRequired()) {
-            declareQueue(amqDestination, protocolHandler, false, noWait);
-        }
-        bindQueue(amqDestination.getAMQQueueName(), amqDestination.getRoutingKey(), FieldTableFactory
-                .newFieldTable(), amqDestination.getExchangeName(), amqDestination, noWait);
-        _producers.put(new Long(producerId), producer);
 
+        _producers.put(new Long(producerId), producer);
     }
 
     private void rejectAllMessages(boolean requeue)
