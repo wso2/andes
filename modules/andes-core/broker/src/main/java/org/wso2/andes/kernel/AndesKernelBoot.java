@@ -27,9 +27,9 @@ import org.wso2.andes.kernel.slot.SlotCreator;
 import org.wso2.andes.kernel.slot.SlotDeletionExecutor;
 import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.server.cluster.ClusterAgent;
 import org.wso2.andes.server.cluster.ClusterManagementInformationMBean;
 import org.wso2.andes.server.cluster.ClusterManager;
-import org.wso2.andes.server.cluster.HazelcastClusterAgent;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.information.management.MessageStatusInformationMBean;
 import org.wso2.andes.server.information.management.SubscriptionManagementInformationMBean;
@@ -125,6 +125,11 @@ public class AndesKernelBoot {
                 hazelcastAgent.acquireInitializationLock();
                 if (!hazelcastAgent.isClusterInitializedSuccessfully()) {
                     clearSlotStorage();
+
+                    // Initialize current node's last published ID
+                    ClusterAgent clusterAgent = AndesContext.getInstance().getClusterAgent();
+                    contextStore.setNodeToLastPublishedId(clusterAgent.getLocalNodeIdentifier(), 0);
+
                     recoverMapsForEachQueue();
                     hazelcastAgent.indicateSuccessfulInitilization();
                 }
