@@ -91,21 +91,6 @@ public class NameValidationUtils {
     }
 
     /**
-     * When creating topics by user interface, prevent using the tenant domain and checks whether a given topic name is
-     * valid or not.
-     *
-     * @param topicName topic name
-     * @return true, if it is a valid topic name, false otherwise
-     */
-    public static boolean isValidUITopicName(String topicName) {
-        /* Store topic name. */
-        Matcher topicNameMatcher = topicNamePattern.matcher(topicName);
-
-        /* After validating the topic name, return if the given name is valid or not. */
-        return topicNameMatcher.matches();
-    }
-
-    /**
      * Get queue/topic name, without the tenant domain
      *
      * @param nameWithTenantDomain queue/topic name with the tenant domain, if creates by a tenant
