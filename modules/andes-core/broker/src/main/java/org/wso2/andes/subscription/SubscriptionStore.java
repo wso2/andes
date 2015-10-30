@@ -330,24 +330,64 @@ public class SubscriptionStore {
 
     /**
      * get all (active/inactive) CLUSTER subscriptions for a queue/topic.
+     * <p/>
+     * If it is for a Queue, the destination will be the name of the queue. If it is for a topic, the destination is
+     * the name of the internal queue created for a subscriber.
      *
-     * @param destination queue/topic name
+     * @param destination the name of the destination queue
      * @param isTopic     TRUE if checking topics
-     * @param subscriptionType Type of the subscriptions
      * @return Set of subscriptions
      */
-    private Set<AndesSubscription> getClusterSubscriptionList(String destination, boolean isTopic,
-                                                              SubscriptionType subscriptionType) throws AndesException {
-        Map<String, Set<AndesSubscription>> subscriptionMap = isTopic ? clusterTopicSubscriptionMap :
-                clusterQueueSubscriptionMap;
-        Set<AndesSubscription> clusterSubscriptions = subscriptionMap.get(destination);
+    private Set<AndesSubscription> getClusterSubscriptionList(String destination, boolean isTopic)
+            throws AndesException {
+        Set<AndesSubscription> clusterSubscriptions;
 
-        // Get wildcard subscriptions from bitmap
         if (isTopic) {
-            clusterSubscriptions.addAll(clusterSubscriptionProcessor.getMatchingSubscriptions(destination,
-                    subscriptionType));
+
+            // The clusterTopicSubscriptionMap contains the topic names as the set of keys and a set of
+            // AndesSubscriptions destined to each topic. But here we need to find the subscriptions by the queue that
+            // it is bound to. Thus, we cannot simply get the subscriptions using the keys in the
+            // clusterTopicSubscriptionMap
+            clusterSubscriptions = getClusterTopicSubscriptionsBoundToQueue(destination);
+        } else {
+            clusterSubscriptions = clusterQueueSubscriptionMap.get(destination);
         }
         return clusterSubscriptions;
+    }
+
+    /**
+     * Method to retrieve  all subscriptions that are bound a given queue.
+     * <p/>
+     * The clusterTopicSubscriptionMap contains the topic names as the set of keys and a set of AndesSubscriptions
+     * destined to each topic. But in reality, each topic subscription is bound to a queue with the subscriptionId as
+     * the binding key. This method can be used to get all such subscriptions bound to a particular queue by providing
+     * the queue name.
+     *
+     * @param queueName the queue name for which the subscriptions are bound
+     * @return A set of subscriptions bound to the given queue name
+     */
+    private Set<AndesSubscription> getClusterTopicSubscriptionsBoundToQueue(String queueName) throws AndesException {
+
+        Set<AndesSubscription> subscriptionsOfQueue = new HashSet<>();
+
+        for (String destination : getTopics()) {
+            // Get all AMQP subscriptions
+            Set<AndesSubscription> topicSubsOfDest = getAllSubscribersForDestination(destination, true,
+                    SubscriptionType.AMQP);
+            for (AndesSubscription sub : topicSubsOfDest) {
+                if (sub.getTargetQueue().equals(queueName)) {
+                    subscriptionsOfQueue.add(sub);
+                }
+            }
+            //Get all MQTT subscriptions
+            topicSubsOfDest = getAllSubscribersForDestination(destination, true, SubscriptionType.MQTT);
+            for (AndesSubscription sub : topicSubsOfDest) {
+                if (queueName.equals(sub.getTargetQueue())) {
+                    subscriptionsOfQueue.add(sub);
+                }
+            }
+        }
+        return subscriptionsOfQueue;
     }
 
     /**
@@ -366,21 +406,29 @@ public class SubscriptionStore {
     }
 
     /**
-     * get all ACTIVE CLUSTER subscriptions for a queue/topic. For topics this will return
-     * subscriptions whose destination is exactly matching to the given destination only.
-     * (hierarchical mapping not considered)
+     * get all ACTIVE CLUSTER subscriptions for a queue.
+     * <p/>
+     * If it is for a Queue, the destination will be the name of the queue. If it is for a topic, the destination is
+     * the name of the internal queue created for a subscriber.
      *
-     * @param destination queue or topic name
-     * @param isTopic     is destination a topic
-     * @param subscriptionType Type of the subscriptions
+     * @param destination queue name of
+     * @param isTopic     is destination is bound to topic
      * @return Set of matching subscriptions
      */
-    public Set<AndesSubscription> getActiveClusterSubscriptionList(String destination, boolean isTopic,
-                                                                   SubscriptionType subscriptionType) throws
-            AndesException {
+    public Set<AndesSubscription> getActiveClusterSubscriptionList(String destination, boolean isTopic)
+            throws AndesException {
         Set<AndesSubscription> activeSubscriptions = new HashSet<>();
-        Set<AndesSubscription> allSubscriptions = getClusterSubscriptionList(destination, isTopic, subscriptionType);
+        Set<AndesSubscription> allSubscriptions = getClusterSubscriptionList(destination, isTopic);
         if (null != allSubscriptions) {
+            if (isTopic){
+                Iterator<AndesSubscription> iterator = allSubscriptions.iterator();
+                while (iterator.hasNext()){
+                    AndesSubscription currentSubscription = iterator.next();
+                    if (!(currentSubscription.hasExternalSubscriptions())){
+                        iterator.remove();
+                    }
+                }
+            }
             activeSubscriptions = allSubscriptions;
         }
         return activeSubscriptions;

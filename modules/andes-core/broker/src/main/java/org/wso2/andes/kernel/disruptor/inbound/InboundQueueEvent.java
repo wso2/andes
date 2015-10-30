@@ -125,6 +125,22 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
     /**
      * create an instance of andes queue
      *
+     * @param queueName   name of the queue
+     * @param queueOwner  owner of the queue (virtual host)
+     * @param isExclusive is queue exclusive
+     * @param isDurable   is queue durable
+     * @param isBoundToTopic is queue bound to topic
+     */
+    public InboundQueueEvent(String queueName, String queueOwner, boolean isExclusive, boolean isDurable, boolean isBoundToTopic) {
+        super(queueName, queueOwner, isExclusive, isDurable);
+        purgedCount = SettableFuture.create();
+        isEventComplete = SettableFuture.create();
+        isTopic = isBoundToTopic;
+    }
+
+    /**
+     * create an instance of andes queue
+     *
      * @param queueAsStr queue information as encoded string
      */
     public InboundQueueEvent(String queueAsStr) {
@@ -165,7 +181,7 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
     private void handleIsQueueDeletableEvent() {
         boolean queueDeletable = false;
         try {
-            queueDeletable = contextInformationManager.checkIfQueueDeletable(queueName);
+            queueDeletable = contextInformationManager.checkIfQueueDeletable(queueName, isTopic);
         } catch (AndesException e) {
             isEventComplete.setException(e);
         } finally {
