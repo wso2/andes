@@ -208,10 +208,10 @@ public class SlotManagerClusterMode {
 			slotToBeAssigned = slotAgent.getUnAssignedSlot(queueName);
 
 			if (log.isDebugEnabled()) {
-                if(null != slotToBeAssigned) {
-                    log.debug("Giving a slot from unassigned slots. Slot: " + slotToBeAssigned +
-                            " to queue: " + queueName);
-                }
+				if (null != slotToBeAssigned) {
+					log.debug("Giving a slot from unassigned slots. Slot: " + slotToBeAssigned +
+							" to queue: " + queueName);
+				}
 			}
 		}
 		return slotToBeAssigned;
@@ -231,11 +231,11 @@ public class SlotManagerClusterMode {
 		synchronized (lockKey.intern()) {
 			//get oldest overlapped slot from database
 			slotToBeAssigned = slotAgent.getOverlappedSlot(nodeId, queueName);
-            if(log.isDebugEnabled()) {
-                if (null != slotToBeAssigned) {
-                    log.debug(" Giving overlapped slot id=" + slotToBeAssigned.getId() + " queue name= " + queueName);
-                }
-            }
+			if (log.isDebugEnabled()) {
+				if (null != slotToBeAssigned) {
+					log.debug(" Giving overlapped slot id=" + slotToBeAssigned.getId() + " queue name= " + queueName);
+				}
+			}
 		}
 		return slotToBeAssigned;
 	}
@@ -389,24 +389,24 @@ public class SlotManagerClusterMode {
 		long slotDeleteSafeZone = getSlotDeleteSafeZone();
 		if (log.isDebugEnabled()) {
 			log.debug("Trying to delete slot. safeZone= " + getSlotDeleteSafeZone()
-                    + " startMsgID: " + startMsgId);
+					+ " startMsgID: " + startMsgId);
 		}
 		if (slotDeleteSafeZone > endMsgId) {
 			String lockKey = nodeId + SlotManagerClusterMode.class;
 			synchronized (lockKey.intern()) {
 				slotAgent.deleteSlot(nodeId, queueName, startMsgId, endMsgId);
-                if (log.isDebugEnabled()) {
-                    log.debug(" Deleted slot id = " + emptySlot.getId() + " queue name = " + queueName);
-                }
+				if (log.isDebugEnabled()) {
+					log.debug(" Deleted slot id = " + emptySlot.getId() + " queue name = " + queueName);
+				}
 			}
 			return true;
 		} else {
 			if (log.isDebugEnabled()) {
 				log.debug("Cannot delete slot as it is within safe zone "
-                        + "startMsgID= " + startMsgId
-                        + " safeZone= " + slotDeleteSafeZone
-                        + " endMsgId= " + endMsgId
-                        + " slotToDelete= " + emptySlot);
+						+ "startMsgID= " + startMsgId
+						+ " safeZone= " + slotDeleteSafeZone
+						+ " endMsgId= " + endMsgId
+						+ " slotToDelete= " + emptySlot);
 			}
 		}
 		return false;
