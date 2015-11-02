@@ -159,13 +159,15 @@ public class AndesContextInformationManager {
      * Check if queue is deletable
      *
      * @param queueName name of the queue
+     * @param isTopic true if the queue is used to store topic messages
      * @return possibility of deleting queue
      * @throws AndesException
      */
-    public boolean checkIfQueueDeletable(String queueName) throws AndesException {
+    public boolean checkIfQueueDeletable(String queueName, boolean isTopic) throws AndesException {
         boolean queueDeletable = false;
-        Set<AndesSubscription> queueSubscriptions = subscriptionStore.getActiveClusterSubscriptionList(
-                queueName, false, AndesSubscription.SubscriptionType.AMQP);
+
+        Set<AndesSubscription> queueSubscriptions
+                = subscriptionStore.getActiveClusterSubscriptionList(queueName, isTopic);
         if (queueSubscriptions.isEmpty()) {
             queueDeletable = true;
         }

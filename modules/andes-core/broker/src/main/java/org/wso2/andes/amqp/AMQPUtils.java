@@ -374,7 +374,7 @@ public class AMQPUtils {
     public static InboundQueueEvent createAndesQueue(AMQQueue amqQueue) {
         return new InboundQueueEvent(amqQueue.getName(),
                 (amqQueue.getOwner() != null) ? amqQueue.getOwner().toString() : "null",
-                amqQueue.isExclusive(), amqQueue.isDurable());
+                amqQueue.isExclusive(), amqQueue.isDurable(), amqQueue.checkIfBoundToTopicExchange());
     }
 
     /**
