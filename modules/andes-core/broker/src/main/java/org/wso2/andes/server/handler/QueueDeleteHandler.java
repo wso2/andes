@@ -30,6 +30,7 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.protocol.AMQSessionModel;
 import org.wso2.andes.server.queue.AMQQueue;
+import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.server.queue.QueueRegistry;
 import org.wso2.andes.server.state.AMQStateManager;
 import org.wso2.andes.server.state.StateAwareMethodListener;
@@ -85,60 +86,53 @@ public class QueueDeleteHandler implements StateAwareMethodListener<QueueDeleteB
         {
             queue = queueRegistry.getQueue(body.getQueue());
         }
-
-        if (queue == null)
-        {
-            if (_failIfNotFound)
-            {
-                throw body.getChannelException(AMQConstant.NOT_FOUND, "Queue " + body.getQueue() + " does not exist.");
-            }
-        }
-        else
-        {
-            if (body.getIfEmpty() && !queue.isEmpty())
-            {
-                throw body.getChannelException(AMQConstant.IN_USE, "Queue: " + body.getQueue() + " is not empty.");
-            }
-            else if (body.getIfUnused() && !queue.isUnused())
-            {
-                // TODO - Error code
-                throw body.getChannelException(AMQConstant.IN_USE, "Queue: " + body.getQueue() + " is still used.");
-            }
-            else
-            {
-                AMQSessionModel session = queue.getExclusiveOwningSession();
-                if (queue.isExclusive() && !queue.isDurable() && (session == null || session.getConnectionModel() != protocolConnection))
-                {
-                    throw body.getConnectionException(AMQConstant.NOT_ALLOWED,
-                                                      "Queue " + queue.getNameShortString() + " is exclusive, but not created on this Connection.");
+        if (!(DLCQueueUtils.isDeadLetterQueue(queue.getName()))) {
+            if (null == queue) {
+                if (_failIfNotFound) {
+                    throw body.getChannelException(AMQConstant.NOT_FOUND,
+                            "Queue " + body.getQueue() + " does not exist.");
                 }
-
-                boolean isQueueDeletable = ClusterResourceHolder.getInstance().
-                        getVirtualHostConfigSynchronizer().checkIfQueueDeletable(queue);
-
-                if(isQueueDeletable)
-                {
-                    int purged = queue.delete();
-
-                    if (queue.isDurable())
-                    {
-                        store.removeQueue(queue);
-
-                        //tell Andes Kernel to remove queue
-                        QpidAndesBridge.deleteQueue(queue);
-
+            } else {
+                if (body.getIfEmpty() && !queue.isEmpty()) {
+                    throw body.getChannelException(AMQConstant.IN_USE, "Queue: " + body.getQueue() + " is not empty.");
+                } else if (body.getIfUnused() && !queue.isUnused()) {
+                    // TODO - Error code
+                    throw body.getChannelException(AMQConstant.IN_USE, "Queue: " + body.getQueue() + " is still used.");
+                } else {
+                    AMQSessionModel session = queue.getExclusiveOwningSession();
+                    if (queue.isExclusive() && !queue.isDurable()
+                        && (null == session || session.getConnectionModel() != protocolConnection)) {
+                        throw body.getConnectionException(AMQConstant.NOT_ALLOWED,
+                                                          "Queue " + queue.getNameShortString()
+                                                          + " is exclusive, but not created on this Connection.");
                     }
 
-                    MethodRegistry methodRegistry = protocolConnection.getMethodRegistry();
-                    QueueDeleteOkBody responseBody = methodRegistry.createQueueDeleteOkBody(purged);
-                    protocolConnection.writeFrame(responseBody.generateFrame(channelId));
-                }
-                else
-                {
-                    _logger.warn("Cannot Delete Queue" + queue.getName() + " It Has Registered Subscriptions.");
-                    throw new AMQException("Cannot Delete Queue" + queue.getName() + " It Has Registered Subscriptions.");
+                    boolean isQueueDeletable = ClusterResourceHolder.getInstance().
+                            getVirtualHostConfigSynchronizer().checkIfQueueDeletable(queue);
+
+                    if (isQueueDeletable) {
+                        int purged = queue.delete();
+
+                        if (queue.isDurable()) {
+                            store.removeQueue(queue);
+
+                            //tell Andes Kernel to remove queue
+                            QpidAndesBridge.deleteQueue(queue);
+                        }
+
+                        MethodRegistry methodRegistry = protocolConnection.getMethodRegistry();
+                        QueueDeleteOkBody responseBody = methodRegistry.createQueueDeleteOkBody(purged);
+                        protocolConnection.writeFrame(responseBody.generateFrame(channelId));
+                    } else {
+                        _logger.warn("Cannot Delete Queue" + queue.getName() + " It Has Registered Subscriptions.");
+                        throw new AMQException(
+                                "Cannot Delete Queue" + queue.getName() + " It Has Registered Subscriptions.");
+                    }
                 }
             }
+        } else {
+            _logger.warn("Deletion of Dead letter channel not permitted.");
+            throw new AMQException("Deletion of Dead letter channel not permitted.");
         }
     }
 }
