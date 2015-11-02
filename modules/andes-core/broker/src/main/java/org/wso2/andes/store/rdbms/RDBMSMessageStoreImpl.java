@@ -32,7 +32,6 @@ import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.store.AndesDataIntegrityViolationException;
 import org.wso2.andes.server.queue.DLCQueueUtils;
-import org.wso2.andes.store.AndesStoreUnavailableException;
 import org.wso2.andes.store.cache.AndesMessageCache;
 import org.wso2.andes.store.cache.MessageCacheFactory;
 import org.wso2.andes.tools.utils.MessageTracer;
@@ -95,7 +94,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     " WHERE " + MESSAGE_ID + " IN (";
 
     public RDBMSMessageStoreImpl() {
-        queueMap = new ConcurrentHashMap<String, Integer>();
+        queueMap = new ConcurrentHashMap<>();
         
     }
 
@@ -277,7 +276,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 int offset = resultSet.getInt(MSG_OFFSET);
                 List<AndesMessagePart> partList = contentList.get(messageID);
                 if (null == partList) {
-                    partList = new ArrayList<AndesMessagePart>();
+                    partList = new ArrayList<>();
                     contentList.put(messageID, partList);
                 }
                 AndesMessagePart msgPart = createMessagePart(resultSet, messageID, offset);
@@ -886,7 +885,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     public List<Long> getNextNMessageIdsFromQueue(final String storageQueueName,
                                                   long firstMsgId, int count)
                                                                               throws AndesException {
-        List<Long> mdList = new ArrayList<Long>(count);
+        List<Long> mdList = new ArrayList<>(count);
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet results = null;
@@ -934,7 +933,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                                                                        long firstMsgId, int count)
             throws AndesException {
 
-        List<AndesMessageMetadata> mdList = new ArrayList<AndesMessageMetadata>(count);
+        List<AndesMessageMetadata> mdList = new ArrayList<>(count);
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet results = null;
@@ -985,7 +984,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                                                                              String dlcQueueName, long firstMsgId,
                                                                              int count) throws AndesException {
 
-        List<AndesMessageMetadata> mdList = new ArrayList<AndesMessageMetadata>(count);
+        List<AndesMessageMetadata> mdList = new ArrayList<>(count);
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet results = null;
@@ -1036,7 +1035,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     @Override
     public List<AndesMessageMetadata> getNextNMessageMetadataFromDLC(String dlcQueueName, long firstMsgId, int count)
             throws AndesException {
-        List<AndesMessageMetadata> mdList = new ArrayList<AndesMessageMetadata>(count);
+        List<AndesMessageMetadata> mdList = new ArrayList<>(count);
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet results = null;
@@ -1590,7 +1589,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     public List<Long> getMessageIDsAddressedToQueue(String storageQueueName, Long startMessageID)
             throws AndesException {
 
-        List<Long> messageIDs = new ArrayList<Long>();
+        List<Long> messageIDs = new ArrayList<>();
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;
@@ -2062,7 +2061,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     public List<String> getAllRetainedTopics() throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatementForTopicSelect = null;
-        List<String> topicList = new ArrayList<String>();
+        List<String> topicList = new ArrayList<>();
         ResultSet results = null;
         Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
         try {
@@ -2134,7 +2133,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         PreparedStatement preparedStatement = null;
 
         ResultSet results = null;
-        Map<Integer, AndesMessagePart> contentParts = new HashMap<Integer, AndesMessagePart>();
+        Map<Integer, AndesMessagePart> contentParts = new HashMap<>();
 
         Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
 
