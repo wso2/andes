@@ -479,16 +479,17 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
                 isValidTransition = true;
                 messageStatus.add(state);
             } else {
-                log.warn("Invalid message state transition suggested: " + state  + " Message ID: " + messageID);
+                log.warn("Invalid message state transition suggested: " + state  + " Message ID: " + messageID
+                        + " slot= " + slot.getId());
             }
         } else {
             isValidTransition = messageStatus.get(messageStatus.size() - 1).isValidNextTransition(state);
             if(isValidTransition) {
                 messageStatus.add(state);
             } else {
-                log.warn("Invalid message state transition from " + messageStatus.get
-                        (messageStatus.size() - 1) + " suggested: " + state + " Message ID: " + messageID
-                        + " Message Status History >> " + messageStatus);
+                log.warn("Invalid message state transition from " + messageStatus.get(messageStatus.size() - 1)
+                        + " suggested: " + state + " Message ID: " + messageID + " slot= "
+                        + slot.getId() + " Message Status History >> " + messageStatus);
             }
         }
 
