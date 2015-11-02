@@ -635,7 +635,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             //remove messages from cache
             removeFromCache(messageIDsToRemoveFromCache);
 
-            preparedStatement.execute();
+            preparedStatement.executeBatch();
             connection.commit();
 
         } catch (SQLException e) {
