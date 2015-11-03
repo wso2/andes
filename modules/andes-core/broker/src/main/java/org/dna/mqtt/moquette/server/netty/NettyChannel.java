@@ -10,6 +10,7 @@ import org.dna.mqtt.moquette.server.ServerChannel;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  *
@@ -26,6 +27,7 @@ public class NettyChannel implements ServerChannel {
     private static final AttributeKey<Object> ATTR_KEY_CLEANSESSION = new AttributeKey<Object>(Constants.CLEAN_SESSION);
     private static final AttributeKey<Object> ATTR_KEY_CLIENTID = new AttributeKey<Object>(Constants.ATTR_CLIENTID);
     public static final AttributeKey<Object> ATTR_KEY_USERNAME = AttributeKey.valueOf(ATTR_USERNAME);
+    private final UUID uuid = UUID.randomUUID();
 
     NettyChannel(ChannelHandlerContext ctx) {
         m_channel = ctx;
@@ -75,5 +77,8 @@ public class NettyChannel implements ServerChannel {
     public void write(Object value) {
         m_channel.writeAndFlush(value);
     }
-    
+
+    public UUID getUUID() {
+        return uuid;
+    }
 }

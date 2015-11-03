@@ -68,6 +68,12 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
      */
     private Map<String, MQTTAuthorizationSubject> authSubjects = new HashMap<>();
 
+    /**
+     * Channels which were forcibly closed by ProtocolProcessor in order to connect a new client with an already
+     * existing clientId.
+     */
+    private Map<String, ServerChannel> forciblyClosedChannels = new HashMap<>();
+
     private RingBuffer<ValueEvent> m_ringBuffer;
 
     /**
@@ -146,7 +152,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
      * @param session the server session which has channel information
      * @param msg connect message
      */
-    void processConnect(ServerChannel session, ConnectMessage msg) {
+    void processConnect(ServerChannel session, ConnectMessage msg) throws InterruptedException {
         if (log.isDebugEnabled()) {
             log.debug("processConnect for client " + msg.getClientID());
         }
@@ -178,15 +184,10 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
 
         //if an old client with the same ID already exists close its session.
         if (m_clientIDs.containsKey(msg.getClientID())) {
-            //clean the subscriptions if the old used a cleanSession = true
             ServerChannel oldSession = m_clientIDs.get(msg.getClientID()).getSession();
             boolean cleanSession = (Boolean) oldSession.getAttribute(Constants.CLEAN_SESSION);
-            if (cleanSession) {
-                //cleanup topic subscriptions
-                processRemoveAllSubscriptions(msg.getClientID());
-            }
-            oldSession.close(false);
-            m_clientIDs.get(msg.getClientID()).getSession().close(false);
+            processDisconnect(oldSession, msg.getClientID(), cleanSession);
+            forciblyClosedChannels.put(msg.getClientID(), oldSession);
         }
 
         ConnectionDescriptor connDescr = new ConnectionDescriptor(msg.getClientID(), session, msg.isCleanSession());
@@ -236,15 +237,6 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             authSubject.setTenantDomain(MultitenantUtils.getTenantDomain(carbonUsername));
             authSubject.setUsername(MultitenantUtils.getTenantAwareUsername(carbonUsername));
             authSubject.setProtocolVersion(msg.getProcotolVersion());
-        }
-
-        // Checking whether a client already exists with the same client ID. If so, do not allow.
-        if (authSubjects.containsKey(msg.getClientID())) {
-            log.error("Subscription with client ID as '" + msg.getClientID() + "' already exists.");
-            ConnAckMessage okResp = new ConnAckMessage();
-            okResp.setReturnCode(ConnAckMessage.IDENTIFIER_REJECTED);
-            session.write(okResp);
-            return;
         }
 
         authSubjects.put(msg.getClientID(), authSubject);
@@ -700,8 +692,23 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
     }
 
     void proccessConnectionLost(String clientID) {
+
+        boolean forciblyClosed = false;
+
+        if (forciblyClosedChannels.containsKey(clientID)) {
+            ServerChannel oldSession = forciblyClosedChannels.remove(clientID);
+            ServerChannel newSession = m_clientIDs.get(clientID).getSession();
+
+            // If the new channel and the old channel are not equal, this is a connection lost received from a
+            // forcibly closed a connection. Hence remove the record and avoid processing connection lost for the old
+            // session since it's session data has already been cleared
+            if (null != newSession && !oldSession.getUUID().equals(newSession.getUUID())) {
+                forciblyClosed = true;
+            }
+        }
+
         //If already removed a disconnect message was already processed for this clientID
-        if (m_clientIDs.remove(clientID) != null) {
+        if (!forciblyClosed && m_clientIDs.remove(clientID) != null) {
             //de-activate the subscriptions for this ClientID
             subscriptions.deactivate(clientID);
             log.info("Lost connection with client " + clientID);
@@ -721,10 +728,8 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
                 final String message = "Error occured when attempting to diconnect subscriber ";
                 log.error(message + e.getMessage(), e);
             }
-            // bridge.onSubscriberDisconnection(clientID);
+            removeAuthorizationSubject(clientID);
         }
-
-        removeAuthorizationSubject(clientID);
     }
 
     /**
