@@ -2,7 +2,12 @@ package org.dna.mqtt.moquette.server.netty;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.*;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.ChannelPipeline;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -26,23 +31,13 @@ import org.dna.mqtt.moquette.server.netty.metrics.BytesMetricsHandler;
 import org.dna.mqtt.moquette.server.netty.metrics.MessageMetrics;
 import org.dna.mqtt.moquette.server.netty.metrics.MessageMetricsCollector;
 import org.dna.mqtt.moquette.server.netty.metrics.MessageMetricsHandler;
+import org.dna.mqtt.moquette.server.netty.metrics.SSLHandlerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.transport.ConnectionSettings;
-import org.wso2.andes.transport.network.security.ssl.SSLUtil;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
+
 import java.io.IOException;
-import java.security.KeyManagementException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.UnrecoverableKeyException;
-import java.security.cert.CertificateException;
 import java.util.List;
 import java.util.Properties;
-import org.wso2.andes.configuration.modules.JKSStore;
 
 /**
  * @author andrea
@@ -119,12 +114,12 @@ public class NettyAcceptor implements ServerAcceptor {
         }*/
 
         if (sslTcpPortProp != null && sslPortEnabled) {
-            SslHandler sslHandler = initSSLHandler(props);
-            if (sslHandler == null) {
+            SSLHandlerFactory sslHandlerFactory = initSSLHandlerFactory(props);
+            if (!sslHandlerFactory.canCreate()) {
                 log.error("Can't initialize SSLHandler layer! Exiting, check your configuration of jks");
                 return;
             }
-            initializeSSLTCPTransport(messaging, props, sslHandler);
+            initializeSSLTCPTransport(messaging, props, sslHandlerFactory);
             /**
              * We ommit web sockets for now
              */
@@ -218,7 +213,14 @@ public class NettyAcceptor implements ServerAcceptor {
         });
     }
 
-    private void initializeSSLTCPTransport(IMessaging messaging, Properties props, final SslHandler sslHandler)
+    /**
+     * Initialize ssl tcp transport for mqtt
+     * @param messaging
+     * @param props
+     * @param sslHandlerFactory
+     * @throws IOException
+     */
+    private void initializeSSLTCPTransport(IMessaging messaging, Properties props, final SSLHandlerFactory sslHandlerFactory)
             throws IOException {
         String sslPortProp = props.getProperty(Constants.SSL_PORT_PROPERTY_NAME);
         //TODO need to re visit
@@ -238,7 +240,7 @@ public class NettyAcceptor implements ServerAcceptor {
         initFactory(host, sslPort, new PipelineInitializer() {
             @Override
             void init(ChannelPipeline pipeline) throws Exception {
-                pipeline.addLast("ssl", sslHandler);
+                pipeline.addLast("ssl", sslHandlerFactory.create());
                 pipeline.addFirst("idleStateHandler", new IdleStateHandler(0, 0, Constants.DEFAULT_CONNECT_TIMEOUT));
                 pipeline.addAfter("idleStateHandler", "idleEventHandler", new MoquetteIdleTimoutHandler());
                 //pipeline.addLast("logger", new LoggingHandler("Netty", LogLevel.ERROR));
@@ -301,61 +303,16 @@ public class NettyAcceptor implements ServerAcceptor {
         log.info(String.format("Bytes read: %d, bytes wrote: %d", bytesMetrics.readBytes(), bytesMetrics.wroteBytes()));
     }
 
-    /**
-     * Constructs connection settings required for ssl connectivity
-     *
-     * @param props holds information necessary to establish ssl connectivity
-     * @return ConnectionSettings
-     */
-    private ConnectionSettings constructConnectionSettings(Properties props) {
-        ConnectionSettings connectionSettings = new ConnectionSettings();
-        String certificateType = "SunX509";
-
-        String sslTrustStoreLocation = ((JKSStore) AndesConfigurationManager.readValue
-                (AndesConfiguration.TRANSPORTS_MQTT_SSL_CONNECTION_TRUSTSTORE)).getStoreLocation();
-        String sslTrustStorePassword = ((JKSStore) AndesConfigurationManager.readValue
-                (AndesConfiguration.TRANSPORTS_MQTT_SSL_CONNECTION_TRUSTSTORE)).getPassword();
-        String sslKeyStoreLocation = ((JKSStore) AndesConfigurationManager.readValue
-                (AndesConfiguration.TRANSPORTS_MQTT_SSL_CONNECTION_KEYSTORE)).getStoreLocation();
-        String sslKeyStorePassword = ((JKSStore) AndesConfigurationManager.readValue
-                (AndesConfiguration.TRANSPORTS_MQTT_SSL_CONNECTION_KEYSTORE)).getPassword();
-
-
-        connectionSettings.setTrustStorePath(sslTrustStoreLocation);
-        connectionSettings.setTrustStorePassword(sslTrustStorePassword);
-        connectionSettings.setTrustStoreCertType(certificateType);
-
-        connectionSettings.setKeyStorePath(sslKeyStoreLocation);
-        connectionSettings.setKeyStorePassword(sslKeyStorePassword);
-        connectionSettings.setKeyStoreCertType(certificateType);
-
-        return connectionSettings;
-    }
-
 
     /**
-     * Initialization of SSLHandler
+     * Initialization of SSLHandlerFactory
      * @param props the configuration details
      * @return
      */
-    private SslHandler initSSLHandler(Properties props) {
-
-        try {
-            ConnectionSettings sslConnectionSettings = constructConnectionSettings(props);
-            SSLContext serverContext = SSLUtil.createSSLContext(sslConnectionSettings);
-            SSLEngine engine = serverContext.createSSLEngine();
-            engine.setUseClientMode(false);
-            return new SslHandler(engine);
-        } catch (NoSuchAlgorithmException | UnrecoverableKeyException | CertificateException | KeyStoreException
-                | KeyManagementException | IOException ex) {
-            log.error("Can't start SSL layer!", ex);
-            return null;
-        } catch (Exception e) {
-            //Here SSLUtils throws a generic type Exception, hence we need to catch it
-            //This is bad anyhow
-            log.error("Error while establishing ssl server context ", e.getMessage());
-            return null;
-        }
+    private SSLHandlerFactory initSSLHandlerFactory(Properties props) {
+        SSLHandlerFactory factory = new SSLHandlerFactory(props);
+        return factory.canCreate() ? factory : null;
     }
+
 
 }
