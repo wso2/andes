@@ -100,12 +100,6 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
      */
     private SettableFuture<Boolean> isEventComplete;
 
-    /**
-     * Declares the maximum number of milliseconds the event could take to complete.
-     * This is used by the thread that is waiting on the future object so that it is blocked until the event is
-     * complete. The waiting time is set to 5 seconds since it could take somewhat a long time in a loaded environment
-     */
-    private final int MAX_COMPLETION_TIME = 5000;
 
     /**
      * create an instance of andes queue
@@ -272,12 +266,10 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
      */
     public boolean IsQueueDeletable() throws AndesException {
         try {
-            return isEventComplete.get(MAX_COMPLETION_TIME, TimeUnit.MILLISECONDS);
+            return isEventComplete.get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } catch (ExecutionException e) {
-            throw new AndesException("Error occurred while checking is queue: " + queueName + " deletable", e);
-        } catch (TimeoutException e) {
             throw new AndesException("Error occurred while checking is queue: " + queueName + " deletable", e);
         }
         return false;
@@ -289,16 +281,12 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
     public void waitForCompletion() throws AndesException {
         try {
             //stay blocked until the queue addition is complete
-            isEventComplete.get(MAX_COMPLETION_TIME, TimeUnit.MILLISECONDS);
+            isEventComplete.get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } catch (ExecutionException e) {
             // No point in throwing an exception here and disrupting the server. A warning is sufficient.
             log.warn("Error occurred while processing event " + eventType + " queue: " + queueName);
-        } catch (TimeoutException e) {
-            // The timeout means that the processing of the even did not complete as expected. At such times we do not
-            // want to proceed
-            throw new AndesException("Error occurred while checking if queue: " + queueName + " is added", e);
         }
     }
 
