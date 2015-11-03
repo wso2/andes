@@ -860,7 +860,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 md.setStorageQueueName(storageQueueName);
                 metadataList.add(md);
                 //Tracing message
-                MessageTracer.trace(md, MessageTracer.METADATA_READ_FROM_DB);
+                MessageTracer.trace(md, MessageTracer.METADATA_READ_FROM_DB + " slot = " + slot.getId());
             }
             if (log.isDebugEnabled()) {
                 log.debug("request: metadata range (" + firstMsgId + " , " + lastMsgID +
