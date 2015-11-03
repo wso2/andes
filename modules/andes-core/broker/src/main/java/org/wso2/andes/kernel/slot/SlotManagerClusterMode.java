@@ -127,17 +127,18 @@ public class SlotManagerClusterMode {
 			if (null == slotToBeAssigned) {
 				slotToBeAssigned = getFreshSlot(queueName, nodeId);
 			}
-		}
 
-		if (null != slotToBeAssigned) {
-			updateSlotAssignmentMap(queueName, slotToBeAssigned, nodeId);
-			if (log.isDebugEnabled()) {
-				log.debug("Assigning slot for node : " + nodeId + " | " + slotToBeAssigned);
+			if (null != slotToBeAssigned) {
+				updateSlotAssignmentMap(queueName, slotToBeAssigned, nodeId);
+				if (log.isDebugEnabled()) {
+					log.debug("Assigning slot for node : " + nodeId + " | " + slotToBeAssigned);
+				}
+			} else {
+				if (log.isDebugEnabled()) {
+					log.debug("Slot Manager - returns empty slot for the queue: " + queueName);
+				}
 			}
-		} else {
-			if (log.isDebugEnabled()) {
-				log.debug("Slot Manager - returns empty slot for the queue: " + queueName);
-			}
+
 		}
 
 		return slotToBeAssigned;
