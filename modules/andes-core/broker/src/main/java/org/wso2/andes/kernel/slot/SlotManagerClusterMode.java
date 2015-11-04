@@ -133,12 +133,7 @@ public class SlotManagerClusterMode {
 				if (log.isDebugEnabled()) {
 					log.debug("Assigning slot for node : " + nodeId + " | " + slotToBeAssigned);
 				}
-			} else {
-				if (log.isDebugEnabled()) {
-					log.debug("Slot Manager - returns empty slot for the queue: " + queueName);
-				}
 			}
-
 		}
 
 		return slotToBeAssigned;

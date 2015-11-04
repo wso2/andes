@@ -309,6 +309,8 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                     }
                 }
 
+				log.error("ERRRRORR " , e);
+
                 throw new AMQException("SEND FAILED >> Exception occurred while sending message " +
                         "out message ID" + entry.getMessage().getMessageNumber()
                         + " " + e.getMessage(), e);
