@@ -326,6 +326,11 @@ public class SlotManagerClusterMode {
 						}
 					}
 				} else {
+					/*
+					 * The fact that the slot ended up in this condition means that,
+					 * all previous slots within this range have been already
+					 * processed and deleted. This is a very rare scenario.
+					 */
 					slotAgent.addMessageId(queueName, lastMessageIdInTheSlot);
 				}
 			} else {
