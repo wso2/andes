@@ -198,19 +198,18 @@ public class MQTTopicManager {
     }
 
     /**
-     * Will be called during the event where the subscriber disconnection or un-subscription is triggered
+     * Will be called during the event where the client disconnection or un-subscription is triggered
      *
-     * @param mqttClientChannelID the id of the channel which the subscriber is bound to
-     * @param unSubscribedTopic   the name of the topic un-subscribed
+     * @param mqttClientChannelID the id of the channel for which the client is bound to
+     * @param unSubscribedTopic   the name of the topic for which the client is bound to
      * @param username            carbon username of logged user
      * @param action              describes whether its a disconnection or an un-subscription
-     * @throws MQTTException occurs if the subscriber was not disconnected properly
+     * @throws MQTTException occurs if the client was not disconnected properly
      */
-    public void removeOrDisconnectTopicSubscription(String mqttClientChannelID, String unSubscribedTopic,String username,
-                                                    SubscriptionEvent action) throws MQTTException {
+    public void removeOrDisconnectClient(String mqttClientChannelID, String unSubscribedTopic, String username,
+            SubscriptionEvent action) throws MQTTException {
 
-
-        log.info("Disconnecting subscriber channel = " + mqttClientChannelID);
+        log.info("Disconnecting channel for clientID: " + mqttClientChannelID);
 
         Collection<MQTTSubscription> topicSubscriptionList;
         MQTTopics mqtTopics = topicSubscriptions.get(mqttClientChannelID);
