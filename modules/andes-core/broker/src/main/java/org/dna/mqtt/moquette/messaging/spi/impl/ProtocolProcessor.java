@@ -683,7 +683,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
         subscriptions.deactivate(clientID);
 
         try {
-            AndesMQTTBridge.getBridgeInstance().onSubscriberDisconnection(clientID,null,
+            AndesMQTTBridge.getBridgeInstance().onClientDisconnection(clientID, null,
                     username, AndesMQTTBridge.SubscriptionEvent.DISCONNECT);
             log.info("Disconnected client " + clientID + " with clean session " + cleanSession);
         } catch (MQTTException e) {
@@ -721,11 +721,11 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             // subscription has never created due to invalid credentials.
             if(authSubjects.containsKey(clientID)) {
                 String username = authSubjects.get(clientID).getUsername();
-                AndesMQTTBridge.getBridgeInstance().onSubscriberDisconnection(clientID,null,
-                                      username, AndesMQTTBridge.SubscriptionEvent.DISCONNECT);
+                AndesMQTTBridge.getBridgeInstance().onClientDisconnection(clientID, null, username,
+                        AndesMQTTBridge.SubscriptionEvent.DISCONNECT);
             }
             } catch (MQTTException e) {
-                final String message = "Error occured when attempting to diconnect subscriber ";
+                final String message = "Error occurred when attempting to disconnect subscriber ";
                 log.error(message + e.getMessage(), e);
             }
             removeAuthorizationSubject(clientID);
@@ -761,14 +761,14 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             subscriptions.removeSubscription(topic, clientID);
             //also will unsubscribe from the kernel
             try {
-                AndesMQTTBridge.getBridgeInstance().onSubscriberDisconnection(clientID,topic,
-                                                                authSubjects.get(clientID).getUsername(),
-                                                                AndesMQTTBridge.SubscriptionEvent.UNSUBSCRIBE);
+                AndesMQTTBridge.getBridgeInstance().onClientDisconnection(clientID, topic,
+                        authSubjects.get(clientID).getUsername(),
+                        AndesMQTTBridge.SubscriptionEvent.UNSUBSCRIBE);
             } catch (Exception e) {
                 final String message = "Error occurred when disconnecting the subscriber ";
                 log.error(message + e.getMessage());
             }
-            // bridge.onSubscriberDisconnection(clientID);
+            // bridge.onClientDisconnection(clientID);
         }
         //ack the client
         UnsubAckMessage ackMessage = new UnsubAckMessage();

@@ -111,12 +111,13 @@ public final class AndesMQTTBridge {
      * @param event               whether the subscription is initiated or disconnected unexpectedly
      *                            {@link org.dna.mqtt.wso2.AndesMQTTBridge.SubscriptionEvent}
      */
-    public void onSubscriberDisconnection(String mqttClientChannelID, String topic, String username, SubscriptionEvent event) {
+    public void onClientDisconnection(String mqttClientChannelID, String topic, String username, SubscriptionEvent
+            event) {
         try {
-            MQTTopicManager.getInstance().removeOrDisconnectTopicSubscription(mqttClientChannelID, topic, username, event);
+            MQTTopicManager.getInstance().removeOrDisconnectClient(mqttClientChannelID, topic, username, event);
         } catch (MQTTException e) {
             //Will capture the exception here and will not throw it any further
-            final String message = "Error while disconnecting the subscription with the id " + mqttClientChannelID;
+            final String message = "Error while disconnecting the client with the id " + mqttClientChannelID;
             log.error(message, e);
         }
     }
