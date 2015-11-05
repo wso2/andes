@@ -636,7 +636,7 @@ public class HazelcastAgent implements SlotAgent {
      * {@inheritDoc}
      */
     @Override
-    public void setNodeToLastPublishedId(String nodeId, long lastPublishedId) throws AndesException {
+    public void setLocalSafeZoneOfNode(String nodeId, long lastPublishedId) throws AndesException {
         this.lastPublishedIDMap.set(nodeId, lastPublishedId);
     }
 

@@ -30,7 +30,7 @@ service SlotManagementService {
     *  In addition, the coordinator will check if the received slot overlaps with any existing,assigned slots, 
     *  and memorize such ranges to be given back to the same node.
     */
-    void updateMessageId(1: string queueName, 2: string nodeId, 3: i64 startMessageId, 4: i64 endMessageId),
+    void updateMessageId(1: string queueName, 2: string nodeId, 3: i64 startMessageId, 4: i64 endMessageId, 5: i64 localSafeZone),
 
     /* Delete empty slots
     */

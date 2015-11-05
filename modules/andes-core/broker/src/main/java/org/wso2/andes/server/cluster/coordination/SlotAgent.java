@@ -107,7 +107,7 @@ public interface SlotAgent {
 	 * @param nodeId id of node
 	 * @param lastPublishedId last published id of node
 	 */
-	void setNodeToLastPublishedId(String nodeId, long lastPublishedId) throws AndesException;
+	void setLocalSafeZoneOfNode(String nodeId, long lastPublishedId) throws AndesException;
 
 	/**
 	 * Remove entries for a publishing node when it leaves the cluster

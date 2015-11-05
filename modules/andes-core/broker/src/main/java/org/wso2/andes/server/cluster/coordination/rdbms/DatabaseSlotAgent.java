@@ -252,7 +252,7 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
      * {@inheritDoc}
      */
     @Override
-    public void setNodeToLastPublishedId(String nodeId, long lastPublishedId) throws AndesException {
+    public void setLocalSafeZoneOfNode(String nodeId, long lastPublishedId) throws AndesException {
 
         String task = "set last published message id: " + lastPublishedId + " for node: " + nodeId;
 

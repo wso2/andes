@@ -38,7 +38,7 @@ public interface SlotCoordinator {
      * @param endMessageId End message ID of the slot
      * @throws ConnectionException
      */
-    public void updateMessageId(String queueName,long startMessageId, long endMessageId) throws ConnectionException;
+    public void updateMessageId(String queueName,long startMessageId, long endMessageId, long localSafeZone) throws ConnectionException;
 
     /**
      *  Record safe zone to delete slots by node. This ping comes from nodes as messages are not

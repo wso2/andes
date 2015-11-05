@@ -111,7 +111,7 @@ public class SlotCreator implements Runnable {
                 SlotManagerClusterMode.getInstance().updateMessageID(queueName,
                                                                      AndesContext.getInstance().getClusterAgent()
                                                                                  .getLocalNodeIdentifier(),
-                                                                     firstMessageID, lastMessageID);
+                                                                     firstMessageID, lastMessageID, lastMessageID);
             } else {
                 SlotManagerStandalone.getInstance().updateMessageID(queueName, lastMessageID);
             }

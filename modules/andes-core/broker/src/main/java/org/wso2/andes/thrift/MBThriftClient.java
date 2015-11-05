@@ -109,18 +109,19 @@ public class MBThriftClient {
      * @param nodeId unique hazelcast identifier of node.
      * @param startMessageId start message Id of the locally chosen slot.
      * @param endMessageId end message Id of the locally chosen slot.
+     * @param localSafeZone Minimum message ID of the node that is deemed safe.
      * @throws TException in case of an connection error
      */
     public static synchronized void updateMessageId(String queueName, String nodeId,
-                                                    long startMessageId, long endMessageId) throws ConnectionException {
+                                                    long startMessageId, long endMessageId, long localSafeZone) throws ConnectionException {
         try {
             client = getServiceClient();
-            client.updateMessageId(queueName, nodeId, startMessageId, endMessageId);
+            client.updateMessageId(queueName, nodeId, startMessageId, endMessageId, localSafeZone);
         } catch (TException e) {
             try {
                 //retry once
                 reConnectToServer();
-                client.updateMessageId(queueName, nodeId, startMessageId, endMessageId);
+                client.updateMessageId(queueName, nodeId, startMessageId, endMessageId, localSafeZone);
             } catch (TException e1) {
                 handleCoordinatorChanges();
                 throw new ConnectionException("Coordinator has changed", e);

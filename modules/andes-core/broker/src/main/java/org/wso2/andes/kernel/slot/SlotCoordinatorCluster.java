@@ -50,8 +50,8 @@ public class SlotCoordinatorCluster implements SlotCoordinator {
      */
     @Override
     public void updateMessageId(String queueName,
-                                long startMessageId, long endMessageId) throws ConnectionException {
-        MBThriftClient.updateMessageId(queueName,nodeId,startMessageId,endMessageId);
+                                long startMessageId, long endMessageId, long localSafeZone) throws ConnectionException {
+        MBThriftClient.updateMessageId(queueName,nodeId,startMessageId,endMessageId, localSafeZone);
     }
 
     /**

@@ -45,7 +45,7 @@ public class SlotCoordinatorStandalone implements SlotCoordinator {
      * {@inheritDoc}
      */
     @Override
-    public void updateMessageId(String queueName, long startMessageId, long endMessageId) throws ConnectionException {
+    public void updateMessageId(String queueName, long startMessageId, long endMessageId, long localSafeZone) throws ConnectionException {
         slotManagerStandalone.updateMessageID(queueName,endMessageId);
     }
 

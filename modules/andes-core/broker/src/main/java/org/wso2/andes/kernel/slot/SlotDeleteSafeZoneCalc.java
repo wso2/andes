@@ -68,6 +68,10 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
                 Set<String> nodesWithPublishedMessages;
                 try {
                     nodesWithPublishedMessages = SlotManagerClusterMode.getInstance().getMessagePublishedNodes();
+
+                    if (log.isDebugEnabled()) {
+                        log.debug("ANOMALY : nodesWithPublishedMessages size : " + nodesWithPublishedMessages.size());
+                    }
                 } catch (AndesException e) {
                     log.error("SlotDeleteSafeZoneCalc stopped due to failing to get message published nodes. "
                            + "Retrying after 15 seconds" ,e);
@@ -90,7 +94,12 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
                     Long safeZoneByPublishedMessages;
                     try {
                         safeZoneByPublishedMessages = SlotManagerClusterMode.getInstance()
-                                .getLastPublishedIDByNode(nodeID);
+                                .getLocalSafeZone(nodeID);
+
+                        if (log.isDebugEnabled()) {
+                            log.debug("Safe Zone evaluated for node : " + nodeID + " | safeZoneIDByPublishedMessages : " + safeZoneByPublishedMessages);
+                        }
+
                     } catch (AndesException e) {
                         log.error("SlotDeleteSafeZoneCalc stopped due to failing to get last published id for node:" +
                                 nodeID + ". Retrying after 15 seconds", e);
