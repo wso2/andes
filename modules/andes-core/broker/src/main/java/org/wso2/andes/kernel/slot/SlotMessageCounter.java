@@ -187,10 +187,11 @@ public class SlotMessageCounter {
             // has reached. This is to avoid timer task or disruptor creating smaller/overlapping slots.
             if (checkMessageLimitReached(slot) || checkTimeOutReached(lastSlotUpdateTime)) {
                 try {
+                    long localSafeZone = inferLocalSafeZone(storageQueueName);
                     slotTimeOutMap.remove(storageQueueName);
                     queueToSlotMap.remove(storageQueueName);
                     slotCoordinator.updateMessageId(storageQueueName, slot.getStartMessageId(),
-                            slot.getEndMessageId(), inferLocalSafeZone(storageQueueName));
+                            slot.getEndMessageId(), localSafeZone);
                 } catch (ConnectionException e) {
                     // we only log here since this is called again from timer task if previous attempt failed
                     log.error("Error occurred while connecting to the thrift coordinator.", e);
