@@ -333,7 +333,7 @@ public class SlotManagerClusterMode {
 					 * range have been already processed and deleted. This is a very rare scenario.
 					 */
                     if (log.isDebugEnabled()) {
-                        log.debug("ANOMALY : A submit slot request has come from the past after deletion of any " +
+                        log.debug("A submit slot request has come from the past after deletion of any " +
                                 "possible overlapping slots. nodeId : " + nodeId + " StartMessageID : " +
                                 startMessageIdInTheSlot + " EndMessageID : " + lastMessageIdInTheSlot);
                     }
