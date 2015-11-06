@@ -103,6 +103,10 @@ public class SlotDeletionExecutor {
                         if (!deleteSuccess) {
                             //delete attempt not success, therefore reassign current deletion attempted slot to previous slot
                             previouslyAttemptedSlot = deletionAttempt;
+                        } else {
+                            SlotDeliveryWorker slotWorker = SlotDeliveryWorkerManager.getInstance()
+                                                                                     .getSlotWorker(deletionAttempt.getStorageQueueName());
+                            slotWorker.deleteSlot(deletionAttempt);
                         }
                     }
 

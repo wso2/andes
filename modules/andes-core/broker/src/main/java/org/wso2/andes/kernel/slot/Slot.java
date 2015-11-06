@@ -369,17 +369,12 @@ public class Slot implements Serializable, Comparable<Slot> {
     public void decrementPendingMessageCount() throws AndesException {
         int messageCount = pendingMessageCount.decrementAndGet();
         if (messageCount == 0) {
-            /*
-            All the Acks for the slot has bee received. Check the slot again for unsend
-            messages and if there are any send them and delete the slot.
-             */
-            SlotDeliveryWorker slotWorker = SlotDeliveryWorkerManager.getInstance()
-                                                                     .getSlotWorker(getStorageQueueName());
+
             if (log.isDebugEnabled()) {
                 log.debug("Slot has no pending messages. Now re-checking slot for messages");
             }
             setSlotInActive();
-            slotWorker.deleteSlot(this);
+            SlotDeletionExecutor.getInstance().executeSlotDeletion(this);
         }
     }
 

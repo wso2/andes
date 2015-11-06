@@ -479,9 +479,9 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
      * @throws AndesException
      */
     @Override
-    public void deleteSlot(long startMessageId, long endMessageId) throws AndesException {
+    public boolean deleteSlot(long startMessageId, long endMessageId) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.deleteSlot(startMessageId, endMessageId);
+            return wrappedAndesContextStoreInstance.deleteSlot(startMessageId, endMessageId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

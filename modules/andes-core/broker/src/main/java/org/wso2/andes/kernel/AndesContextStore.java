@@ -259,9 +259,10 @@ public interface AndesContextStore extends HealthAwareStore{
      * Delete a slot from store.
      * @param startMessageId start message id of slot
      * @param endMessageId end message id of slot
+     * @return True if slot deletion successful
      * @throws AndesException
      */
-    void deleteSlot(long startMessageId, long endMessageId) throws AndesException;
+    boolean deleteSlot(long startMessageId, long endMessageId) throws AndesException;
 
     /**
      * Delete all slots by queue name.

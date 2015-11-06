@@ -1091,21 +1091,50 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public void deleteSlot(long startMessageId, long endMessageId) throws AndesException {
+    public boolean deleteSlot(long startMessageId, long endMessageId) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
+
+        boolean slotDeleted;
 
         try {
 
             connection = getConnection();
 
-            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_SLOT);
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_NON_OVERLAPPING_SLOT);
 
             preparedStatement.setLong(1, startMessageId);
             preparedStatement.setLong(2, endMessageId);
 
-            preparedStatement.executeUpdate();
+            int rowsAffected = preparedStatement.executeUpdate();
             connection.commit();
+
+            if (rowsAffected == 0) {
+                // Check if the Slot exists in Store
+                preparedStatement = connection.prepareStatement(RDBMSConstants.PS_GET_SLOT);
+
+                preparedStatement.setLong(1, startMessageId);
+                preparedStatement.setLong(2, endMessageId);
+
+                ResultSet resultSet = preparedStatement.executeQuery();
+
+                // slotDeleted set to true if there is no overlapping slot in the DB
+                slotDeleted = !resultSet.next();
+                resultSet.close();
+            } else {
+                slotDeleted = true;
+            }
+
+            if (logger.isDebugEnabled()) {
+                if (slotDeleted) {
+                    logger.debug("Slot deleted, startMessageId " + startMessageId + " endMessageId" + endMessageId);
+                } else {
+                    logger.debug(
+                            "Cannot delete slot, startMessageId " + startMessageId + " endMessageId" + endMessageId);
+                }
+            }
+
+            return slotDeleted;
         } catch (SQLException e) {
             String errMsg =
                     RDBMSConstants.TASK_DELETE_SLOT + " startMessageId: " + startMessageId + " endMessageId: " +

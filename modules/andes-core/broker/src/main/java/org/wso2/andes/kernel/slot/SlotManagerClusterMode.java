@@ -391,6 +391,7 @@ public class SlotManagerClusterMode {
 	 * @param emptySlot reference of the slot to be deleted
 	 */
 	public boolean deleteSlot(String queueName, Slot emptySlot, String nodeId) throws AndesException {
+		boolean slotDeleted = false;
 
 		long startMsgId = emptySlot.getStartMessageId();
 		long endMsgId = emptySlot.getEndMessageId();
@@ -402,12 +403,11 @@ public class SlotManagerClusterMode {
 		if (slotDeleteSafeZone > endMsgId) {
 			String lockKey = nodeId + SlotManagerClusterMode.class;
 			synchronized (lockKey.intern()) {
-				slotAgent.deleteSlot(nodeId, queueName, startMsgId, endMsgId);
+				slotDeleted = slotAgent.deleteSlot(nodeId, queueName, startMsgId, endMsgId);
 				if (log.isDebugEnabled()) {
-					log.debug(" Deleted slot id = " + emptySlot.getId() + " queue name = " + queueName);
+					log.debug(" Deleted slot id = " + emptySlot.getId() + " queue name = " + queueName + " deleteSuccess: " + slotDeleted);
 				}
 			}
-			return true;
 		} else {
 			if (log.isDebugEnabled()) {
 				log.debug("Cannot delete slot as it is within safe zone "
@@ -417,7 +417,7 @@ public class SlotManagerClusterMode {
 						+ " slotToDelete= " + emptySlot);
 			}
 		}
-		return false;
+		return slotDeleted;
 	}
 
 	/**

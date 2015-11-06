@@ -442,7 +442,6 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
      * @param slot slot to delete
      */
     public void deleteSlot(Slot slot) {
-        SlotDeletionExecutor.getInstance().executeSlotDeletion(slot);
         if (log.isDebugEnabled()) {
             log.debug("Releasing tracking of messages for slot " + slot.toString());
         }
