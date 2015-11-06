@@ -133,12 +133,7 @@ public class SlotManagerClusterMode {
 				if (log.isDebugEnabled()) {
 					log.debug("Assigning slot for node : " + nodeId + " | " + slotToBeAssigned);
 				}
-			} else {
-				if (log.isDebugEnabled()) {
-					log.debug("Slot Manager - returns empty slot for the queue: " + queueName);
-				}
 			}
-
 		}
 
 		return slotToBeAssigned;
@@ -331,6 +326,11 @@ public class SlotManagerClusterMode {
 						}
 					}
 				} else {
+					/*
+					 * The fact that the slot ended up in this condition means that,
+					 * all previous slots within this range have been already
+					 * processed and deleted. This is a very rare scenario.
+					 */
 					slotAgent.addMessageId(queueName, lastMessageIdInTheSlot);
 				}
 			} else {

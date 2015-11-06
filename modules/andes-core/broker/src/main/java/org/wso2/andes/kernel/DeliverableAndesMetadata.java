@@ -585,8 +585,8 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
                     isValidTransition = true;
                     messageStatusesForChannel.add(state);
                 } else {
-                    log.warn("Invalid channel message state transition suggested: " + state  + " Message ID: " +
-                            messageID + " Message Status History >> " + messageStatus);
+                    log.warn("Invalid channel message state transition suggested: " + state  + " Message ID: "
+							+ messageID + " Slot = " + slot.getId() + " Message Status History >> " + messageStatus);
                 }
             } else {
                 isValidTransition = messageStatusesForChannel.
@@ -596,8 +596,9 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
                     messageStatusesForChannel.add(state);
                 } else {
                     log.warn("Invalid channel message state transition from " + messageStatusesForChannel.get
-                            (messageStatusesForChannel.size() - 1) + " suggested: " + state + " Message ID: " +
-                            messageID + " Channel Status History >> " + messageStatusesForChannel);
+                            (messageStatusesForChannel.size() - 1) + " suggested: " + state + " Message ID: "
+							+ messageID + " Slot = " + slot.getId() +" Channel Status History >> "
+							+ messageStatusesForChannel);
                 }
             }
 

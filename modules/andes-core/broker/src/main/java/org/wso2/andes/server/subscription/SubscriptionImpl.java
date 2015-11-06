@@ -44,6 +44,7 @@ import org.wso2.andes.server.logging.actors.CurrentActor;
 import org.wso2.andes.server.logging.actors.SubscriptionActor;
 import org.wso2.andes.server.logging.messages.SubscriptionMessages;
 import org.wso2.andes.server.logging.subjects.SubscriptionLogSubject;
+import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.output.ProtocolOutputConverter;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.queue.AMQQueue;
@@ -273,9 +274,11 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                 }
 
                 if (log.isDebugEnabled()) {
-                    log.debug("sent message : " + entry.getMessageHeader().getMessageId() + " JMSMessageId " + ": "
-                            + entry.getMessageHeader().getMessageId() + " channel=" + getChannel().getChannelId());
-
+                    log.debug("sent message : " + entry.getMessage().getMessageNumber()
+							+ " Slot = " + ((AMQMessage)entry.getMessage()).getAndesMetadataReference()
+							.getMessage().getSlot().getId()
+							+ " JMSMessageId " + ": " + entry.getMessageHeader().getMessageId()
+							+ " channel=" + getChannel().getChannelId());
                 }
 
                 sendToClient(entry, deliveryTag);
