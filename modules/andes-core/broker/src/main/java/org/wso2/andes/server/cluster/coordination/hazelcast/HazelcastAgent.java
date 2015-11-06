@@ -441,8 +441,9 @@ public class HazelcastAgent implements SlotAgent {
      * {@inheritDoc}
      */
     @Override
-    public void deleteSlot(String nodeId, String queueName, long startMessageId, long endMessageId)
+    public boolean deleteSlot(String nodeId, String queueName, long startMessageId, long endMessageId)
             throws AndesException {
+        boolean slotDeleted = false;
         try {
             HashMap<String, TreeSet<Slot>> queueToSlotMap = null;
             HashmapStringTreeSetWrapper wrapper = this.slotAssignmentMap.get(nodeId);
@@ -466,7 +467,11 @@ public class HazelcastAgent implements SlotAgent {
                             queueToSlotMap.put(queueName, currentSlotList);
                             wrapper.setStringListHashMap(queueToSlotMap);
                             slotAssignmentMap.set(nodeId, wrapper);
+                            slotDeleted = true;
                         }
+                    } else {
+                        // We can say slot deleted since the slot does not exist
+                        slotDeleted = true;
                     }
                 }
             }
@@ -474,6 +479,7 @@ public class HazelcastAgent implements SlotAgent {
             throw new AndesException("Failed to delete slot for queue : " +
                     queueName + " from node " + nodeId, ex);
         }
+        return slotDeleted;
     }
 
     /**

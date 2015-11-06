@@ -500,7 +500,7 @@ public class RDBMSConstants {
     /**
      * Prepared statement to delete a slot from database
      */
-    protected static final String PS_DELETE_SLOT =
+    protected static final String PS_DELETE_NON_OVERLAPPING_SLOT =
             "DELETE FROM " + SLOT_TABLE
             + " WHERE " + START_MESSAGE_ID + "=?"
             + " AND " + END_MESSAGE_ID + "=?"
@@ -555,6 +555,15 @@ public class RDBMSConstants {
             + " WHERE " + ASSIGNED_NODE_ID + "=?"
             + " AND " + SLOT_STATE + "=" + SlotState.ASSIGNED.getCode()
             + " ORDER BY " + SLOT_ID;
+
+    /**
+     * Prepared statement to get a slot
+     */
+    protected static final String PS_GET_SLOT =
+            "SELECT " + SLOT_STATE + "," + STORAGE_QUEUE_NAME
+            + " FROM " + SLOT_TABLE
+            + " WHERE " + START_MESSAGE_ID + "=?"
+            + " AND " + END_MESSAGE_ID + "=?";
 
     /**
      * Prepared statements for setting slot states
