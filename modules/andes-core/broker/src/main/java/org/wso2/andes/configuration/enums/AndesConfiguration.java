@@ -467,8 +467,8 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Time interval after which the Virtual host syncing Task can sync host details across the cluster.
      * specified in seconds.
      */
-    PERFORMANCE_TUNING_FAILOVER_VHOST_SYNC_TASK_INTERVAL("performanceTuning/failover" +
-            "/vHostSyncTaskInterval", "3600", Integer.class),
+    PERFORMANCE_TUNING_FAILOVER_VHOST_SYNC_TASK_INTERVAL("recovery" +
+            "/vHostSyncTaskInterval", "900", Integer.class),
 
 
      /**
