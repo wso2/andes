@@ -329,11 +329,16 @@ public class SlotManagerClusterMode {
 					}
 				} else {
 					/*
-					 * The fact that the slot ended up in this condition means that,
-					 * all previous slots within this range have been already
-					 * processed and deleted. This is a very rare scenario.
+                     * The fact that the slot ended up in this condition means that, all previous slots within this
+					 * range have been already processed and deleted. This is a very rare scenario.
 					 */
-					slotAgent.addMessageId(queueName, lastMessageIdInTheSlot);
+                    if (log.isDebugEnabled()) {
+                        log.debug("ANOMALY : A submit slot request has come from the past after deletion of any " +
+                                "possible overlapping slots. nodeId : " + nodeId + " StartMessageID : " +
+                                startMessageIdInTheSlot + " EndMessageID : " + lastMessageIdInTheSlot);
+                    }
+
+                    slotAgent.addMessageId(queueName, lastMessageIdInTheSlot);
 				}
 			} else {
 				//Update the store only if the last assigned message ID is less than the new start message ID
