@@ -1395,7 +1395,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     /**
      * {@inheritDoc}
      */
-    public long getNodeToLastPublishedId(String nodeId) throws AndesException {
+    public long getLocalSafeZoneOfNode(String nodeId) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
@@ -1427,7 +1427,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     /**
      *{@inheritDoc}
      */
-    public void setNodeToLastPublishedId(String nodeId, long messageId) throws AndesException {
+    public void setLocalSafeZoneOfNode(String nodeId, long messageId) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet;

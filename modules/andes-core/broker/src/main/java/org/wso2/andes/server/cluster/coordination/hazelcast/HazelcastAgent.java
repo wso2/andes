@@ -118,9 +118,9 @@ public class HazelcastAgent implements SlotAgent {
     private IMap<String, Long> lastAssignedIDMap;
 
     /**
-     * distributed Map to store last published ID against node ID
+     * distributed Map to store local safe zones for each node ID
      */
-    private IMap<String, Long> lastPublishedIDMap;
+    private IMap<String, Long> safeZoneMap;
 
     /**
      * Distributed Map to keep track of non-empty slots which are unassigned from
@@ -288,7 +288,7 @@ public class HazelcastAgent implements SlotAgent {
         unAssignedSlotMap = hazelcastInstance.getMap(CoordinationConstants.UNASSIGNED_SLOT_MAP_NAME);
         slotIdMap = hazelcastInstance.getMap(CoordinationConstants.SLOT_ID_MAP_NAME);
         lastAssignedIDMap = hazelcastInstance.getMap(CoordinationConstants.LAST_ASSIGNED_ID_MAP_NAME);
-        lastPublishedIDMap = hazelcastInstance.getMap(CoordinationConstants.LAST_PUBLISHED_ID_MAP_NAME);
+        safeZoneMap = hazelcastInstance.getMap(CoordinationConstants.LAST_PUBLISHED_ID_MAP_NAME);
         slotAssignmentMap = hazelcastInstance.getMap(CoordinationConstants.SLOT_ASSIGNMENT_MAP_NAME);
         overlappedSlotMap = hazelcastInstance.getMap(CoordinationConstants.OVERLAPPED_SLOT_MAP_NAME);
 
@@ -628,16 +628,16 @@ public class HazelcastAgent implements SlotAgent {
      * {@inheritDoc}
      */
     @Override
-    public Long getNodeToLastPublishedId(String nodeId) throws AndesException {
-        return this.lastPublishedIDMap.get(nodeId);
+    public Long getLocalSafeZoneOfNode(String nodeId) throws AndesException {
+        return this.safeZoneMap.get(nodeId);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void setNodeToLastPublishedId(String nodeId, long lastPublishedId) throws AndesException {
-        this.lastPublishedIDMap.set(nodeId, lastPublishedId);
+    public void setLocalSafeZoneOfNode(String nodeId, long localSafeZone) throws AndesException {
+        this.safeZoneMap.set(nodeId, localSafeZone);
     }
 
     /**
@@ -645,7 +645,7 @@ public class HazelcastAgent implements SlotAgent {
      */
     @Override
     public void removePublisherNode(String nodeId) throws AndesException {
-        lastPublishedIDMap.delete(nodeId);
+        safeZoneMap.delete(nodeId);
     }
 
     /**
@@ -654,7 +654,7 @@ public class HazelcastAgent implements SlotAgent {
     @Override
     public TreeSet<String> getMessagePublishedNodes() throws AndesException {
         TreeSet<String> messagePublishedNodes = new TreeSet<>();
-        messagePublishedNodes.addAll(this.lastPublishedIDMap.keySet());
+        messagePublishedNodes.addAll(this.safeZoneMap.keySet());
         return messagePublishedNodes;
     }
 

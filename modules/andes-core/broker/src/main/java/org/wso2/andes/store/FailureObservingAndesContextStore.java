@@ -632,9 +632,9 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
      * @throws AndesException
      */
     @Override
-    public long getNodeToLastPublishedId(String nodeId) throws AndesException {
+    public long getLocalSafeZoneOfNode(String nodeId) throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.getNodeToLastPublishedId(nodeId);
+            return wrappedAndesContextStoreInstance.getLocalSafeZoneOfNode(nodeId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -649,9 +649,9 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
      * @throws AndesException
      */
     @Override
-    public void setNodeToLastPublishedId(String nodeId, long messageId) throws AndesException {
+    public void setLocalSafeZoneOfNode(String nodeId, long messageId) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.setNodeToLastPublishedId(nodeId, messageId);
+            wrappedAndesContextStoreInstance.setLocalSafeZoneOfNode(nodeId, messageId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

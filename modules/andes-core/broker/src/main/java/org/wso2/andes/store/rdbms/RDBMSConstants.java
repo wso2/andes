@@ -114,6 +114,10 @@ public class RDBMSConstants {
     protected static final String SLOT_TABLE = "MB_SLOT";
     protected static final String SLOT_MESSAGE_ID_TABLE = "MB_SLOT_MESSAGE_ID";
     protected static final String QUEUE_TO_LAST_ASSIGNED_ID = "MB_QUEUE_TO_LAST_ASSIGNED_ID";
+
+    /**
+     * This dataset maps to the nodeID - localSafeZone association within the broker.
+     */
     protected static final String NODE_TO_LAST_PUBLISHED_ID = "MB_NODE_TO_LAST_PUBLISHED_ID";
 
     // Andes Context Store table columns

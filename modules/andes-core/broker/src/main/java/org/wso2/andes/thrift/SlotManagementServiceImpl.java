@@ -56,10 +56,10 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
     }
 
     @Override
-    public void updateMessageId(String queueName, String nodeId, long startMessageId, long endMessageId) throws TException {
+    public void updateMessageId(String queueName, String nodeId, long startMessageId, long endMessageId, long localSafeZone) throws TException {
         if (AndesContext.getInstance().getClusterAgent().isCoordinator()) {
             try {
-                slotManager.updateMessageID(queueName, nodeId, startMessageId, endMessageId);
+                slotManager.updateMessageID(queueName, nodeId, startMessageId, endMessageId, localSafeZone);
             } catch (AndesException e) {
                 throw new TException("Failed to update message id for queue: " + queueName + " nodeId: " + nodeId, e);
             }

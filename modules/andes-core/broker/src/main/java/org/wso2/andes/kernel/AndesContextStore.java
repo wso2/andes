@@ -330,20 +330,20 @@ public interface AndesContextStore extends HealthAwareStore{
     void setQueueToLastAssignedId(String queueName, long messageId) throws AndesException;
 
     /**
-     * Get last published id for a given node.
+     * Get local safe zone for a given node.
      * @param nodeId id of node
-     * @return last published if of node
+     * @return local safe zone of node
      * @throws AndesException
      */
-    long getNodeToLastPublishedId(String nodeId) throws AndesException;
+    long getLocalSafeZoneOfNode(String nodeId) throws AndesException;
 
     /**
-     * Set last published id for a given node.
+     * Set local safe zone for a given node.
      * @param nodeId id of node
      * @param messageId id of message
      * @throws AndesException
      */
-    void setNodeToLastPublishedId(String nodeId, long messageId) throws AndesException;
+    void setLocalSafeZoneOfNode(String nodeId, long messageId) throws AndesException;
 
     /**
      * Remove entries for a given publishing node ID.

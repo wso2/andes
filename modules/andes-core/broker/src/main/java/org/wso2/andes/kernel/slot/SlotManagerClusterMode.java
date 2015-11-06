@@ -259,9 +259,11 @@ public class SlotManagerClusterMode {
 	 * @param lastMessageIdInTheSlot  last message ID of the slot
 	 * @param startMessageIdInTheSlot start message ID of the slot
 	 * @param nodeId                  Node ID of the node that is sending the request.
+     * @param localSafeZone           Local safe zone of the requesting node.
+     *
 	 */
 	public void updateMessageID(String queueName, String nodeId, long startMessageIdInTheSlot,
-	                            long lastMessageIdInTheSlot) throws AndesException {
+	                            long lastMessageIdInTheSlot, long localSafeZone) throws AndesException {
 
 		//setting up first message id of the slot
 		if (firstMessageId > startMessageIdInTheSlot || firstMessageId == -1) {
@@ -327,11 +329,16 @@ public class SlotManagerClusterMode {
 					}
 				} else {
 					/*
-					 * The fact that the slot ended up in this condition means that,
-					 * all previous slots within this range have been already
-					 * processed and deleted. This is a very rare scenario.
+                     * The fact that the slot ended up in this condition means that, all previous slots within this
+					 * range have been already processed and deleted. This is a very rare scenario.
 					 */
-					slotAgent.addMessageId(queueName, lastMessageIdInTheSlot);
+                    if (log.isDebugEnabled()) {
+                        log.debug("A submit slot request has come from the past after deletion of any " +
+                                "possible overlapping slots. nodeId : " + nodeId + " StartMessageID : " +
+                                startMessageIdInTheSlot + " EndMessageID : " + lastMessageIdInTheSlot);
+                    }
+
+                    slotAgent.addMessageId(queueName, lastMessageIdInTheSlot);
 				}
 			} else {
 				//Update the store only if the last assigned message ID is less than the new start message ID
@@ -343,8 +350,8 @@ public class SlotManagerClusterMode {
 					          lastMessageIdInTheSlot + " to store");
 				}
 			}
-			//record last published message ID
-			slotAgent.setNodeToLastPublishedId(nodeId, lastMessageIdInTheSlot);
+			//record local safe zone
+			slotAgent.setLocalSafeZoneOfNode(nodeId, localSafeZone);
 		}
 	}
 
@@ -390,7 +397,7 @@ public class SlotManagerClusterMode {
 		long slotDeleteSafeZone = getSlotDeleteSafeZone();
 		if (log.isDebugEnabled()) {
 			log.debug("Trying to delete slot. safeZone= " + getSlotDeleteSafeZone()
-					+ " startMsgID: " + startMsgId);
+                    + " startMsgID: " + startMsgId);
 		}
 		if (slotDeleteSafeZone > endMsgId) {
 			String lockKey = nodeId + SlotManagerClusterMode.class;
@@ -430,9 +437,9 @@ public class SlotManagerClusterMode {
 		}
 	}
 
-	protected Long getLastPublishedIDByNode(String nodeID) throws AndesException {
+	protected Long getLocalSafeZone(String nodeID) throws AndesException {
 		Long lastPublishId;
-		lastPublishId = slotAgent.getNodeToLastPublishedId(nodeID);
+		lastPublishId = slotAgent.getLocalSafeZoneOfNode(nodeID);
 		return lastPublishId;
 	}
 
@@ -460,7 +467,7 @@ public class SlotManagerClusterMode {
 	 */
 	public long updateAndReturnSlotDeleteSafeZone(String nodeID, long safeZoneOfNode) {
 		try {
-			slotAgent.setNodeToLastPublishedId(nodeID, safeZoneOfNode);
+			slotAgent.setLocalSafeZoneOfNode(nodeID, safeZoneOfNode);
 		} catch (AndesException e) {
 			log.error("Error occurred while updating safezone value " + safeZoneOfNode + " for node " + nodeID, e);
 		}
@@ -585,7 +592,7 @@ public class SlotManagerClusterMode {
                     // Trigger a submit slot for each queue so that new slots are created
                     // for queues that have not published any messages after a node crash
                     try {
-                        updateMessageID(queueName, deletedNodeId, lastId - 1, lastId);
+                        updateMessageID(queueName, deletedNodeId, lastId - 1, lastId, lastId);
                     } catch (AndesException ex) {
                         log.error("Failed to update message id", ex);
                     }

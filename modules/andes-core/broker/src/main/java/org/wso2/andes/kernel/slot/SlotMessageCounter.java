@@ -187,15 +187,37 @@ public class SlotMessageCounter {
             // has reached. This is to avoid timer task or disruptor creating smaller/overlapping slots.
             if (checkMessageLimitReached(slot) || checkTimeOutReached(lastSlotUpdateTime)) {
                 try {
+                    long localSafeZone = inferLocalSafeZone(storageQueueName);
                     slotTimeOutMap.remove(storageQueueName);
                     queueToSlotMap.remove(storageQueueName);
-                    slotCoordinator.updateMessageId(storageQueueName, slot.getStartMessageId(), slot.getEndMessageId());
+                    slotCoordinator.updateMessageId(storageQueueName, slot.getStartMessageId(),
+                            slot.getEndMessageId(), localSafeZone);
                 } catch (ConnectionException e) {
                     // we only log here since this is called again from timer task if previous attempt failed
                     log.error("Error occurred while connecting to the thrift coordinator.", e);
                 }
             }
         }
+    }
+
+    /**
+     * Figure out if the currentStorageQueue's endMessageID is larger than startMessageID's of other queues. If yes,
+     * set the minimum startMessageID from those queues as the local safe Zone.
+     * @param currentStorageQueueName
+     * @return Local Safe Zone
+     */
+    private long inferLocalSafeZone(String currentStorageQueueName) {
+
+        long localSafeZone = queueToSlotMap.get(currentStorageQueueName).getEndMessageId();
+
+        for (Map.Entry<String,Slot> queueSlotEntry : queueToSlotMap.entrySet()) {
+
+            if (!queueSlotEntry.getKey().equals(currentStorageQueueName)) {
+                localSafeZone = Math.min(queueSlotEntry.getValue().getStartMessageId(),localSafeZone);
+            }
+        }
+
+        return localSafeZone;
     }
 
     public void updateSafeZoneForNode(long currentSafeZoneVal) {
