@@ -26,8 +26,10 @@ import org.wso2.andes.server.management.AMQManagedObject;
 
 import javax.management.NotCompliantMBeanException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -94,7 +96,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
     @Override
     public String[] getAllTopicSubscriptions(String isDurable, String isActive) {
         try {
-            List<String> allSubscriptionsForTopics = new ArrayList<>();
+            Set<AndesSubscription> subscriptionsToDisplay = new HashSet<>();
 
             Set<String> allTopics = AndesContext.getInstance().getSubscriptionStore().getTopics();
 
@@ -103,10 +105,10 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
                 subscriptions = AndesContext.getInstance().getSubscriptionStore().getAllSubscribersForDestination
                         (topic, true, AndesSubscription.SubscriptionType.AMQP);
 
-                Set<String> uniqueueSubscriptionIDs = new HashSet<String>();
+                Map<String, AndesSubscription> inactiveSubscriptions = new HashMap<>();
+                Set<String> uniqueSubscriptionIDs = new HashSet<>();
                 for (AndesSubscription s : subscriptions) {
 
-                    Long pendingMessageCount = MessagingEngine.getInstance().getMessageCountOfQueue(s.getStorageQueueName());
                     if (!isDurable.equals(ALL_WILDCARD) && (Boolean.parseBoolean(isDurable) != s.isDurable())) {
                         continue;
                     }
@@ -115,20 +117,43 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
                     } if(!s.isBoundToTopic()){
                         continue;
                     }
-                    //Filter multiple shared subscriptions in disconnected mode. Because in UI
-                    // only one inactive shared subscription should be shown.
+
                     if (true == s.isDurable()) {
-                        if (uniqueueSubscriptionIDs.contains(s.getTargetQueue()) && !(s.hasExternalSubscriptions())) {
-                            continue;
+                        if (s.hasExternalSubscriptions()) {
+                            uniqueSubscriptionIDs.add(s.getTargetQueue());
                         } else {
-                            uniqueueSubscriptionIDs.add(s.getTargetQueue());
+                            // Since only one inactive shared subscription should be shown
+                            // we replace the existing value if any
+                            inactiveSubscriptions.put(s.getTargetQueue(), s);
+                            // Inactive subscriptions will be added later considering shared subscriptions
+                            continue;
                         }
                     }
 
-                    allSubscriptionsForTopics.add(renderSubscriptionForUI(s,pendingMessageCount.intValue()));
+                    subscriptionsToDisplay.add(s);
+                }
+
+                // In UI only one inactive shared subscription should be shown if there are no active subscriptions.
+                for (Map.Entry<String, AndesSubscription> inactiveEntry : inactiveSubscriptions.entrySet()) {
+                    // If there are active subscriptions with same target queue, we skip adding inactive subscriptions
+                    if (!(uniqueSubscriptionIDs.contains(inactiveEntry.getKey()))) {
+                        subscriptionsToDisplay.add(inactiveEntry.getValue());
+                    }
                 }
             }
-            return allSubscriptionsForTopics.toArray(new String[allSubscriptionsForTopics.size()]);
+
+            String[] allSubscriptionsForTopic = new String[subscriptionsToDisplay.size()];
+
+            int index = 0;
+            for (AndesSubscription subscription : subscriptionsToDisplay) {
+                Long pendingMessageCount
+                        = MessagingEngine.getInstance().getMessageCountOfQueue(subscription.getStorageQueueName());
+
+                allSubscriptionsForTopic[index] = renderSubscriptionForUI(subscription, pendingMessageCount.intValue());
+                index++;
+
+            }
+            return allSubscriptionsForTopic;
 
         } catch (Exception e) {
             throw new RuntimeException("Error in accessing subscription information", e);
