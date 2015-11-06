@@ -230,7 +230,7 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
      * {@inheritDoc}
      */
     @Override
-    public Long getNodeToLastPublishedId(String nodeId) throws AndesException {
+    public Long getLocalSafeZoneOfNode(String nodeId) throws AndesException {
 
         String task = "get last published message id for node: " + nodeId;
 
@@ -238,7 +238,7 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
             waitUntilStoresBecomeAvailable(task);
             try {
-                lastPublishedId = andesContextStore.getNodeToLastPublishedId(nodeId);
+                lastPublishedId = andesContextStore.getLocalSafeZoneOfNode(nodeId);
                 break;
             } catch (AndesStoreUnavailableException e) {
                 handleFailure(attemptCount, task, e);
@@ -252,14 +252,14 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
      * {@inheritDoc}
      */
     @Override
-    public void setLocalSafeZoneOfNode(String nodeId, long lastPublishedId) throws AndesException {
+    public void setLocalSafeZoneOfNode(String nodeId, long localSafeZone) throws AndesException {
 
-        String task = "set last published message id: " + lastPublishedId + " for node: " + nodeId;
+        String task = "set local safe zone message id: " + localSafeZone + " for node: " + nodeId;
 
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
             waitUntilStoresBecomeAvailable(task);
             try {
-                andesContextStore.setNodeToLastPublishedId(nodeId, lastPublishedId);
+                andesContextStore.setLocalSafeZoneOfNode(nodeId, localSafeZone);
                 break;
             } catch (AndesStoreUnavailableException e) {
                 handleFailure(attemptCount, task, e);

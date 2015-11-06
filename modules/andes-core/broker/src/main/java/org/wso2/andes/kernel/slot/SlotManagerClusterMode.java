@@ -434,7 +434,7 @@ public class SlotManagerClusterMode {
 
 	protected Long getLocalSafeZone(String nodeID) throws AndesException {
 		Long lastPublishId;
-		lastPublishId = slotAgent.getNodeToLastPublishedId(nodeID);
+		lastPublishId = slotAgent.getLocalSafeZoneOfNode(nodeID);
 		return lastPublishId;
 	}
 

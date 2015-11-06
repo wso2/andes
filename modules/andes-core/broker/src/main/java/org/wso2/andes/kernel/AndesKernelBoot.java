@@ -128,7 +128,7 @@ public class AndesKernelBoot {
 
                     // Initialize current node's last published ID
                     ClusterAgent clusterAgent = AndesContext.getInstance().getClusterAgent();
-                    contextStore.setNodeToLastPublishedId(clusterAgent.getLocalNodeIdentifier(), 0);
+                    contextStore.setLocalSafeZoneOfNode(clusterAgent.getLocalNodeIdentifier(), 0);
 
                     recoverMapsForEachQueue();
                     hazelcastAgent.indicateSuccessfulInitilization();
