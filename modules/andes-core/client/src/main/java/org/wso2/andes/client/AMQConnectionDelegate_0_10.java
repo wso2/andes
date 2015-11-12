@@ -21,17 +21,8 @@ package org.wso2.andes.client;
  */
 
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-
-import javax.jms.ExceptionListener;
-import javax.jms.JMSException;
-import javax.jms.XASession;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.client.failover.FailoverException;
 import org.wso2.andes.client.failover.FailoverProtectedOperation;
@@ -49,8 +40,16 @@ import org.wso2.andes.transport.ConnectionSettings;
 import org.wso2.andes.transport.ProtocolVersionException;
 import org.wso2.andes.transport.SessionDetachCode;
 import org.wso2.andes.transport.TransportException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import javax.jms.ExceptionListener;
+import javax.jms.JMSException;
+import javax.jms.XASession;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 
 public class AMQConnectionDelegate_0_10 implements AMQConnectionDelegate, ConnectionListener
 {
@@ -236,6 +235,7 @@ public class AMQConnectionDelegate_0_10 implements AMQConnectionDelegate, Connec
         for (AMQSession s : sessions)
         {
             s.resubscribe();
+            s.recover();
         }
     }
 
