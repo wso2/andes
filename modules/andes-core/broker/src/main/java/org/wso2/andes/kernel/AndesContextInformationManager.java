@@ -200,7 +200,7 @@ public class AndesContextInformationManager {
         MessagingEngine.getInstance().purgeMessages(queueName, null, false);
 
         // delete queue from construct store
-        constructStore.removeQueue(queueName, true);
+        constructStore.removeQueue(queueName);
 
         //Notify cluster to delete queue
         notifyQueueListeners(queueToDelete, QueueListener.QueueEvent.DELETED);

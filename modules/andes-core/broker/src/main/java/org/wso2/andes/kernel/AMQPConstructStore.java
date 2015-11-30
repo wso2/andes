@@ -122,16 +122,27 @@ public class AMQPConstructStore {
      * remove a queue
      *
      * @param queueName name of the queue to be removed
-     * @param isLocal   is this a local change
      * @throws AndesException
      */
-    public void removeQueue(String queueName, boolean isLocal) throws AndesException {
-        if (isLocal) {
-            andesContextStore.deleteQueueInformation(queueName);
-            //create the space created to keep message counter on this queue
-            messageStore.removeQueue(queueName);
-        }
+    public void removeQueue(String queueName) throws AndesException {
+
+        // Remove the queue from internal maps
+        removeLocalQueueData(queueName);
+
+        // Remove queue information from database
+        andesContextStore.deleteQueueInformation(queueName);
+        messageStore.removeQueue(queueName);
+    }
+
+    /**
+     * remove a queue from local maps
+     *
+     * @param queueName name of the queue to be removed
+     * @throws AndesException
+     */
+    public void removeLocalQueueData(String queueName) throws AndesException {
         andesQueues.remove(queueName);
+        messageStore.removeLocalQueueData(queueName);
     }
 
     /**

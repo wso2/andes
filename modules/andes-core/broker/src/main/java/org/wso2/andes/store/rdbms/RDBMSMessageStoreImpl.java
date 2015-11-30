@@ -18,6 +18,10 @@
 
 package org.wso2.andes.store.rdbms;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.google.common.cache.Weigher;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesContextStore;
@@ -48,7 +52,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 
 import static org.wso2.andes.store.rdbms.RDBMSConstants.CONTENT_TABLE;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_CONTENT;
@@ -70,7 +74,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     /**
      * Cache queue name to queue_id mapping to avoid extra sql queries
      */
-    private final Map<String, Integer> queueMap;
 
     private RDBMSConnection rdbmsConnection;
 
@@ -93,10 +96,11 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     " FROM " + CONTENT_TABLE +
                     " WHERE " + MESSAGE_ID + " IN (";
 
-    public RDBMSMessageStoreImpl() {
-        queueMap = new ConcurrentHashMap<>();
-        
-    }
+    /**
+     * The cache which holds the queue mappings(queue name to queue id) in memory
+     * In the absence of a queried queue name in the cache, the queue id is loaded from the database
+     */
+    private LoadingCache<String, Integer> queueMappings;
 
     /**
      * {@inheritDoc}
@@ -112,8 +116,50 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         this.rdbmsStoreUtils = new RDBMSStoreUtils(connectionProperties);
         
         this.messageCache = (new MessageCacheFactory()).create();
+        initializeQueueMappingCache();
+
         log.info("Message Store initialised");
         return rdbmsConnection;
+    }
+
+    /**
+     * Method to initialize the queue mapping cache.
+     *
+     * The queue mapping cache is what holds the queue mappings(queue name to queue id) in memory. The cache is
+     * initialized with a loader so that a queue name which is not present in the cache is loaded from the database
+     * upon a query for a queue name.
+     */
+    private void initializeQueueMappingCache() {
+
+        // The size of the queue mappings cache in MegaBytes
+        final int QUEUE_CACHE_SIZE = 2;
+
+        // Expected concurrency for the cache (4 is guava default)
+        final int QUEUE_CACHE_CONCURRENCY_LEVEL = 4;
+
+        queueMappings = CacheBuilder.newBuilder()
+                .concurrencyLevel(QUEUE_CACHE_CONCURRENCY_LEVEL)
+                .maximumWeight(QUEUE_CACHE_SIZE * 1024 * 1024).weigher(new Weigher<String, Integer>() {
+
+                    @Override
+                    public int weigh(String s, Integer integer) {
+                        return s.length();
+                    }
+                })
+                .build(
+                        new CacheLoader<String, Integer>() {
+                            public Integer load(String queueName) throws AndesException {
+                                try {
+                                    Integer queueID = getQueueID(queueName);
+                                    if (log.isDebugEnabled()) {
+                                        log.debug("Loaded queue: " + queueName + " to the cache from database");
+                                    }
+                                    return queueID;
+                                } catch (SQLException e) {
+                                    throw new AndesException("Error retrieving queue id for queue: " + queueName, e);
+                                }
+                            }
+                        });
     }
 
     /**
@@ -328,96 +374,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void addMetadata(List<AndesMessageMetadata> metadataList) throws AndesException {
-
-        Connection connection = null;
-        PreparedStatement preparedStatement = null;
-
-        Context metaDataAdditionContext = MetricManager.timer(Level.INFO, MetricsConstants.ADD_META_DATA_LIST).start();
-        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
-
-        try {
-            connection = getConnection();
-            preparedStatement = connection.prepareStatement(PS_INSERT_METADATA);
-
-            for (AndesMessageMetadata metadata : metadataList) {
-                addMetadataToBatch(preparedStatement, metadata, metadata.getStorageQueueName());
-            }
-            preparedStatement.executeBatch();
-            preparedStatement.close();
-            addListToExpiryTable(connection, metadataList);
-            connection.commit();
-
-            if (log.isDebugEnabled()) {
-                log.debug("Metadata list added. Metadata count: " + metadataList.size());
-            }
-        } catch (BatchUpdateException bue) {
-
-            rdbmsStoreUtils.raiseBatchUpdateException(metadataList, connection, bue, RDBMSConstants.TASK_ADDING_METADATA_LIST);
-
-        } catch (SQLException e) {
-            rollback(connection, RDBMSConstants.TASK_ADDING_METADATA_LIST);
-            throw  rdbmsStoreUtils.convertSQLException("Error occurred while inserting metadata list to queues ", e);
-        } finally {
-            metaDataAdditionContext.stop();
-            contextWrite.stop();
-            close(connection, preparedStatement, RDBMSConstants.TASK_ADDING_METADATA_LIST);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void addMetadata(AndesMessageMetadata metadata) throws AndesException {
-
-        Connection connection = null;
-        PreparedStatement preparedStatement = null;
-
-        Context metaDataAdditionContext = MetricManager.timer(Level.INFO, MetricsConstants.ADD_META_DATA).start();
-        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
-
-        try {
-            connection = getConnection();
-            preparedStatement = connection.prepareStatement(PS_INSERT_METADATA);
-
-            addMetadataToBatch(preparedStatement, metadata, metadata.getStorageQueueName());
-            preparedStatement.executeBatch();
-            preparedStatement.close();
-            addToExpiryTable(connection, metadata);
-            connection.commit();
-
-            if (log.isDebugEnabled()) {
-                log.debug("Metadata added: msgID: " + metadata.getMessageID() +
-                        " Destination: " + metadata.getStorageQueueName());
-            }
-        }/* catch (BatchUpdateException bue) {
-            
-           int[] updateCountsOfFailedBatch = bue.getUpdateCounts();
-           
-           for ( int i = 0;  i < updateCountsOfFailedBatch.length ; i ++){
-               if ( Statement.EXECUTE_FAILED == updateCountsOfFailedBatch[i]){
-                    log.error(String.format("couldn't save the message meta data : message id: %d, offset : %d, storage queue name: %s",
-                                            metadata.getMessageID(), metadata.getStorageQueueName()));
-               }
-           }
-
-           rollback(connection, RDBMSConstants.TASK_ADDING_METADATA);
-           throw new AndesException("Error occurred while inserting metadata list to queues ", bue);
-            
-        }*/ catch (SQLException e) {
-            rollback(connection, RDBMSConstants.TASK_ADDING_METADATA);
-        } finally {
-            metaDataAdditionContext.stop();
-            contextWrite.stop();
-            close(connection, preparedStatement, RDBMSConstants.TASK_ADDING_METADATA);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public void storeMessages(List<AndesMessage> messageList) throws AndesException {
         Connection connection = null;
         PreparedStatement storeMetadataPS = null;
@@ -430,11 +386,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             storeContentPS = connection.prepareStatement(PS_INSERT_MESSAGE_PART);
 
             for (AndesMessage message : messageList) {
-                
-                addToCache(message);
-                addMetadataToBatch(storeMetadataPS,
-                        message.getMetadata(),
-                        message.getMetadata().getStorageQueueName());
+
+                addMetadataToBatch(storeMetadataPS, message.getMetadata(), message.getMetadata().getStorageQueueName());
 
                 for (AndesMessagePart messagePart : message.getContentChunkList()) {
                     addContentToBatch(storeContentPS, messagePart);
@@ -444,6 +397,19 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             storeMetadataPS.executeBatch();
             storeContentPS.executeBatch();
             connection.commit();
+
+            // Add messages to cache after adding them to the database
+            // Messages are added afterwards since we need to add messages to the cache only if they are added to the
+            // database.
+            addToCache(messageList);
+        } catch (BatchUpdateException bue) {
+            // If adding some of the messages failed, add them individually
+            for (AndesMessage message : messageList) {
+                storeMessage(message);
+            }
+        } catch (AndesException e) {
+            rollback(connection, RDBMSConstants.TASK_ADDING_METADATA);
+            throw e;
         } catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_ADDING_METADATA);
             throw rdbmsStoreUtils.convertSQLException("Error occurred while inserting messages to queue ", e);
@@ -454,96 +420,54 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         }
     }
 
-    
-    
     /**
-     * {@inheritDoc}
+     * Store a given Andes message to the database and the cache
+     *
+     * @param message
+     * @throws AndesException
      */
-    @Override
-    public void addMetadataToQueue(String queueName, AndesMessageMetadata metadata)
-            throws AndesException {
-
+    private void storeMessage(AndesMessage message) throws AndesException {
         Connection connection = null;
-        PreparedStatement preparedStatement = null;
-
-        Context metaAdditionToQueueContext = MetricManager.timer(Level.INFO, MetricsConstants.ADD_META_DATA_TO_QUEUE).start();
-        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
+        PreparedStatement storeMetadataPS = null;
+        PreparedStatement storeContentPS = null;
 
         try {
             connection = getConnection();
-            preparedStatement = connection.prepareStatement(PS_INSERT_METADATA);
+            storeMetadataPS = connection.prepareStatement(PS_INSERT_METADATA);
+            storeContentPS = connection.prepareStatement(PS_INSERT_MESSAGE_PART);
 
-            // add to metadata table
-            addMetadataToBatch(preparedStatement, metadata, queueName);
-            preparedStatement.executeBatch();
-            preparedStatement.close();
-            addToExpiryTable(connection, metadata);
+            AndesMessageMetadata metadata = message.getMetadata();
+            storeMetadataPS.setLong(1, metadata.getMessageID());
+            storeMetadataPS.setInt(2, getCachedQueueID(metadata.getStorageQueueName()));
+            storeMetadataPS.setBytes(3, metadata.getMetadata());
 
-            connection.commit();
-        }/* catch (BatchUpdateException bue) {
-            
-           int[] updateCountsOfFailedBatch = bue.getUpdateCounts();
-           
-           for ( int i = 0;  i < updateCountsOfFailedBatch.length ; i ++){
-               if ( Statement.EXECUTE_FAILED == updateCountsOfFailedBatch[i]){
-                    log.error(String.format("couldn't save the message meta data : message id: %d, offset : %d, storage queue name: %s",
-                                            metadata.getMessageID(), metadata.getStorageQueueName()));
-               }
-           }
-
-           rollback(connection, RDBMSConstants.TASK_ADDING_METADATA_TO_QUEUE + queueName);
-           throw new AndesException("Error occurred while inserting message metadata to queue ", bue);
-            
-        }*/ catch (SQLException e) {
-            rollback(connection, RDBMSConstants.TASK_ADDING_METADATA_TO_QUEUE + queueName);
-            throw rdbmsStoreUtils.convertSQLException(
-                    "Error occurred while inserting message metadata to queue " + queueName, e);
-        } finally {
-            metaAdditionToQueueContext.stop();
-            contextWrite.stop();
-            close(connection, preparedStatement, RDBMSConstants.TASK_ADDING_METADATA_TO_QUEUE + queueName);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void addMetadataToQueue(String queueName, List<AndesMessageMetadata> metadataList)
-            throws AndesException {
-
-        Connection connection = null;
-        PreparedStatement preparedStatement = null;
-
-        Context metaAddditionToQueuecontext = MetricManager.timer(Level.INFO, MetricsConstants.ADD_META_DATA_TO_QUEUE_LIST).start();
-        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
-
-        try {
-            connection = getConnection();
-            preparedStatement = connection.prepareStatement(PS_INSERT_METADATA);
-
-            for (AndesMessageMetadata md : metadataList) {
-                addMetadataToBatch(preparedStatement, md, queueName);
+            for (AndesMessagePart messagePart : message.getContentChunkList()) {
+                addContentToBatch(storeContentPS, messagePart);
             }
-
-            preparedStatement.executeBatch();
-            preparedStatement.close();
-            addListToExpiryTable(connection, metadataList);
+            storeMetadataPS.execute();
+            storeContentPS.executeBatch();
             connection.commit();
-
-        } catch (BatchUpdateException bue) {
-            rdbmsStoreUtils.raiseBatchUpdateException(metadataList, connection, bue,
-                    RDBMSConstants.TASK_ADDING_METADATA_LIST_TO_QUEUE + queueName);
+            addToCache(message);
+        } catch (AndesException e) {
+            rollback(connection, RDBMSConstants.TASK_ADDING_MESSAGE);
+            throw e;
         } catch (SQLException e) {
-            rollback(connection, RDBMSConstants.TASK_ADDING_METADATA_LIST_TO_QUEUE + queueName);
-            throw rdbmsStoreUtils.convertSQLException(
-                    "Error occurred while inserting message metadata list to queue " + queueName, e);
+            AndesException andesException
+                    = rdbmsStoreUtils.convertSQLException("Error occurred while inserting message to queue ", e);
+            if (AndesDataIntegrityViolationException.class.isInstance(andesException)) {
+                log.warn("Dropped message with ID: " + message.getMetadata().getMessageID() + " since queue: "
+                         + message.getMetadata().getStorageQueueName() + " does not exist", e);
+            } else {
+                rollback(connection, RDBMSConstants.TASK_ADDING_MESSAGE);
+                throw andesException;
+            }
         } finally {
-            metaAddditionToQueuecontext.stop();
-            contextWrite.stop();
-            close(connection, preparedStatement, RDBMSConstants.TASK_ADDING_METADATA_LIST_TO_QUEUE + queueName);
+            close(storeMetadataPS, RDBMSConstants.TASK_ADDING_MESSAGE);
+            close(storeContentPS, RDBMSConstants.TASK_ADDING_MESSAGE);
+            close(connection, RDBMSConstants.TASK_ADDING_MESSAGE);
         }
     }
+
 
     /**
      * {@inheritDoc}
@@ -641,7 +565,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         } catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_MOVING_METADATA_TO_DLC);
             throw rdbmsStoreUtils.convertSQLException("Error occurred while moving message metadata to dead letter " +
-                    "channel.", e);
+                                                      "channel.", e);
         } finally {
             contextWrite.stop();
             moveMetadataToDLCContext.stop();
@@ -700,23 +624,24 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * @param queueName         queue to be assigned
      * @throws SQLException
      */
-    private void addMetadataToBatch(PreparedStatement preparedStatement,
-                                    AndesMessageMetadata metadata,
-                                    final String queueName) throws SQLException {
+    private void addMetadataToBatch(PreparedStatement preparedStatement, AndesMessageMetadata metadata,
+                                    final String queueName) throws AndesException {
 
-        Context metaAdditionToBatchContext = MetricManager.timer(Level.INFO, MetricsConstants.ADD_META_DATA_TO_BATCH).start();
+        Context metaAdditionToBatchContext = MetricManager.timer(Level.INFO, MetricsConstants.ADD_META_DATA_TO_BATCH)
+                .start();
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
         try {
             preparedStatement.setLong(1, metadata.getMessageID());
             preparedStatement.setInt(2, getCachedQueueID(queueName));
             preparedStatement.setBytes(3, metadata.getMetadata());
             preparedStatement.addBatch();
+        } catch (SQLException e) {
+            throw rdbmsStoreUtils.convertSQLException("error occurred while adding metadata with messaged id: "
+                                                      + metadata.getMessageID() + " to batch", e);
         } finally {
             metaAdditionToBatchContext.stop();
             contextWrite.stop();
         }
-
-
     }
 
     /**
@@ -863,13 +788,13 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 MessageTracer.trace(md, MessageTracer.METADATA_READ_FROM_DB + " slot = " + slot.getId());
             }
             if (log.isDebugEnabled()) {
-                log.debug("request: metadata range (" + firstMsgId + " , " + lastMsgID +
-                        ") in destination queue " + storageQueueName
-                        + "\nresponse: metadata count " + metadataList.size());
+                log.debug("request: metadata range (" + firstMsgId + " , " + lastMsgID + ") in destination queue "
+                          + storageQueueName + ", response: metadata count " + metadataList.size());
             }
         } catch (SQLException e) {
-            throw rdbmsStoreUtils.convertSQLException("Error occurred while retrieving messages between msg id " + firstMsgId + " and " +
-                    lastMsgID + " from queue " + storageQueueName, e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while retrieving messages between msg id "
+                                                      + firstMsgId + " and " + lastMsgID + " from queue "
+                                                      + storageQueueName, e);
         } finally {
             metaListRetrievalContext.stop();
             contextRead.stop();
@@ -1279,28 +1204,18 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
     /**
      * This method caches the queue ids for destination queue names. If queried destination queue is
-     * not in cache updates the cache and returns the queue id.
+     * not in cache, updates the cache and returns the queue id.
      *
      * @param destinationQueueName queue name
      * @return corresponding queue id for the destination queue. On error -1 is returned
-     * @throws SQLException
+     * @throws AndesException
      */
-    private int getCachedQueueID(final String destinationQueueName) throws SQLException {
-
-        // get from map
-        Integer id = queueMap.get(destinationQueueName);
-        if (id != null) {
-            return id;
+    private int getCachedQueueID(final String destinationQueueName) throws AndesException {
+        try {
+            return queueMappings.get(destinationQueueName);
+        } catch (ExecutionException e) {
+            throw new AndesException("Error retrieving queue id for queue: " + destinationQueueName + " from cache", e);
         }
-
-        // If not in cached map. query from DB (some other node might have created it)
-        // If queue is not available create a queue in DB
-        int queueID = getQueueID(destinationQueueName);
-
-        if (queueID != -1) {
-            queueMap.put(destinationQueueName, queueID);
-        }
-        return queueID;
     }
 
     /**
@@ -1378,7 +1293,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             //Add the queue to the internal map as well
             int queueId = getQueueID(destinationQueueName);
             if (-1 != queueId) {
-                queueMap.put(destinationQueueName, queueId);
+                queueMappings.put(destinationQueueName, queueId);
             }
 
         } catch (SQLException e) {
@@ -1782,7 +1697,38 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     @Override
     public void removeQueue(String storageQueueName) throws AndesException {
-        queueMap.remove(storageQueueName);
+
+        // Remove the queue from the database
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
+
+        try {
+            connection = getConnection();
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_QUEUE);
+            preparedStatement.setString(1, storageQueueName);
+            preparedStatement.execute();
+            connection.commit();
+        } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_DELETE_QUEUE_MAPPING);
+            throw rdbmsStoreUtils.convertSQLException("error occurred while deleting queue mapping for queue: "
+                                                      + storageQueueName + "from database.", e);
+        } finally {
+            contextWrite.stop();
+            close(preparedStatement, RDBMSConstants.TASK_DELETE_QUEUE_MAPPING);
+            close(connection, RDBMSConstants.TASK_DELETE_QUEUE_MAPPING);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void removeLocalQueueData(String storageQueueName) {
+        queueMappings.invalidate(storageQueueName);
+        if (log.isDebugEnabled()) {
+            log.debug("Queue: " + storageQueueName + " removed from cache.");
+        }
     }
 
     /**
@@ -2191,6 +2137,17 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     private void addToCache(AndesMessage message) {
         messageCache.addToCache(message);
+    }
+
+    /**
+     * Add a given list of messages to cache
+     *
+     * @param messages the list of messages
+     */
+    private void addToCache(List<AndesMessage> messages) {
+        for (AndesMessage message : messages) {
+            messageCache.addToCache(message);
+        }
     }
 
     /**

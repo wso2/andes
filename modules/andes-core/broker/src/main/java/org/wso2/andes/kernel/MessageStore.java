@@ -68,44 +68,10 @@ public interface MessageStore extends HealthAwareStore{
     Map<Long, List<AndesMessagePart>> getContent(List<Long> messageIDList) throws AndesException;
 
     /**
-     * store mata data of messages
-     *
-     * @param metadataList metadata list to store
-     * @throws AndesException
-     */
-    void addMetadata(List<AndesMessageMetadata> metadataList) throws AndesException;
-
-    /**
-     * store metadata of a single message
-     *
-     * @param metadata metadata to store
-     * @throws AndesException
-     */
-    void addMetadata(AndesMessageMetadata metadata) throws AndesException;
-
-    /**
      * Store messages into database.
      * @param messageList messages to be stored
      */
     void storeMessages(List<AndesMessage> messageList) throws AndesException;
-
-    /**
-     * store metadata specifically under a queue
-     *
-     * @param queueName name of the queue to store metadata
-     * @param metadata metadata to store
-     * @throws AndesException
-     */
-    void addMetadataToQueue(final String queueName, AndesMessageMetadata metadata) throws AndesException;
-
-    /**
-     * store metadata list specifically under a queue
-     *
-     * @param queueName name of the queue to store metadata
-     * @param metadata metadata list to store
-     * @throws AndesException
-     */
-    void addMetadataToQueue(final String queueName, List<AndesMessageMetadata> metadata) throws AndesException;
 
     /**
      * Store a message in a different Queue without altering the meta data.
@@ -358,6 +324,13 @@ public interface MessageStore extends HealthAwareStore{
      * @param storageQueueName name of the queue actually stored in DB
      */
     void removeQueue(String storageQueueName) throws AndesException;
+
+    /**
+     * Remove queue entry from the queue mapping cache
+     *
+     * @param storageQueueName the name of the queue to be removed
+     */
+    void removeLocalQueueData(String storageQueueName);
 
     /**
      * Increment message counter for a queue by a given incrementBy value
