@@ -23,6 +23,8 @@ import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.management.common.mbeans.SubscriptionManagementInformation;
 import org.wso2.andes.server.management.AMQManagedObject;
+import org.wso2.andes.subscription.LocalSubscription;
+import org.wso2.andes.subscription.SubscriptionStore;
 
 import javax.management.NotCompliantMBeanException;
 import java.util.ArrayList;
@@ -40,12 +42,19 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
     private static final String ALL_WILDCARD = "*";
 
     /**
+     * Subscription store used to query subscription related information
+     */
+    private SubscriptionStore subscriptionStore;
+
+    /**
      * Instantiates the MBeans related to subscriptions.
      *
      * @throws NotCompliantMBeanException
      */
     public SubscriptionManagementInformationMBean() throws NotCompliantMBeanException {
         super(SubscriptionManagementInformation.class, SubscriptionManagementInformation.TYPE);
+
+        subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
     }
 
     /**
@@ -173,6 +182,26 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
         }
     }
 
+    @Override
+    public void removeSubscription(String subscriptionId, String destinationName) {
+        try {
+            Set<LocalSubscription> allSubscribersForDestination
+                    = subscriptionStore.getActiveLocalSubscribersForQueuesAndTopics(destinationName);
+
+            for (LocalSubscription andesSubscription : allSubscribersForDestination) {
+
+                String currentSubscriptionId = andesSubscription.getSubscriptionID();
+
+                if (currentSubscriptionId.equals(subscriptionId)) {
+                    andesSubscription.forcefullyDisconnect();
+                    break;
+                }
+            }
+        } catch (AndesException e) {
+            throw new RuntimeException("Error in accessing subscription information", e);
+        }
+    }
+
     /**
      * This method returns the formatted subscription string to be compatible with the UI processor.
      * <p/>
@@ -188,7 +217,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
     private static String renderSubscriptionForUI(AndesSubscription subscription,
                                                   int pendingMessageCount) throws AndesException {
 
-        String subscriptionIdentifier = "1_" + subscription.getSubscribedNode() + "@" + subscription.getTargetQueue();
+        String subscriptionIdentifier = subscription.getSubscriptionID();
 
         //in case of topic whats in v2 is : topicSubscriber.getDestination() + "@" +
         // topicSubscriber.boundTopicName; --
