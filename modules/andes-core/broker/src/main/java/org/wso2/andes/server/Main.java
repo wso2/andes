@@ -18,6 +18,7 @@
 package org.wso2.andes.server;
 
 import org.apache.commons.cli.*;
+import org.apache.log4j.Logger;
 import org.apache.mina.util.SessionLog;
 import org.dna.mqtt.moquette.server.Server;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -32,6 +33,8 @@ import org.wso2.andes.server.registry.ApplicationRegistry;
 public class Main {
     private final Options options = new Options();
     private CommandLine commandLine;
+
+    private static final Logger logger = Logger.getLogger(Main.class);
 
     public static void main(String[] args) {
         //if the -Dlog4j.configuration property has not been set, enable the init override
@@ -50,8 +53,7 @@ public class Main {
             try {
                 execute();
             } catch (Exception e) {
-                System.err.println("Exception during startup: " + e);
-                e.printStackTrace();
+                logger.error("Exception during startup. Triggering shutdown ", e);
                 shutdown(1);
             }
         }
@@ -63,7 +65,7 @@ public class Main {
 
             return true;
         } catch (ParseException e) {
-            System.err.println("Error: " + e.getMessage());
+            logger.error("Error while parsing command line arguments ", e);
             HelpFormatter formatter = new HelpFormatter();
             formatter.printHelp("Qpid", options, true);
 
