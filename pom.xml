@@ -193,7 +193,7 @@
                 <version>${mina-filter-ssl.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.wso2.lmax</groupId>
+                <groupId>org.wso2.orbit.com.lmax</groupId>
                 <artifactId>disruptor</artifactId>
                 <version>${disruptor.version}</version>
             </dependency>
@@ -570,7 +570,7 @@
         <junit.version>4.7</junit.version>
         <log4j.version>1.2.16</log4j.version>
         <maven-ant-tasks.version>2.1.1</maven-ant-tasks.version>
-        <disruptor.version>3.3.0.wso2v1</disruptor.version>
+        <disruptor.version>3.3.2.wso2v2</disruptor.version>
         <org.eclipse.core.commands.version>3.5.0.I20090525-2000</org.eclipse.core.commands.version>
         <org.eclipse.core.contenttype.version>3.4.100.v20100505-1235</org.eclipse.core.contenttype.version>
         <beans.version>1.0.0-I20070606-0010</beans.version>
