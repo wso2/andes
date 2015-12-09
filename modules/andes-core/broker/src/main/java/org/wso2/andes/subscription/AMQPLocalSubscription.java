@@ -118,6 +118,18 @@ public class AMQPLocalSubscription implements OutboundSubscription {
      * {@inheritDoc}
      */
     @Override
+    public void forcefullyDisconnect() throws AndesException {
+        try {
+            channel.mgmtClose();
+        } catch (AMQException e) {
+            throw new AndesException(e);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public boolean sendMessageToSubscriber(ProtocolMessage messageMetadata, AndesContent content)
             throws AndesException {
 

@@ -65,4 +65,17 @@ public interface SubscriptionManagementInformation {
             @MBeanOperationParameter(name = "msgPattern" ,description = "queue or topic or any other pattern") String msgPattern,
             @MBeanOperationParameter(name = "destinationName" ,description = "destination name") String destinationName);
 
+    /**
+     * MBean service to remove a subscription forcefully
+     *
+     * @param subscriptionId
+     * @param destinationName
+     * @return
+     */
+    @MBeanAttribute(name = "RemoveSubscription", description = "Remove a subscription forcefully")
+    void removeSubscription(
+            @MBeanOperationParameter(name = "subscriptionId", description = "ID of the Subscription to remove") String
+                    subscriptionId,
+            @MBeanOperationParameter(name = "destinationName", description = "Subscribed destination name") String
+                    destinationName);
 }
