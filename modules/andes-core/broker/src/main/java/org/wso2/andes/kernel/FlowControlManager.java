@@ -142,13 +142,27 @@ public class FlowControlManager  implements StoreHealthListener {
     /**
      * Create a new Andes channel for a new local channel.
      *
+     * @param listener Local flow control listener
+     * @param channelId the identifier of the channel
+     * @return AndesChannel
+     */
+    public synchronized AndesChannel createChannel(String channelId, FlowControlListener listener) {
+        AndesChannel channel = new AndesChannel(this, channelId, listener, globalBufferBasedFlowControlEnabled,
+                                                      globalErrorBasedFlowControlEnabled);
+        channels.add(channel);
+        return channel;
+    }
+
+    /**
+     * Create a new Andes channel for a new local channel.
+     *
      * @param listener
      *         Local flow control listener
      * @return AndesChannel
      */
     public synchronized AndesChannel createChannel(FlowControlListener listener) {
-        AndesChannel channel = new AndesChannel(this, listener, globalBufferBasedFlowControlEnabled, 
-                                                      globalErrorBasedFlowControlEnabled);
+        AndesChannel channel = new AndesChannel(this, listener, globalBufferBasedFlowControlEnabled,
+                globalErrorBasedFlowControlEnabled);
         channels.add(channel);
         return channel;
     }
@@ -285,7 +299,7 @@ public class FlowControlManager  implements StoreHealthListener {
     public synchronized void deleteChannel(AndesChannel channel) {
         channels.remove(channel);
 
-        log.info("Channel removed (ID: " + channel.getId() + ")");
+        log.info("Channel removed (ID: " + channel.getIdentifier() + ")");
     }
 
     /**

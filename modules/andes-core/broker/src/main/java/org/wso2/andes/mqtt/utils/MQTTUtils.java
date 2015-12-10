@@ -58,6 +58,7 @@ public class MQTTUtils {
     public static final String SINGLE_LEVEL_WILDCARD = "+";
     public static final String MULTI_LEVEL_WILDCARD = "#";
 
+    public static final String DEFAULT_ANDES_CHANNEL_IDENTIFIER = "MQTT-Unknown";
     /**
      * MQTT Publisher ID
      */

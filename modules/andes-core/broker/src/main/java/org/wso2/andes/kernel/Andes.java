@@ -619,6 +619,17 @@ public class Andes {
     }
 
     /**
+     * Create a new Andes channel for a new local channel.
+     *
+     * @param listener Local flow control listener
+     * @param channelId the channel id
+     * @return AndesChannel
+     */
+    public AndesChannel createChannel(String channelId, FlowControlListener listener) {
+        return flowControlManager.createChannel(channelId, listener);
+    }
+
+    /**
      * Remove Andes channel from tracking.
      *
      * @param channel Andes channel

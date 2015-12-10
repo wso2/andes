@@ -20,12 +20,14 @@ package org.wso2.andes.server;
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
+import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.configuration.qpid.ConfigStore;
 import org.wso2.andes.configuration.qpid.ConfiguredObject;
 import org.wso2.andes.configuration.qpid.ConnectionConfig;
 import org.wso2.andes.configuration.qpid.SessionConfig;
 import org.wso2.andes.configuration.qpid.SessionConfigType;
+import org.wso2.andes.exchange.ExchangeDefaults;
 import org.wso2.andes.framing.AMQMethodBody;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.BasicContentHeaderProperties;
@@ -220,7 +222,13 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         // message tracking related to this channel is initialised
         Andes.getInstance().clientConnectionCreated(_id);
         beginPublisherTransaction = false;
-        andesChannel = Andes.getInstance().createChannel(new FlowControlListener() {
+
+        String andesChannelId = AMQPUtils.DEFAULT_ANDES_CHANNEL_IDENTIFIER;
+        if (null != ((AMQProtocolEngine) this._session).getAddress()) {
+            andesChannelId = ((AMQProtocolEngine) this._session).getAddress().substring(1);
+        }
+
+        andesChannel = Andes.getInstance().createChannel(andesChannelId, new FlowControlListener() {
             @Override
             public void block() {
                 if (!isSubscriptionChannel()) {
@@ -235,6 +243,9 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                 }
             }
         });
+
+        //Set channel details
+        //Substring to remove leading slash character from address
 
         try {
             _managedObject = new AMQChannelMBean(this);
@@ -385,77 +396,71 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                 }
                 else
                 {
-                    if(destinationQueues == null || _currentMessage.getDestinationQueues().isEmpty())
-                    {
-                        if (_currentMessage.isMandatory() || _currentMessage.isImmediate())
-                        {
-                            if(!AndesContext.getInstance().isClusteringEnabled()) {
-                                _transaction.addPostTransactionAction(new WriteReturnAction(AMQConstant.NO_ROUTE, "No Route for message", _currentMessage));
-                            }
-                        }
-                        else
-                        {
-                            //no need to sync whole topic bindings across cluster. Thus this log has no sense in clustered mode
-                            if(!AndesContext.getInstance().isClusteringEnabled()) {
-                                _logger.warn("MESSAGE DISCARDED: No routes for message - " + createAMQMessage(_currentMessage));
-                            }
+                    // If the destination of the andes channel is not set, set the destination to the routing key to the
+                    // receive message
+                    if (null == andesChannel.getDestination()) {
+                        andesChannel.setDestination(this._currentMessage.getRoutingKey());
+                    }
+
+                    if ((null == destinationQueues || destinationQueues.isEmpty())
+                        && (ExchangeDefaults.DIRECT_EXCHANGE_NAME.equals(_currentMessage.getExchange()))) {
+                        if (_currentMessage.isMandatory() || _currentMessage.isImmediate()) {
+                            _transaction.addPostTransactionAction(new WriteReturnAction(AMQConstant.NO_ROUTE,
+                                    "No Route for message", _currentMessage));
+                            _logger.warn(
+                                    "MESSAGE DISCARDED: No routes for message - " + createAMQMessage(_currentMessage));
+                        } else {
+                            //no need to sync whole topic bindings across cluster. Thus this log has no sense in
+                            // clustered mode
+                            _logger.warn(
+                                    "MESSAGE DISCARDED: No routes for message - " + createAMQMessage(_currentMessage));
                         }
 
-                    }
-                    else
-                    {
+                    } else {
                         /**
                          *
-                         * Following code keep messages in memory, which is useless to Andes. So we are removing this. Keeping the commented line so we know
+                         * Following code keep messages in memory, which is useless to Andes. So we are removing this.
+                         * Keeping the commented line so we know
                          * we might need to add these back when we do the transactions properly.
-                         * _transaction.enqueue(destinationQueues, _currentMessage, new MessageDeliveryAction(_currentMessage, destinationQueues, isTransactional()));
+                         * _transaction.enqueue(destinationQueues, _currentMessage, new MessageDeliveryAction
+                         * (_currentMessage, destinationQueues, isTransactional()));
                          * incrementOutstandingTxnsIfNecessary();
                          * updateTransactionalActivity();
                          */
-                    }
-                }
 
-                //TODO
-                //check queue size from here and reject the request
+                        //need to bind this to the inner class, as _currentMessage
+                        final IncomingMessage incomingMessage = _currentMessage;
 
-                //Set channel details
-                //Substring to remove leading slash character from address
-                if (null != ((AMQProtocolEngine) this._session).getAddress()) {
-                    andesChannel.setIdentifier(
-                            ((AMQProtocolEngine) this._session).getAddress().substring(1));
-                } else {
-                    andesChannel.setIdentifier("AMQP-Unknown");
-                }
-                andesChannel.setDestination(this._currentMessage.getRoutingKey());
+                        try {
+                            /*
+                             * All we have to do is to write content, metadata,
+                             * and add the message id to the global queue
+                             * Content are already added to the same work queue
+                             * adding metadata and message to global queue
+                             * happen here
+                             */
+                            if (beginPublisherTransaction) {
+                                andesTransactionEvent = Andes.getInstance().newTransaction(andesChannel);
+                                beginPublisherTransaction = false;
+                            }
+                            QpidAndesBridge.messageReceived(incomingMessage, getId(), andesChannel,
+                                    andesTransactionEvent);
 
-                //need to bind this to the inner class, as _currentMessage
-                final IncomingMessage incomingMessage = _currentMessage;
-
-                try {
-                    /*
-                     * All we have to do is to write content, metadata,
-                     * and add the message id to the global queue
-                     * Content are already added to the same work queue
-                     * adding metadata and message to global queue
-                     * happen here
-                     */
-                    if (beginPublisherTransaction) {
-                        andesTransactionEvent = Andes.getInstance().newTransaction(andesChannel);
-                        beginPublisherTransaction = false;
-                    }
-                    QpidAndesBridge.messageReceived(incomingMessage, getId(), andesChannel, andesTransactionEvent);
-
-                } catch (Throwable e) {
-                    _logger.error("Error processing completed messages, Close the session " + getSessionName(), e);
-                    // We mark the session as closed due to error
-                    if (_session instanceof AMQProtocolEngine) {
-                        ((AMQProtocolEngine) _session).closeProtocolSession();
+                        } catch (Throwable e) {
+                            _logger.error(
+                                    "Error processing completed messages, Close the session " + getSessionName(), e);
+                            // We mark the session as closed due to error
+                            if (_session instanceof AMQProtocolEngine) {
+                                ((AMQProtocolEngine) _session).closeProtocolSession();
+                            }
+                        }
                     }
                 }
 
             } finally {
                 long bodySize = _currentMessage.getSize();
-                long timestamp = ((BasicContentHeaderProperties) _currentMessage.getContentHeader().getProperties()).getTimestamp();
+                long timestamp = ((BasicContentHeaderProperties) _currentMessage.getContentHeader().getProperties())
+                        .getTimestamp();
                 _session.registerMessageReceived(bodySize, timestamp);
                 _currentMessage = null;
             }
