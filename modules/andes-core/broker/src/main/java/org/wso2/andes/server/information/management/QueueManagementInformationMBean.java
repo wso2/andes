@@ -71,7 +71,6 @@ import javax.management.openmbean.SimpleType;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Collections;
@@ -94,6 +93,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
     private final QueueRegistry queueRegistry;
 
     private final String PURGE_QUEUE_ERROR = "Error in purging queue : ";
+
+    private final String MESSAGE_COUNT_RETRIEVE_ERROR = "Error while retrieving message count queue : ";
 
     // OpenMBean data types for viewMessageContent method
     private static CompositeType _msgContentType = null;
@@ -787,7 +788,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      * it is not acceptable
      *
      * */
-    public long getMessageCount(String queueName, String msgPattern) {
+    public long getMessageCount(String queueName, String msgPattern) throws MBeanException {
 
         if (log.isDebugEnabled()) {
             log.debug("Counting at queue : " + queueName);
@@ -804,7 +805,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             }
 
         } catch (AndesException e) {
-            throw new RuntimeException("Error retrieving message count for the queue : " + queueName, e);
+            log.error(MESSAGE_COUNT_RETRIEVE_ERROR + queueName, e);
+            throw new MBeanException(e, MESSAGE_COUNT_RETRIEVE_ERROR + queueName);
         }
 
         return messageCount;

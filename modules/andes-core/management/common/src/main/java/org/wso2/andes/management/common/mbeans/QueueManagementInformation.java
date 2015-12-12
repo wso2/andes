@@ -78,7 +78,7 @@ public interface QueueManagementInformation {
      * @return Count of messages in store for the given queue.
      */
     @MBeanAttribute(name="MessageCount",description = "Message count of the queue")
-    long getMessageCount(String queueName,String msgPattern);
+    long getMessageCount(String queueName,String msgPattern) throws MBeanException;
 
     /***
      * Retrieve number of subscribers (active/inactive) for a given queue.
