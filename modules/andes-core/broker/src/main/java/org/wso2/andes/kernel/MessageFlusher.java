@@ -35,7 +35,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 
@@ -164,7 +164,7 @@ public class MessageFlusher {
          * in-memory message list scheduled to be delivered. These messages will be flushed
          * to subscriber
          */
-        private Set<DeliverableAndesMetadata> readButUndeliveredMessages = new
+        private SortedSet<DeliverableAndesMetadata> readButUndeliveredMessages = new
                 ConcurrentSkipListSet<>();
 
         /***
@@ -459,7 +459,7 @@ public class MessageFlusher {
      * @return how many messages sent
      * @throws Exception
      */
-    public int sendMessagesToSubscriptions(String destination, Set<DeliverableAndesMetadata> messages)
+    public int sendMessagesToSubscriptions(String destination, SortedSet<DeliverableAndesMetadata> messages)
             throws Exception {
 
         if(messages.iterator().hasNext()) {
