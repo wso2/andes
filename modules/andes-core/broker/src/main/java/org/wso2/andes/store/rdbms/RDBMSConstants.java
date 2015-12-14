@@ -178,9 +178,13 @@ public class RDBMSConstants {
             + " VALUES ( ?,?,? )";
 
     protected static final String PS_INSERT_QUEUE =
-            "INSERT INTO " + RDBMSConstants.QUEUES_TABLE + " ("
+            "INSERT INTO " + QUEUES_TABLE + " ("
             + RDBMSConstants.QUEUE_NAME + ")"
             + "  VALUES (?)";
+
+    protected static final String PS_DELETE_QUEUE =
+                        "DELETE FROM " + QUEUES_TABLE
+                        + " WHERE " + QUEUE_NAME + "=?";
 
     protected static final String PS_ALIAS_FOR_COUNT = "count";
 
@@ -814,6 +818,7 @@ public class RDBMSConstants {
     protected static final String TASK_RETRIEVING_CONTENT_FOR_MESSAGES = "retrieving content for multiple messages";
     protected static final String TASK_ADDING_METADATA_LIST = "adding metadata list.";
     protected static final String TASK_ADDING_METADATA = "adding metadata.";
+    protected static final String TASK_ADDING_MESSAGE = "adding message.";
     protected static final String TASK_ADDING_MESSAGES = "adding messages";
     protected static final String TASK_DELETING_MESSAGES = "deleting messages";
     protected static final String TASK_MOVING_METADATA_TO_DLC = "moving message metadata to dlc.";
@@ -869,6 +874,7 @@ public class RDBMSConstants {
     protected static final String TASK_STORING_QUEUE_INFO = "storing queue information ";
     protected static final String TASK_RETRIEVING_ALL_QUEUE_INFO = "retrieving all queue information. ";
     protected static final String TASK_DELETING_QUEUE_INFO = "deleting queue information. ";
+    protected static final String TASK_DELETE_QUEUE_MAPPING = "deleting queue mapping";
     protected static final String TASK_STORING_BINDING = "storing binding information. ";
     protected static final String TASK_RETRIEVING_BINDING_INFO = "retrieving binding information.";
     protected static final String TASK_DELETING_BINDING = "deleting binding information. ";
