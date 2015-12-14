@@ -17,6 +17,8 @@
  */
 package org.wso2.andes.server.information.management;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesSubscription;
@@ -26,6 +28,7 @@ import org.wso2.andes.server.management.AMQManagedObject;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionStore;
 
+import javax.management.MBeanException;
 import javax.management.NotCompliantMBeanException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -38,6 +41,8 @@ import java.util.Set;
  * Class to handle data for all subscription related UI functions.
  */
 public class SubscriptionManagementInformationMBean extends AMQManagedObject implements SubscriptionManagementInformation {
+
+    private static Log log = LogFactory.getLog(SubscriptionManagementInformationMBean.class);
 
     private static final String ALL_WILDCARD = "*";
 
@@ -103,7 +108,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
      * {@inheritDoc}
      */
     @Override
-    public String[] getAllTopicSubscriptions(String isDurable, String isActive) {
+    public String[] getAllTopicSubscriptions(String isDurable, String isActive) throws MBeanException{
         try {
             Set<AndesSubscription> subscriptionsToDisplay = new HashSet<>();
 
@@ -127,7 +132,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
                         continue;
                     }
 
-                    if (true == s.isDurable()) {
+                    if (s.isDurable()) {
                         if (s.hasExternalSubscriptions()) {
                             uniqueSubscriptionIDs.add(s.getTargetQueue());
                         } else {
@@ -164,8 +169,9 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
             }
             return allSubscriptionsForTopic;
 
-        } catch (Exception e) {
-            throw new RuntimeException("Error in accessing subscription information", e);
+        } catch (AndesException e) {
+            log.error("Error while invoking MBeans to retrieve subscription information", e);
+            throw new MBeanException(e, "Error while invoking MBeans to retrieve subscription information");
         }
     }
 

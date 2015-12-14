@@ -20,6 +20,8 @@ package org.wso2.andes.management.common.mbeans;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanAttribute;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
 
+import javax.management.MBeanException;
+
 /**
  * This is the interface for implementing subscription related information transfer to the UI.
  */
@@ -31,7 +33,7 @@ public interface SubscriptionManagementInformation {
      * MBean service to get filtered queue subscriptions
      * @param isDurable of type String (acceptable values => * | true | false)
      * @param isActive of type String (acceptable values => * | true | false)
-     * @return
+     * @return array of queue subscriptions
      */
     @MBeanAttribute(name="AllQueueSubscriptions",description = "All queue subscriptions")
     String[] getAllQueueSubscriptions(
@@ -42,20 +44,21 @@ public interface SubscriptionManagementInformation {
      * MBean service to get filtered topic subscriptions
      * @param isDurable of type String (acceptable values => * | true | false)
      * @param isActive of type String (acceptable values => * | true | false)
-     * @return
+     * @return array of topic subscriptions
      */
     @MBeanAttribute(name="TopicSubscriptions",description = "All topic subscriptions")
-    String[] getAllTopicSubscriptions(
+    String[] getAllTopicSubscriptions (
             @MBeanOperationParameter(name = "isDurable" ,description = "get durable ?") String isDurable,
-            @MBeanOperationParameter(name = "isActive" ,description = "get active ?") String isActive);
+            @MBeanOperationParameter(name = "isActive" ,description = "get active ?") String isActive)
+            throws MBeanException;
 
 
     /**
      * MBean service to get Pending Message count for a given destination
-     * @param subscribedNode
-     * @param msgPattern
-     * @param destinationName
-     * @return
+     * @param subscribedNode ID of the subscribed node
+     * @param msgPattern queue/topic
+     * @param destinationName destination querying for message count
+     * @return pending message count for destination
      */
     //TODO: there is noting like message count of node now
     @Deprecated
@@ -68,9 +71,8 @@ public interface SubscriptionManagementInformation {
     /**
      * MBean service to remove a subscription forcefully
      *
-     * @param subscriptionId
-     * @param destinationName
-     * @return
+     * @param subscriptionId ID of the subscription
+     * @param destinationName destination subscription is bound
      */
     @MBeanAttribute(name = "RemoveSubscription", description = "Remove a subscription forcefully")
     void removeSubscription(
