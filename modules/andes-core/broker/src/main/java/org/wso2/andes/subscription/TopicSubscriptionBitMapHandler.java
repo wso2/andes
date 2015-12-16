@@ -24,7 +24,8 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesSubscription;
-import org.wso2.andes.kernel.AndesSubscription.SubscriptionType;
+import org.wso2.andes.kernel.DestinationType;
+import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
 
 import java.util.*;
@@ -34,9 +35,9 @@ import java.util.regex.Pattern;
  * Store subscriptions according to the respective protocol using bitmaps as the underlying data structure for
  * faster wildcard matching.
  */
-public class ClusterSubscriptionBitMapHandler implements ClusterSubscriptionHandler {
+public class TopicSubscriptionBitMapHandler implements SubscriptionHandler {
 
-    private Log log = LogFactory.getLog(ClusterSubscriptionBitMapHandler.class);
+    private Log log = LogFactory.getLog(TopicSubscriptionBitMapHandler.class);
 
     /**
      * The topic delimiter to differentiate each constituent according to the current subscription type.
@@ -53,7 +54,7 @@ public class ClusterSubscriptionBitMapHandler implements ClusterSubscriptionHand
      */
     private String singleLevelWildCard;
 
-    private SubscriptionType subscriptionType;
+    private ProtocolType protocolType;
 
     // 'Null' and 'Other' constituents are picked from restricted topic characters
 
@@ -68,9 +69,9 @@ public class ClusterSubscriptionBitMapHandler implements ClusterSubscriptionHand
     private static final String OTHER_CONSTITUENT = "%other%";
 
     /**
-     * Keeps all the wildcard subscriptions.
+     * Keeps all the subscriptions.
      */
-    private List<AndesSubscription> wildCardSubscriptionList = new ArrayList<AndesSubscription>();
+    private List<AndesSubscription> subscriptionList = new ArrayList<AndesSubscription>();
 
     /**
      * Keeps all the subscription destinations broken into their constituents.
@@ -85,42 +86,42 @@ public class ClusterSubscriptionBitMapHandler implements ClusterSubscriptionHand
     /**
      * Initialize BitMapHandler with the subscription type.
      *
-     * @param subscriptionType The subscription type to handle
+     * @param protocolType The protocol type to handle
      * @throws AndesException
      */
-    public ClusterSubscriptionBitMapHandler(SubscriptionType subscriptionType) throws AndesException {
-        if (SubscriptionType.AMQP == subscriptionType) {
+    public TopicSubscriptionBitMapHandler(ProtocolType protocolType) throws AndesException {
+        if (ProtocolType.AMQP == protocolType) {
             constituentsDelimiter = ".";
             // AMQPUtils keep wildcard concatenated with constituent delimiter, hence removing them get wildcard only
             multiLevelWildCard = AMQPUtils.TOPIC_AND_CHILDREN_WILDCARD.replace(constituentsDelimiter, "");
             singleLevelWildCard = AMQPUtils.IMMEDIATE_CHILDREN_WILDCARD.replace(constituentsDelimiter, "");
-        } else if (SubscriptionType.MQTT == subscriptionType) {
+        } else if (ProtocolType.MQTT == protocolType) {
             constituentsDelimiter = "/";
             multiLevelWildCard = MQTTUtils.MULTI_LEVEL_WILDCARD;
             singleLevelWildCard = MQTTUtils.SINGLE_LEVEL_WILDCARD;
         } else {
-            throw new AndesException("Subscription type " + subscriptionType + " is not recognized.");
+            throw new AndesException("Subscription type " + protocolType + " is not recognized.");
         }
 
-        this.subscriptionType = subscriptionType;
+        this.protocolType = protocolType;
     }
 
     /**
-     * Add a new wildcard subscription to the structure.
+     * Add a new subscription to the structure.
      *
      * @param subscription The subscription to be added.
      * @throws AndesException
      */
     @Override
-    public void addWildCardSubscription(AndesSubscription subscription) throws AndesException {
+    public void addSubscription(AndesSubscription subscription) throws AndesException {
         String destination = subscription.getSubscribedDestination();
 
         if (StringUtils.isNotEmpty(destination)) {
             if (!isSubscriptionAvailable(subscription)) {
-                int newSubscriptionIndex = wildCardSubscriptionList.size();
+                int newSubscriptionIndex = subscriptionList.size();
 
                 // The index is added to make it clear to which index this is being inserted
-                wildCardSubscriptionList.add(newSubscriptionIndex, subscription);
+                subscriptionList.add(newSubscriptionIndex, subscription);
 
                 String constituents[] = destination.split(Pattern.quote(constituentsDelimiter));
 
@@ -147,7 +148,7 @@ public class ClusterSubscriptionBitMapHandler implements ClusterSubscriptionHand
 
                 addSubscriptionColumn(destination, newSubscriptionIndex);
             } else {
-                updateWildCardSubscription(subscription);
+                updateSubscription(subscription);
             }
 
         } else {
@@ -160,16 +161,16 @@ public class ClusterSubscriptionBitMapHandler implements ClusterSubscriptionHand
      * {@inheritDoc}
      */
     @Override
-    public void updateWildCardSubscription(AndesSubscription subscription) {
+    public void updateSubscription(AndesSubscription subscription) {
         if (isSubscriptionAvailable(subscription)) {
             // Need to add the new entry to the same index since bitmap logic is dependent on this index
-            int index = wildCardSubscriptionList.indexOf(subscription);
+            int index = subscriptionList.indexOf(subscription);
 
             // Should not allow to modify this list until the update is complete
             // Otherwise the subscription indexes will be invalid
-            synchronized (wildCardSubscriptionList) {
-                wildCardSubscriptionList.remove(index);
-                wildCardSubscriptionList.add(index, subscription);
+            synchronized (subscriptionList) {
+                subscriptionList.remove(index);
+                subscriptionList.add(index, subscription);
             }
         }
     }
@@ -181,11 +182,11 @@ public class ClusterSubscriptionBitMapHandler implements ClusterSubscriptionHand
     private Map<String, BitSet> addConstituentTable(int constituentIndex) {
         Map<String, BitSet> constituentTable = new HashMap<String, BitSet>();
 
-        BitSet nullBitSet = new BitSet(wildCardSubscriptionList.size());
-        BitSet otherBitSet = new BitSet(wildCardSubscriptionList.size());
+        BitSet nullBitSet = new BitSet(subscriptionList.size());
+        BitSet otherBitSet = new BitSet(subscriptionList.size());
 
         // Fill null and other constituent values for all available subscriptions
-        for (int subscriptionIndex = 0; subscriptionIndex < wildCardSubscriptionList.size(); subscriptionIndex++) {
+        for (int subscriptionIndex = 0; subscriptionIndex < subscriptionList.size(); subscriptionIndex++) {
             String[] constituentsOfSubscription = subscriptionConstituents.get(subscriptionIndex);
 
             if (constituentsOfSubscription.length < constituentIndex + 1) {
@@ -254,7 +255,7 @@ public class ClusterSubscriptionBitMapHandler implements ClusterSubscriptionHand
                         // a null constituent
                         String wildcardDestination = NULL_CONSTITUENT + constituentsDelimiter +
                                 currentConstituent;
-                        bitSet.set(subscriptionIndex, isMatchForSubscriptionType(wildcardDestination,
+                        bitSet.set(subscriptionIndex, isMatchForProtocolType(wildcardDestination,
                                 matchDestinationForNull));
 //                    }
                 } else if (OTHER_CONSTITUENT.equals(constituentOfCurrentRow)) {
@@ -263,7 +264,7 @@ public class ClusterSubscriptionBitMapHandler implements ClusterSubscriptionHand
                     // non-wildcard destination match with the corresponding matching method
                     String wildCardDestination = OTHER_CONSTITUENT + constituentsDelimiter + currentConstituent;
 
-                    bitSet.set(subscriptionIndex, isMatchForSubscriptionType(wildCardDestination,
+                    bitSet.set(subscriptionIndex, isMatchForProtocolType(wildCardDestination,
                             matchDestinationForOther));
                 } else if (singleLevelWildCard.equals(currentConstituent) ||
                         multiLevelWildCard.equals(currentConstituent)) {
@@ -287,7 +288,7 @@ public class ClusterSubscriptionBitMapHandler implements ClusterSubscriptionHand
             if (!multiLevelWildCard.equals(subscribedDestinationConstituents[subscribedDestinationConstituents.length
                     - 1])) {
                 String otherConstituentComparer = subscribedDestination + constituentsDelimiter + OTHER_CONSTITUENT;
-                matchingOthers = isMatchForSubscriptionType(subscribedDestination, otherConstituentComparer);
+                matchingOthers = isMatchForProtocolType(subscribedDestination, otherConstituentComparer);
             } // Else matchingOthers will be true
 
             for (int constituentIndex = subscribedDestinationConstituents.length; constituentIndex <
@@ -351,23 +352,23 @@ public class ClusterSubscriptionBitMapHandler implements ClusterSubscriptionHand
     }
 
     /**
-     * Return the match between the given two parameters with respect to the subscription type.
+     * Return the match between the given two parameters with respect to the protocol.
      *
      * @param wildCardDestination    The destination with/without wildcard
      * @param nonWildCardDestination The direct destination without wildcards
      * @return Match status
      * @throws AndesException
      */
-    private boolean isMatchForSubscriptionType(String wildCardDestination, String nonWildCardDestination) throws
+    private boolean isMatchForProtocolType(String wildCardDestination, String nonWildCardDestination) throws
             AndesException {
         boolean matching = false;
 
-        if (SubscriptionType.AMQP == subscriptionType) {
+        if (ProtocolType.AMQP == protocolType) {
             matching = AMQPUtils.isTargetQueueBoundByMatchingToRoutingKey(wildCardDestination, nonWildCardDestination);
-        } else if (SubscriptionType.MQTT == subscriptionType) {
+        } else if (ProtocolType.MQTT == protocolType) {
             matching = MQTTUtils.isTargetQueueBoundByMatchingToRoutingKey(wildCardDestination, nonWildCardDestination);
         } else {
-            throw new AndesException("Subscription type " + subscriptionType + " is not recognized.");
+            throw new AndesException("Protocol type " + protocolType + " is not recognized.");
         }
 
         return matching;
@@ -379,7 +380,7 @@ public class ClusterSubscriptionBitMapHandler implements ClusterSubscriptionHand
      * subscriptions are available for those, they should match. Hence need to create these empty constituent tables.
      */
     private void addEmptyConstituentTable() {
-        int noOfSubscriptions = wildCardSubscriptionList.size();
+        int noOfSubscriptions = subscriptionList.size();
         Map<String, BitSet> constituentTable = new HashMap<String, BitSet>();
 
         BitSet nullBitSet = new BitSet(noOfSubscriptions);
@@ -415,8 +416,8 @@ public class ClusterSubscriptionBitMapHandler implements ClusterSubscriptionHand
      * @param subscription The subscription to remove
      */
     @Override
-    public void removeWildCardSubscription(AndesSubscription subscription) {
-        int subscriptionIndex = wildCardSubscriptionList.indexOf(subscription);
+    public void removeSubscription(AndesSubscription subscription) {
+        int subscriptionIndex = subscriptionList.indexOf(subscription);
 
         if (subscriptionIndex > -1) {
             for (Map<String, BitSet> constituentTable : constituentTables) {
@@ -443,7 +444,7 @@ public class ClusterSubscriptionBitMapHandler implements ClusterSubscriptionHand
             }
 
             // Remove the subscription from subscription list
-            wildCardSubscriptionList.remove(subscriptionIndex);
+            subscriptionList.remove(subscriptionIndex);
         } else {
             log.warn("Subscription for destination : " + subscription.getSubscribedDestination() + " is not found to " +
                     "remove");
@@ -455,18 +456,15 @@ public class ClusterSubscriptionBitMapHandler implements ClusterSubscriptionHand
      */
     @Override
     public boolean isSubscriptionAvailable(AndesSubscription subscription) {
-        return wildCardSubscriptionList.contains(subscription);
+        return subscriptionList.contains(subscription);
     }
 
     /**
-     * Get matching subscribers for a given non-wildcard destination.
-     *
-     * @param destination The destination without wildcard
-     * @return Set of matching subscriptions
+     * {@inheritDoc}
      */
     @Override
-    public Set<AndesSubscription> getMatchingWildCardSubscriptions(String destination) {
-        Set<AndesSubscription> subscriptions = new HashSet<AndesSubscription>();
+    public Set<AndesSubscription> getMatchingSubscriptions(String destination, DestinationType destinationType) {
+        Set<AndesSubscription> subscriptions = new HashSet<>();
 
         if (StringUtils.isNotEmpty(destination)) {
 
@@ -484,10 +482,10 @@ public class ClusterSubscriptionBitMapHandler implements ClusterSubscriptionHand
             }
 
             // Keeps the results of 'AND' operations between each bit sets
-            BitSet andBitSet = new BitSet(wildCardSubscriptionList.size());
+            BitSet andBitSet = new BitSet(subscriptionList.size());
 
             // Since BitSet is initialized with false for each element we need to flip
-            andBitSet.flip(0, wildCardSubscriptionList.size());
+            andBitSet.flip(0, subscriptionList.size());
 
             // Get corresponding bit set for each constituent in the destination and operate bitwise AND operation
             for (int constituentIndex = 0; constituentIndex < constituents.length; constituentIndex++) {
@@ -515,7 +513,7 @@ public class ClusterSubscriptionBitMapHandler implements ClusterSubscriptionHand
             // Valid subscriptions are filtered, need to pick from subscription pool
             int nextSetBitIndex = andBitSet.nextSetBit(0);
             while (nextSetBitIndex > -1) {
-                subscriptions.add(wildCardSubscriptionList.get(nextSetBitIndex));
+                subscriptions.add(subscriptionList.get(nextSetBitIndex));
                 nextSetBitIndex = andBitSet.nextSetBit(nextSetBitIndex + 1);
             }
 
@@ -532,14 +530,14 @@ public class ClusterSubscriptionBitMapHandler implements ClusterSubscriptionHand
      * @return List of all subscriptions
      */
     @Override
-    public List<AndesSubscription> getAllWildCardSubscriptions() {
-        return wildCardSubscriptionList;
+    public List<AndesSubscription> getAllSubscriptions() {
+        return subscriptionList;
     }
 
     /**
      * {@inheritDoc}
      */
-    public Set<String> getAllTopics() {
+    public Set<String> getAllDestinations(DestinationType destinationType) {
         Set<String> topics = new HashSet<>();
 
 

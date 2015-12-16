@@ -33,7 +33,7 @@ public class MQTTMetaDataHandler {
         MQTTMessageMetaData metaInformation = (MQTTMessageMetaData) originalMeataData;
         //Will re-encode the bytes
         return MQTTUtils.encodeMetaInfo(MQTTUtils.MQTT_META_INFO, metaInformation.getMessageID(), metaInformation
-                        .getMessageArrivalTime(),false, metaInformation.getQosLevel(), routingKey,
+                        .getMessageArrivalTime(), metaInformation.getQosLevel(), routingKey,
                         metaInformation.isPersistent(), metaInformation.getContentSize());
 
     }

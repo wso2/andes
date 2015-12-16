@@ -21,22 +21,19 @@ package org.wso2.andes.server.queue;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.exchange.ExchangeDefaults;
 import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.Andes;
+import org.wso2.andes.kernel.AndesConstants;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.DestinationType;
+import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
-import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
-import org.wso2.andes.kernel.AndesConstants;
 import org.wso2.andes.server.message.AMQMessage;
-import org.wso2.andes.server.message.ServerMessage;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.registry.IApplicationRegistry;
 import org.wso2.andes.server.virtualhost.VirtualHost;
-import org.wso2.andes.subscription.AMQPLocalSubscription;
-import org.wso2.andes.subscription.LocalSubscription;
-import org.wso2.andes.subscription.OutboundSubscription;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -143,7 +140,8 @@ public class DLCQueueUtils {
         if (null == queue) {
 
             //store a queue for DLC and notify the Hazelcast instance about the change
-            Andes.getInstance().createQueue(new InboundQueueEvent(dlcQueueName, tenantOwner, false, true));
+            Andes.getInstance().createQueue(new InboundQueueEvent(
+                    dlcQueueName, tenantOwner, false, true, ProtocolType.AMQP, DestinationType.QUEUE));
             
             //add the queue into internal qpid
             ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().queue(dlcQueueName, tenantOwner,

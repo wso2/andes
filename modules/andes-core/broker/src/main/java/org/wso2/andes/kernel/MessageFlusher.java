@@ -216,6 +216,7 @@ public class MessageFlusher {
          * Returns boolean variable saying whether this destination has room or not
          *
          * @return whether this destination has room or not
+         * ***_akafixthis rename this method
          */
         public boolean isMessageBufferFull() {
             boolean hasRoom = true;
@@ -258,16 +259,16 @@ public class MessageFlusher {
      * Get the next subscription for the given destination. If at end of the subscriptions, it circles
      * around to the first one
      *
-     * @param destination
-     *         name of destination
-     * @param subscriptions4Queue
-     *         subscriptions registered for the destination
+     * @param destination name of destination
+     * @param protocolType The protocol which the destination belongs to
+     * @param destinationType The type of the destination
+     * @param subscriptions4Queue subscriptions registered for the destination
      * @return subscription to deliver
      * @throws AndesException
      */
-    public LocalSubscription findNextSubscriptionToSent(String destination,
-                                                         Collection<LocalSubscription>
-                                                                 subscriptions4Queue)
+    public LocalSubscription findNextSubscriptionToSent(String destination, ProtocolType protocolType,
+                                                        DestinationType destinationType,
+                                                        Collection<LocalSubscription> subscriptions4Queue)
             throws AndesException {
         LocalSubscription localSubscription = null;
         boolean isValidLocalSubscription = false;
@@ -276,7 +277,7 @@ public class MessageFlusher {
             return null;
         }
 
-        MessageDeliveryInfo messageDeliveryInfo = getMessageDeliveryInfo(destination);
+        MessageDeliveryInfo messageDeliveryInfo = getMessageDeliveryInfo(destination, protocolType, destinationType);
         Iterator<LocalSubscription> it = messageDeliveryInfo.iterator;
         while (it.hasNext()) {
             localSubscription = it.next();
@@ -314,16 +315,20 @@ public class MessageFlusher {
      * Will allow retrieval of information related to delivery of the message
      *
      * @param destination where the message should be delivered to
+     * @param protocolType The protocol which the destination belongs to
+     * @param destinationType The type of the destination
      * @return the information which holds of the message which should be delivered
      * @throws AndesException
      */
-    public MessageDeliveryInfo getMessageDeliveryInfo(String destination) throws AndesException {
+    public MessageDeliveryInfo getMessageDeliveryInfo(String destination, ProtocolType protocolType,
+                                                      DestinationType destinationType) throws AndesException {
         MessageDeliveryInfo messageDeliveryInfo = subscriptionCursar4QueueMap.get(destination);
         if (messageDeliveryInfo == null) {
             messageDeliveryInfo = new MessageDeliveryInfo();
             messageDeliveryInfo.destination = destination;
-            Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore
-                    .getActiveLocalSubscribersForQueuesAndTopics(destination);
+            Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore.getActiveLocalSubscribers(
+                    destination, protocolType, destinationType);
+
             messageDeliveryInfo.iterator = localSubscribersForQueue.iterator();
             subscriptionCursar4QueueMap.put(destination, messageDeliveryInfo);
         }
@@ -334,15 +339,17 @@ public class MessageFlusher {
      * Initialize message flusher for delivering messages for the given destination. This is the destination consumers
      * subscribe.
      *
-     * @param destination
-     *         Delivery Destination
+     * @param destination Delivery Destination
+     * @param protocolType The protocol which the destination belongs to
+     * @param destinationType The type of the destination
      * @throws AndesException
      */
-    public void prepareForDelivery(String destination) throws AndesException {
+    public void prepareForDelivery(String destination, ProtocolType protocolType, DestinationType destinationType)
+            throws AndesException {
         MessageDeliveryInfo messageDeliveryInfo = new MessageDeliveryInfo();
         messageDeliveryInfo.destination = destination;
-        Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore
-                .getActiveLocalSubscribersForQueuesAndTopics(destination);
+        Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore.getActiveLocalSubscribers(
+                destination, protocolType, destinationType);
 
         messageDeliveryInfo.iterator = localSubscribersForQueue.iterator();
         subscriptionCursar4QueueMap.put(destination, messageDeliveryInfo);
@@ -378,7 +385,10 @@ public class MessageFlusher {
                  * (games.cricket.* Not games.cricket.SriLanka)
                  */
                 String destination = slot.getDestinationOfMessagesInSlot();
-                MessageDeliveryInfo messageDeliveryInfo = getMessageDeliveryInfo(destination);
+                ProtocolType protocolType = AndesUtils.getProtocolTypeForMetaDataType(message.getMetaDataType());
+
+                MessageDeliveryInfo messageDeliveryInfo =
+                        getMessageDeliveryInfo(destination, protocolType, message.getDestinationType());
                 messageDeliveryInfo.bufferMessage(message);
             }
         } catch (Throwable e) {
@@ -389,14 +399,17 @@ public class MessageFlusher {
     /**
      * Send the messages to deliver
      *
-     * @param destination
-     *         message destination
-     * @param messages
-     *         message to add
+     * @param destination message destination
+     * @param protocolType The protocol which the destination belongs to
+     * @param destinationType The type of the destination
+     * @param messages message to add
      */
-    public void addAlreadyTrackedMessagesToBuffer(String destination, List<DeliverableAndesMetadata> messages) {
+    public void addAlreadyTrackedMessagesToBuffer(String destination, ProtocolType protocolType,
+                                                  DestinationType destinationType,
+                                                  List<DeliverableAndesMetadata> messages) {
         try {
-            MessageDeliveryInfo messageDeliveryInfo = getMessageDeliveryInfo(destination);
+            MessageDeliveryInfo messageDeliveryInfo =
+                    getMessageDeliveryInfo(destination, protocolType, destinationType);
             for (DeliverableAndesMetadata metadata : messages) {
                 messageDeliveryInfo.bufferMessage(metadata);
             }
@@ -465,9 +478,8 @@ public class MessageFlusher {
         if(messages.iterator().hasNext()) {
             //identify if this messages address queues or topics. There CANNOT be a mix
             DeliverableAndesMetadata firstMessage = messages.iterator().next();
-            boolean isTopic = firstMessage.isTopic();
 
-            if (isTopic) {
+            if (DestinationType.TOPIC == firstMessage.getDestinationType()) {
                 return topicMessageFlusher.deliverMessageToSubscriptions(destination, messages);
             } else {
                 return queueMessageFlusher.deliverMessageToSubscriptions(destination, messages);

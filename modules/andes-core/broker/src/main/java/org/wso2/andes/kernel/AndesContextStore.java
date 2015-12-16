@@ -58,24 +58,20 @@ public interface AndesContextStore extends HealthAwareStore{
     /**
      * Store subscription to the durable store.
      *
-     * @param destinationIdentifier   Identifier of the destination (queue/topic) of the queue this subscription is bound to
-     * @param subscriptionID          Id of the subscription
-     * @param subscriptionEncodeAsStr String encoded subscription
+     * @param subscription The subscription to store
      * @throws AndesException
      */
-    void storeDurableSubscription(String destinationIdentifier, String subscriptionID, String subscriptionEncodeAsStr)
+    void storeDurableSubscription(AndesSubscription subscription)
 		    throws AndesException;
 
 
     /**
      * Update already existing subscription.
      *
-     * @param destinationIdentifier     Identifier of the destination (queue/topic) of the queue this subscription is bound to
-     * @param subscriptionID            Id of the subscription
-     * @param subscriptionEncodeAsStr   String encoded subscription to be updated
+     * @param subscription The subscriptoin object to update
      * @throws AndesException
      */
-    void updateDurableSubscription(String destinationIdentifier, String subscriptionID, String subscriptionEncodeAsStr)
+    void updateDurableSubscription(AndesSubscription subscription)
 		    throws AndesException;
 
     /**
@@ -89,10 +85,9 @@ public interface AndesContextStore extends HealthAwareStore{
     /**
      * Remove stored subscription from durable store.
      *
-     * @param destinationIdentifier identifier of the destination (queue/topic) of the queue this subscription is bound to
-     * @param subscriptionID        id of the subscription
+     * @param subscription The subscription to remove
      */
-    void removeDurableSubscription(String destinationIdentifier, String subscriptionID) throws AndesException;
+    void removeDurableSubscription(AndesSubscription subscription) throws AndesException;
 
     /**
      * Store details of node.

@@ -20,8 +20,8 @@ package org.wso2.andes.kernel;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.queue.QueueEntry;
+import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.OutboundSubscription;
 
@@ -125,15 +125,17 @@ public class AndesUtils {
      * Generate storage queue name for a given destination
      * @param destination subscribed routing key
      * @param nodeID id of this node
-     * @param isTopic is destination represent a topic
+     * @param destinationType The destination type to generate storage queue for
      * @return  storage queue name for destination
      */
-    public static String getStorageQueueForDestination(String destination, String nodeID, boolean isTopic) {
+    public static String getStorageQueueForDestination(String destination, String nodeID,
+                                                       DestinationType destinationType) {
         String storageQueueName;
         // We need to add a prefix so that we could differentiate if queue is created under the same name
         //as topic
-        if(isTopic) {
-            storageQueueName = new StringBuilder(TOPIC_NODE_QUEUE_PREFIX).append("|").append(destination).append("|").append(nodeID).toString();
+        if(DestinationType.TOPIC == destinationType) {
+            storageQueueName = new StringBuilder(TOPIC_NODE_QUEUE_PREFIX).append("|").
+                    append(destination).append("|").append(nodeID).toString();
         } else {
             storageQueueName = destination;
         }
@@ -142,17 +144,19 @@ public class AndesUtils {
 
     public static LocalSubscription createLocalSubscription(OutboundSubscription subscription,
                                                             String subscriptionID, String destination,
-                                                            boolean isBoundToTopic, boolean isExclusive,
+                                                            boolean isExclusive,
                                                             boolean isDurable, String subscribedNode,
                                                             long subscribeTime, String targetQueue,
                                                             String targetQueueOwner, String targetQueueBoundExchange,
                                                             String targetQueueBoundExchangeType,
                                                             Short isTargetQueueBoundExchangeAutoDeletable,
-                                                            boolean hasExternalSubscriptions) {
+                                                            boolean hasExternalSubscriptions,
+                                                            DestinationType destinationType) {
 
-        return new LocalSubscription(subscription, subscriptionID, destination, isBoundToTopic, isExclusive,
+        return new LocalSubscription(subscription, subscriptionID, destination, isExclusive,
                 isDurable, subscribedNode, subscribeTime, targetQueue, targetQueueOwner, targetQueueBoundExchange,
-                targetQueueBoundExchangeType, isTargetQueueBoundExchangeAutoDeletable, hasExternalSubscriptions);
+                targetQueueBoundExchangeType, isTargetQueueBoundExchangeAutoDeletable, hasExternalSubscriptions,
+                destinationType);
 
     }
 
@@ -220,6 +224,26 @@ public class AndesUtils {
             }
         }
         return destinations;
+    }
+
+    /**
+     * Determine the matching protocol type for a given meta data type.
+     *
+     * @param metaDataType The meta data type to determine subscription type for
+     * @return Matching subscription type
+     */
+    public static ProtocolType getProtocolTypeForMetaDataType(MessageMetaDataType metaDataType) {
+
+        ProtocolType protocolType;
+
+        if (MessageMetaDataType.META_DATA_MQTT == metaDataType) {
+            protocolType = ProtocolType.MQTT;
+        } else {
+            // We set AMQP as the default
+            protocolType = ProtocolType.AMQP;
+        }
+
+        return protocolType;
     }
 
 }

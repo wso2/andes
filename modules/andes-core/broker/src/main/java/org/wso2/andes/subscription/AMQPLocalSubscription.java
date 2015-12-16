@@ -29,6 +29,8 @@ import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesUtils;
+import org.wso2.andes.kernel.DestinationType;
+import org.wso2.andes.kernel.HasInterestRuleAMQP;
 import org.wso2.andes.kernel.MaximumNumOfDeliveryRuleAMQP;
 import org.wso2.andes.kernel.NoLocalRuleAMQP;
 import org.wso2.andes.kernel.ProtocolDeliveryFailureException;
@@ -271,11 +273,14 @@ public class AMQPLocalSubscription implements OutboundSubscription {
         String targetQueue = amqQueue.getName();
 
         if (isBoundToTopic && !isDurable) {  // for normal topic subscriptions
-            storageQueueName = AndesUtils.getStorageQueueForDestination(destination, subscribedNode, true);
+            storageQueueName =
+                    AndesUtils.getStorageQueueForDestination(destination, subscribedNode, DestinationType.TOPIC);
         } else if (isBoundToTopic) {  //for durable topic subscriptions
-            storageQueueName = AndesUtils.getStorageQueueForDestination(targetQueue, subscribedNode, false);
+            storageQueueName =
+                    AndesUtils.getStorageQueueForDestination(targetQueue, subscribedNode, DestinationType.QUEUE);
         } else { //For queue subscriptions. This is a must. Otherwise queue will not be shared among nodes
-            storageQueueName = AndesUtils.getStorageQueueForDestination(targetQueue, subscribedNode, false);
+            storageQueueName =
+                    AndesUtils.getStorageQueueForDestination(targetQueue, subscribedNode, DestinationType.QUEUE);
         }
 
         return storageQueueName;

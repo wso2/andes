@@ -52,10 +52,6 @@ public class AndesSubscriptionManager {
      */
     private final ReadWriteLock clusterSubscriptionModifyLock = new ReentrantReadWriteLock();
 
-
-    private static final String TOPIC_PREFIX = "topic.";
-    private static final String QUEUE_PREFIX = "queue.";
-
     public void init() {
         subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         //adding subscription listeners
@@ -87,7 +83,7 @@ public class AndesSubscriptionManager {
         boolean durableTopicSubFoundAndUpdated = false;
         boolean hasActiveSubscriptions= false;
         List<LocalSubscription> mockSubscriptionList = new ArrayList<LocalSubscription>();
-        if(localSubscription.isDurable() && localSubscription.isBoundToTopic()) {
+        if(DestinationType.DURABLE_TOPIC == localSubscription.getDestinationType()) {
 
             Boolean allowSharedSubscribers = AndesConfigurationManager.readValue(AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
 
@@ -97,7 +93,7 @@ public class AndesSubscriptionManager {
             List<AndesSubscription> matchingSubscriptions = new ArrayList<>();
             Set<AndesSubscription> existingSubscriptions = subscriptionStore
                     .getClusterSubscribersForDestination(localSubscription.getSubscribedDestination(),
-                                    true, AndesSubscription.SubscriptionType.AMQP);
+                                    localSubscription.getProtocolType(), DestinationType.TOPIC);
             for (AndesSubscription existingSubscription : existingSubscriptions) {
                 if(existingSubscription.isDurable()
                         && existingSubscription.getTargetQueue().equals(localSubscription.getTargetQueue())) {
@@ -130,7 +126,7 @@ public class AndesSubscriptionManager {
                             mockSubscription.close();
                             mockSubscriptionList.add(mockSubscription);
                         } else {
-                            subscriptionStore.updateLocalSubscriptionSubscription(localSubscription);
+                            subscriptionStore.updateLocalSubscription(localSubscription);
                             durableTopicSubFoundAndUpdated = true;
                         }
 
@@ -149,7 +145,7 @@ public class AndesSubscriptionManager {
         //start a slot delivery worker on the destination (or topicQueue) subscription refers
         SlotDeliveryWorkerManager slotDeliveryWorkerManager = SlotDeliveryWorkerManager.getInstance();
         slotDeliveryWorkerManager.startSlotDeliveryWorker(localSubscription.getStorageQueueName(),
-                subscriptionStore.getDestination(localSubscription));
+                subscriptionStore.getDestination(localSubscription), localSubscription.getProtocolType(), localSubscription.getDestinationType());
 
         //notify the local subscription change to listeners. For durable topic subscriptions this will update
         // existing inactive one if it matches
@@ -160,13 +156,7 @@ public class AndesSubscriptionManager {
 
         if (0 != mockSubscriptionList.size()) {
             for (LocalSubscription mockSubscription : mockSubscriptionList) {
-                LocalSubscription removedSubscription = subscriptionStore.removeLocalSubscription
-                        (mockSubscription);
-                /** removed subscription is returned. If removed subscription is null this is not a actual local
-                 subscription. We need to directly remove it. */
-                if (null == removedSubscription) {
-                    subscriptionStore.removeSubscriptionDirectly(mockSubscription);
-                }
+                subscriptionStore.removeLocalSubscription(mockSubscription);
                 notifyLocalSubscriptionHasChanged(mockSubscription, SubscriptionListener.SubscriptionChange.DELETED);
             }
         }
@@ -182,13 +172,11 @@ public class AndesSubscriptionManager {
 
         clusterSubscriptionModifyLock.writeLock().lock();
         try {
-            Set<AndesSubscription> activeSubscriptions =
-                    subscriptionStore.getActiveClusterSubscribersForNode(nodeID, true);
-            activeSubscriptions.addAll(subscriptionStore.getActiveClusterSubscribersForNode(nodeID, false));
+            Set<AndesSubscription> activeSubscriptions = subscriptionStore.getActiveClusterSubscribersForNode(nodeID);
 
             if (!activeSubscriptions.isEmpty()) {
                 for (AndesSubscription sub : activeSubscriptions) {
-                    if (!(sub.isDurable() && sub.isBoundToTopic())) {
+                    if (!(DestinationType.DURABLE_TOPIC == sub.getDestinationType())) {
 
                         LocalSubscription mockSubscription = convertClusterSubscriptionToMockLocalSubscription(sub);
                         mockSubscription.close();
@@ -197,12 +185,7 @@ public class AndesSubscriptionManager {
                          * Close and notify. This is like closing local subscribers of that node thus we need to notify
                          * to cluster.
                          */
-                        LocalSubscription removedSubscription =
-                                subscriptionStore.removeLocalSubscription(mockSubscription);
-
-                        if(null == removedSubscription) {
-                            subscriptionStore.removeSubscriptionDirectly(sub);
-                        }
+                        subscriptionStore.removeLocalSubscription(mockSubscription);
                         notifyLocalSubscriptionHasChanged(mockSubscription,
                                 SubscriptionListener.SubscriptionChange.DELETED);
                     }
@@ -223,12 +206,11 @@ public class AndesSubscriptionManager {
     public void closeAllLocalSubscriptionsOfNode(String nodeID) throws AndesException {
         clusterSubscriptionModifyLock.writeLock().lock();
         try {
-            Set<AndesSubscription> activeSubscriptions = subscriptionStore.getActiveClusterSubscribersForNode(nodeID, true);
-            activeSubscriptions.addAll(subscriptionStore.getActiveClusterSubscribersForNode(nodeID, false));
+            Set<AndesSubscription> activeSubscriptions = subscriptionStore.getActiveClusterSubscribersForNode(nodeID);
 
             if (!activeSubscriptions.isEmpty()) {
                 for (AndesSubscription sub : activeSubscriptions) {
-                    if (!(sub.isDurable() && sub.isBoundToTopic())) {
+                    if (!(DestinationType.DURABLE_TOPIC == sub.getDestinationType())) {
 
                         LocalSubscription mockSubscription = convertClusterSubscriptionToMockLocalSubscription(sub);
                         mockSubscription.close();
@@ -243,37 +225,20 @@ public class AndesSubscriptionManager {
         }
     }
 
-
-    /**
-     * Close all active local subscribers in the local node
-     *
-     * @throws AndesException
-     */
-    public void closeAllLocalSubscriptionsOfNode() throws AndesException {
-
-        Set<LocalSubscription> activeSubscriptions = subscriptionStore.getActiveLocalSubscribers(true);
-        activeSubscriptions.addAll(subscriptionStore.getActiveLocalSubscribers(false));
-
-        if (!activeSubscriptions.isEmpty()) {
-            for (LocalSubscription sub : activeSubscriptions) {
-                closeLocalSubscription(sub);
-            }
-        }
-
-    }
-
     /**
      * check if any local active non durable subscription exists for a given topic consider
      * hierarchical subscription case as well
      *
-     * @param boundTopicName
-     *         name of the topic (bound destination)
+     * @param boundTopicName name of the topic (bound destination)
+     * @param protocolType The protocol of the destination
      * @return true if any subscription exists
      */
-    public boolean checkIfActiveNonDurableLocalSubscriptionExistsForTopic(String boundTopicName)
-                                                                             throws AndesException {
+    public boolean checkIfActiveNonDurableLocalSubscriptionExistsForTopic(
+            String boundTopicName, ProtocolType protocolType) throws AndesException {
+
         boolean subscriptionExists = false;
-        Set<LocalSubscription> activeSubscriptions = subscriptionStore.getActiveLocalSubscribers(boundTopicName, true);
+        Set<LocalSubscription> activeSubscriptions =
+                subscriptionStore.getActiveLocalSubscribers(boundTopicName, protocolType, DestinationType.TOPIC);
         for(LocalSubscription sub : activeSubscriptions) {
             if(!sub.isDurable()) {
                 subscriptionExists = true;
@@ -299,7 +264,8 @@ public class AndesSubscriptionManager {
          * Queue subscription representing durable topic will anyway deleted.
          * Topic subscription representing durable topic is deleted when binding is deleted
          */
-        if(subscription.isBoundToTopic() && subscription.isDurable()) {
+        // ***** akafixthis _ aka what is dis, why allowshared has been used here
+        if(DestinationType.DURABLE_TOPIC == subscription.getDestinationType()) {
             Boolean allowSharedSubscribers =  AndesConfigurationManager.readValue
                     (AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
             /*
@@ -314,7 +280,7 @@ public class AndesSubscriptionManager {
             List<AndesSubscription> matchingSubscriptions = new ArrayList<>();
             Set<AndesSubscription> existingSubscriptions = subscriptionStore
                     .getClusterSubscribersForDestination(subscription.getSubscribedDestination(),
-                            true, AndesSubscription.SubscriptionType.AMQP);
+                            subscription.getProtocolType(), DestinationType.TOPIC);
             for (AndesSubscription existingSubscription : existingSubscriptions) {
                 if(existingSubscription.isDurable()
                         && existingSubscription.getTargetQueue().equals(subscription.getTargetQueue())) {
@@ -336,11 +302,13 @@ public class AndesSubscriptionManager {
     /**
      * Delete all subscription entries bound for queue
      * @param boundQueueName queue name to delete subscriptions
+     * @param protocolType The protocol which the queue belongs to
+     * @param destinationType The destination type which the queue belongs to
      * @throws AndesException
      */
-    public synchronized void deleteAllLocalSubscriptionsOfBoundQueue(String boundQueueName) throws AndesException{
+    public synchronized void deleteAllLocalSubscriptionsOfBoundQueue(String boundQueueName, ProtocolType protocolType, DestinationType destinationType) throws AndesException{
         Set<LocalSubscription> subscriptionsOfQueue = subscriptionStore.getListOfLocalSubscriptionsBoundToQueue(
-                boundQueueName);
+                boundQueueName, protocolType, destinationType);
         for(LocalSubscription subscription : subscriptionsOfQueue) {
             subscription.close();
             subscriptionStore.createDisconnectOrRemoveLocalSubscription(subscription, SubscriptionListener.SubscriptionChange.DELETED);
@@ -355,11 +323,13 @@ public class AndesSubscriptionManager {
     /**
      * Delete all cluster subscription entries bound for queue
      * @param boundQueueName queue name to delete subscriptions
+     * @param protocolType The protocol which the queue belongs to
+     * @param destinationType The destination type which the queue belongs to
      * @throws AndesException
      */
-    public synchronized void deleteAllClusterSubscriptionsOfBoundQueue(String boundQueueName) throws AndesException{
+    public synchronized void deleteAllClusterSubscriptionsOfBoundQueue(String boundQueueName, ProtocolType protocolType, DestinationType destinationType) throws AndesException{
         Set<AndesSubscription> subscriptionsOfQueue = subscriptionStore.getListOfClusterSubscriptionsBoundToQueue(
-                boundQueueName);
+                boundQueueName, protocolType, destinationType);
         for(AndesSubscription subscription : subscriptionsOfQueue) {
             subscriptionStore.createDisconnectOrRemoveClusterSubscription(subscription, SubscriptionListener
                     .SubscriptionChange.DELETED);
@@ -393,6 +363,7 @@ public class AndesSubscriptionManager {
                     .getAllStoredDurableSubscriptions();
 
             Set<AndesSubscription> dbSubscriptions = new HashSet<>();
+            Set<AndesSubscription> memorySubscriptions = subscriptionStore.getAllClusterSubscriptions();
 
             for (Map.Entry<String, List<String>> entry : results.entrySet()) {
 
@@ -400,59 +371,34 @@ public class AndesSubscriptionManager {
                 for (String subscriptionAsStr : entry.getValue()) {
                     BasicSubscription subscription = new BasicSubscription(subscriptionAsStr);
                     dbSubscriptions.add(subscription);
-                    boolean subscriptionAvailable = subscriptionStore.isSubscriptionAvailable(subscription);
 
-                    if (!subscriptionAvailable) {
+                    if (subscriptionStore.isSubscriptionAvailable(subscription)) {
+                        // Remove from list of memory subscriptions since this subscription is verified
+                        memorySubscriptions.remove(subscription);
+
+                        if (DestinationType.DURABLE_TOPIC == subscription.getDestinationType()){
+                            //for durable topic subscriptions we need to update anyway since active state could have changed
+                            subscriptionStore.updateClusterSubscription(subscription);
+
+                        }
+                    } else {
                         // Subscription not available in subscription store, need to add
                         log.warn("Cluster Subscriptions are not in sync. Subscription not available in subscription "
                                 + "store but exists in DB. Thus adding " + subscription);
                         subscriptionStore.createDisconnectOrRemoveClusterSubscription(subscription, SubscriptionListener
                                 .SubscriptionChange.ADDED);
-                    } else if (subscription.isDurable() && subscription.isBoundToTopic()){
-                        //for durable topic subscriptions we need to update anyway since active state could have changed
-                        subscriptionStore.updateClusterSubscription(subscription);
-
                     }
                 }
             }
 
-            // Check for subscriptions in memory that are not available in db and remove them
-            List<AndesSubscription> subscriptionsToRemove = new ArrayList<>();
-            //queues
-            Set<String> queues = subscriptionStore.getAllDestinationsOfSubscriptions(false);
-            for (String queue : queues) {
-                Set<AndesSubscription> memorySubscriptions = subscriptionStore.getAllClusterSubscriptionsWithoutWildcards
-                        (queue, false);
-                //check if each memory subscription is in DB. If not remove from memory
-                if(null != memorySubscriptions) {
-                    for (AndesSubscription memorySubscription : memorySubscriptions) {
-                        if (!dbSubscriptions.contains(memorySubscription)) {
-                            subscriptionsToRemove.add(memorySubscription);
-                        }
-                    }
+            // Iterate through all remaining subscriptions in memory and remove if not available in db
+            for (AndesSubscription memorySubscription : memorySubscriptions) {
+                if (!dbSubscriptions.contains(memorySubscription)) {
+                    log.warn("Cluster Subscriptions are not in sync. Subscriptions exist in memory that are not "
+                            + "available in db. Thus removing from memory " + memorySubscription);
+                    subscriptionStore.createDisconnectOrRemoveClusterSubscription(memorySubscription, SubscriptionListener
+                            .SubscriptionChange.DELETED);
                 }
-            }
-            //topics
-            Set<String> topics = subscriptionStore.getAllDestinationsOfSubscriptions(true);
-            for (String topic : topics) {
-                Set<AndesSubscription> memorySubscriptions = subscriptionStore.getAllClusterSubscriptionsWithoutWildcards
-                        (topic, true);
-                //check if each memory subscription is in DB. If not remove from memory
-                if(null != memorySubscriptions) {
-                    for (AndesSubscription memorySubscription : memorySubscriptions) {
-                        if (!dbSubscriptions.contains(memorySubscription)) {
-                            subscriptionsToRemove.add(memorySubscription);
-                        }
-                    }
-                }
-            }
-
-            //perform delete of marked subscriptions
-            for (AndesSubscription andesSubscription : subscriptionsToRemove) {
-                log.warn("Cluster Subscriptions are not in sync. Subscriptions exist in memory that are not "
-                        + "available in db. Thus removing from memory " + andesSubscription);
-                subscriptionStore.createDisconnectOrRemoveClusterSubscription(andesSubscription, SubscriptionListener
-                        .SubscriptionChange.DELETED);
             }
         } finally {
             clusterSubscriptionModifyLock.writeLock().unlock();
@@ -516,7 +462,6 @@ public class AndesSubscriptionManager {
 
         String subscriptionID = clusterSubscription.getSubscriptionID();
         String destination = clusterSubscription.getSubscribedDestination();
-        boolean isBoundToTopic = clusterSubscription.isBoundToTopic();
         boolean isExclusive = clusterSubscription.isExclusive();
         boolean isDurable = clusterSubscription.isDurable();
         String subscribedNode = clusterSubscription.getSubscribedNode();
@@ -527,10 +472,15 @@ public class AndesSubscriptionManager {
         String targetQueueBoundExchangeType = clusterSubscription.getTargetQueueBoundExchangeType();
         Short isTargetQueueAutoDeletable = clusterSubscription.ifTargetQueueBoundExchangeAutoDeletable();
         boolean hasExternalSubscriptions = clusterSubscription.hasExternalSubscriptions();
+        DestinationType destinationType = clusterSubscription.getDestinationType();
 
-        return new LocalSubscription(null,subscriptionID, destination, isBoundToTopic, isExclusive, isDurable,
+        LocalSubscription localSubscription = new LocalSubscription(null,subscriptionID, destination, isExclusive, isDurable,
                 subscribedNode, subscribedTime, targetQueue, targetQueueOwner, targetQueueBoundExchange,
-                targetQueueBoundExchangeType, isTargetQueueAutoDeletable, hasExternalSubscriptions);
+                targetQueueBoundExchangeType, isTargetQueueAutoDeletable, hasExternalSubscriptions, destinationType);
+
+        localSubscription.setProtocolType(clusterSubscription.getProtocolType());
+
+        return localSubscription;
 
     }
 }

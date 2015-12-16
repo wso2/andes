@@ -22,13 +22,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.kernel.AndesContent;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.AndesUtils;
-import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.kernel.ProtocolMessage;
+import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.disruptor.inbound.InboundBindingEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundExchangeEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
@@ -280,10 +274,22 @@ public class AMQPUtils {
         OutboundSubscription amqpDeliverySubscription = new AMQPLocalSubscription(queue, subscription, queue
                 .isDurable(), isBoundToTopic);
 
+        DestinationType destinationType;
+
+        if (isBoundToTopic) {
+            if (queue.isDurable()) {
+                destinationType = DestinationType.DURABLE_TOPIC;
+            } else {
+                destinationType = DestinationType.TOPIC;
+            }
+        } else {
+            destinationType = DestinationType.QUEUE;
+        }
+
         LocalSubscription localSubscription = AndesUtils.createLocalSubscription(amqpDeliverySubscription,
-                subscriptionID, destination, isBoundToTopic, queue.isExclusive(), queue.isDurable(),
+                subscriptionID, destination, queue.isExclusive(), queue.isDurable(),
                 subscribedNode, subscribeTime, queue.getName(), queueOwner, queueBoundExchangeName,
-                queueBoundExchangeType, isqueueBoundExchangeAutoDeletable, subscription.isActive());
+                queueBoundExchangeType, isqueueBoundExchangeAutoDeletable, subscription.isActive(), destinationType);
 
         return localSubscription;
     }
@@ -387,9 +393,17 @@ public class AMQPUtils {
      * @return andes queue
      */
     public static InboundQueueEvent createAndesQueue(AMQQueue amqQueue) {
+        DestinationType destinationType;
+
+        if (amqQueue.checkIfBoundToTopicExchange()) {
+            destinationType = DestinationType.TOPIC;
+        } else {
+            destinationType = DestinationType.QUEUE;
+        }
+
         return new InboundQueueEvent(amqQueue.getName(),
                 (amqQueue.getOwner() != null) ? amqQueue.getOwner().toString() : "null",
-                amqQueue.isExclusive(), amqQueue.isDurable(), amqQueue.checkIfBoundToTopicExchange());
+                amqQueue.isExclusive(), amqQueue.isDurable(), ProtocolType.AMQP, destinationType);
     }
 
     /**

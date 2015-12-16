@@ -22,7 +22,9 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesSubscription;
+import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.management.common.mbeans.SubscriptionManagementInformation;
 import org.wso2.andes.server.management.AMQManagedObject;
 import org.wso2.andes.subscription.LocalSubscription;
@@ -30,10 +32,8 @@ import org.wso2.andes.subscription.SubscriptionStore;
 
 import javax.management.MBeanException;
 import javax.management.NotCompliantMBeanException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -74,105 +74,104 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
      * {@inheritDoc}
      */
     @Override
-    public String[] getAllQueueSubscriptions( String isDurable, String isActive) {
+    public String[] getAllSubscriptions( String isDurable, String isActive, String protocolType,
+                                         String destinationType) {
         try {
-            List<String> allSubscriptionsForQueues = new ArrayList<>();
 
-            List<String> allQueues = AndesContext.getInstance().getAMQPConstructStore().getQueueNames();
+            ProtocolType protocolTypeArg = ProtocolType.valueOf(protocolType);
+            DestinationType destinationTypeArg = DestinationType.valueOf(destinationType);
 
-            for (String queue : allQueues) {
-                Set<AndesSubscription> subscriptions = AndesContext.getInstance().getSubscriptionStore()
-                        .getAllSubscribersForDestination(queue, false, AndesSubscription.SubscriptionType.AMQP);
+            Set<AndesSubscription> subscriptions = AndesContext.getInstance().getSubscriptionStore()
+                            .getAllClusterSubscriptionsForDestinationType(protocolTypeArg, destinationTypeArg);
 
-                for (AndesSubscription s : subscriptions) {
-                    Long pendingMessageCount = MessagingEngine.getInstance().getMessageCountOfQueue(queue);
+            Set<AndesSubscription> subscriptionsToDisplay;
 
-                    if (!isDurable.equals(ALL_WILDCARD) && (Boolean.parseBoolean(isDurable) != s.isDurable())) {
-                        continue;
-                    }
-                    if (!isActive.equals(ALL_WILDCARD) && (Boolean.parseBoolean(isActive) != s.hasExternalSubscriptions())) {
-                        continue;
-                    }
-
-                    allSubscriptionsForQueues.add(renderSubscriptionForUI(s,pendingMessageCount.intValue()));
-                }
-            }
-            return allSubscriptionsForQueues.toArray(new String[allSubscriptionsForQueues.size()]);
-
-        } catch (Exception e) {
-            throw new RuntimeException("Error in accessing subscription information", e);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String[] getAllTopicSubscriptions(String isDurable, String isActive) throws MBeanException{
-        try {
-            Set<AndesSubscription> subscriptionsToDisplay = new HashSet<>();
-
-            Set<String> allTopics = AndesContext.getInstance().getSubscriptionStore().getTopics();
-
-            for (String topic : allTopics) {
-                Set<AndesSubscription> subscriptions;
-                subscriptions = AndesContext.getInstance().getSubscriptionStore().getAllSubscribersForDestination
-                        (topic, true, AndesSubscription.SubscriptionType.AMQP);
-
-                Map<String, AndesSubscription> inactiveSubscriptions = new HashMap<>();
-                Set<String> uniqueSubscriptionIDs = new HashSet<>();
-                for (AndesSubscription s : subscriptions) {
-
-                    if (!isDurable.equals(ALL_WILDCARD) && (Boolean.parseBoolean(isDurable) != s.isDurable())) {
-                        continue;
-                    }
-                    if (!isActive.equals(ALL_WILDCARD) && (Boolean.parseBoolean(isActive) != s.hasExternalSubscriptions())) {
-                        continue;
-                    } if(!s.isBoundToTopic()){
-                        continue;
-                    }
-
-                    if (s.isDurable()) {
-                        if (s.hasExternalSubscriptions()) {
-                            uniqueSubscriptionIDs.add(s.getTargetQueue());
-                        } else {
-                            // Since only one inactive shared subscription should be shown
-                            // we replace the existing value if any
-                            inactiveSubscriptions.put(s.getTargetQueue(), s);
-                            // Inactive subscriptions will be added later considering shared subscriptions
-                            continue;
-                        }
-                    }
-
-                    subscriptionsToDisplay.add(s);
-                }
-
-                // In UI only one inactive shared subscription should be shown if there are no active subscriptions.
-                for (Map.Entry<String, AndesSubscription> inactiveEntry : inactiveSubscriptions.entrySet()) {
-                    // If there are active subscriptions with same target queue, we skip adding inactive subscriptions
-                    if (!(uniqueSubscriptionIDs.contains(inactiveEntry.getKey()))) {
-                        subscriptionsToDisplay.add(inactiveEntry.getValue());
-                    }
-                }
+            if (DestinationType.TOPIC == destinationTypeArg) {
+                subscriptionsToDisplay = filterTopicSubscriptions(isDurable, isActive, subscriptions);
+            } else {
+                subscriptionsToDisplay = filterQueueSubscriptions(isDurable, isActive, subscriptions);
             }
 
-            String[] allSubscriptionsForTopic = new String[subscriptionsToDisplay.size()];
+            String[] subscriptionArray = new String[subscriptionsToDisplay.size()];
 
             int index = 0;
             for (AndesSubscription subscription : subscriptionsToDisplay) {
                 Long pendingMessageCount
                         = MessagingEngine.getInstance().getMessageCountOfQueue(subscription.getStorageQueueName());
 
-                allSubscriptionsForTopic[index] = renderSubscriptionForUI(subscription, pendingMessageCount.intValue());
+                subscriptionArray[index] = renderSubscriptionForUI(subscription, pendingMessageCount.intValue());
                 index++;
 
             }
-            return allSubscriptionsForTopic;
+            return subscriptionArray;
 
-        } catch (AndesException e) {
-            log.error("Error while invoking MBeans to retrieve subscription information", e);
-            throw new MBeanException(e, "Error while invoking MBeans to retrieve subscription information");
+        } catch (Exception e) {
+            throw new RuntimeException("Error in accessing subscription information", e);
         }
+    }
+
+    private Set<AndesSubscription> filterQueueSubscriptions(String isDurable, String isActive,
+                                                            Set<AndesSubscription> subscriptions) {
+        Set<AndesSubscription> subscriptionsToDisplay = new HashSet<>();
+
+        for (AndesSubscription subscription : subscriptions) {
+            if (!isDurable.equals(ALL_WILDCARD)
+                    && (Boolean.parseBoolean(isDurable) != subscription.isDurable())) {
+                continue;
+            }
+            if (!isActive.equals(ALL_WILDCARD)
+                    && (Boolean.parseBoolean(isActive) != subscription.hasExternalSubscriptions())) {
+                continue;
+            }
+
+            subscriptionsToDisplay.add(subscription);
+        }
+
+        return subscriptionsToDisplay;
+    }
+
+    private Set<AndesSubscription> filterTopicSubscriptions(String isDurable, String isActive,
+                                                            Set<AndesSubscription> subscriptions) {
+        Set<AndesSubscription> subscriptionsToDisplay = new HashSet<>();
+
+        Map<String, AndesSubscription> inactiveSubscriptions = new HashMap<>();
+        Set<String> uniqueSubscriptionIDs = new HashSet<>();
+
+        for (AndesSubscription subscription : subscriptions) {
+            if (!isDurable.equals(ALL_WILDCARD)
+                    && (Boolean.parseBoolean(isDurable) != subscription.isDurable())) {
+                continue;
+            }
+            if (!isActive.equals(ALL_WILDCARD)
+                    && (Boolean.parseBoolean(isActive) != subscription.hasExternalSubscriptions())) {
+                continue;
+            }
+
+            if (subscription.isDurable()) {
+                if (subscription.hasExternalSubscriptions()) {
+                    uniqueSubscriptionIDs.add(subscription.getTargetQueue());
+                } else {
+                    // Since only one inactive shared subscription should be shown
+                    // we replace the existing value if any
+                    inactiveSubscriptions.put(subscription.getTargetQueue(), subscription);
+                    // Inactive subscriptions will be added later considering shared subscriptions
+                    continue;
+                }
+            }
+
+            subscriptionsToDisplay.add(subscription);
+        }
+
+        // In UI only one inactive shared subscription should be shown if there are no active subscriptions.
+        for (Map.Entry<String, AndesSubscription> inactiveEntry : inactiveSubscriptions.entrySet()) {
+            // If there are active subscriptions with same target queue, we skip adding inactive subscriptions
+            if (!(uniqueSubscriptionIDs.contains(inactiveEntry.getKey()))) {
+                subscriptionsToDisplay.add(inactiveEntry.getValue());
+            }
+        }
+
+
+        return subscriptionsToDisplay;
     }
 
     /**

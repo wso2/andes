@@ -28,6 +28,7 @@ import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
+import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.MQTTMessageContext;
 import org.wso2.andes.mqtt.MQTTPublisherChannel;
@@ -88,18 +89,17 @@ public class MQTTUtils {
      *
      * @param metaData      the information about the published message
      * @param messageID     the identity of the message
-     * @param topic         the topic the message was published
      * @param destination   the definition where the message should be sent to
      * @param persistence   should this message be persisted
      * @param contentLength the length of the message content
      * @param qos           the level of qos the message was published at
      * @return the collective information as a bytes object
      */
-    public static byte[] encodeMetaInfo(String metaData, long messageID, long arrivalTime, boolean topic, int qos,
+    public static byte[] encodeMetaInfo(String metaData, long messageID, long arrivalTime, int qos,
                                         String destination, boolean persistence, int contentLength) {
         byte[] metaInformation;
         String information = metaData + "?" + MESSAGE_ID + "=" + messageID + "," + ARRIVAL_TIME + "=" + arrivalTime
-                + "," +TOPIC + "=" + topic + "," + DESTINATION + "=" + destination + "," + PERSISTENCE
+                + "," +TOPIC + "=true" + "," + DESTINATION + "=" + destination + "," + PERSISTENCE
                 + "=" + persistence + "," + MESSAGE_CONTENT_LENGTH + "=" + contentLength + "," + QOSLEVEL + "=" + qos;
         metaInformation = information.getBytes();
         return metaInformation;
@@ -123,7 +123,7 @@ public class MQTTUtils {
 
         AndesMessageMetadata messageHeader = new AndesMessageMetadata();
         messageHeader.setMessageID(messageID);
-        messageHeader.setTopic(true);
+        messageHeader.setDestinationType(DestinationType.TOPIC);
         messageHeader.setDestination(topic);
         messageHeader.setPersistent(true);
         messageHeader.setRetain(retain);
@@ -139,7 +139,7 @@ public class MQTTUtils {
         }
 
         byte[] andesMetaData = encodeMetaInfo(MQTT_META_INFO, messageHeader.getMessageID(), receivedTime,
-                messageHeader.isTopic(), qosLevel, messageHeader.getDestination(), messageHeader.isPersistent(),
+                 qosLevel, messageHeader.getDestination(), messageHeader.isPersistent(),
                 messageContentLength);
 
         messageHeader.setMetadata(andesMetaData);

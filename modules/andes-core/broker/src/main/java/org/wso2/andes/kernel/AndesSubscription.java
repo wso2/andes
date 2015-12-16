@@ -19,18 +19,7 @@
 package org.wso2.andes.kernel;
 
 
-import java.util.List;
-
 public interface AndesSubscription {
-
-    /**
-     * Different subscription types represented by a {@link AndesSubscription} object.
-     */
-    public enum SubscriptionType {
-        MQTT,
-        AMQP
-    }
-
     /**
      * @return subscription ID of the subscription or null
      */
@@ -40,11 +29,6 @@ public interface AndesSubscription {
      * @return routing key of the binding to whom subscription is made
      */
 	public String getSubscribedDestination();
-
-    /**
-     * @return is queue of this subscription bound to any topic
-     */
-	public boolean isBoundToTopic();
 
     /**
      * @return is subscribed to a durable queue/binding
@@ -123,14 +107,18 @@ public interface AndesSubscription {
 
     /**
      * Set the subscription type to indicate to which protocol this subscription belongs to.
-     * @param subscriptionType The subscription type
+     * @param protocolType The subscription type
      */
-    public void setSubscriptionType(SubscriptionType subscriptionType);
+    void setProtocolType(ProtocolType protocolType);
 
     /**
      * Get the subscription type which decide the protocol this subscription belongs to.
      * @return Subscription type
      */
-    public SubscriptionType getSubscriptionType();
+    ProtocolType getProtocolType();
+
+    void setDestinationType(DestinationType destinationType);
+
+    DestinationType getDestinationType();
 
 }

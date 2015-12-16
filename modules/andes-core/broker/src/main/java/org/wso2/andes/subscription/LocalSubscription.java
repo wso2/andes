@@ -26,9 +26,11 @@ import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
+import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.MessageStatus;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolMessage;
+import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.mqtt.MQTTLocalSubscription;
 
 import java.util.ArrayList;
@@ -66,7 +68,6 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
      * @param subscription protocol subscription to send messages
      * @param subscriptionID ID of the subscription (unique)
      * @param destination subscription bound destination
-     * @param isBoundToTopic true if subscription is a topic subscription (durable/non-durable)
      * @param isExclusive true is the subscription is exclusive
      * @param isDurable true if subscription is durable (should preserve messages in absence)
      * @param subscribedNode identifier of the node actual subscription exists
@@ -78,26 +79,28 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
      * @param isTargetQueueBoundExchangeAutoDeletable is queue subscription is bound to is auto deletable (this can
      *                                                be true if subscription is non durable)
      * @param hasExternalSubscriptions true if subscription is active (has a live TCP connection)
+     * @param destinationType The type of the destination
      */
     public LocalSubscription(OutboundSubscription subscription, String subscriptionID, String destination,
-                             boolean isBoundToTopic, boolean isExclusive, boolean isDurable,
-                             String subscribedNode, long subscribeTime, String targetQueue, String targetQueueOwner, String targetQueueBoundExchange,
+                             boolean isExclusive, boolean isDurable,
+                             String subscribedNode, long subscribeTime, String targetQueue, String targetQueueOwner,
+                             String targetQueueBoundExchange,
                              String targetQueueBoundExchangeType, Short isTargetQueueBoundExchangeAutoDeletable,
-                             boolean hasExternalSubscriptions) {
+                             boolean hasExternalSubscriptions, DestinationType destinationType) {
 
-        super(subscriptionID, destination, isBoundToTopic, isExclusive, isDurable, subscribedNode, subscribeTime,
+        super(subscriptionID, destination, isExclusive, isDurable, subscribedNode, subscribeTime,
                 targetQueue, targetQueueOwner, targetQueueBoundExchange, targetQueueBoundExchangeType,
-                isTargetQueueBoundExchangeAutoDeletable, hasExternalSubscriptions);
+                isTargetQueueBoundExchangeAutoDeletable, hasExternalSubscriptions, destinationType);
 
         this.subscription = subscription;
 
         // In case of mock subscriptions, this becomes null
         if (null != subscription) {
-            //We need to keep the subscriptionType in basic subscription for notification
+            //We need to keep the protocolType in basic subscription for notification
             if(subscription instanceof AMQPLocalSubscription) {
-                setSubscriptionType(SubscriptionType.AMQP);
+                setProtocolType(ProtocolType.AMQP);
             } else if(subscription instanceof MQTTLocalSubscription) {
-                setSubscriptionType(SubscriptionType.MQTT);
+                setProtocolType(ProtocolType.MQTT);
             }
 
             setStorageQueueName(subscription.getStorageQueueName(destination, subscribedNode));
@@ -252,7 +255,7 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
                 List<DeliverableAndesMetadata> messagesToRemove = new ArrayList<>();
                 andesMetadata.evaluateMessageAcknowledgement();
                 //for topic messages see if we can delete the message
-                if ((!andesMetadata.isOKToDispose()) && (andesMetadata.isTopic())) {
+                if ((!andesMetadata.isOKToDispose()) && (DestinationType.TOPIC == andesMetadata.getDestinationType())) {
                     if (andesMetadata.getLatestState().equals(MessageStatus.ACKED_BY_ALL)) {
                         messagesToRemove.add(andesMetadata);
                     }
@@ -309,5 +312,9 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
                 append(targetQueue).
                 append(targetQueueBoundExchange).
                 toHashCode();
+    }
+
+    public OutboundSubscription getOutboundSubscription() {
+        return subscription;
     }
 }

@@ -48,10 +48,6 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      */
     long expirationTime;
     /**
-     * true if the message is addressed to a topic exchange.
-     */
-    boolean isTopic;
-    /**
      * The timestamp at which the message arrived at the first gates of the broker.
      */
     long arrivalTime;
@@ -108,6 +104,11 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      *
      */
     private boolean retain;
+
+    /**
+     * The destination type this message belongs to.
+     */
+    private DestinationType destinationType;
 
     public AndesMessageMetadata() {
         propertyMap = new HashMap<>();
@@ -187,14 +188,6 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         this.expirationTime = expirationTime;
     }
 
-    public boolean isTopic() {
-        return isTopic;
-    }
-
-    public void setTopic(boolean isTopic) {
-        this.isTopic = isTopic;
-    }
-
     public String getDestination() {
         return destination;
     }
@@ -239,7 +232,6 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         clone.retain = retain;
         clone.metadata = metadata;
         clone.expirationTime = expirationTime;
-        clone.isTopic = isTopic;
         clone.destination = destination;
         clone.storageQueueName = storageQueueName;
         clone.isPersistent = isPersistent;
@@ -247,6 +239,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         clone.metaDataType = metaDataType;
         clone.propertyMap = propertyMap;
         clone.messageContentLength = messageContentLength;
+        clone.destinationType = destinationType;
         return clone;
     }
 
@@ -288,16 +281,25 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
             arrivalTime = ((MessageMetaData) mdt).getArrivalTime();
             destination = ((MessageMetaData) mdt).getMessagePublishInfo().getRoutingKey().toString();
             this.messageContentLength = ((MessageMetaData) mdt).getContentSize();
-            isTopic = ((MessageMetaData) mdt).getMessagePublishInfo().getExchange().equals(AMQPUtils.TOPIC_EXCHANGE_NAME);
+            if (((MessageMetaData) mdt).getMessagePublishInfo().getExchange().equals(AMQPUtils.TOPIC_EXCHANGE_NAME)) {
+                destinationType = DestinationType.TOPIC;
+            } else {
+                destinationType = DestinationType.QUEUE;
+            }
         }
         //For MQTT Specific Types
         if (type.equals(MessageMetaDataType.META_DATA_MQTT)) {
             this.arrivalTime = ((MQTTMessageMetaData) mdt).getMessageArrivalTime();
-            this.isTopic = ((MQTTMessageMetaData) mdt).isTopic();
             this.destination = ((MQTTMessageMetaData) mdt).getDestination();
             this.isPersistent = ((MQTTMessageMetaData) mdt).isPersistent();
             this.messageContentLength = ((MQTTMessageMetaData) mdt).getContentSize();
             this.qosLevel = ((MQTTMessageMetaData) mdt).getQosLevel();
+
+            if (0 == qosLevel) {
+                this.destinationType = DestinationType.TOPIC;
+            } else {
+                this.destinationType = DestinationType.QUEUE;
+            }
         }
 
     }
@@ -371,5 +373,13 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      */
     public Object getProperty(String key) {
         return propertyMap.get(key);
+    }
+
+    public DestinationType getDestinationType() {
+        return destinationType;
+    }
+
+    public void setDestinationType(DestinationType destinationType) {
+        this.destinationType = destinationType;
     }
 }

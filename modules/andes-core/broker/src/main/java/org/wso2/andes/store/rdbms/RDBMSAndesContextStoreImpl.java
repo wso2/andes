@@ -25,6 +25,7 @@ import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesExchange;
 import org.wso2.andes.kernel.AndesQueue;
+import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
@@ -65,7 +66,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
      * Contains utils methods related to connection health tests
      */
     private RDBMSStoreUtils rdbmsStoreUtils;
-    
+
     
     
     /**
@@ -169,15 +170,16 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public void storeDurableSubscription(String destinationIdentifier, String subscriptionID,
-                                         String subscriptionEncodeAsStr) throws AndesException {
+    public void storeDurableSubscription(AndesSubscription subscription) throws AndesException {
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
+
+        String destinationIdentifier = getDestinationIdentifier(subscription);
+        String subscriptionID = subscription.getSubscribedNode() + "_" + subscription.getSubscriptionID();
         
         try {
-
             connection = getConnection();
 
             preparedStatement = connection.prepareStatement(
@@ -185,7 +187,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement.setString(1, destinationIdentifier);
             preparedStatement.setString(2, subscriptionID);
-            preparedStatement.setString(3, subscriptionEncodeAsStr);
+            preparedStatement.setString(3, subscription.encodeAsStr());
             preparedStatement.executeUpdate();
 
             connection.commit();
@@ -205,11 +207,14 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public void updateDurableSubscription(String destinationIdentifier, String subscriptionID, 
-                                          String subscriptionEncodeAsStr) throws AndesException {
+    public void updateDurableSubscription(AndesSubscription subscription) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
+
+        String destinationIdentifier = getDestinationIdentifier(subscription);
+        String subscriptionID = subscription.getSubscribedNode() + "_" + subscription.getSubscriptionID();
+
         try {
 
             connection = getConnection();
@@ -217,7 +222,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             preparedStatement = connection.prepareStatement(
                     RDBMSConstants.PS_UPDATE_DURABLE_SUBSCRIPTION);
 
-            preparedStatement.setString(1, subscriptionEncodeAsStr);
+            preparedStatement.setString(1, subscription.encodeAsStr());
             preparedStatement.setString(2, destinationIdentifier);
             preparedStatement.setString(3, subscriptionID);
             preparedStatement.executeUpdate();
@@ -270,10 +275,14 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public void removeDurableSubscription(String destinationIdentifier, String subscriptionID)
+    public void removeDurableSubscription(AndesSubscription subscription)
             throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
+
+        String destinationIdentifier = getDestinationIdentifier(subscription);
+        String subscriptionID = subscription.getSubscribedNode() + "_" + subscription.getSubscriptionID();
+
         String task = RDBMSConstants.TASK_REMOVING_DURABLE_SUBSCRIPTION + "destination: " +
                 destinationIdentifier + " sub id: " + subscriptionID;
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
@@ -1865,5 +1874,9 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             return false;
         }
     
+    }
+
+    private String getDestinationIdentifier(AndesSubscription subscription) {
+        return subscription.getDestinationType() + "." + subscription.getSubscribedDestination();
     }
 }

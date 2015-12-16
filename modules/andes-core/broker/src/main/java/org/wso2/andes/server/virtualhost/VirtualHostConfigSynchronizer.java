@@ -146,14 +146,14 @@ public class VirtualHostConfigSynchronizer implements
     /**
      * purge queue from local node - clear all in memory message buffers for the queue in this node.
      *
-     * @param queue
+     * @param queue The Andes Queue object to purge
      * @throws AndesException
      */
     public void clusterQueuePurged(AndesQueue queue) throws AndesException {
         try {
             log.info("Queue purge request received queue= " + queue.queueName);
             MessagingEngine.getInstance().clearMessagesFromQueueInMemory(queue.queueName,
-                    queue.getLastPurgedTimestamp());
+                    queue.getLastPurgedTimestamp(), queue.getProtocolType(), queue.getDestinationType());
 
         } catch (AndesException e) {
             throw new AndesException("Could not purge cluster queue : " + queue.toString(), e);

@@ -35,22 +35,26 @@ public interface SubscriptionManagementInformation {
      * @param isActive of type String (acceptable values => * | true | false)
      * @return array of queue subscriptions
      */
-    @MBeanAttribute(name="AllQueueSubscriptions",description = "All queue subscriptions")
-    String[] getAllQueueSubscriptions(
+    @MBeanAttribute(name="AllSubscriptions",description = "All subscriptions")
+    String[] getAllSubscriptions(
             @MBeanOperationParameter(name = "isDurable" ,description = "get durable ?") String isDurable,
-            @MBeanOperationParameter(name = "isActive" ,description = "get active ?") String isActive);
+            @MBeanOperationParameter(name = "isActive" ,description = "get active ?") String isActive,
+            @MBeanOperationParameter(
+                    name = "protocolType", description = "protocol of subscriptions") String protocolType,
+            @MBeanOperationParameter(
+                    name = "destinationType",
+                    description = "Destination type of the subscriptions") String destinationType);
 
     /**
      * MBean service to get filtered topic subscriptions
      * @param isDurable of type String (acceptable values => * | true | false)
      * @param isActive of type String (acceptable values => * | true | false)
-     * @return array of topic subscriptions
+     * @return
      */
     @MBeanAttribute(name="TopicSubscriptions",description = "All topic subscriptions")
-    String[] getAllTopicSubscriptions (
+    String[] getAllTopicSubscriptions(
             @MBeanOperationParameter(name = "isDurable" ,description = "get durable ?") String isDurable,
-            @MBeanOperationParameter(name = "isActive" ,description = "get active ?") String isActive)
-            throws MBeanException;
+            @MBeanOperationParameter(name = "isActive" ,description = "get active ?") String isActive);
 
 
     /**

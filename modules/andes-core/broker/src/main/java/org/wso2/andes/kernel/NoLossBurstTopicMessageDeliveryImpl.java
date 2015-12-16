@@ -21,7 +21,6 @@ package org.wso2.andes.kernel;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionStore;
 
@@ -64,7 +63,9 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
                  * bound to unique queue based on subscription id
                  */
                 Collection<LocalSubscription> subscriptions4Queue =
-                        subscriptionStore.getActiveLocalSubscribers(destination, message.isTopic());
+                        subscriptionStore.getActiveLocalSubscribers(message.getDestination(),
+                                AndesUtils.getProtocolTypeForMetaDataType(message.getMetaDataType()),
+                                message.getDestinationType());
 
                 //All subscription filtering logic for topics goes here
                 Iterator<LocalSubscription> subscriptionIterator = subscriptions4Queue.iterator();
@@ -79,22 +80,13 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
                      * Also need to consider the arrival time of the message. Only topic
                      * subscribers which appeared before publishing this message should receive it
                      */
-                    if (subscription.isDurable() || (subscription.getSubscribeTime() > message.getArrivalTime())) {
+                    if (subscription.isDurable() || (subscription.getSubscribeTime() > message.getArrivalTime())
+                            || subscription.getSubscribedDestination() != destination) { // In wild cards, there can be others subscribers here as well
                         subscriptionIterator.remove();
                     }
 
                     // Avoid sending if the selector of subscriber does not match
                     if(!subscription.isMessageAcceptedBySelector(message)) {
-                        subscriptionIterator.remove();
-                    }
-
-                    // Avoid sending if the subscriber is MQTT and message is not MQTT
-                    if (AndesSubscription.SubscriptionType.MQTT == subscription.getSubscriptionType()
-                            && MessageMetaDataType.META_DATA_MQTT != message.getMetaDataType()) {
-                        subscriptionIterator.remove();
-                        // Avoid sending if the subscriber is AMQP and message is MQTT
-                    } else if (AndesSubscription.SubscriptionType.AMQP == subscription.getSubscriptionType()
-                            && MessageMetaDataType.META_DATA_MQTT == message.getMetaDataType()) {
                         subscriptionIterator.remove();
                     }
                 }

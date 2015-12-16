@@ -254,7 +254,8 @@ public class MQTTLocalSubscription implements OutboundSubscription {
         if (isDurable) {
             storageQueueName = MQTTUtils.getTopicSpecificQueueName(mqttSubscriptionID, destination);
         } else {
-            storageQueueName = AndesUtils.getStorageQueueForDestination(destination, subscribedNode, true);
+            storageQueueName = AndesUtils.getStorageQueueForDestination(destination, subscribedNode,
+                    DestinationType.TOPIC);
         }
 
         return storageQueueName;

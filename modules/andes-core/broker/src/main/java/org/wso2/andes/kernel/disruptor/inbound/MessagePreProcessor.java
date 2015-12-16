@@ -22,10 +22,17 @@ import com.lmax.disruptor.EventHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesChannel;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessage;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.AndesMessagePart;
+import org.wso2.andes.kernel.AndesSubscription;
+import org.wso2.andes.kernel.AndesUtils;
+import org.wso2.andes.kernel.DestinationType;
+import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.manager.Level;
@@ -135,7 +142,7 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                     + message.getMetadata().getMessageID());
         }
 
-        if (message.getMetadata().isTopic()) {
+        if (DestinationType.TOPIC == message.getMetadata().getDestinationType()) {
             handleTopicRoutine(event, message, andesChannel);
         } else {
             andesChannel.recordAdditionToBuffer(message.getContentChunkList().size());
@@ -155,15 +162,14 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
         try {
 
             // Get subscription list according to the message type
-            AndesSubscription.SubscriptionType subscriptionType;
+            ProtocolType protocolType =
+                    AndesUtils.getProtocolTypeForMetaDataType(message.getMetadata().getMetaDataType());
 
-            if (MessageMetaDataType.META_DATA_MQTT == message.getMetadata().getMetaDataType()) {
-                subscriptionType = AndesSubscription.SubscriptionType.MQTT;
-            } else {
-                subscriptionType = AndesSubscription.SubscriptionType.AMQP;
-            }
+            subscriptionList = subscriptionStore.getClusterSubscribersForDestination(messageRoutingKey,
+                    protocolType, DestinationType.TOPIC);
 
-            subscriptionList = subscriptionStore.getClusterSubscribersForDestination(messageRoutingKey, true, subscriptionType);
+            subscriptionList.addAll(subscriptionStore.getClusterSubscribersForDestination(messageRoutingKey,
+                    protocolType, DestinationType.DURABLE_TOPIC));
 
             //We do not consider message selectors here. They will be considered when being delivered
 
@@ -197,6 +203,7 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                          */
                         clonedMessage.getMetadata().updateMetadata(subscription.getTargetQueue(),
                                 AMQPUtils.DIRECT_EXCHANGE_NAME);
+                        clonedMessage.getMetadata().setDestinationType(DestinationType.DURABLE_TOPIC);
                     }
                     if (log.isDebugEnabled()) {
                         log.debug("Storing metadata queue " + subscription.getStorageQueueName() + " messageID "

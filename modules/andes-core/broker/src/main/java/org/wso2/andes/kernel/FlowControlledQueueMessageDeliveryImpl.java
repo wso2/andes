@@ -58,6 +58,8 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
 
                 DeliverableAndesMetadata message = iterator.next();
 
+                ProtocolType protocolType = AndesUtils.getProtocolTypeForMetaDataType(message.getMetaDataType());
+
                 /**
                  * get all relevant type of subscriptions. This call does NOT
                  * return hierarchical subscriptions for the destination. There
@@ -65,8 +67,8 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
                  * For durable topic subscriptions this should return queue subscription
                  * bound to unique queue based on subscription id
                  */
-                Collection<LocalSubscription> subscriptions4Queue =
-                        subscriptionStore.getActiveLocalSubscribers(destination, message.isTopic());
+                Collection<LocalSubscription> subscriptions4Queue = subscriptionStore.getActiveLocalSubscribers(
+                        destination, protocolType, message.getDestinationType());
 
                 if (subscriptions4Queue.isEmpty()) {
                     // We don't have subscribers for this message
@@ -86,18 +88,16 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
                 for (int j = 0; j < subscriptions4Queue.size(); j++) {
 
                     LocalSubscription localSubscription = MessageFlusher.getInstance().
-                            findNextSubscriptionToSent(destination, subscriptions4Queue);
-
+                            findNextSubscriptionToSent(destination, protocolType, message.getDestinationType(), subscriptions4Queue);
                     if (localSubscription.hasRoomToAcceptMessages()
                             && localSubscription.isMessageAcceptedBySelector(message)) {
-
                         if (log.isDebugEnabled()) {
                             log.debug("Scheduled to send id = " + message.getMessageID());
                         }
 
                         // In a re-queue for delivery scenario we need the correct destination. Hence setting
                         // it back correctly in AndesMetadata for durable subscription for topics
-                        if (localSubscription.isBoundToTopic()) {
+                        if (DestinationType.DURABLE_TOPIC == localSubscription.getDestinationType()) {
                             message.setDestination(localSubscription.getTargetQueue());
                         }
 

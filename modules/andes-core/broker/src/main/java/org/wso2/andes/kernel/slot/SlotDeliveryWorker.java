@@ -21,23 +21,21 @@ package org.wso2.andes.kernel.slot;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
+import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.MessageFlusher;
 import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
-import org.wso2.andes.subscription.LocalSubscription;
-import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -53,11 +51,10 @@ import java.util.concurrent.ExecutionException;
  */
 public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
 
-
     /**
-     * keeps storage queue name vs actual destination it represent
+     * Keeps data related to storage queues for reference
      */
-    private ConcurrentSkipListMap<String, String> storageQueueNameToDestinationMap;
+    private ConcurrentSkipListMap<String, StorageQueueData> storageQueueDataMap;
 
     /**
      * Map to keep track of subscription to slots map.
@@ -66,7 +63,6 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
      */
     private final ConcurrentMap<String, Map<String,Slot>> storageQueueToSlotTracker = new ConcurrentHashMap<>();
 
-    private SubscriptionStore subscriptionStore;
     private static Log log = LogFactory.getLog(SlotDeliveryWorker.class);
 
     /**
@@ -91,16 +87,21 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
     
     public SlotDeliveryWorker() {
         messageFlusher = MessageFlusher.getInstance();
-        this.storageQueueNameToDestinationMap = new ConcurrentSkipListMap<>();
-        this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
+        this.storageQueueDataMap = new ConcurrentSkipListMap<>();
         slotCoordinator = MessagingEngine.getInstance().getSlotCoordinator();
         messageStoresUnavailable = null;
         FailureObservingStoreManager.registerStoreHealthListener(this);
     }
 
     public void rescheduleMessagesForDelivery(String storageQueueName, List<DeliverableAndesMetadata> messages) {
-        String destination = storageQueueNameToDestinationMap.get(storageQueueName);
-        MessageFlusher.getInstance().addAlreadyTrackedMessagesToBuffer(destination, messages);
+        StorageQueueData storageQueueData = storageQueueDataMap.get(storageQueueName);
+
+        if (null != storageQueueData) { // This storage queue has been removed and hence does not need to reschedule
+            String destination = storageQueueDataMap.get(storageQueueName).getDestinationName();
+            MessageFlusher.getInstance().addAlreadyTrackedMessagesToBuffer(destination,
+                    storageQueueData.getProtocolType(), storageQueueData.getDestinationType(), messages);
+
+        }
     }
 
     @Override
@@ -115,113 +116,100 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
             //Iterate through all the queues registered in this thread
             int idleQueueCounter = 0;
 
-            for (String storageQueueName : storageQueueNameToDestinationMap.keySet()) {
-                String destinationOfMessagesInQueue = storageQueueNameToDestinationMap.get(storageQueueName);
-                Collection<LocalSubscription> subscriptions4Queue;
+            for (Map.Entry<String, StorageQueueData> storageQueueDataEntry : storageQueueDataMap.entrySet()) {
+                String storageQueueName = storageQueueDataEntry.getKey();
+                StorageQueueData storageQueueData = storageQueueDataEntry.getValue();
+                String destinationOfMessagesInQueue = storageQueueData.getDestinationName();
                 try {
-                    subscriptions4Queue = 
-                            subscriptionStore.getActiveLocalSubscribersForQueuesAndTopics(destinationOfMessagesInQueue);
-                    if (subscriptions4Queue != null && !subscriptions4Queue.isEmpty()) {
-                        //Check in memory buffer in MessageFlusher has room
-                        if (messageFlusher.getMessageDeliveryInfo(destinationOfMessagesInQueue)
-                                .isMessageBufferFull()) {
-                            
-                            //get a slot from coordinator.
-                            Slot currentSlot = requestSlot(storageQueueName);
-                            currentSlot.setDestinationOfMessagesInSlot(destinationOfMessagesInQueue);
-                            
-                            /**
-                             * If the slot is empty
-                             */
-                            if (0 == currentSlot.getEndMessageId()) {
+                    //Check in memory buffer in MessageFlusher has room
+                    if (messageFlusher.getMessageDeliveryInfo(destinationOfMessagesInQueue, storageQueueData
+                            .getProtocolType(), storageQueueData.getDestinationType())
+                            .isMessageBufferFull()) {
+
+                        //get a slot from coordinator.
+                        Slot currentSlot = requestSlot(storageQueueName);
+                        currentSlot.setDestinationOfMessagesInSlot(destinationOfMessagesInQueue);
+
+                        /**
+                         * If the slot is empty
+                         */
+                        if (0 == currentSlot.getEndMessageId()) {
 
                                     /*
                                     If the message buffer in MessageFlusher is not empty
                                      send those messages
                                      */
-                                if (log.isDebugEnabled()) {
-                                    log.debug("Received an empty slot from slot manager");
-                                }
-                                boolean sentFromMessageBuffer = sendFromMessageBuffer(destinationOfMessagesInQueue);
-                                if (!sentFromMessageBuffer) {
-                                    //No available free slots
-                                    idleQueueCounter++;
-                                    if (idleQueueCounter == storageQueueNameToDestinationMap.size()) {
-                                        try {
-                                            if (log.isDebugEnabled()) {
-                                                log.debug("Sleeping Slot Delivery Worker");
-                                            }
-                                            Thread.sleep(100);
-                                        } catch (InterruptedException ignored) {
-                                            //Silently ignore
-                                        }
-                                    }
-                                }
-                            } else {
-                                if (log.isDebugEnabled()) {
-                                    log.debug("Received slot for storage queue " + storageQueueName + " " +
-                                            "is: " + currentSlot.getStartMessageId() +
-                                            " - " + currentSlot.getEndMessageId() +
-                                            "Thread Id:" + Thread.currentThread().getId());
-                                }
-                                List<DeliverableAndesMetadata> messagesRead = getMetaDataListBySlot(storageQueueName,
-                                                                                                currentSlot);
-
-                                if (messagesRead != null && !messagesRead.isEmpty()) {
-                                    if (log.isDebugEnabled()) {
-                                        log.debug("Number of messages read from slot " + currentSlot.getStartMessageId()
-                                                  + " - " + currentSlot.getEndMessageId() + " is " + messagesRead.size()
-                                                  + " storage queue= " + storageQueueName);
-                                    }
-
-                                    storageQueueToSlotTracker.putIfAbsent(storageQueueName,new HashMap<String, Slot>());
-
-                                    Map<String, Slot> subscriptionSlots = storageQueueToSlotTracker.get(storageQueueName);
-
-                                    Slot trackedSlot = subscriptionSlots.get(currentSlot.getId());
-                                    if (trackedSlot == null) {
-                                        subscriptionSlots.put(currentSlot.getId(), currentSlot);
-                                        trackedSlot = currentSlot;
-                                    } else {
+                            if (log.isDebugEnabled()) {
+                                log.debug("Received an empty slot from slot manager");
+                            }
+                            boolean sentFromMessageBuffer = sendFromMessageBuffer(destinationOfMessagesInQueue);
+                            if (!sentFromMessageBuffer) {
+                                //No available free slots
+                                idleQueueCounter++;
+                                if (idleQueueCounter == storageQueueDataMap.size()) {
+                                    try {
                                         if (log.isDebugEnabled()) {
-                                            log.debug("Overlapped slot received. Slot ID " + trackedSlot.getId());
+                                            log.debug("Sleeping Slot Delivery Worker");
                                         }
+                                        Thread.sleep(100);
+                                    } catch (InterruptedException ignored) {
+                                        //Silently ignore
                                     }
-
-                                    filterOverlappedMessages(trackedSlot, messagesRead);
-                                    MessageFlusher.getInstance().sendMessageToBuffer(messagesRead, trackedSlot);
-                                    MessageFlusher.getInstance()
-                                                  .sendMessagesInBuffer(trackedSlot
-                                                          .getDestinationOfMessagesInSlot());
-                                } else {
-                                    currentSlot.setSlotInActive();
-                                    SlotDeletionExecutor.getInstance().executeSlotDeletion(currentSlot);
                                 }
                             }
-
                         } else {
+                            if (log.isDebugEnabled()) {
+                                log.debug("Received slot for storage queue " + storageQueueName + " " +
+                                        "is: " + currentSlot.getStartMessageId() +
+                                        " - " + currentSlot.getEndMessageId() +
+                                        "Thread Id:" + Thread.currentThread().getId());
+                            }
+                            List<DeliverableAndesMetadata> messagesRead = getMetaDataListBySlot(storageQueueName,
+                                    currentSlot);
+
+                            if (messagesRead != null && !messagesRead.isEmpty()) {
+                                if (log.isDebugEnabled()) {
+                                    log.debug("Number of messages read from slot " + currentSlot.getStartMessageId()
+                                            + " - " + currentSlot.getEndMessageId() + " is " + messagesRead.size()
+                                            + " storage queue= " + storageQueueName);
+                                }
+
+                                storageQueueToSlotTracker.putIfAbsent(storageQueueName, new HashMap<String, Slot>());
+
+                                Map<String, Slot> subscriptionSlots = storageQueueToSlotTracker.get(storageQueueName);
+
+                                Slot trackedSlot = subscriptionSlots.get(currentSlot.getId());
+                                if (trackedSlot == null) {
+                                    subscriptionSlots.put(currentSlot.getId(), currentSlot);
+                                    trackedSlot = currentSlot;
+                                } else {
+                                    if (log.isDebugEnabled()) {
+                                        log.debug("Overlapped slot received. Slot ID " + trackedSlot.getId());
+                                    }
+                                }
+
+                                filterOverlappedMessages(trackedSlot, messagesRead);
+                                MessageFlusher.getInstance().sendMessageToBuffer(messagesRead, trackedSlot);
+                                MessageFlusher.getInstance()
+                                        .sendMessagesInBuffer(trackedSlot
+                                                .getDestinationOfMessagesInSlot());
+                            } else {
+                                currentSlot.setSlotInActive();
+                                SlotDeletionExecutor.getInstance().executeSlotDeletion(currentSlot);
+                            }
+                        }
+
+                    } else {
                                 /*If there are messages to be sent in the message
                                             buffer in MessageFlusher send them */
-                            if (log.isDebugEnabled()) {
-                                log.debug(
-                                        "The queue " + storageQueueName + " has no room. Thus sending " +
-                                                "from buffer.");
-                            }
-                            sendFromMessageBuffer(destinationOfMessagesInQueue);
+                        if (log.isDebugEnabled()) {
+                            log.debug(
+                                    "The queue " + storageQueueName + " has no room. Thus sending " +
+                                            "from buffer.");
                         }
-                    } else {
-                        idleQueueCounter++;
-                        if (idleQueueCounter == storageQueueNameToDestinationMap.size()) {
-                            try {
-                                if (log.isDebugEnabled()) {
-                                    log.debug("Sleeping Slot Delivery Worker");
-                                }
-                                Thread.sleep(100);
-                            } catch (InterruptedException ignored) {
-                                //Silently ignore
-                            }
-                        }
+                        sendFromMessageBuffer(destinationOfMessagesInQueue);
                     }
+
                 } catch (AndesException e) {
                     log.error("Error running Message Store Reader " + e.getMessage(), e);
                 } catch (ConnectionException e) {
@@ -266,17 +254,22 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
     }
 
     public void stopDeliveryForQueue(String storageQueue) {
-        MessageFlusher.getInstance().clearUpAllBufferedMessagesForDelivery
-                (storageQueueNameToDestinationMap.get(storageQueue));
-        Map<String, Slot> orphanedSlots = storageQueueToSlotTracker.remove(storageQueue);
+        StorageQueueData storageQueueData = storageQueueDataMap.remove(storageQueue);
 
-        // Check if there are any orphaned slots
-        if (null != orphanedSlots) {
-            for (Slot slot : orphanedSlots.values()) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Orphan slot situation and clear tracking of messages for slot = " + slot);
+        if (null != storageQueueData) { // If null, this has already been removed when subscription disconnecting
+            MessageFlusher.getInstance().clearUpAllBufferedMessagesForDelivery(storageQueueData.getDestinationName());
+
+
+            Map<String, Slot> orphanedSlots = storageQueueToSlotTracker.remove(storageQueue);
+
+            // Check if there are any orphaned slots
+            if (null != orphanedSlots) {
+                for (Slot slot : orphanedSlots.values()) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("Orphan slot situation and clear tracking of messages for slot = " + slot);
+                    }
+                    slot.markMessagesOfSlotAsReturned();
                 }
-                slot.markMessagesOfSlotAsReturned();
             }
         }
     }
@@ -403,21 +396,16 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
      * Add a queue to queue list of this SlotDeliveryWorkerThread
      *
      * @param storageQueueName queue name of the newly added queue
+     * @param protocolType The protocol which the storage queue holds messages of
+     * @param destinationType The destination type of the messages which this storage queue holds
      */
-    public void addQueueToThread(String storageQueueName, String destination) throws AndesException {
-        getStorageQueueNameToDestinationMap().put(storageQueueName, destination);
-        messageFlusher.prepareForDelivery(destination);
+    public void startDeliveryForQueue(String storageQueueName, String destination, ProtocolType protocolType,
+                                      DestinationType destinationType) throws AndesException {
+        StorageQueueData storageQueueData =
+                new StorageQueueData(storageQueueName, destination, protocolType, destinationType);
+        storageQueueDataMap.put(storageQueueName, storageQueueData);
+        messageFlusher.prepareForDelivery(destination, protocolType, destinationType);
     }
-
-    /**
-     * Get queue list belongs to this thread
-     *
-     * @return queue list
-     */
-    public ConcurrentSkipListMap<String, String> getStorageQueueNameToDestinationMap() {
-        return storageQueueNameToDestinationMap;
-    }
-
 
     /**
      * @return Whether the worker thread is in running state or not
@@ -517,6 +505,16 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
         log.info("Message stores became operational therefore resuming work");
         messageStoresUnavailable.set(false);
 
+    }
+
+    /**
+     * Check if the given storage queue is already added in the current worker.
+     *
+     * @param storageQueueName The storage queue name to check for
+     * @return True if storage queue is already added to this worker
+     */
+    public boolean isStorageQueueAdded(String storageQueueName) {
+        return storageQueueDataMap.containsKey(storageQueueName);
     }
 }
 

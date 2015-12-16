@@ -24,6 +24,7 @@ import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesExchange;
 import org.wso2.andes.kernel.AndesQueue;
+import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
@@ -107,11 +108,9 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public void storeDurableSubscription(String destinationIdentifier, String subscriptionID,
-                                         String subscriptionEncodeAsStr) throws AndesException {
+    public void storeDurableSubscription(AndesSubscription subscription) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.storeDurableSubscription(destinationIdentifier, subscriptionID,
-                                                                      subscriptionEncodeAsStr);
+            wrappedAndesContextStoreInstance.storeDurableSubscription(subscription);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -122,11 +121,9 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public void updateDurableSubscription(String destinationIdentifier, String subscriptionID,
-                                          String subscriptionEncodeAsStr) throws AndesException {
+    public void updateDurableSubscription(AndesSubscription subscription) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.updateDurableSubscription(destinationIdentifier, subscriptionID,
-                                                                       subscriptionEncodeAsStr);
+            wrappedAndesContextStoreInstance.updateDurableSubscription(subscription);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -150,9 +147,9 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public void removeDurableSubscription(String destinationIdentifier, String subscriptionID) throws AndesException {
+    public void removeDurableSubscription(AndesSubscription subscription) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.removeDurableSubscription(destinationIdentifier, subscriptionID);
+            wrappedAndesContextStoreInstance.removeDurableSubscription(subscription);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

@@ -269,15 +269,19 @@ public class MessagingEngine {
      * node. This is called from the Hazelcast Agent when it receives a queue purged event.
      *
      * @param destination queue or topic name (subscribed routing key) whose messages should be removed
+     * @param protocolType The protocol which the destination belongs to
+     * @param destinationType The type of the destination
      * @return number of messages removed
      * @throws AndesException
      */
-    public int clearMessagesFromQueueInMemory(String destination,
-                                              Long purgedTimestamp) throws AndesException {
+    public int clearMessagesFromQueueInMemory(String destination, Long purgedTimestamp, ProtocolType protocolType,
+                                              DestinationType destinationType) throws AndesException {
 
         MessageFlusher messageFlusher = MessageFlusher.getInstance();
-        messageFlusher.getMessageDeliveryInfo(destination).setLastPurgedTimestamp(purgedTimestamp);
-        return messageFlusher.getMessageDeliveryInfo(destination).clearReadButUndeliveredMessages();
+        MessageFlusher.MessageDeliveryInfo messageDeliveryInfo =
+                messageFlusher.getMessageDeliveryInfo(destination, protocolType, destinationType);
+        messageDeliveryInfo.setLastPurgedTimestamp(purgedTimestamp);
+        return messageDeliveryInfo.clearReadButUndeliveredMessages();
     }
 
     /**
@@ -287,17 +291,19 @@ public class MessagingEngine {
      *
      * @param destination queue or topic name (subscribed routing key) whose messages should be removed
      * @param ownerName The user who initiated the purge request
-     * @param isTopic weather purging happens for a topic
+     * @param protocolType The protocol which the destination to purge belongs to
+     * @param destinationType The destination type which the destination to purge belongs to
      * @return number of messages removed (in memory message count may not be 100% accurate
      * since we cannot guarantee that we caught all messages in delivery threads.)
      * @throws AndesException
      */
-    public int purgeMessages(String destination, String ownerName, boolean isTopic) throws AndesException {
+    public int purgeMessages(String destination, String ownerName, ProtocolType protocolType,
+                             DestinationType destinationType) throws AndesException {
 
         // The timestamp is recorded to track messages that came before the purge event.
         Long purgedTimestamp = System.currentTimeMillis();
         String nodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
-        String storageQueueName = AndesUtils.getStorageQueueForDestination(destination, nodeID, isTopic);
+        String storageQueueName = AndesUtils.getStorageQueueForDestination(destination, nodeID, destinationType);
 
         try {
             // Clear all slots assigned to the Queue. This should ideally stop any messages being buffered during the
@@ -313,11 +319,11 @@ public class MessagingEngine {
         }
 
         // Clear in memory messages of self (node)
-        clearMessagesFromQueueInMemory(destination, purgedTimestamp);
+        clearMessagesFromQueueInMemory(destination, purgedTimestamp, protocolType, destinationType);
 
         //Notify the cluster if queues
-        if(!isTopic) {
-            AndesQueue purgedQueue = new AndesQueue(destination, ownerName, false, true);
+        if(DestinationType.QUEUE == destinationType) {
+            AndesQueue purgedQueue = new AndesQueue(destination, ownerName, false, true, protocolType, destinationType);
             purgedQueue.setLastPurgedTimestamp(purgedTimestamp);
 
             queueListener.handleLocalQueuesChanged(purgedQueue, QueueListener.QueueEvent.PURGED);

@@ -159,15 +159,16 @@ public class AndesContextInformationManager {
      * Check if queue is deletable
      *
      * @param queueName name of the queue
-     * @param isTopic true if the queue is used to store topic messages
+     * @param protocolType The protocol which this queue belongs to
+     * @param destinationType The destination type of the queue
      * @return possibility of deleting queue
      * @throws AndesException
      */
-    public boolean checkIfQueueDeletable(String queueName, boolean isTopic) throws AndesException {
+    public boolean checkIfQueueDeletable(String queueName, ProtocolType protocolType, DestinationType destinationType) throws AndesException {
         boolean queueDeletable = false;
 
-        Set<AndesSubscription> queueSubscriptions
-                = subscriptionStore.getActiveClusterSubscriptionList(queueName, isTopic);
+        Set<AndesSubscription> queueSubscriptions = subscriptionStore.getClusterSubscribersForDestination(queueName, protocolType, destinationType);
+
         if (queueSubscriptions.isEmpty()) {
             queueDeletable = true;
         }
@@ -179,9 +180,11 @@ public class AndesContextInformationManager {
      * delete cluster-wide
      *
      * @param queueName name of the queue
+     * @param protocolType The protocol which the queue to delete belongs to
+     * @param destinationType The destination type which the queue belongs to
      * @throws AndesException
      */
-    public void deleteQueue(String queueName) throws AndesException {
+    public void deleteQueue(String queueName, ProtocolType protocolType, DestinationType destinationType) throws AndesException {
         //identify queue to delete
         AndesQueue queueToDelete = null;
         List<AndesQueue> queueList = contextStore.getAllQueuesStored();
@@ -193,11 +196,11 @@ public class AndesContextInformationManager {
         }
 
         //delete all local and cluster subscription entries if remaining (inactive entries)
-        subscriptionManager.deleteAllLocalSubscriptionsOfBoundQueue(queueName);
-        subscriptionManager.deleteAllClusterSubscriptionsOfBoundQueue(queueName);
+        subscriptionManager.deleteAllLocalSubscriptionsOfBoundQueue(queueName, protocolType, destinationType);
+        subscriptionManager.deleteAllClusterSubscriptionsOfBoundQueue(queueName, protocolType, destinationType);
 
         //purge the queue cluster-wide
-        MessagingEngine.getInstance().purgeMessages(queueName, null, false);
+        MessagingEngine.getInstance().purgeMessages(queueName, null, protocolType, destinationType);
 
         // delete queue from construct store
         constructStore.removeQueue(queueName);
