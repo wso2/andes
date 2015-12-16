@@ -36,6 +36,7 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -87,6 +88,11 @@ public class HazelcastClusterAgent implements ClusterAgent {
      * Attribute name used for storing node id inside hazelcast member
      */
     private static final String NODE_ID_ATTRIBUTE = "nodeId";
+
+    /**
+     * Maximum number of attempts to read node id of a cluster member
+     */
+    public static final int MAX_NODE_ID_READ_ATTEMPTS = 4;
 
     public HazelcastClusterAgent(HazelcastInstance hazelcastInstance) {
         this.hazelcastInstance = hazelcastInstance;
@@ -159,22 +165,13 @@ public class HazelcastClusterAgent implements ClusterAgent {
      * {@inheritDoc}
      */
     @Override
-    public void start(ClusterManager manager) throws AndesException{
+    public void start(ClusterManager manager) throws AndesException {
         this.manager = manager;
 
-        hazelcastInstance.getCluster().getLocalMember().setStringAttribute(NODE_ID_ATTRIBUTE, getLocalNodeIdentifier());
-
-        //Checking for duplicate node ids in cluster
-        Set<Member> members = hazelcastInstance.getCluster().getMembers();
         Member localMember = hazelcastInstance.getCluster().getLocalMember();
-        for (Member member : members) {
-            if (getIdOfNode(member).equals(getLocalNodeIdentifier()) &&
-                localMember != member) {
-                throw new AndesException(
-                        "Another node with the same node id: " + getLocalNodeIdentifier() +
-                        " found in the cluster. Cannot start the node.");
-            }
-        }
+        localMember.setStringAttribute(NODE_ID_ATTRIBUTE, getLocalNodeIdentifier());
+
+        checkForDuplicateNodeId(localMember);
 
         // Register listener for membership changes
         listenerRegistrationId = hazelcastInstance.getCluster()
@@ -192,6 +189,51 @@ public class HazelcastClusterAgent implements ClusterAgent {
         }
 
         memberAdded(hazelcastInstance.getCluster().getLocalMember());
+    }
+
+    /**
+     * Check if the local node id is already taken by a different node in the cluster
+     *
+     * @param localMember
+     *         Current member
+     * @throws AndesException
+     */
+    private void checkForDuplicateNodeId(Member localMember) throws AndesException {
+        Set<Member> members = hazelcastInstance.getCluster().getMembers();
+
+        for (Member member : members) {
+            int nodeIdReadAttempts = 1;
+            String nodeIdOfMember = getIdOfNode(member);
+
+            /*
+             Node ID can be null if the node has not initialized yet. Therefore try to read the node id
+             MAX_NODE_ID_READ_ATTEMPTS times before failing.
+              */
+            while ((nodeIdOfMember == null) && (nodeIdReadAttempts <= MAX_NODE_ID_READ_ATTEMPTS)) {
+
+                // Exponentially increase waiting time,
+                long sleepTime = Math.round(Math.pow(2, nodeIdReadAttempts));
+                log.warn("Node id was null for member " + member + ". Node id will be read again after "
+                         + sleepTime + " seconds.");
+
+                try {
+                    TimeUnit.SECONDS.sleep(sleepTime);
+                } catch (InterruptedException ignore) {
+                }
+
+                nodeIdReadAttempts++;
+                nodeIdOfMember = getIdOfNode(member);
+            }
+
+            if (nodeIdOfMember == null) {
+                throw new AndesException("Failed to read Node id of hazelcast member " + member);
+            }
+
+            if ((localMember != member) && (nodeIdOfMember.equals(getLocalNodeIdentifier()))) {
+                throw new AndesException("Another node with the same node id: " + getLocalNodeIdentifier()
+                                         + " found in the cluster. Cannot start the node.");
+            }
+        }
     }
 
     /**
@@ -286,7 +328,6 @@ public class HazelcastClusterAgent implements ClusterAgent {
             isCoordinator.set(false);
         }
     }
-
 
     /**
      * Gets address of all the members in the cluster. i.e address:port
