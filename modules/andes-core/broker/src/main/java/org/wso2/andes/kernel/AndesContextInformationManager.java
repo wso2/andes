@@ -23,7 +23,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
-import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.andes.subscription.SubscriptionEngine;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -63,7 +63,7 @@ public class AndesContextInformationManager {
     /**
      * Interface to store and retrieve Andes subscription related information
      */
-    private SubscriptionStore subscriptionStore;
+    private SubscriptionEngine subscriptionEngine;
 
     /**
      * Manages all operations related to subscription changes such as addition, disconnection and deletion
@@ -73,15 +73,15 @@ public class AndesContextInformationManager {
     /**
      * Initializes the andes context information manager
      *
-     * @param subscriptionStore The subscriptions store
+     * @param subscriptionEngine The subscriptions store
      */
     public AndesContextInformationManager(AMQPConstructStore constructStore,
-                                          SubscriptionStore subscriptionStore,
+                                          SubscriptionEngine subscriptionEngine,
                                           AndesContextStore contextStore,
                                           MessageStore messageStore) {
 
         this.subscriptionManager = ClusterResourceHolder.getInstance().getSubscriptionManager();
-        this.subscriptionStore = subscriptionStore;
+        this.subscriptionEngine = subscriptionEngine;
         this.messageStore = messageStore;
         this.contextStore = contextStore;
         this.constructStore = constructStore;
@@ -167,7 +167,7 @@ public class AndesContextInformationManager {
     public boolean checkIfQueueDeletable(String queueName, ProtocolType protocolType, DestinationType destinationType) throws AndesException {
         boolean queueDeletable = false;
 
-        Set<AndesSubscription> queueSubscriptions = subscriptionStore.getClusterSubscribersForDestination(queueName, protocolType, destinationType);
+        Set<AndesSubscription> queueSubscriptions = subscriptionEngine.getClusterSubscribersForDestination(queueName, protocolType, destinationType);
 
         if (queueSubscriptions.isEmpty()) {
             queueDeletable = true;

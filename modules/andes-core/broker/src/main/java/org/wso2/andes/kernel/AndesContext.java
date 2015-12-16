@@ -23,7 +23,7 @@ import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.StoreConfiguration;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.server.cluster.ClusterAgent;
-import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.andes.subscription.SubscriptionEngine;
 
 import java.util.List;
 
@@ -32,7 +32,7 @@ import java.util.List;
  * to Andes. A place holder class.
  */
 public class AndesContext {
-    private SubscriptionStore subscriptionStore;
+    private SubscriptionEngine subscriptionEngine;
     private AndesContextStore andesContextStore;
     private StoreConfiguration storeConfiguration;
     private ClusteringAgent clusteringAgent;
@@ -78,17 +78,17 @@ public class AndesContext {
      *
      * @return subscription store
      */
-    public SubscriptionStore getSubscriptionStore() {
-        return subscriptionStore;
+    public SubscriptionEngine getSubscriptionEngine() {
+        return subscriptionEngine;
     }
 
     /**
      * set subscription store
      *
-     * @param subscriptionStore subscription store
+     * @param subscriptionEngine subscription store
      */
-    public void setSubscriptionStore(SubscriptionStore subscriptionStore) {
-        this.subscriptionStore = subscriptionStore;
+    public void setSubscriptionEngine(SubscriptionEngine subscriptionEngine) {
+        this.subscriptionEngine = subscriptionEngine;
     }
 
     /**

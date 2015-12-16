@@ -32,7 +32,7 @@ import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
 import org.wso2.andes.subscription.LocalSubscription;
-import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.andes.subscription.SubscriptionEngine;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,7 +48,7 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
     
     private final MessagingEngine messagingEngine;
 
-    private final SubscriptionStore subscriptionStore;
+    private final SubscriptionEngine subscriptionEngine;
 
     /**
      * Maximum number to retries to delete messages from message store
@@ -69,7 +69,7 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
     
     AckHandler(MessagingEngine messagingEngine) {
         this.messagingEngine = messagingEngine;
-        this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
+        this.subscriptionEngine = AndesContext.getInstance().getSubscriptionEngine();
         this.messageStoresUnavailable = null;
         this.messagesToRemove = new ArrayList<>();
         FailureObservingStoreManager.registerStoreHealthListener(this);
@@ -112,7 +112,7 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
             // For topics message is shared. If all acknowledgements are received only we should remove message
             boolean deleteMessage = ack.getAcknowledgedMessage().markAsAcknowledgedByChannel(ack.getChannelID());
 
-            LocalSubscription subscription = subscriptionStore.getLocalSubscriptionForChannelId(ack.getChannelID());
+            LocalSubscription subscription = subscriptionEngine.getLocalSubscriptionForChannelId(ack.getChannelID());
             subscription.ackReceived(ack.getAcknowledgedMessage().getMessageID());
 
             if (deleteMessage) {

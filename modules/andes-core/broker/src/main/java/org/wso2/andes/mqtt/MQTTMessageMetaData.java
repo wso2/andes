@@ -35,6 +35,8 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
     private long messageID;
     //Time message has arrived (published) to broker
     private long messageArrivalTime;
+    //By default this will be true in the case of MQTT, since all the transactions are made through topics
+    private boolean isTopic;
     //The destination of the message, this will be the name of the topic
     private String destination;
     //Should this be persisted or kept in memory
@@ -50,14 +52,16 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
      *
      * @param mid           meta data identification
      * @param messageArrivalTime time message has arrived to broker
+     * @param topic         the name of the topic the message has being published
      * @param destination   the detination the message should be sent to
      * @param persistance   does it require the message to be persisted even after the delivery of the message
      * @param messageLength the length of the message which was recived
      */
-    public MQTTMessageMetaData(long mid, long messageArrivalTime, String destination, boolean
+    public MQTTMessageMetaData(long mid, long messageArrivalTime, boolean topic, String destination, boolean
             persistance, int messageLength,int qos) {
         this.messageID = mid;
         this.messageArrivalTime = messageArrivalTime;
+        this.isTopic = topic;
         this.destination = destination;
         this.isPersistance = persistance;
         this.messageLength = messageLength;
@@ -109,6 +113,14 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
         this.messageID = messageID;
     }
 
+    public boolean isTopic() {
+        return isTopic;
+    }
+
+    public void setTopic(boolean topic) {
+        isTopic = topic;
+    }
+
     public String getDestination() {
         return destination;
     }
@@ -149,12 +161,14 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
             Map<String, String> decodedValues = decodeMetaData(buf);
             Long messageID = Long.parseLong(decodedValues.get("MessageID"));
             //TODO intoduce a static class for this
+            boolean isTopic = Boolean.parseBoolean(decodedValues.get("Topic"));
             boolean isPersistant = Boolean.parseBoolean(decodedValues.get("Persistant"));
             int messageContentLength = Integer.parseInt(decodedValues.get("MessageContentLength"));
             int qos = Integer.parseInt(decodedValues.get("QOSLevel"));
             long messageArrivalTime = Long.parseLong(decodedValues.get(MQTTUtils.ARRIVAL_TIME));
             return new MQTTMessageMetaData(messageID,
                     messageArrivalTime,
+                    isTopic,
                     decodedValues.get("Destination"),
                     isPersistant,
                     messageContentLength,qos

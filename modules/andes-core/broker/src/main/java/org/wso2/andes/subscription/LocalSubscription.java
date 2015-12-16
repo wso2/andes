@@ -255,7 +255,7 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
                 List<DeliverableAndesMetadata> messagesToRemove = new ArrayList<>();
                 andesMetadata.evaluateMessageAcknowledgement();
                 //for topic messages see if we can delete the message
-                if ((!andesMetadata.isOKToDispose()) && (DestinationType.TOPIC == andesMetadata.getDestinationType())) {
+                if ((!andesMetadata.isOKToDispose()) && (andesMetadata.isTopic())) {
                     if (andesMetadata.getLatestState().equals(MessageStatus.ACKED_BY_ALL)) {
                         messagesToRemove.add(andesMetadata);
                     }

@@ -45,9 +45,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class SubscriptionStore {
+public class SubscriptionEngine {
 
-    private static Log log = LogFactory.getLog(SubscriptionStore.class);
+    private static Log log = LogFactory.getLog(SubscriptionEngine.class);
 
     /**
      * Channel wise indexing of local subscriptions for acknowledgement handling
@@ -59,10 +59,10 @@ public class SubscriptionStore {
     private SubscriptionProcessor clusterSubscriptionProcessor;
     private SubscriptionProcessor localSubscriptionProcessor;
 
-    public SubscriptionStore() throws AndesException {
+    public SubscriptionEngine() throws AndesException {
         andesContextStore = AndesContext.getInstance().getAndesContextStore();
-        clusterSubscriptionProcessor = SubscriptionProcessorBuilder.getProtocolSpecificProcessor();
-        localSubscriptionProcessor = SubscriptionProcessorBuilder.getProtocolSpecificProcessor();
+        clusterSubscriptionProcessor = SubscriptionProcessorBuilder.getClusterSubscriptionProcessor();
+        localSubscriptionProcessor = SubscriptionProcessorBuilder.getLocalSubscriptionProcessor();
 
         //Add subscribers gauge to metrics manager
         MetricManager.gauge(Level.INFO, MetricsConstants.QUEUE_SUBSCRIBERS, new QueueSubscriberGauge());
@@ -300,10 +300,14 @@ public class SubscriptionStore {
      * @throws AndesException
      */
     public void updateLocalSubscription(LocalSubscription subscription) throws AndesException {
-        localSubscriptionProcessor.updateSubscription(subscription);
 
-        //Update the subscription
-        andesContextStore.updateDurableSubscription(subscription);
+        if (localSubscriptionProcessor.isSubscriptionAvailable(subscription)) {
+            localSubscriptionProcessor.updateSubscription(subscription);
+            andesContextStore.updateDurableSubscription(subscription);
+        } else {
+            localSubscriptionProcessor.addSubscription(subscription);
+            andesContextStore.storeDurableSubscription(subscription);
+        }
 
         UUID channelIDOfSubscription = subscription.getChannelID();
         channelIdMap.put(channelIDOfSubscription, subscription);
@@ -483,13 +487,8 @@ public class SubscriptionStore {
     private class QueueSubscriberGauge implements Gauge<Integer> {
         @Override
         public Integer getValue() {
-            int count = 0;
-
-            for (ProtocolType protocolType : ProtocolType.values()) {
-                count = count + localSubscriptionProcessor.getAllSubscriptionsForDestinationType(
-                        protocolType, DestinationType.QUEUE).size();
-            }
-            return count;
+            return localSubscriptionProcessor.getAllSubscriptionsForDestinationType(ProtocolType.AMQP,
+                    DestinationType.QUEUE).size();
 
         }
     }
@@ -500,14 +499,8 @@ public class SubscriptionStore {
     private class TopicSubscriberGauge implements Gauge {
         @Override
         public Integer getValue() {
-            int count = 0;
-
-            for (ProtocolType protocolType : ProtocolType.values()) {
-                count = count + localSubscriptionProcessor.getAllSubscriptionsForDestinationType(
-                        protocolType, DestinationType.TOPIC).size();
-            }
-
-            return count;
+            return localSubscriptionProcessor.getAllSubscriptionsForDestinationType(ProtocolType.AMQP,
+                    DestinationType.TOPIC).size();
         }
     }
 

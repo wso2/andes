@@ -35,9 +35,9 @@ import java.util.regex.Pattern;
  * Store subscriptions according to the respective protocol using bitmaps as the underlying data structure for
  * faster wildcard matching.
  */
-public class TopicSubscriptionBitMapHandler implements SubscriptionHandler {
+public class TopicSubscriptionBitMapStore implements AndesSubscriptionStore {
 
-    private Log log = LogFactory.getLog(TopicSubscriptionBitMapHandler.class);
+    private Log log = LogFactory.getLog(TopicSubscriptionBitMapStore.class);
 
     /**
      * The topic delimiter to differentiate each constituent according to the current subscription type.
@@ -89,7 +89,7 @@ public class TopicSubscriptionBitMapHandler implements SubscriptionHandler {
      * @param protocolType The protocol type to handle
      * @throws AndesException
      */
-    public TopicSubscriptionBitMapHandler(ProtocolType protocolType) throws AndesException {
+    public TopicSubscriptionBitMapStore(ProtocolType protocolType) throws AndesException {
         if (ProtocolType.AMQP == protocolType) {
             constituentsDelimiter = ".";
             // AMQPUtils keep wildcard concatenated with constituent delimiter, hence removing them get wildcard only
@@ -240,23 +240,23 @@ public class TopicSubscriptionBitMapHandler implements SubscriptionHandler {
         // Loop through each constituent table for the new constituents
         for (int constituentIndex = 0; constituentIndex < subscribedDestinationConstituents.length;
              constituentIndex++) {
-                    String currentConstituent = subscribedDestinationConstituents[constituentIndex];
-                    Map<String, BitSet> constituentTable = constituentTables.get(constituentIndex);
+            String currentConstituent = subscribedDestinationConstituents[constituentIndex];
+            Map<String, BitSet> constituentTable = constituentTables.get(constituentIndex);
 
-                    // Loop through each constituent row in the table and fill values
-                    for (Map.Entry<String, BitSet> constituentRow : constituentTable.entrySet()) {
-                        String constituentOfCurrentRow = constituentRow.getKey();
-                        BitSet bitSet = constituentRow.getValue();
+            // Loop through each constituent row in the table and fill values
+            for (Map.Entry<String, BitSet> constituentRow : constituentTable.entrySet()) {
+                String constituentOfCurrentRow = constituentRow.getKey();
+                BitSet bitSet = constituentRow.getValue();
 
-                        if (constituentOfCurrentRow.equals(currentConstituent)) {
+                if (constituentOfCurrentRow.equals(currentConstituent)) {
                     bitSet.set(subscriptionIndex);
                 } else if (NULL_CONSTITUENT.equals(constituentOfCurrentRow)) {
-                        // Check if this constituent being null matches the destination if we match it with
-                        // a null constituent
-                        String wildcardDestination = NULL_CONSTITUENT + constituentsDelimiter +
-                                currentConstituent;
-                        bitSet.set(subscriptionIndex, isMatchForProtocolType(wildcardDestination,
-                                matchDestinationForNull));
+                    // Check if this constituent being null matches the destination if we match it with
+                    // a null constituent
+                    String wildcardDestination = NULL_CONSTITUENT + constituentsDelimiter +
+                            currentConstituent;
+                    bitSet.set(subscriptionIndex, isMatchForProtocolType(wildcardDestination,
+                            matchDestinationForNull));
 //                    }
                 } else if (OTHER_CONSTITUENT.equals(constituentOfCurrentRow)) {
                     // Check if other is matched by comparing wildcard through specific wildcard matching

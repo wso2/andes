@@ -255,7 +255,7 @@ public class QpidAndesBridge {
     public static void rejectMessage(AMQMessage message, AMQChannel channel) throws AMQException {
         try {
             LocalSubscription localSubscription = AndesContext.getInstance().
-                    getSubscriptionStore().getLocalSubscriptionForChannelId(channel.getId());
+                    getSubscriptionEngine().getLocalSubscriptionForChannelId(channel.getId());
             DeliverableAndesMetadata rejectedMessage = localSubscription.getMessageByMessageID(message.getMessageId());
 
             channel.setLastRejectedMessageId(message.getMessageNumber());
@@ -531,7 +531,7 @@ public class QpidAndesBridge {
                 AndesBinding andesBinding = AMQPUtils.createAndesBinding(b.getExchange(), b.getQueue(), new AMQShortString(b.getBindingKey()));
                 if (uniqueBindings.add(andesBinding)) {
                     UUID channelID = ((SubscriptionImpl) subscription).getChannel().getId();
-                    LocalSubscription localSubscription = AndesContext.getInstance().getSubscriptionStore()
+                    LocalSubscription localSubscription = AndesContext.getInstance().getSubscriptionEngine()
                             .getLocalSubscriptionForChannelId(channelID);
                     localSubscription.setHasExternalSubscriptions(subscription.isActive());
                     localSubscription.setExclusive(((SubscriptionImpl) subscription).isExclusive());

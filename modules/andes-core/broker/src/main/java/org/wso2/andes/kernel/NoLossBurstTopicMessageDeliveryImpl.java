@@ -22,7 +22,7 @@ package org.wso2.andes.kernel;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.subscription.LocalSubscription;
-import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.andes.subscription.SubscriptionEngine;
 
 import java.util.*;
 
@@ -33,18 +33,18 @@ import java.util.*;
 public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrategy {
 
     private static Log log = LogFactory.getLog(NoLossBurstTopicMessageDeliveryImpl.class);
-    private SubscriptionStore subscriptionStore;
+    private SubscriptionEngine subscriptionEngine;
 
-    public NoLossBurstTopicMessageDeliveryImpl(SubscriptionStore subscriptionStore) {
-        this.subscriptionStore = subscriptionStore;
+    public NoLossBurstTopicMessageDeliveryImpl(SubscriptionEngine subscriptionEngine) {
+        this.subscriptionEngine = subscriptionEngine;
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public int deliverMessageToSubscriptions(String destination, Set<DeliverableAndesMetadata> messages) throws
-            AndesException {
+    public int deliverMessageToSubscriptions(String destination, Set<DeliverableAndesMetadata> messages,
+                                             DestinationType destinationType) throws AndesException {
         int sentMessageCount = 0;
         Iterator<DeliverableAndesMetadata> iterator = messages.iterator();
         List<DeliverableAndesMetadata> droppedTopicMessagesList = new ArrayList<>();
@@ -63,9 +63,9 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
                  * bound to unique queue based on subscription id
                  */
                 Collection<LocalSubscription> subscriptions4Queue =
-                        subscriptionStore.getActiveLocalSubscribers(message.getDestination(),
+                        subscriptionEngine.getActiveLocalSubscribers(message.getDestination(),
                                 AndesUtils.getProtocolTypeForMetaDataType(message.getMetaDataType()),
-                                message.getDestinationType());
+                                destinationType);
 
                 //All subscription filtering logic for topics goes here
                 Iterator<LocalSubscription> subscriptionIterator = subscriptions4Queue.iterator();
@@ -81,7 +81,7 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
                      * subscribers which appeared before publishing this message should receive it
                      */
                     if (subscription.isDurable() || (subscription.getSubscribeTime() > message.getArrivalTime())
-                            || subscription.getSubscribedDestination() != destination) { // In wild cards, there can be others subscribers here as well
+                            || !subscription.getSubscribedDestination().equals(destination)) { // In wild cards, there can be others subscribers here as well
                         subscriptionIterator.remove();
                     }
 

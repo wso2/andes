@@ -29,7 +29,7 @@ import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.SubscriptionListener;
 import org.wso2.andes.subscription.LocalSubscription;
-import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.andes.subscription.SubscriptionEngine;
 
 import java.util.Collection;
 import java.util.TimerTask;
@@ -126,10 +126,10 @@ public class OrphanedSlotHandler implements SubscriptionListener {
                 destination = subscription.getTargetQueue();
             }
             
-            SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
+            SubscriptionEngine subscriptionEngine = AndesContext.getInstance().getSubscriptionEngine();
 
             // for queues, durable topic subscriptions, shared durable topic subscriptions scenarios
-            Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore
+            Collection<LocalSubscription> localSubscribersForQueue = subscriptionEngine
                     .getActiveLocalSubscribers(destination, subscription.getProtocolType(),
                             subscription.getDestinationType());
             if (localSubscribersForQueue.size() == 0) {

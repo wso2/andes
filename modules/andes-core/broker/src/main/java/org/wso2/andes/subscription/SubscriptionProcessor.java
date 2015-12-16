@@ -20,10 +20,13 @@ package org.wso2.andes.subscription;
 
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesSubscription;
-import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.DestinationType;
+import org.wso2.andes.kernel.ProtocolType;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * <p>
@@ -33,7 +36,7 @@ import java.util.*;
  * </p>
  * <p>
  * If different subscription types needs different handlers to process subscriptions they can extend {@link
- * SubscriptionHandler} and use {@link SubscriptionProcessorBuilder} to get {@link
+ * AndesSubscriptionStore} and use {@link SubscriptionProcessorBuilder} to get {@link
  * SubscriptionProcessor} intialized with relevant subscription handler for each subscription type.
  * </p>
  * <p>
@@ -42,21 +45,61 @@ import java.util.*;
  */
 public class SubscriptionProcessor {
 
+    private class Pair {
+
+        ProtocolType protocolType;
+
+        DestinationType destinationType;
+
+        public Pair(ProtocolType protocolType, DestinationType destinationType) {
+            this.protocolType = protocolType;
+            this.destinationType = destinationType;
+        }
+
+        @Override
+        public int hashCode() {
+            return (2 * protocolType.hashCode()) + destinationType.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            boolean equal = false;
+            if (obj instanceof Pair && ((Pair) obj).protocolType == this.protocolType && ((Pair) obj).destinationType == this.destinationType) {
+                equal = true;
+            }
+            return equal;
+        }
+    }
+
 
     /**
      * Keeps all the handlers for each subscription type.
      */
-    private Map<ProtocolType, SubscriptionHandler> subscriptionHandlers = new EnumMap<>(ProtocolType.class);
+    private Map<Pair, AndesSubscriptionStore> subscriptionHandlers = new HashMap<>();
 
     /**
      * Add a processor for a given protocol
      *
-     * @param protocolType The subscription processor to handle the given protocol
+     * @param protocolType The protocol type of the handler
+     * @param destinationType The destination type of the handler
+     * @param andesSubscriptionStore The subscription processor to handle the given protocol
      * @throws AndesException
      */
-    protected void addProtocolType(ProtocolType protocolType,
-                                   SubscriptionHandler subscriptionHandler) throws AndesException {
-        subscriptionHandlers.put(protocolType, subscriptionHandler);
+    protected void addHandler(ProtocolType protocolType, DestinationType destinationType,
+                              AndesSubscriptionStore andesSubscriptionStore) throws AndesException {
+        Pair pair = new Pair(protocolType, destinationType);
+        subscriptionHandlers.put(pair, andesSubscriptionStore);
+    }
+
+    /**
+     * Get the matching subscription store for the given subscription.
+     *
+     * @param subscription The subscription to get matching store for
+     *
+     * @return The store relevant to the given subscription
+     */
+    private AndesSubscriptionStore getSubscriptionStore(AndesSubscription subscription) throws AndesException {
+        return getSubscriptionStore(subscription.getProtocolType(), subscription.getDestinationType());
     }
 
     /**
@@ -64,17 +107,21 @@ public class SubscriptionProcessor {
      * unnecessary null pointers in case the subscription type is not found.
      *
      * @param protocolType The subscription type of the handler
+     * @param destinationType The destination type of the handler
      * @return The subscription handler
      */
-    private SubscriptionHandler getSubscriptionHandler(ProtocolType protocolType) throws
+    private AndesSubscriptionStore getSubscriptionStore(ProtocolType protocolType, DestinationType destinationType) throws
             AndesException {
-        SubscriptionHandler subscriptionHandler = subscriptionHandlers.get(protocolType);
+        Pair pair = new Pair(protocolType, destinationType);
 
-        if (null == subscriptionHandler) {
-            throw new AndesException("Subscription type " + protocolType + " is not recognized.");
+        AndesSubscriptionStore andesSubscriptionStore = subscriptionHandlers.get(pair);
+
+        if (null == andesSubscriptionStore) {
+            throw new AndesException("Subscription Store for protocol type " + protocolType + " " +
+                    "and destination type " + destinationType + "is not recognized.");
         }
 
-        return subscriptionHandler;
+        return andesSubscriptionStore;
     }
 
     /**
@@ -84,8 +131,8 @@ public class SubscriptionProcessor {
      * @throws AndesException
      */
     public void addSubscription(AndesSubscription subscription) throws AndesException {
-        SubscriptionHandler subscriptionHandler = getSubscriptionHandler(subscription.getProtocolType());
-        subscriptionHandler.addSubscription(subscription);
+        AndesSubscriptionStore andesSubscriptionStore = getSubscriptionStore(subscription);
+        andesSubscriptionStore.addSubscription(subscription);
     }
 
     /**
@@ -94,8 +141,8 @@ public class SubscriptionProcessor {
      * @throws AndesException
      */
     public void updateSubscription(AndesSubscription subscription) throws AndesException {
-        SubscriptionHandler subscriptionHandler = getSubscriptionHandler(subscription.getProtocolType());
-        subscriptionHandler.updateSubscription(subscription);
+        AndesSubscriptionStore andesSubscriptionStore = getSubscriptionStore(subscription);
+        andesSubscriptionStore.updateSubscription(subscription);
     }
 
     /**
@@ -106,8 +153,8 @@ public class SubscriptionProcessor {
      * @throws AndesException
      */
     public boolean isSubscriptionAvailable(AndesSubscription subscription) throws AndesException  {
-        SubscriptionHandler subscriptionHandler = getSubscriptionHandler(subscription.getProtocolType());
-        return subscriptionHandler.isSubscriptionAvailable(subscription);
+        AndesSubscriptionStore andesSubscriptionStore = getSubscriptionStore(subscription);
+        return andesSubscriptionStore.isSubscriptionAvailable(subscription);
     }
 
     /**
@@ -117,8 +164,8 @@ public class SubscriptionProcessor {
      * @throws AndesException
      */
     public void removeSubscription(AndesSubscription subscription) throws AndesException  {
-        SubscriptionHandler subscriptionHandler = getSubscriptionHandler(subscription.getProtocolType());
-        subscriptionHandler.removeSubscription(subscription);
+        AndesSubscriptionStore andesSubscriptionStore = getSubscriptionStore(subscription);
+        andesSubscriptionStore.removeSubscription(subscription);
     }
 
     /**
@@ -133,8 +180,8 @@ public class SubscriptionProcessor {
     public Set<AndesSubscription> getMatchingSubscriptions(String destination, ProtocolType protocolType,
                                                            DestinationType destinationType)
             throws AndesException {
-        SubscriptionHandler subscriptionHandler = getSubscriptionHandler(protocolType);
-        return subscriptionHandler.getMatchingSubscriptions(destination, destinationType);
+        AndesSubscriptionStore andesSubscriptionStore = getSubscriptionStore(protocolType, destinationType);
+        return andesSubscriptionStore.getMatchingSubscriptions(destination, destinationType);
     }
 
     /**
@@ -146,7 +193,7 @@ public class SubscriptionProcessor {
     public Set<AndesSubscription> getActiveSubscribersForNode(String nodeID) {
         Set<AndesSubscription> subscriptions = new HashSet<>();
 
-        for (Map.Entry<ProtocolType, SubscriptionHandler> entry : subscriptionHandlers.entrySet()) {
+        for (Map.Entry<Pair, AndesSubscriptionStore> entry : subscriptionHandlers.entrySet()) {
             for (AndesSubscription subscription : entry.getValue().getAllSubscriptions()) {
                 if (subscription.getSubscribedNode().equals(nodeID) && subscription.hasExternalSubscriptions()) {
                     subscriptions.add(subscription);
@@ -166,7 +213,7 @@ public class SubscriptionProcessor {
     public Set<String> getAllDestinations(DestinationType destinationType) {
         Set<String> topics = new HashSet<>();
 
-        for (Map.Entry<ProtocolType, SubscriptionHandler> entry : subscriptionHandlers.entrySet()) {
+        for (Map.Entry<Pair, AndesSubscriptionStore> entry : subscriptionHandlers.entrySet()) {
             topics.addAll(entry.getValue().getAllDestinations(destinationType));
         }
 
@@ -185,7 +232,7 @@ public class SubscriptionProcessor {
     public Set<AndesSubscription> getAllSubscriptions() {
         Set<AndesSubscription> allSubscriptions = new HashSet<>();
 
-        for (Map.Entry<ProtocolType, SubscriptionHandler> entry : subscriptionHandlers.entrySet()) {
+        for (Map.Entry<Pair, AndesSubscriptionStore> entry : subscriptionHandlers.entrySet()) {
             allSubscriptions.addAll(entry.getValue().getAllSubscriptions());
         }
 
@@ -201,8 +248,10 @@ public class SubscriptionProcessor {
      * oiajsdfja09320398_akafixthis_************
      */
     public Set<AndesSubscription> getAllSubscriptionsForDestinationType(ProtocolType protocolType, DestinationType destinationType) {
+        Pair pair = new Pair(protocolType, destinationType);
+
         Set<AndesSubscription> subscriptionsForDestinationType = new HashSet<>();
-        for (AndesSubscription subscription : subscriptionHandlers.get(protocolType).getAllSubscriptions()) {
+        for (AndesSubscription subscription : subscriptionHandlers.get(pair).getAllSubscriptions()) {
             if (subscription.getDestinationType() == destinationType) {
                 subscriptionsForDestinationType.add(subscription);
             }

@@ -32,7 +32,7 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.logging.LogSubject;
 import org.wso2.andes.server.queue.AMQQueue;
-import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.andes.subscription.SubscriptionEngine;
 
 /**
  * Implementations of {#{@link org.wso2.andes.kernel.MessageStore} replaces the functionality provided by this class
@@ -43,7 +43,7 @@ public class QpidDeprecatedMessageStore implements MessageStore {
     private boolean configured = false;
     private static Log log =
             LogFactory.getLog(QpidDeprecatedMessageStore.class);
-    private SubscriptionStore subscriptionStore;
+    private SubscriptionEngine subscriptionEngine;
 
     /**
      * Set CassandraMessageStore at ClusterResourceHolder
@@ -82,7 +82,7 @@ public class QpidDeprecatedMessageStore implements MessageStore {
      * @throws Exception
      */
     private void performCommonConfiguration(Configuration configuration) throws Exception {
-        subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
+        subscriptionEngine = AndesContext.getInstance().getSubscriptionEngine();
         configured = true;
     }
 

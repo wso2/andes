@@ -36,7 +36,7 @@ import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.subscription.LocalSubscription;
-import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.andes.subscription.SubscriptionEngine;
 import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.Meter;
@@ -131,7 +131,7 @@ public class Andes {
     /**
      * Initialise is package specific. We don't need outsiders initialising the API
      */
-    void initialise(SubscriptionStore subscriptionStore,
+    void initialise(SubscriptionEngine subscriptionEngine,
                     MessagingEngine messagingEngine,
                     AndesContextInformationManager contextInformationManager,
                     AndesSubscriptionManager subscriptionManager) {
@@ -140,7 +140,7 @@ public class Andes {
         this.messagingEngine = messagingEngine;
         this.subscriptionManager = subscriptionManager;
 
-        inboundEventManager = new InboundEventManager(subscriptionStore, messagingEngine);
+        inboundEventManager = new InboundEventManager(subscriptionEngine, messagingEngine);
 
         log.info("Andes API initialised.");
     }

@@ -38,7 +38,7 @@ import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerat
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.subscription.LocalSubscription;
-import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.andes.subscription.SubscriptionEngine;
 import org.wso2.andes.thrift.MBThriftClient;
 import org.wso2.andes.tools.utils.MessageTracer;
 
@@ -72,7 +72,7 @@ public class MessagingEngine {
     /**
      * reference to subscription store
      */
-    private SubscriptionStore subscriptionStore;
+    private SubscriptionEngine subscriptionEngine;
 
     /**
      * Reference to MessageStore. This holds the messages received by andes
@@ -116,16 +116,16 @@ public class MessagingEngine {
      * storing strategy will be set according to the configurations by calling this.
      *
      * @param messageStore MessageStore
-     * @param subscriptionStore SubscriptionStore
+     * @param subscriptionEngine SubscriptionStore
      * @throws AndesException
      */
     public void initialise(MessageStore messageStore,
-                           SubscriptionStore subscriptionStore) throws AndesException {
+                           SubscriptionEngine subscriptionEngine) throws AndesException {
 
         configureMessageIDGenerator();
 
         this.messageStore = messageStore;
-        this.subscriptionStore = subscriptionStore;
+        this.subscriptionEngine = subscriptionEngine;
 
         //register listeners for queue changes
         queueListener = new ClusterCoordinationHandler(HazelcastAgent.getInstance());
@@ -193,7 +193,7 @@ public class MessagingEngine {
      */
     public void messageRejected(DeliverableAndesMetadata andesMetadata, UUID channelID) throws AndesException {
         andesMetadata.markAsNackedByClient(channelID);
-        LocalSubscription subToResend = subscriptionStore.getLocalSubscriptionForChannelId(channelID);
+        LocalSubscription subToResend = subscriptionEngine.getLocalSubscriptionForChannelId(channelID);
         if (subToResend != null) {
             subToResend.msgRejectReceived(andesMetadata.messageID);
             reQueueMessageToSubscriber(andesMetadata, subToResend);

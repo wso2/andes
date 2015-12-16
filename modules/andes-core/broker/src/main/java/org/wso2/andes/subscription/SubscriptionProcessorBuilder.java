@@ -18,8 +18,8 @@
 
 package org.wso2.andes.subscription;
 
-import org.wso2.andes.amqp.AMQPSubscriptionHandler;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.ProtocolType;
 
 /**
@@ -27,30 +27,41 @@ import org.wso2.andes.kernel.ProtocolType;
  */
 public class SubscriptionProcessorBuilder {
 
-    /**
-     * Build a subscription processor with {@link TopicSubscriptionBitMapHandler} as
-     * subscription processor for all subscription types.
-     *
-     * @return The {@link SubscriptionProcessor} initialized with {@link org.wso2
-     * .andes.subscription.ClusterSubscriptionBitMapHandler}
-     * @throws AndesException
-     */
-    public static SubscriptionProcessor getBitMapClusterSubscriptionProcessor() throws AndesException {
-        SubscriptionProcessor bitMapSubscriptionProcessor = new SubscriptionProcessor();
-        bitMapSubscriptionProcessor.addProtocolType(ProtocolType.AMQP, new TopicSubscriptionBitMapHandler
-                (ProtocolType.AMQP));
-        bitMapSubscriptionProcessor.addProtocolType(ProtocolType.MQTT, new TopicSubscriptionBitMapHandler
-                (ProtocolType.MQTT));
-        return bitMapSubscriptionProcessor;
-    }
-
-    public static SubscriptionProcessor getProtocolSpecificProcessor() throws AndesException {
+    public static SubscriptionProcessor getClusterSubscriptionProcessor() throws AndesException {
         SubscriptionProcessor subscriptionProcessor = new SubscriptionProcessor();
 
-        subscriptionProcessor.addProtocolType(ProtocolType.AMQP, new AMQPSubscriptionHandler());
+        // Add handles for AMQP
+        subscriptionProcessor.addHandler(ProtocolType.AMQP, DestinationType.QUEUE, new QueueSubscriptionStore());
+        subscriptionProcessor.addHandler(ProtocolType.AMQP, DestinationType.TOPIC,
+                new TopicSubscriptionBitMapStore(ProtocolType.AMQP));
+        subscriptionProcessor.addHandler(ProtocolType.AMQP, DestinationType.DURABLE_TOPIC,
+                new TopicSubscriptionBitMapStore(ProtocolType.AMQP));
 
-        subscriptionProcessor.addProtocolType(ProtocolType.MQTT,
-                new TopicSubscriptionBitMapHandler(ProtocolType.MQTT));
+        // Add handles for MQTT
+        subscriptionProcessor.addHandler(ProtocolType.MQTT, DestinationType.TOPIC,
+                new TopicSubscriptionBitMapStore(ProtocolType.MQTT));
+        subscriptionProcessor.addHandler(ProtocolType.MQTT, DestinationType.DURABLE_TOPIC,
+                new TopicSubscriptionBitMapStore(ProtocolType.MQTT));
+
+        return subscriptionProcessor;
+    }
+
+    public static SubscriptionProcessor getLocalSubscriptionProcessor() throws AndesException {
+        SubscriptionProcessor subscriptionProcessor = new SubscriptionProcessor();
+
+        // Add handles for AMQP
+        subscriptionProcessor.addHandler(ProtocolType.AMQP, DestinationType.QUEUE,
+                new QueueSubscriptionStore());
+        subscriptionProcessor.addHandler(ProtocolType.AMQP, DestinationType.TOPIC,
+                new TopicSubscriptionBitMapStore(ProtocolType.AMQP));
+        subscriptionProcessor.addHandler(ProtocolType.AMQP, DestinationType.DURABLE_TOPIC,
+                new LocalDurableTopicSubscriptionStore());
+
+        // Add handles for MQTT
+        subscriptionProcessor.addHandler(ProtocolType.MQTT, DestinationType.TOPIC,
+                new TopicSubscriptionBitMapStore(ProtocolType.MQTT));
+        subscriptionProcessor.addHandler(ProtocolType.MQTT, DestinationType.DURABLE_TOPIC,
+                new LocalDurableTopicSubscriptionStore());
 
         return subscriptionProcessor;
     }

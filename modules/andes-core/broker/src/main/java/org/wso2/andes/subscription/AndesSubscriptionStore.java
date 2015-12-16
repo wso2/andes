@@ -28,7 +28,7 @@ import java.util.Set;
 /**
  * Interface to handle cluster subscriptions when wildcards are involved.
  */
-public interface SubscriptionHandler {
+public interface AndesSubscriptionStore {
 
     /**
      * Add a subscription to the underlying data structure.

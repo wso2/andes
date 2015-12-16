@@ -120,11 +120,12 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                 String storageQueueName = storageQueueDataEntry.getKey();
                 StorageQueueData storageQueueData = storageQueueDataEntry.getValue();
                 String destinationOfMessagesInQueue = storageQueueData.getDestinationName();
+                DestinationType destinationType = storageQueueData.getDestinationType();
                 try {
                     //Check in memory buffer in MessageFlusher has room
                     if (messageFlusher.getMessageDeliveryInfo(destinationOfMessagesInQueue, storageQueueData
-                            .getProtocolType(), storageQueueData.getDestinationType())
-                            .isMessageBufferFull()) {
+                            .getProtocolType(), destinationType)
+                            .messageBufferHasRoom()) {
 
                         //get a slot from coordinator.
                         Slot currentSlot = requestSlot(storageQueueName);
@@ -142,7 +143,8 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                             if (log.isDebugEnabled()) {
                                 log.debug("Received an empty slot from slot manager");
                             }
-                            boolean sentFromMessageBuffer = sendFromMessageBuffer(destinationOfMessagesInQueue);
+                            boolean sentFromMessageBuffer = sendFromMessageBuffer(destinationOfMessagesInQueue,
+                                    destinationType);
                             if (!sentFromMessageBuffer) {
                                 //No available free slots
                                 idleQueueCounter++;
@@ -189,10 +191,11 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                                 }
 
                                 filterOverlappedMessages(trackedSlot, messagesRead);
-                                MessageFlusher.getInstance().sendMessageToBuffer(messagesRead, trackedSlot);
+                                MessageFlusher.getInstance().sendMessageToBuffer(messagesRead, trackedSlot,
+                                        destinationType);
                                 MessageFlusher.getInstance()
                                         .sendMessagesInBuffer(trackedSlot
-                                                .getDestinationOfMessagesInSlot());
+                                                .getDestinationOfMessagesInSlot(), destinationType);
                             } else {
                                 currentSlot.setSlotInActive();
                                 SlotDeletionExecutor.getInstance().executeSlotDeletion(currentSlot);
@@ -207,7 +210,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                                     "The queue " + storageQueueName + " has no room. Thus sending " +
                                             "from buffer.");
                         }
-                        sendFromMessageBuffer(destinationOfMessagesInQueue);
+                        sendFromMessageBuffer(destinationOfMessagesInQueue, destinationType);
                     }
 
                 } catch (AndesException e) {
@@ -380,13 +383,14 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
      * Send messages from buffer in MessageFlusher if the buffer is not empty
      *
      * @param msgDestination queue/topic message is addressed to
+     * @param destinationType The destination type of the messages
      * @return whether the messages are sent from message buffer or not
      * @throws AndesException
      */
-    private boolean sendFromMessageBuffer(String msgDestination) throws AndesException {
+    private boolean sendFromMessageBuffer(String msgDestination, DestinationType destinationType) throws AndesException {
         boolean sentFromMessageBuffer = false;
         if (!messageFlusher.isMessageBufferEmpty(msgDestination)) {
-            messageFlusher.sendMessagesInBuffer(msgDestination);
+            messageFlusher.sendMessagesInBuffer(msgDestination, destinationType);
             sentFromMessageBuffer = true;
         }
         return sentFromMessageBuffer;

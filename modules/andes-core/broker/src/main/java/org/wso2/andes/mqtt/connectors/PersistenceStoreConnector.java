@@ -258,7 +258,7 @@ public class PersistenceStoreConnector implements MQTTConnector {
                 //The other is un-subscription, if is the case of un-subscription the subscription should be removed
                 //Andes will automatically remove all the subscriptions bound to a queue when the queue is deleted
                 InboundQueueEvent queueChange = new InboundQueueEvent(queueIdentifier, username, false, true,
-                        ProtocolType.MQTT, DestinationType.TOPIC);
+                        ProtocolType.MQTT, DestinationType.DURABLE_TOPIC);
                 Andes.getInstance().deleteQueue(queueChange);
             } else {
                 //create a close subscription event

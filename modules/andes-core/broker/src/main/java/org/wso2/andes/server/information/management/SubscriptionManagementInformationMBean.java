@@ -28,7 +28,7 @@ import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.management.common.mbeans.SubscriptionManagementInformation;
 import org.wso2.andes.server.management.AMQManagedObject;
 import org.wso2.andes.subscription.LocalSubscription;
-import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.andes.subscription.SubscriptionEngine;
 
 import javax.management.MBeanException;
 import javax.management.NotCompliantMBeanException;
@@ -49,7 +49,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
     /**
      * Subscription store used to query subscription related information
      */
-    private SubscriptionStore subscriptionStore;
+    private SubscriptionEngine subscriptionEngine;
 
     /**
      * Instantiates the MBeans related to subscriptions.
@@ -59,7 +59,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
     public SubscriptionManagementInformationMBean() throws NotCompliantMBeanException {
         super(SubscriptionManagementInformation.class, SubscriptionManagementInformation.TYPE);
 
-        subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
+        subscriptionEngine = AndesContext.getInstance().getSubscriptionEngine();
     }
 
     /**
@@ -75,13 +75,13 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
      */
     @Override
     public String[] getAllSubscriptions( String isDurable, String isActive, String protocolType,
-                                         String destinationType) {
+                                         String destinationType) throws MBeanException {
         try {
 
             ProtocolType protocolTypeArg = ProtocolType.valueOf(protocolType);
             DestinationType destinationTypeArg = DestinationType.valueOf(destinationType);
 
-            Set<AndesSubscription> subscriptions = AndesContext.getInstance().getSubscriptionStore()
+            Set<AndesSubscription> subscriptions = AndesContext.getInstance().getSubscriptionEngine()
                             .getAllClusterSubscriptionsForDestinationType(protocolTypeArg, destinationTypeArg);
 
             Set<AndesSubscription> subscriptionsToDisplay;
@@ -106,7 +106,8 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
             return subscriptionArray;
 
         } catch (Exception e) {
-            throw new RuntimeException("Error in accessing subscription information", e);
+            log.error("Error while invoking MBeans to retrieve subscription information", e);
+            throw new MBeanException(e, "Error while invoking MBeans to retrieve subscription information");
         }
     }
 
@@ -188,10 +189,12 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
     }
 
     @Override
-    public void removeSubscription(String subscriptionId, String destinationName) {
+    public void removeSubscription(String subscriptionId, String destinationName, String protocolType,
+                                   String destinationType) {
         try {
             Set<LocalSubscription> allSubscribersForDestination
-                    = subscriptionStore.getActiveLocalSubscribersForQueuesAndTopics(destinationName);
+                    = subscriptionEngine.getActiveLocalSubscribers(destinationName, ProtocolType.valueOf(protocolType),
+                    DestinationType.valueOf(destinationType));
 
             for (LocalSubscription andesSubscription : allSubscribersForDestination) {
 

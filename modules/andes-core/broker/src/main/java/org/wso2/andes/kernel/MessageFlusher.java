@@ -26,7 +26,7 @@ import org.wso2.andes.configuration.util.TopicMessageDeliveryStrategy;
 import org.wso2.andes.kernel.disruptor.delivery.DisruptorBasedFlusher;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.subscription.LocalSubscription;
-import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.andes.subscription.SubscriptionEngine;
 import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.ArrayList;
@@ -60,7 +60,7 @@ public class MessageFlusher {
      */
     private Map<String, MessageDeliveryInfo> subscriptionCursar4QueueMap = new HashMap<>();
 
-    private SubscriptionStore subscriptionStore;
+    private SubscriptionEngine subscriptionEngine;
 
     /**
      * Message flusher for queue message delivery. Depending on the behaviour of the strategy
@@ -87,23 +87,23 @@ public class MessageFlusher {
 
     public MessageFlusher() {
 
-        this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
+        this.subscriptionEngine = AndesContext.getInstance().getSubscriptionEngine();
         flusherExecutor = new DisruptorBasedFlusher();
 
         this.maxNumberOfReadButUndeliveredMessages = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_MAX_READ_BUT_UNDELIVERED_MESSAGES);
 
         //set queue message flusher
-        this.queueMessageFlusher = new FlowControlledQueueMessageDeliveryImpl(subscriptionStore);
+        this.queueMessageFlusher = new FlowControlledQueueMessageDeliveryImpl(subscriptionEngine);
 
         //set topic message flusher
         TopicMessageDeliveryStrategy topicMessageDeliveryStrategy = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_TOPIC_MESSAGE_DELIVERY_STRATEGY);
         if(topicMessageDeliveryStrategy.equals(TopicMessageDeliveryStrategy.DISCARD_ALLOWED)
                 || topicMessageDeliveryStrategy.equals(TopicMessageDeliveryStrategy.DISCARD_NONE)) {
-            this.topicMessageFlusher = new NoLossBurstTopicMessageDeliveryImpl(subscriptionStore);
+            this.topicMessageFlusher = new NoLossBurstTopicMessageDeliveryImpl(subscriptionEngine);
         } else if(topicMessageDeliveryStrategy.equals(TopicMessageDeliveryStrategy.SLOWEST_SUB_RATE)) {
-            this.topicMessageFlusher = new SlowestSubscriberTopicMessageDeliveryImpl(subscriptionStore);
+            this.topicMessageFlusher = new SlowestSubscriberTopicMessageDeliveryImpl(subscriptionEngine);
         }
 
         initializeDeliveryRules();
@@ -216,9 +216,8 @@ public class MessageFlusher {
          * Returns boolean variable saying whether this destination has room or not
          *
          * @return whether this destination has room or not
-         * ***_akafixthis rename this method
          */
-        public boolean isMessageBufferFull() {
+        public boolean messageBufferHasRoom() {
             boolean hasRoom = true;
             if (readButUndeliveredMessages.size() >= maxNumberOfReadButUndeliveredMessages) {
                 hasRoom = false;
@@ -326,7 +325,7 @@ public class MessageFlusher {
         if (messageDeliveryInfo == null) {
             messageDeliveryInfo = new MessageDeliveryInfo();
             messageDeliveryInfo.destination = destination;
-            Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore.getActiveLocalSubscribers(
+            Collection<LocalSubscription> localSubscribersForQueue = subscriptionEngine.getActiveLocalSubscribers(
                     destination, protocolType, destinationType);
 
             messageDeliveryInfo.iterator = localSubscribersForQueue.iterator();
@@ -348,7 +347,7 @@ public class MessageFlusher {
             throws AndesException {
         MessageDeliveryInfo messageDeliveryInfo = new MessageDeliveryInfo();
         messageDeliveryInfo.destination = destination;
-        Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore.getActiveLocalSubscribers(
+        Collection<LocalSubscription> localSubscribersForQueue = subscriptionEngine.getActiveLocalSubscribers(
                 destination, protocolType, destinationType);
 
         messageDeliveryInfo.iterator = localSubscribersForQueue.iterator();
@@ -372,8 +371,10 @@ public class MessageFlusher {
      *         AndesMetadata list
      * @param slot
      *         these messages are belonged to
+     * @param destinationType The destination type of the buffer
      */
-    public void sendMessageToBuffer(List<DeliverableAndesMetadata> messagesRead, Slot slot) {
+    public void sendMessageToBuffer(List<DeliverableAndesMetadata> messagesRead, Slot slot
+            , DestinationType destinationType) {
         try {
             slot.incrementPendingMessageCount(messagesRead.size());
             for (DeliverableAndesMetadata message : messagesRead) {
@@ -388,7 +389,7 @@ public class MessageFlusher {
                 ProtocolType protocolType = AndesUtils.getProtocolTypeForMetaDataType(message.getMetaDataType());
 
                 MessageDeliveryInfo messageDeliveryInfo =
-                        getMessageDeliveryInfo(destination, protocolType, message.getDestinationType());
+                        getMessageDeliveryInfo(destination, protocolType, destinationType);
                 messageDeliveryInfo.bufferMessage(message);
             }
         } catch (Throwable e) {
@@ -419,9 +420,12 @@ public class MessageFlusher {
     }
 
     /**
-     * Read messages from the buffer and send messages to subscribers
+     * Read messages from the buffer and send messages to subscribers.
+     *
+     * @param subDestination The destination of the subscription
+     * @param destinationType The destination type of the subscription
      */
-    public void sendMessagesInBuffer(String subDestination) throws AndesException {
+    public void sendMessagesInBuffer(String subDestination, DestinationType destinationType) throws AndesException {
         /**
          * Now messages are read to the memory. Send the read messages to subscriptions
          */
@@ -441,8 +445,8 @@ public class MessageFlusher {
                 log.debug("Sending messages from buffer num of msg = "
                         + messageDeliveryInfo.getSizeOfMessageBuffer());
             }
-            sendMessagesToSubscriptions(messageDeliveryInfo.destination,
-                    messageDeliveryInfo.readButUndeliveredMessages);
+            sendMessagesToSubscriptions(messageDeliveryInfo.destination, messageDeliveryInfo.readButUndeliveredMessages,
+                    destinationType);
 
         } catch (Exception e) {
             /**
@@ -469,20 +473,22 @@ public class MessageFlusher {
      *
      * @param destination queue name
      * @param messages    metadata set
+     * @param destinationType The destination type of the messages
      * @return how many messages sent
      * @throws Exception
      */
-    public int sendMessagesToSubscriptions(String destination, Set<DeliverableAndesMetadata> messages)
+    public int sendMessagesToSubscriptions(String destination, Set<DeliverableAndesMetadata> messages,
+                                           DestinationType destinationType)
             throws Exception {
 
         if(messages.iterator().hasNext()) {
             //identify if this messages address queues or topics. There CANNOT be a mix
             DeliverableAndesMetadata firstMessage = messages.iterator().next();
 
-            if (DestinationType.TOPIC == firstMessage.getDestinationType()) {
-                return topicMessageFlusher.deliverMessageToSubscriptions(destination, messages);
+            if (DestinationType.TOPIC == destinationType) {
+                return topicMessageFlusher.deliverMessageToSubscriptions(destination, messages, destinationType);
             } else {
-                return queueMessageFlusher.deliverMessageToSubscriptions(destination, messages);
+                return queueMessageFlusher.deliverMessageToSubscriptions(destination, messages, destinationType);
             }
         } else {
             if(log.isDebugEnabled()) {

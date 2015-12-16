@@ -33,7 +33,7 @@ import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.andes.subscription.SubscriptionEngine;
 import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.Meter;
@@ -51,11 +51,11 @@ import java.util.Set;
 public class MessagePreProcessor implements EventHandler<InboundEventContainer> {
 
     private static final Log log = LogFactory.getLog(MessagePreProcessor.class);
-    private final SubscriptionStore subscriptionStore;
+    private final SubscriptionEngine subscriptionEngine;
     private final MessageIDGenerator idGenerator;
 
-    public MessagePreProcessor(SubscriptionStore subscriptionStore) {
-        this.subscriptionStore = subscriptionStore;
+    public MessagePreProcessor(SubscriptionEngine subscriptionEngine) {
+        this.subscriptionEngine = subscriptionEngine;
         idGenerator = new MessageIDGenerator();
     }
 
@@ -142,7 +142,7 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                     + message.getMetadata().getMessageID());
         }
 
-        if (DestinationType.TOPIC == message.getMetadata().getDestinationType()) {
+        if (message.getMetadata().isTopic()) {
             handleTopicRoutine(event, message, andesChannel);
         } else {
             andesChannel.recordAdditionToBuffer(message.getContentChunkList().size());
@@ -165,10 +165,10 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
             ProtocolType protocolType =
                     AndesUtils.getProtocolTypeForMetaDataType(message.getMetadata().getMetaDataType());
 
-            subscriptionList = subscriptionStore.getClusterSubscribersForDestination(messageRoutingKey,
+            subscriptionList = subscriptionEngine.getClusterSubscribersForDestination(messageRoutingKey,
                     protocolType, DestinationType.TOPIC);
 
-            subscriptionList.addAll(subscriptionStore.getClusterSubscribersForDestination(messageRoutingKey,
+            subscriptionList.addAll(subscriptionEngine.getClusterSubscribersForDestination(messageRoutingKey,
                     protocolType, DestinationType.DURABLE_TOPIC));
 
             //We do not consider message selectors here. They will be considered when being delivered
@@ -203,7 +203,6 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                          */
                         clonedMessage.getMetadata().updateMetadata(subscription.getTargetQueue(),
                                 AMQPUtils.DIRECT_EXCHANGE_NAME);
-                        clonedMessage.getMetadata().setDestinationType(DestinationType.DURABLE_TOPIC);
                     }
                     if (log.isDebugEnabled()) {
                         log.debug("Storing metadata queue " + subscription.getStorageQueueName() + " messageID "

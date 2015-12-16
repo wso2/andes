@@ -43,18 +43,8 @@ public interface SubscriptionManagementInformation {
                     name = "protocolType", description = "protocol of subscriptions") String protocolType,
             @MBeanOperationParameter(
                     name = "destinationType",
-                    description = "Destination type of the subscriptions") String destinationType);
-
-    /**
-     * MBean service to get filtered topic subscriptions
-     * @param isDurable of type String (acceptable values => * | true | false)
-     * @param isActive of type String (acceptable values => * | true | false)
-     * @return
-     */
-    @MBeanAttribute(name="TopicSubscriptions",description = "All topic subscriptions")
-    String[] getAllTopicSubscriptions(
-            @MBeanOperationParameter(name = "isDurable" ,description = "get durable ?") String isDurable,
-            @MBeanOperationParameter(name = "isActive" ,description = "get active ?") String isActive);
+                    description = "Destination type of the subscriptions") String destinationType)
+    throws MBeanException;
 
 
     /**
@@ -83,5 +73,10 @@ public interface SubscriptionManagementInformation {
             @MBeanOperationParameter(name = "subscriptionId", description = "ID of the Subscription to remove") String
                     subscriptionId,
             @MBeanOperationParameter(name = "destinationName", description = "Subscribed destination name") String
-                    destinationName);
+                    destinationName,
+            @MBeanOperationParameter(
+                    name = "protocolType", description = "protocol of subscriptions") String protocolType,
+            @MBeanOperationParameter(
+                    name = "destinationType",
+                    description = "Destination type of the subscriptions") String destinationType);
 }

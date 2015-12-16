@@ -168,7 +168,7 @@ public class AndesUtils {
      */
     public static AndesAckData generateAndesAckMessage(UUID channelID, long messageID) throws AndesException {
         LocalSubscription localSubscription = AndesContext.getInstance().
-                getSubscriptionStore().getLocalSubscriptionForChannelId(channelID);
+                getSubscriptionEngine().getLocalSubscriptionForChannelId(channelID);
         if(null == localSubscription) {
             log.error("Cannot handle acknowledgement for message ID = " + messageID + " as subscription is closed "
                     + "channelID= " + "" + channelID);
@@ -187,7 +187,7 @@ public class AndesUtils {
      */
     public static DeliverableAndesMetadata lookupDeliveredMessage(long messageID, UUID channelID) throws
             AndesException {
-        LocalSubscription localSubscription = AndesContext.getInstance().getSubscriptionStore()
+        LocalSubscription localSubscription = AndesContext.getInstance().getSubscriptionEngine()
                 .getLocalSubscriptionForChannelId(channelID);
         return localSubscription.getMessageByMessageID(messageID);
     }
