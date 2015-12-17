@@ -278,7 +278,6 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Indicates weather print cache related statistics in 2 minutes interval in carbon log.
      */
     PERSISTENCE_CACHE_PRINT_STATS("persistence/cache/printStats", "false", Boolean.class),
-
     
     /**
      * The ID generation class that is used to maintain unique IDs for each message that arrives at the server.

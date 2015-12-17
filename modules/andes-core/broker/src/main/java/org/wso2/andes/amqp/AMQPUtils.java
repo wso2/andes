@@ -71,6 +71,8 @@ public class AMQPUtils {
 
     public static String DEFAULT_EXCHANGE_NAME = "<<default>>";
 
+    public static String DEFAULT_ANDES_CHANNEL_IDENTIFIER = "AMQP-Unknown";
+
     /**
      * Max chunk size of the stored content in Andes;
      */

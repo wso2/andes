@@ -118,6 +118,7 @@ public class AndesChannel {
      * 
      * @param flowControlManager
      *            - instance of the flow control manage to be used
+     * @param channelId the channel identifier which is a combination of the ip address and the port of the channel
      * @param listener
      *            - an implementation of {@link FlowControlListener} which should
      *            originate from a concrete channel implementation.
@@ -128,7 +129,7 @@ public class AndesChannel {
      *            Indicates that global error based flow control is enabled at
      *            the time of this channel is created.
      */
-    public AndesChannel(FlowControlManager flowControlManager, FlowControlListener listener,
+    public AndesChannel(FlowControlManager flowControlManager, String channelId, FlowControlListener listener,
                         boolean globalBufferBasedFlowControlEnabled, 
                         boolean globalErrBasedFlowControlEnabled) {
         this.flowControlManager = flowControlManager;
@@ -142,11 +143,31 @@ public class AndesChannel {
         this.flowControlLowLimit = flowControlManager.getChannelLowLimit();
         this.flowControlHighLimit = flowControlManager.getChannelHighLimit();
 
+        this.identifier = channelId;
         this.id = idGenerator.incrementAndGet();
         this.messagesOnBuffer = new AtomicInteger(0);
         this.flowControlEnabled = false;
+        log.info("Channel created (ID: " + getIdentifier() + ")");
+    }
 
-        log.info("Channel created (ID: " + getId() + ")");
+    /**
+     * Instantiates a new andes channel
+     *
+     * @param flowControlManager                  Instance of the flow control manage to be used
+     * @param listener                            an implementation of {@link FlowControlListener} which should
+     *                                            originate from a concrete channel
+     *                                            implementation.
+     * @param globalBufferBasedFlowControlEnabled Indicates that global buffer based flow control is enabled at the
+     *                                            time of this channel is created.
+     * @param globalErrBasedFlowControlEnabled    Indicates that global error based flow control is enabled at the
+     *                                            time of this channel is created.
+     */
+    public AndesChannel(FlowControlManager flowControlManager, FlowControlListener listener,
+            boolean globalBufferBasedFlowControlEnabled,
+            boolean globalErrBasedFlowControlEnabled) {
+
+        this(flowControlManager, "Internel_channel", listener,
+                globalBufferBasedFlowControlEnabled, globalErrBasedFlowControlEnabled);
     }
 
     /**
@@ -310,14 +331,6 @@ public class AndesChannel {
 	 */
 	public String getIdentifier() {
 		return identifier;
-	}
-
-	/**
-	 * Set channel identifier
-	 * @param identifier client identifier
-	 */
-	public void setIdentifier(String identifier) {
-		this.identifier = identifier;
 	}
 
 }
