@@ -319,8 +319,18 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Maximum time interval until which a slot can be retained in memory before updating to the cluster.
      * NOTE : specified in milliseconds.
      */
+    @Deprecated
     PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY("performanceTuning/slots" +
             "/slotRetainTimeInMemory", "1000", Long.class),
+    
+    
+    /**
+     * Maximum time interval until messages are accumulated into a slot before
+     * marking it ( notifying to Coordinator) as deliverable.
+     * NOTE : specified in milliseconds.
+     */
+    PERFORMANCE_TUNING_SLOTS_MESSAGE_ACCUMULATION_TIMEOUT("performanceTuning/slots" +
+            "/messageAccumulationTimeout", "1000", Long.class, PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY),
 
     /**
      * Rough estimate for size of a slot. e.g. If the slot window size is 1000, given 3 nodes, it can expand up to 3000.
@@ -342,9 +352,20 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * For instance if we publish one message per minute then each message will have to wait
      * till this timeout before the messages are submitted to the slot coordinator.
      */
+    @Deprecated
     PERFORMANCE_TUNING_SUBMIT_SLOT_TIMEOUT (
             "performanceTuning/slots/windowCreationTimeout", "3000", Integer.class),
 
+    
+    /**
+     * Time interval which broker check for slots that can be marked as 'ready
+     * to deliver'
+     * (- slots which have a aged more than 'messageAccumulationTimeout')
+     */
+    PERFORMANCE_TUNING_SUBMIT_SLOT_TIMER_PERIOD (
+            "performanceTuning/slots/timerPeriod", "3000", Integer.class, PERFORMANCE_TUNING_SUBMIT_SLOT_TIMEOUT),
+
+    
     /**
      * Maximum number of undelivered messages that can be in memory. Increasing this value could cause out of memory
      * scenarios, but performance will be improved
@@ -551,15 +572,62 @@ public enum AndesConfiguration implements ConfigurationProperty {
      */
     SLOT_MANAGEMENT_STORAGE("slotManagement/storage", "RDBMS", String.class);
 
+    /**
+     * Meta data about configuration.
+     */
     private final MetaProperties metaProperties;
+    
+    /**
+     * Holds the configuration which was deprecated by introduction of this configuration.
+     */
+    private final AndesConfiguration deprecated;
 
+    /**
+     * Constructor to define a configuration in broker.
+     * @param keyInFile Xpath (or any key value) which can be used to identify the configuration in the file.
+     * @param defaultValue the default value 
+     * @param dataType data type of the config ( e.g. boolean, string )
+     */
     private AndesConfiguration(String keyInFile, String defaultValue, Class<?> dataType) {
-        // We need to pass the enum name as the identifier : therefore this.name()
-        this.metaProperties = new ImmutableMetaProperties(this.name(),keyInFile, defaultValue, dataType);
+        this(keyInFile, defaultValue, dataType, null);
     }
 
+    /**
+     * Constructor to define a configuration in broker.
+     * 
+     * @param keyInFile Xpath (or any key value) which can be used to identify the configuration in the file.
+     * @param defaultValue the default value
+     * @param dataType data type of the config ( e.g. boolean, string )
+     * @param deprecated the configuratio value which became deprecated after introducing this one.
+     */
+    private AndesConfiguration(String keyInFile, String defaultValue, Class<?> dataType, AndesConfiguration deprecated ) {
+        // We need to pass the enum name as the identifier : therefore this.name()
+        this.metaProperties = new ImmutableMetaProperties(this.name(),keyInFile, defaultValue, dataType);
+        this.deprecated = deprecated;
+    }
+
+    /**
+     * Returns the deprecated configuration definition after introducing this.
+     */
+    public ConfigurationProperty getDeprecated() {
+        return deprecated;
+    }
+
+    /**
+     * Indicates whether this configuration deprecates another configuration.
+     */
+    public boolean hasDeprecatedProperty(){
+        return deprecated != null;
+    }
+    
+    /**
+     * Returns meta data
+     */
     @Override
     public MetaProperties get() {
         return metaProperties;
     }
+    
+    
+    
 }

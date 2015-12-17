@@ -219,8 +219,7 @@ public class AndesConfigurationManager {
             // The cast to T is unavoidable. Even though the function returns the same data type,
             // compiler doesn't know about it. We could add the data type as a parameter,
             // but that only complicates the method call.
-            return (T) deriveValidConfigurationValue(configurationProperty.get().getKeyInFile(),
-                    configurationProperty.get().getDataType(), configurationProperty.get().getDefaultValue());
+            return (T) deriveValidConfigurationValue(configurationProperty);
         } catch (ConfigurationException e) {
 
             log.error(e); // Since the descriptive message is wrapped in exception itself
@@ -229,8 +228,7 @@ public class AndesConfigurationManager {
             // Assuming we always have proper default values defined, this will rescue us from exploding due to a
             // small mistake.
             try {
-                return (T) deriveValidConfigurationValue(configurationProperty.get().getKeyInFile(),
-                        configurationProperty.get().getDataType(), configurationProperty.get().getDefaultValue());
+                return (T) deriveValidConfigurationValue(configurationProperty);
             } catch (ConfigurationException e1) {
                 // It is highly unlikely that this will throw an exception (if defined default values are also invalid).
                 // But if it does, the method will return null.
@@ -293,6 +291,63 @@ public class AndesConfigurationManager {
         }
     }
 
+
+    /**
+     * Retrieves value from configuration file (i.e. broker.xml) for the
+     * specified config-definition.
+     * <p>
+     * This method has the support for deprecated properties
+     * </p>
+     * Behavior is: <br/>
+     * <ol>
+     * <li>Check if the configuration is defined in file.</li>
+     * <li>If configuration exists then return the value provided in file</li>
+     * <li>if configuration is non-existent then check whether this
+     * configuration is
+     * associated with a another deprecated config parameter</li>
+     * <li>If user has specified deprecated configuration it will be read.
+     * </ol>
+     * 
+     * @param <T>
+     *            Expected data type of the property
+     * @return Value of config in the expected data type.
+     * @throws ConfigurationException
+     *             an error
+     */
+    public static <T> T deriveValidConfigurationValue(ConfigurationProperty configurationProperty) throws ConfigurationException {
+
+        if (compositeConfiguration.containsKey(configurationProperty.get().getKeyInFile())) {
+            return (T) deriveValidConfigurationValue(configurationProperty.get().getKeyInFile(),
+                                                     configurationProperty.get().getDataType(),
+                                                     configurationProperty.get().getDefaultValue());
+        } else {
+
+            // Check whether a deprecated configuration associated with current
+            // config definition.
+            // If that's true; check whether the deprecated configuration is
+            // defined by the user.
+            if (configurationProperty.hasDeprecatedProperty() &&
+                compositeConfiguration.containsKey(configurationProperty.getDeprecated().get().getKeyInFile())) {
+                // User is still using the old configuration parameter instead
+                // of new one. therefore a warning will be logged.
+                log.warn("configuration [" + configurationProperty.getDeprecated().get().getKeyInFile() +
+                         "] is deprecated. please use: [" +
+                         configurationProperty.get().getKeyInFile() + "]");
+
+                return (T) deriveValidConfigurationValue(configurationProperty.getDeprecated().get().getKeyInFile(),
+                                                         configurationProperty.getDeprecated().get().getDataType(),
+                                                         configurationProperty.getDeprecated().get().getDefaultValue());
+            } else {
+                // go with the default value of original configuration parameter
+                return (T) deriveValidConfigurationValue(configurationProperty.get().getKeyInFile(),
+                                                         configurationProperty.get().getDataType(),
+                                                         configurationProperty.get().getDefaultValue());
+            }
+
+        }
+
+    }
+    
     /**
      * Given the data type and the value read from a config, this returns the parsed value
      * of the property.
