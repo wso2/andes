@@ -29,5 +29,23 @@ package org.wso2.andes.configuration.util;
  */
 public interface ConfigurationProperty {
 
+    /**
+     * returns meta data about the configuration.
+     * 
+     * @return a meta data
+     */
     MetaProperties get();
+
+    /**
+     * Returns the deprecated configuration definition after introducing this.
+     *  
+     * @return an instance of {@link ConfigurationProperty}
+     */
+    ConfigurationProperty getDeprecated();
+
+    /**
+     * Indicates whether this configuration deprecates another configuration.
+     * 
+     */
+    boolean hasDeprecatedProperty();
 }
