@@ -22,10 +22,11 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
 import org.wso2.andes.kernel.disruptor.inbound.InboundAndesChannelEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundBindingEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundDeleteDLCMessagesEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundDeleteMessagesEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
 import org.wso2.andes.kernel.disruptor.inbound.InboundExchangeEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundKernelOpsEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
@@ -343,6 +344,18 @@ public class Andes {
                 messagesToRemove, moveToDeadLetterChannel);
         deleteMessagesEvent.prepareForDelete(messagingEngine);
         inboundEventManager.publishStateEvent(deleteMessagesEvent);
+    }
+
+    /**
+     * Method to delete message from the dead letter channel.
+     *
+     * @param messagesToRemove List of messages to remove
+     */
+    public void deleteMessagesFromDLC(List<AndesMessageMetadata> messagesToRemove) throws AndesException {
+        InboundDeleteDLCMessagesEvent deleteDLCMessagesEvent
+                = new InboundDeleteDLCMessagesEvent(messagesToRemove);
+        deleteDLCMessagesEvent.prepareForDelete(messagingEngine);
+        inboundEventManager.publishStateEvent(deleteDLCMessagesEvent);
     }
 
     /**

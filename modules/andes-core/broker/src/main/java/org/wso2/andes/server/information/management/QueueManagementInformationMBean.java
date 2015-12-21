@@ -304,18 +304,18 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                                                   @MBeanOperationParameter(name = "destinationQueueName",
             description = "The Dead Letter Queue Name for the selected tenant") String destinationQueueName) {
 
-        List<AndesMessageMetadata> removableMetadataList = new ArrayList<>(andesMetadataIDs.length);
+        List<AndesMessageMetadata> messageMetadataList = new ArrayList<>(andesMetadataIDs.length);
 
         for (long andesMetadataID : andesMetadataIDs) {
             AndesMessageMetadata messageToRemove = new AndesMessageMetadata(andesMetadataID, null, false);
             messageToRemove.setStorageQueueName(destinationQueueName);
             messageToRemove.setDestination(destinationQueueName);
-            removableMetadataList.add(messageToRemove);
+            messageMetadataList.add(messageToRemove);
         }
 
         // Deleting messages which are in the list.
         try {
-            Andes.getInstance().deleteMessages(removableMetadataList, false);
+            Andes.getInstance().deleteMessagesFromDLC(messageMetadataList);
         } catch (AndesException e) {
             throw new RuntimeException("Error deleting messages from Dead Letter Channel", e);
         }
@@ -370,7 +370,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                 }
 
                 // Delete old messages
-                Andes.getInstance().deleteMessages(messagesToRemove, false);
+                Andes.getInstance().deleteMessagesFromDLC(messagesToRemove);
 
                 if (interruptedByFlowControl) {
                     // Throw this out so UI will show this to the user as an error message.
@@ -441,7 +441,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                 }
 
                 // Delete old messages
-                Andes.getInstance().deleteMessages(messagesToRemove, false);
+                Andes.getInstance().deleteMessagesFromDLC(messagesToRemove);
 
                 if (interruptedByFlowControl) {
                     // Throw this out so UI will show this to the user as an error message.

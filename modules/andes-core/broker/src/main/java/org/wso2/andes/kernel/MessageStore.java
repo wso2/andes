@@ -214,6 +214,14 @@ public interface MessageStore extends HealthAwareStore{
             throws AndesException;
 
     /**
+     * Method to delete a list of messages from the dead letter channel.
+     *
+     * @param messagesToRemove the list of messages to remove
+     * @throws AndesException
+     */
+    void deleteDLCMessages(List<AndesMessageMetadata> messagesToRemove) throws AndesException;
+
+    /**
      * get expired messages from store
      *
      * @param limit max num of messages to read

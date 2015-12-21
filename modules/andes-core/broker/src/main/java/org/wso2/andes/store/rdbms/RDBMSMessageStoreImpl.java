@@ -1100,6 +1100,47 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
+    public void deleteDLCMessages(List<AndesMessageMetadata> messagesToRemove) throws AndesException {
+        Connection connection = null;
+        PreparedStatement metadataRemovalPreparedStatement = null;
+
+        Context messageDeletionContext = MetricManager.timer(Level.INFO, MetricsConstants
+                .DELETE_MESSAGE_META_DATA_AND_CONTENT).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
+
+        try {
+            connection = getConnection();
+
+            //Since referential integrity is imposed on the two tables: message content and metadata,
+            //deleting message metadata will cause message content to be automatically deleted
+            metadataRemovalPreparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_METADATA_IN_DLC);
+
+            for (AndesMessageMetadata message : messagesToRemove) {
+                //add parameters to delete metadata
+                metadataRemovalPreparedStatement.setLong(1, message.getMessageID());
+                metadataRemovalPreparedStatement.addBatch();
+            }
+
+            metadataRemovalPreparedStatement.executeBatch();
+            connection.commit();
+
+            if (log.isDebugEnabled()) {
+                log.debug("Messages removed: " + messagesToRemove.size() + " from DLC");
+            }
+        } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_DELETING_MESSAGE_FROM_DLC);
+            throw rdbmsStoreUtils.convertSQLException("error occurred while deleting message in dlc.", e);
+        } finally {
+            messageDeletionContext.stop();
+            contextWrite.stop();
+            close(connection, metadataRemovalPreparedStatement, RDBMSConstants.TASK_DELETING_MESSAGE_FROM_DLC);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public List<AndesMessageMetadata> getExpiredMessages(int limit) throws AndesException {
 
         // todo: can't we just delete expired messages?
