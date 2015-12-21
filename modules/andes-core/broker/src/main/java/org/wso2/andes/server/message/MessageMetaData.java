@@ -46,6 +46,8 @@ public class MessageMetaData implements StorableMessageMetaData
 
     private long _arrivalTime;
 
+    private boolean _isCompressed = false;
+
     /**
      * Unique publisher's session id to validate whether subscriber and publisher has the same session
      */
@@ -87,6 +89,22 @@ public class MessageMetaData implements StorableMessageMetaData
         _contentChunkCount = contentChunkCount;
         _arrivalTime = arrivalTime;
         publisherSessionID = sessionID;
+    }
+
+    /**
+     * This constructor is used to set isCompressed value into message meta data
+     *
+     * @param publishBody       Message publish information
+     * @param contentHeaderBody Message content header body
+     * @param sessionID         Publisher's SessionId
+     * @param contentChunkCount Content chunk count
+     * @param arrivalTime       Arrival time of the message
+     * @param isCompressed      Value to indicate, if the message is compressed or not
+     */
+    public MessageMetaData(MessagePublishInfo publishBody, ContentHeaderBody contentHeaderBody, long sessionID,
+                           int contentChunkCount, long arrivalTime, boolean isCompressed) {
+        this(publishBody, contentHeaderBody, sessionID, contentChunkCount, arrivalTime);
+        _isCompressed = isCompressed;
     }
 
     public long getPublisherSessionID() {
@@ -142,6 +160,10 @@ public class MessageMetaData implements StorableMessageMetaData
         return MessageMetaDataType.META_DATA_0_8;
     }
 
+    public boolean isCompressed() {
+        return _isCompressed;
+    }
+
     public int getStorableSize()
     {
         int size = _contentHeaderBody.getSize();
@@ -151,6 +173,7 @@ public class MessageMetaData implements StorableMessageMetaData
         size += 1; // flags for immediate/mandatory
         size += EncodingUtils.encodedLongLength(); // for sessionID
         size += EncodingUtils.encodedLongLength();
+        size += EncodingUtils.encodedBooleanLength(); // for compression state of the message
 
         return size;
     }
@@ -176,6 +199,8 @@ public class MessageMetaData implements StorableMessageMetaData
         EncodingUtils.writeByte(minaSrc, flags);
         EncodingUtils.writeLong(minaSrc, publisherSessionID);
         EncodingUtils.writeLong(minaSrc, _arrivalTime);
+        EncodingUtils.writeBoolean(minaSrc, _isCompressed);
+
         src.position(minaSrc.position());
         src.flip();
         src.position(offset);
@@ -185,7 +210,6 @@ public class MessageMetaData implements StorableMessageMetaData
             src.limit(dest.remaining());
         }
         dest.put(src);
-
 
         return src.limit();
     }
@@ -227,6 +251,12 @@ public class MessageMetaData implements StorableMessageMetaData
                 long sessionID = EncodingUtils.readLong(minaSrc);
                 long arrivalTime = EncodingUtils.readLong(minaSrc);
 
+                // isCompressed is an optional property. Thus, can't add properties to MessageMetaData after this.
+                boolean isCompressed = false;
+                if (minaSrc.hasRemaining()) {
+                    isCompressed = EncodingUtils.readBoolean(minaSrc);
+                }
+
                 MessagePublishInfo publishBody =
                         new MessagePublishInfo()
                         {
@@ -260,7 +290,7 @@ public class MessageMetaData implements StorableMessageMetaData
                                 return routingKey;
                             }
                         };
-                return new MessageMetaData(publishBody, chb, sessionID, 0, arrivalTime);
+                return new MessageMetaData(publishBody, chb, sessionID, 0, arrivalTime, isCompressed);
             }
             catch (AMQException e)
             {

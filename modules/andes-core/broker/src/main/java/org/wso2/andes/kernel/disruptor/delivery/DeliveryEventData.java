@@ -19,10 +19,12 @@
 package org.wso2.andes.kernel.disruptor.delivery;
 
 import com.lmax.disruptor.EventFactory;
+import org.apache.log4j.Logger;
 import org.wso2.andes.kernel.AndesContent;
-import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.subscription.LocalSubscription;
+
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Delivery event data holder. This is used to store and retrieve data between different handlers
@@ -48,8 +50,18 @@ public class DeliveryEventData {
      */
     private AndesContent andesContent;
 
+    /**
+     * When content is decompressed this boolean is set to false
+     * {@link ContentDecompressionHandler} will check this boolean and
+     * if not decompressed will decompress the content.
+     */
+    private final AtomicBoolean freshContent;
+
+    private static final Logger log = Logger.getLogger(DeliveryEventData.class);
+
     public DeliveryEventData() {
         this.errorOccurred = false;
+        freshContent = new AtomicBoolean(true);
     }
 
     /**
@@ -67,6 +79,7 @@ public class DeliveryEventData {
     public void clearData() {
         errorOccurred = false;
         andesContent = null;
+        freshContent.set(true);
     }
 
     /**
@@ -145,6 +158,19 @@ public class DeliveryEventData {
      */
     public boolean isErrorOccurred() {
         return errorOccurred;
+    }
+
+    /**
+     * If content is available to decompress this will return true and atomically updated the state
+     * of the event to denote content is taken for decompression
+     * <p/>
+     * This method is used by {@link ContentDecompressionHandler} to confirm that the message isn't
+     * decompressed yet
+     *
+     * @return true if content isn't decompressed yet and false otherwise
+     */
+    public boolean availableForDecompression() {
+        return freshContent.compareAndSet(true, false);
     }
 
     /**

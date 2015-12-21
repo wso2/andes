@@ -27,19 +27,29 @@ import org.wso2.andes.server.store.StorableMessageMetaData;
 import java.nio.ByteBuffer;
 
 /**
- * Will handle cloning of meta data at an even where AMQP message is published
+ * Will handle cloning of metadata at an even where AMQP message is published
  */
 public class AMQPMetaDataHandler {
 
-    public static byte[] constructMetadata(String routingKey, ByteBuffer buf, StorableMessageMetaData originalMeataData,
+    /**
+     * Update message metadata for AMQP; after an update of the routing key and the exchange of a message, for
+     * durable topic subscriptions.
+     *
+     * @param routingKey       routing key of the message
+     * @param buf              buffer of the original metadata
+     * @param originalMetadata source metadata that needs to be copied
+     * @param exchange         exchange of the message
+     * @return copy of the metadata as a byte array
+     */
+    public static byte[] constructMetadata(String routingKey, ByteBuffer buf, StorableMessageMetaData originalMetadata,
                                            String exchange) {
-        ContentHeaderBody contentHeaderBody = ((MessageMetaData) originalMeataData).getContentHeaderBody();
-        int contentChunkCount = ((MessageMetaData) originalMeataData).getContentChunkCount();
-        long arrivalTime = ((MessageMetaData) originalMeataData).getArrivalTime();
-        long sessionID = ((MessageMetaData) originalMeataData).getPublisherSessionID();
+        ContentHeaderBody contentHeaderBody = ((MessageMetaData) originalMetadata).getContentHeaderBody();
+        int contentChunkCount = ((MessageMetaData) originalMetadata).getContentChunkCount();
+        long arrivalTime = ((MessageMetaData) originalMetadata).getArrivalTime();
+        long sessionID = ((MessageMetaData) originalMetadata).getPublisherSessionID();
 
         // modify routing key to the binding name
-        MessagePublishInfo messagePublishInfo = new CustomMessagePublishInfo(originalMeataData);
+        MessagePublishInfo messagePublishInfo = new CustomMessagePublishInfo(originalMetadata);
         messagePublishInfo.setRoutingKey(new AMQShortString(routingKey));
         messagePublishInfo.setExchange(new AMQShortString(exchange));
         MessageMetaData modifiedMetaData = new MessageMetaData(messagePublishInfo, contentHeaderBody, sessionID,
@@ -51,6 +61,51 @@ public class AMQPMetaDataHandler {
         buf = java.nio.ByteBuffer.wrap(underlying);
         buf.position(1);
         buf = buf.slice();
+        modifiedMetaData.writeToBuffer(0, buf);
+
+        return underlying;
+    }
+
+
+    /**
+     * Update message metadata for AMQP; to indicate the message is a compressed one.
+     *
+     * @param buf                       buffer of the original metadata
+     * @param originalMetadata          source metadata that needs to be copied
+     * @param newCompressedMessageValue Value to indicate if the message is compressed or not
+     * @return copy of the metadata as a byte array
+     */
+    public static byte[] constructMetadata(ByteBuffer buf, StorableMessageMetaData originalMetadata,
+                                           boolean newCompressedMessageValue) {
+        ContentHeaderBody contentHeaderBody = ((MessageMetaData) originalMetadata).getContentHeaderBody();
+        int contentChunkCount = ((MessageMetaData) originalMetadata).getContentChunkCount();
+        long arrivalTime = ((MessageMetaData) originalMetadata).getArrivalTime();
+        long sessionID = ((MessageMetaData) originalMetadata).getPublisherSessionID();
+
+        //Modify message metadata, to update if the message is compressed or not
+        MessagePublishInfo messagePublishInfo = new CustomMessagePublishInfo(originalMetadata);
+        MessageMetaData modifiedMetaData = new MessageMetaData(messagePublishInfo, contentHeaderBody, sessionID,
+                contentChunkCount, arrivalTime, newCompressedMessageValue);
+
+        //bodySize = (1 for metadata type) + (size of metadata)
+        final int bodySize = modifiedMetaData.getStorableSize() + 1;
+
+        byte[] underlying = new byte[bodySize];
+
+        //Writing metadata into a byte array
+        //Write metadata type: as a position in its enum declaration
+        underlying[0] = (byte) modifiedMetaData.getType().ordinal();
+
+        //Wraps byte array into a buffer. Modifications to the buffer will cause the array.
+        buf = java.nio.ByteBuffer.wrap(underlying);
+
+        buf.position(1);
+
+        //Creates a new byte buffer whose content is a shared subsequence of this buffer's content. Content of the
+        // new buffer will start at this buffer's current position.
+        buf = buf.slice();
+
+        //Writing modified metadata into the buffer
         modifiedMetaData.writeToBuffer(0, buf);
 
         return underlying;

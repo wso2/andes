@@ -315,6 +315,20 @@ public enum AndesConfiguration implements ConfigurationProperty {
             ("performanceTuning/contentHandling/contentChunkHandlerCount", "3", Integer.class),
 
     /**
+     * Boolean value to indicate if compression of message content is enabled or not
+     */
+    PERFORMANCE_TUNING_ALLOW_COMPRESSION
+            ("performanceTuning/contentHandling/allowCompression", "true", Boolean.class),
+
+    /**
+     * Maximum content size to check before compress message content. Messages with content less than this size
+     * will not compress.
+     * NOTE : specified in bytes.
+     */
+    PERFORMANCE_TUNING_CONTENT_COMPRESSION_THRESHOLD
+            ("performanceTuning/contentHandling/contentCompressionThreshold", "1000", Integer.class),
+
+    /**
      * Maximum time interval until which a slot can be retained in memory before updating to the cluster.
      * NOTE : specified in milliseconds.
      */
@@ -386,11 +400,18 @@ public enum AndesConfiguration implements ConfigurationProperty {
                                                          Integer.class),
 
     /**
+     * Number of parallel decompression handlers used to decompress messages before send to subscribers. Increasing
+     * this value will speedup the message decompressing mechanism. But the system load will increase.
+     */
+    PERFORMANCE_TUNING_DELIVERY_PARALLEL_DECOMPRESSION_HANDLERS(
+            "performanceTuning/delivery/parallelDecompressionHandlers", "5", Integer.class),
+
+    /**
      * Number of parallel delivery handlers used to send messages to subscribers. Increasing this value will speedup
      * the message sending mechanism. But the system load will increase.
      */
     PERFORMANCE_TUNING_DELIVERY_PARALLEL_DELIVERY_HANDLERS("performanceTuning/delivery/parallelDeliveryHandlers", "5",
-                                                         Integer.class),
+            Integer.class),
 
     /**
      * Content batch size for each content batch read. This is a loose guarantee.

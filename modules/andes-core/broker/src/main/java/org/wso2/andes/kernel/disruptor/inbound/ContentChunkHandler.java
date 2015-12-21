@@ -22,7 +22,9 @@ import com.lmax.disruptor.EventHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesMessage;
+import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
+import org.wso2.andes.kernel.disruptor.compression.LZ4CompressionHelper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,11 +40,17 @@ public class ContentChunkHandler implements EventHandler<InboundEventContainer> 
     private final int maxChunkSize;
 
     /**
+     * Used to get configuration values related to compression and used to compress message content
+     */
+    LZ4CompressionHelper lz4CompressionHelper;
+
+    /**
      * Creates a {@link ContentChunkHandler} object
      * @param maxChunkSize maximum allowed chunk size to be stored in DB
      */
     ContentChunkHandler(int maxChunkSize) {
         this.maxChunkSize = maxChunkSize;
+        lz4CompressionHelper = new LZ4CompressionHelper();
     }
 
     /**
@@ -76,7 +84,7 @@ public class ContentChunkHandler implements EventHandler<InboundEventContainer> 
      * Transaction related message content chunks are re-sized by this method and added
      * to the {@link org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent} message queue
      *
-     * @param event {@link org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer}
+     * @param event    {@link org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer}
      * @param sequence Disruptor sequence number
      */
     private void handleTransaction(InboundEventContainer event, long sequence) {
@@ -87,7 +95,7 @@ public class ContentChunkHandler implements EventHandler<InboundEventContainer> 
     /**
      * Resize the content of the messages provided into chunks that can be stored in DB
      * @param messageList messages to be processed
-     * @param sequence sequence number of the ring buffer
+     * @param sequence    sequence number of the ring buffer
      */
     private void resizeContentChunks(List<AndesMessage> messageList, long sequence) {
         if (log.isDebugEnabled()) {
@@ -95,10 +103,17 @@ public class ContentChunkHandler implements EventHandler<InboundEventContainer> 
                     " messages ");
         }
 
-        for (AndesMessage message : messageList) {
-            message.setChunkList(
-                    resizeChunks(message.getContentChunkList(), message.getMetadata().getMessageContentLength())
-            );
+        if (lz4CompressionHelper.isCompressionEnabled()) {
+            for (AndesMessage message : messageList) {
+                // Getting the compressed and resized message
+                message = compressAndResizeChunks(message);
+            }
+        } else {
+            for (AndesMessage message : messageList) {
+                message.setChunkList(
+                        resizeChunks(message.getContentChunkList(), message.getMetadata().getMessageContentLength())
+                );
+            }
         }
     }
 
@@ -113,7 +128,7 @@ public class ContentChunkHandler implements EventHandler<InboundEventContainer> 
      * <p/>
      * This can handle content with maximum chunk size equal to, less than or greater than the maxChunkSize
      *
-     * @param partList original content chunk list
+     * @param partList      Original content chunk list
      * @param contentLength total content length
      * @return list of resized content chunks
      */
@@ -210,4 +225,39 @@ public class ContentChunkHandler implements EventHandler<InboundEventContainer> 
         }
         return chunkList;
     }
+
+    /**
+     * Compress the content of the message and resize content chunks of the compressed message. Resized chunks
+     * will have a maximum length of maxChunkSize
+     *
+     * @param message Original AndesMessage before compress and resize
+     * @return Compressed and resized message
+     */
+    AndesMessage compressAndResizeChunks(AndesMessage message) {
+        List<AndesMessagePart> partList = message.getContentChunkList();
+        AndesMessageMetadata metadata = message.getMetadata();
+        int contentLength = metadata.getMessageContentLength();
+        int originalContentLength = contentLength;
+
+        if (originalContentLength > lz4CompressionHelper.getContentCompressionThreshold()) {
+            // Compress message
+            AndesMessagePart compressedMessagePart = lz4CompressionHelper.getCompressedMessage(partList, originalContentLength);
+
+            // Update metadata to indicate the message is a compressed one
+            metadata.updateMetadata(true);
+            message.setMetadata(metadata);
+
+            contentLength = compressedMessagePart.getDataLength();
+
+            partList.clear();
+            partList.add(compressedMessagePart);
+        }
+
+        // Resize the compressed message content
+        partList = resizeChunks(partList, contentLength);
+        // Set the new chunk list
+        message.setChunkList(partList);
+        return message;
+    }
+
 }

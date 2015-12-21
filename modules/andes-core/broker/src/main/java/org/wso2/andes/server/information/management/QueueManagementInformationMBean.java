@@ -38,6 +38,8 @@ import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.AndesUtils;
+import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.disruptor.compression.LZ4CompressionHelper;
 import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.DisablePubAckImpl;
 import org.wso2.andes.kernel.FlowControlListener;
@@ -71,6 +73,8 @@ import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -161,6 +165,11 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
     private int byteArrayRemaining = -1;
 
     /**
+     * Used to get configuration values related to compression and used to decompress message content
+     */
+    LZ4CompressionHelper lz4CompressionHelper;
+
+    /**
      * AndesChannel for this dead letter channel restore which implements flow control.
       */
     AndesChannel andesChannel = Andes.getInstance().createChannel(new FlowControlListener() {
@@ -201,6 +210,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                 VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.toArray(new String[VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.size()]),
                 VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.toArray(new String[VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.size()]),
                 _msgContentAttributeTypes);
+        lz4CompressionHelper = new LZ4CompressionHelper();
     }
 
     public String getObjectInstanceName() {
@@ -880,31 +890,20 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             //get message id
             String messageId = properties.getMessageIdAsString();
             //get redelivered
-            Boolean redelivered = false;
+            boolean redelivered = false;
             //get timestamp
-            Long timeStamp = properties.getTimestamp();
+            long timeStamp = properties.getTimestamp();
             //get destination
             String destination = andesMessageMetadata.getDestination();
             //get AndesMessageMetadata id
-            Long andesMessageMetadataId = andesMessageMetadata.getMessageID();
+            long andesMessageMetadataId = andesMessageMetadata.getMessageID();
 
             //content is constructing
             final int bodySize = (int) amqMessage.getSize();
-            List<Byte> messageContent = new ArrayList<Byte>();
-            java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(bodySize);
-            int position = 0;
-            while (position < bodySize) {
-                position += amqMessage.getContent(buffer, position);
-                //if position did not proceed, there is an error receiving content
-                if ((bodySize != 0) && (position == 0)) {
-                    break;
-                }
-                buffer.flip();
-                for (int i = 0; i < buffer.limit(); i++) {
-                    messageContent.add(buffer.get(i));
-                }
-                buffer.clear();
-            }
+
+            AndesMessagePart constructedContent = constructContent(bodySize, amqMessage);
+            byte[] messageContent = constructedContent.getData();
+            int position = constructedContent.getOffset();
 
             //if position did not proceed, there is an error receiving content. If not, decode content
             if (!((bodySize != 0) && (position == 0))) {
@@ -930,14 +929,76 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
     }
 
     /**
+     * Method to construct message body of a single message.
+     *
+     * @param bodySize   Original content size of the message
+     * @param amqMessage AMQMessage
+     * @return Message content and last position of written data as an AndesMessagePart
+     * @throws MBeanException
+     */
+    private AndesMessagePart constructContent(int bodySize, AMQMessage amqMessage) throws MBeanException {
+
+        AndesMessagePart andesMessagePart;
+
+        if (amqMessage.getMessageMetaData().isCompressed()) {
+            /* If the current message was compressed by the server, decompress the message content and, get it as an
+             * AndesMessagePart
+             */
+            Set<Long> messageToFetch = new HashSet<>();
+            Long messageID = amqMessage.getMessageId();
+            messageToFetch.add(messageID);
+
+            try {
+                Map<Long, List<AndesMessagePart>> contentListMap = MessagingEngine.getInstance()
+                        .getContent(new ArrayList<>(messageToFetch));
+                List<AndesMessagePart> contentList = contentListMap.get(messageID);
+
+                andesMessagePart = lz4CompressionHelper.getDecompressedMessage(contentList, bodySize);
+
+            } catch (AndesException e) {
+                throw new MBeanException(e, "Error occurred while construct the message content. Message ID:"
+                        + amqMessage.getMessageId());
+            }
+        } else {
+            byte[] messageContent = new byte[bodySize];
+
+            //Getting a buffer, to write data into the byte array and to the buffer at the same time
+            java.nio.ByteBuffer buffer = java.nio.ByteBuffer.wrap(messageContent);
+
+            int position = 0;
+
+            while (position < bodySize) {
+                position = position + amqMessage.getContent(buffer, position);
+
+                //If position did not proceed, there is an error receiving content
+                if ((0 != bodySize) && (0 == position)) {
+                    break;
+                }
+
+                //The limit is setting to the current position and then the position of the buffer is setting to zero
+                buffer.flip();
+
+                //The position of the buffer is setting to zero, the limit is setting to the capacity
+                buffer.clear();
+            }
+
+            andesMessagePart = new AndesMessagePart();
+            andesMessagePart.setData(messageContent);
+            andesMessagePart.setOffSet(position);
+        }
+
+        return andesMessagePart;
+    }
+
+    /**
      * Method to decode content of a single message into text
      *
      * @param amqMessage     the message of which content need to be decoded
-     * @param messageContent the byte list of message content to be decoded
+     * @param messageContent the byte array of message content to be decoded
      * @return A string array representing the decoded message content
      * @throws MBeanException
      */
-    private String[] decodeContent(AMQMessage amqMessage, List<Byte> messageContent) throws MBeanException {
+    private String[] decodeContent(AMQMessage amqMessage, byte[] messageContent) throws MBeanException {
 
         try {
             //get encoding
@@ -952,9 +1013,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                 mimeType = MIME_TYPE_TEXT_PLAIN;
             }
             //create message content to readable text from ByteBuffer
-            Byte[] msgContent = messageContent.toArray(new Byte[messageContent.size()]);
-            byte[] byteMsgContent = ArrayUtils.toPrimitive(msgContent);
-            ByteBuffer wrapMsgContent = ByteBuffer.wrap(byteMsgContent);
+            ByteBuffer wrapMsgContent = ByteBuffer.wrap(messageContent);
             String content[] = new String[2];
             String summaryMsg = "";
             String wholeMsg = "";
@@ -964,11 +1023,10 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                 wholeMsg = extractTextMessageContent(wrapMsgContent, encoding);
                 //get ByteMessage content to display
             } else if (mimeType.equals(MIME_TYPE_APPLICATION_OCTET_STREAM)) {
-                wholeMsg = extractByteMessageContent(wrapMsgContent, byteMsgContent);
+                wholeMsg = extractByteMessageContent(wrapMsgContent, messageContent);
                 //get ObjectMessage content to display
             } else if (mimeType.equals(MIME_TYPE_APPLICATION_JAVA_OBJECT_STREAM)) {
                 wholeMsg = "This Operation is Not Supported!";
-                summaryMsg = "Not Supported";
                 //get StreamMessage content to display
             } else if (mimeType.equals(MIME_TYPE_JMS_STREAM_MESSAGE)) {
                 wholeMsg = extractStreamMessageContent(wrapMsgContent, encoding);
@@ -994,5 +1052,3 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
         }
     }
 }
-
-

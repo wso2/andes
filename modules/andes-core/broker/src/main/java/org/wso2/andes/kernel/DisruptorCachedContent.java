@@ -115,4 +115,13 @@ public class DisruptorCachedContent implements AndesContent {
         }
         return messagePart;
     }
+
+    /**
+     * Get the content list map
+     *
+     * @return Content list map
+     */
+    public Map<Integer, AndesMessagePart> getContentList() {
+        return contentList;
+    }
 }
