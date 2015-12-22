@@ -527,6 +527,9 @@ public class MessageFlusher {
 
             ProtocolMessage protocolMessage = message.generateProtocolDeliverableMessage(subscription.getChannelID());
             flusherExecutor.submit(subscription, protocolMessage);
+        } else {
+            log.warn("Common delivery rules failed for message id " + message.getMessageID()
+                    + " Hence not delivered.");
         }
     }
 

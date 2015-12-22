@@ -133,6 +133,17 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
         return subscription.sendMessageToSubscriber(messageMetadata, content);
     }
 
+    /**
+     * Check if message is accepted by 'selector' set to the subscription.
+     *
+     * @param messageMetadata message to be checked
+     * @return true if message is selected, false otherwise
+     * @throws AndesException on an error
+     */
+    public boolean isMessageAcceptedBySelector(DeliverableAndesMetadata messageMetadata) throws AndesException {
+        return subscription.isMessageAcceptedBySelector(messageMetadata);
+    }
+
 
     /**
      * Get all sent but not acknowledged messages for the subscriber

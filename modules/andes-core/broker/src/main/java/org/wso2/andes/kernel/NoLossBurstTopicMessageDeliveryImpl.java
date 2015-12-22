@@ -66,16 +66,25 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
                 Collection<LocalSubscription> subscriptions4Queue =
                         subscriptionStore.getActiveLocalSubscribers(destination, message.isTopic());
 
-                //If this is a topic message, we remove all durable topic subscriptions here.
-                //Because durable topic subscriptions will get messages via queue path.
+                //All subscription filtering logic for topics goes here
                 Iterator<LocalSubscription> subscriptionIterator = subscriptions4Queue.iterator();
+
                 while (subscriptionIterator.hasNext()) {
+
                     LocalSubscription subscription = subscriptionIterator.next();
-                    /**
-                     * Here we need to consider the arrival time of the message. Only topic
-                     * subscribers who appeared before publishing this message should receive it
+
+                    /*
+                     * If this is a topic message, remove all durable topic subscriptions here
+                     * because durable topic subscriptions will get messages via queue path.
+                     * Also need to consider the arrival time of the message. Only topic
+                     * subscribers which appeared before publishing this message should receive it
                      */
                     if (subscription.isDurable() || (subscription.getSubscribeTime() > message.getArrivalTime())) {
+                        subscriptionIterator.remove();
+                    }
+
+                    // Avoid sending if the selector of subscriber does not match
+                    if(!subscription.isMessageAcceptedBySelector(message)) {
                         subscriptionIterator.remove();
                     }
 
@@ -118,10 +127,13 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
                 for (LocalSubscription localSubscription : subscriptions4Queue) {
                     MessageFlusher.getInstance().deliverMessageAsynchronously(localSubscription, message);
                 }
+
                 iterator.remove();
+
                 if (log.isDebugEnabled()) {
                     log.debug("Removing Scheduled to send message from buffer. MsgId= " + message.getMessageID());
                 }
+
                 sentMessageCount++;
 
 

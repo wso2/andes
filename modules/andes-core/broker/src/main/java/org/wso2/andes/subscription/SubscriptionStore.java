@@ -26,6 +26,7 @@ import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.AndesSubscription.SubscriptionType;
+import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.SubscriptionListener.SubscriptionChange;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
@@ -34,6 +35,7 @@ import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -994,6 +996,26 @@ public class SubscriptionStore {
 
         //update all the stored durable subscriptions to be inactive
         andesContextStore.updateDurableSubscriptions(modifiedSubscriptions);
+    }
+
+    /**
+     * Filter out the subscriptions based on the 'selector' set. This modifies the input
+     * collections of subscriptions
+     *
+     * @param subscriptions4Queue collection of subscriptions
+     * @param message message to evaluate selectors against
+     */
+    public void filterInterestedSubscriptions(Collection<LocalSubscription> subscriptions4Queue,
+                                              DeliverableAndesMetadata message) throws AndesException{
+
+        Iterator<LocalSubscription> subscriptionIterator = subscriptions4Queue.iterator();
+
+        while (subscriptionIterator.hasNext()) {
+            LocalSubscription subscription = subscriptionIterator.next();
+            if(!subscription.isMessageAcceptedBySelector(message)) {
+                subscriptionIterator.remove();
+            }
+        }
     }
 
     /**

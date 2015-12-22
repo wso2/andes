@@ -18,6 +18,7 @@
 
 package org.wso2.andes.subscription;
 
+import org.apache.commons.collections.map.HashedMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
@@ -28,6 +29,7 @@ import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesUtils;
+import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.HasInterestRuleAMQP;
 import org.wso2.andes.kernel.MaximumNumOfDeliveryRuleAMQP;
 import org.wso2.andes.kernel.NoLocalRuleAMQP;
@@ -43,7 +45,9 @@ import org.wso2.andes.server.subscription.SubscriptionImpl;
 import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 
@@ -71,6 +75,12 @@ public class AMQPLocalSubscription implements OutboundSubscription {
     //if this subscription represent a topic subscription
     private  boolean isBoundToTopic;
 
+    /*
+     * This map works as a cache for queue entries, preventing need to convert
+     * DeliverableAndesMetadata to queue entries two times
+     */
+    private Map<Long, QueueEntry> queueEntryCache;
+
     //List of Delivery Rules to evaluate
     private List<AMQPDeliveryRule> AMQPDeliveryRulesList = new ArrayList<>();
 
@@ -88,6 +98,8 @@ public class AMQPLocalSubscription implements OutboundSubscription {
 
         this.isDurable = isDurable;
         this.isBoundToTopic = isBoundToTopic;
+
+        this.queueEntryCache = new HashMap<>();
     }
 
     /**
@@ -100,7 +112,7 @@ public class AMQPLocalSubscription implements OutboundSubscription {
             AMQPDeliveryRulesList.add(new MaximumNumOfDeliveryRuleAMQP(channel));
         }
         //checking has interest delivery rule
-        AMQPDeliveryRulesList.add(new HasInterestRuleAMQP(amqpSubscription));
+        //AMQPDeliveryRulesList.add(new HasInterestRuleAMQP(amqpSubscription));
         //checking no local delivery rule
         AMQPDeliveryRulesList.add(new NoLocalRuleAMQP(amqpSubscription, channel));
     }
@@ -130,10 +142,32 @@ public class AMQPLocalSubscription implements OutboundSubscription {
      * {@inheritDoc}
      */
     @Override
+    public boolean isMessageAcceptedBySelector(DeliverableAndesMetadata messageMetadata)
+            throws AndesException {
+
+        AMQMessage amqMessage = AMQPUtils.getAMQMessageFromAndesMetaData(messageMetadata);
+        QueueEntry message = AMQPUtils.convertAMQMessageToQueueEntry(amqMessage, amqQueue);
+
+        if(amqpSubscription.hasInterest(message)) {
+            queueEntryCache.put(message.getMessage().getMessageNumber(), message);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public boolean sendMessageToSubscriber(ProtocolMessage messageMetadata, AndesContent content)
             throws AndesException {
 
         AMQMessage message = AMQPUtils.getAMQMessageForDelivery(messageMetadata, content);
+
+        //TODO: need to fill data to cachedQueueEntry
+        QueueEntry cachedEntry = queueEntryCache.get(messageMetadata.getMessageID());
+
         QueueEntry messageToSend = AMQPUtils.convertAMQMessageToQueueEntry(message, amqQueue);
 
         if (evaluateDeliveryRules(messageToSend)) {
