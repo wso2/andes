@@ -24,6 +24,7 @@ import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.MessageStatus;
 import org.wso2.andes.kernel.MessagingEngine;
@@ -140,7 +141,7 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
      * @return true if message is selected, false otherwise
      * @throws AndesException on an error
      */
-    public boolean isMessageAcceptedBySelector(DeliverableAndesMetadata messageMetadata) throws AndesException {
+    public boolean isMessageAcceptedBySelector(AndesMessageMetadata messageMetadata) throws AndesException {
         return subscription.isMessageAcceptedBySelector(messageMetadata);
     }
 

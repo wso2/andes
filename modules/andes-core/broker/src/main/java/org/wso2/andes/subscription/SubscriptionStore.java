@@ -24,6 +24,7 @@ import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.AndesSubscription.SubscriptionType;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
@@ -1006,7 +1007,7 @@ public class SubscriptionStore {
      * @param message message to evaluate selectors against
      */
     public void filterInterestedSubscriptions(Collection<LocalSubscription> subscriptions4Queue,
-                                              DeliverableAndesMetadata message) throws AndesException{
+                                              AndesMessageMetadata message) throws AndesException{
 
         Iterator<LocalSubscription> subscriptionIterator = subscriptions4Queue.iterator();
 

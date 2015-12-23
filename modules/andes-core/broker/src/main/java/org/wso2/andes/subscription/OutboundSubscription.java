@@ -20,6 +20,7 @@ package org.wso2.andes.subscription;
 
 import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.ProtocolMessage;
 
@@ -45,7 +46,7 @@ public interface OutboundSubscription {
      * @return true if message is selected, false otherwise
      * @throws AndesException on an error
      */
-    boolean isMessageAcceptedBySelector(DeliverableAndesMetadata messageMetadata)
+    boolean isMessageAcceptedBySelector(AndesMessageMetadata messageMetadata)
             throws AndesException ;
 
     /**

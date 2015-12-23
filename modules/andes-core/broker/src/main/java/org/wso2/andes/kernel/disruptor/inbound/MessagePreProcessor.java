@@ -165,6 +165,8 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
 
             subscriptionList = subscriptionStore.getClusterSubscribersForDestination(messageRoutingKey, true, subscriptionType);
 
+            //We do not consider message selectors here. They will be considered when being delivered
+
             Set<String> alreadyStoredQueueNames = new HashSet<>();
             for (AndesSubscription subscription : subscriptionList) {
                 if (!alreadyStoredQueueNames.contains(subscription.getStorageQueueName())) {

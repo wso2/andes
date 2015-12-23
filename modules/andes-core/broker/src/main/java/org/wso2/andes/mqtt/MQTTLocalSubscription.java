@@ -157,7 +157,7 @@ public class MQTTLocalSubscription implements OutboundSubscription {
      * {@inheritDoc}
      */
     @Override
-    public boolean isMessageAcceptedBySelector(DeliverableAndesMetadata messageMetadata) throws AndesException {
+    public boolean isMessageAcceptedBySelector(AndesMessageMetadata messageMetadata) throws AndesException {
         //always return true as MQTT does not register message selectors
         return true;
     }

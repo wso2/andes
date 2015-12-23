@@ -18,7 +18,6 @@
 
 package org.wso2.andes.subscription;
 
-import org.apache.commons.collections.map.HashedMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
@@ -28,9 +27,8 @@ import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesUtils;
-import org.wso2.andes.kernel.DeliverableAndesMetadata;
-import org.wso2.andes.kernel.HasInterestRuleAMQP;
 import org.wso2.andes.kernel.MaximumNumOfDeliveryRuleAMQP;
 import org.wso2.andes.kernel.NoLocalRuleAMQP;
 import org.wso2.andes.kernel.ProtocolDeliveryFailureException;
@@ -38,8 +36,10 @@ import org.wso2.andes.kernel.ProtocolDeliveryRulesFailureException;
 import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.message.AMQMessage;
+import org.wso2.andes.server.message.MessageMetaData;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.QueueEntry;
+import org.wso2.andes.server.store.StoredMessage;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionImpl;
 import org.wso2.andes.tools.utils.MessageTracer;
@@ -79,7 +79,7 @@ public class AMQPLocalSubscription implements OutboundSubscription {
      * This map works as a cache for queue entries, preventing need to convert
      * DeliverableAndesMetadata to queue entries two times
      */
-    private Map<Long, QueueEntry> queueEntryCache;
+    private Map<Long, StoredMessage<MessageMetaData>> storedMessageCache;
 
     //List of Delivery Rules to evaluate
     private List<AMQPDeliveryRule> AMQPDeliveryRulesList = new ArrayList<>();
@@ -99,7 +99,7 @@ public class AMQPLocalSubscription implements OutboundSubscription {
         this.isDurable = isDurable;
         this.isBoundToTopic = isBoundToTopic;
 
-        this.queueEntryCache = new HashMap<>();
+        this.storedMessageCache = new HashMap<>();
     }
 
     /**
@@ -142,14 +142,14 @@ public class AMQPLocalSubscription implements OutboundSubscription {
      * {@inheritDoc}
      */
     @Override
-    public boolean isMessageAcceptedBySelector(DeliverableAndesMetadata messageMetadata)
+    public boolean isMessageAcceptedBySelector(AndesMessageMetadata messageMetadata)
             throws AndesException {
 
         AMQMessage amqMessage = AMQPUtils.getAMQMessageFromAndesMetaData(messageMetadata);
         QueueEntry message = AMQPUtils.convertAMQMessageToQueueEntry(amqMessage, amqQueue);
 
         if(amqpSubscription.hasInterest(message)) {
-            queueEntryCache.put(message.getMessage().getMessageNumber(), message);
+            storedMessageCache.put(message.getMessage().getMessageNumber(), amqMessage.getStoredMessage());
             return true;
         } else {
             return false;
@@ -163,10 +163,9 @@ public class AMQPLocalSubscription implements OutboundSubscription {
     public boolean sendMessageToSubscriber(ProtocolMessage messageMetadata, AndesContent content)
             throws AndesException {
 
-        AMQMessage message = AMQPUtils.getAMQMessageForDelivery(messageMetadata, content);
-
-        //TODO: need to fill data to cachedQueueEntry
-        QueueEntry cachedEntry = queueEntryCache.get(messageMetadata.getMessageID());
+        StoredMessage<MessageMetaData> cachedStoredMessage = storedMessageCache.get(messageMetadata.getMessageID());
+        AMQMessage message = AMQPUtils.getQueueEntryFromStoredMessage(cachedStoredMessage, content);
+        message.setAndesMetadataReference(messageMetadata);
 
         QueueEntry messageToSend = AMQPUtils.convertAMQMessageToQueueEntry(message, amqQueue);
 
