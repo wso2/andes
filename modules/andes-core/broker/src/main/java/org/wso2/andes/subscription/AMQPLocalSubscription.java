@@ -164,8 +164,16 @@ public class AMQPLocalSubscription implements OutboundSubscription {
             throws AndesException {
 
         StoredMessage<MessageMetaData> cachedStoredMessage = storedMessageCache.get(messageMetadata.getMessageID());
-        AMQMessage message = AMQPUtils.getQueueEntryFromStoredMessage(cachedStoredMessage, content);
-        message.setAndesMetadataReference(messageMetadata);
+
+        AMQMessage message;
+
+        if(null != cachedStoredMessage) {
+            message = AMQPUtils.getQueueEntryFromStoredMessage(cachedStoredMessage, content);
+            storedMessageCache.remove(messageMetadata.getMessageID());
+            message.setAndesMetadataReference(messageMetadata);
+        } else {
+            message = AMQPUtils.getAMQMessageForDelivery(messageMetadata, content);
+        }
 
         QueueEntry messageToSend = AMQPUtils.convertAMQMessageToQueueEntry(message, amqQueue);
 
