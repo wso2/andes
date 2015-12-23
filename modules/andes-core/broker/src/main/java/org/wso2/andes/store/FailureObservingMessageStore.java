@@ -309,6 +309,19 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
+    public void deleteDLCMessages(List<AndesMessageMetadata> messagesToRemove) throws AndesException {
+        try {
+            wrappedInstance.deleteDLCMessages(messagesToRemove);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public List<AndesMessageMetadata> getExpiredMessages(int limit) throws AndesException {
         try {
             return wrappedInstance.getExpiredMessages(limit);

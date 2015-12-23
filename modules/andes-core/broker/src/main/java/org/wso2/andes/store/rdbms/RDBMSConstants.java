@@ -289,9 +289,15 @@ public class RDBMSConstants {
             + " WHERE " + QUEUE_ID + "=?"
             + " AND " + MESSAGE_ID + "=?";
 
+    protected static final String PS_DELETE_METADATA_IN_DLC =
+            "DELETE  FROM " + METADATA_TABLE
+            + " WHERE " + MESSAGE_ID + "=?"
+            + " AND " + DLC_QUEUE_ID + "!=-1";
+
     protected static final String PS_DELETE_METADATA =
             "DELETE  FROM " + METADATA_TABLE
-            + " WHERE " + MESSAGE_ID + "=?";
+            + " WHERE " + MESSAGE_ID + "=?"
+            + " AND " + DLC_QUEUE_ID + "=-1";
 
     protected static final String PS_CLEAR_QUEUE_FROM_METADATA =
             "DELETE  FROM " + METADATA_TABLE
@@ -844,6 +850,7 @@ public class RDBMSConstants {
                                                                                 + "queue. ";
     protected static final String TASK_DELETING_FROM_EXPIRY_TABLE = "deleting from expiry table.";
     protected static final String TASK_DELETING_METADATA_FROM_QUEUE = "deleting metadata from queue. ";
+    protected static final String TASK_DELETING_MESSAGE_FROM_DLC = "deleting message from dlc. ";
     protected static final String TASK_CLEARING_DLC_QUEUE = "clearing dlc queue. " ;
     protected static final String TASK_RESETTING_MESSAGE_COUNTER = "Resetting message counter for queue";
     protected static final String TASK_RETRIEVING_EXPIRED_MESSAGES = "retrieving expired messages.";

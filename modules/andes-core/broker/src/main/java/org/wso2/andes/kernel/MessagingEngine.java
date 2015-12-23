@@ -364,8 +364,7 @@ public class MessagingEngine {
      * @param messagesToRemove list of messages to remove
      * @throws AndesException
      */
-    public void deleteMessages(Collection<AndesMessageMetadata> messagesToRemove) throws
-            AndesException {
+    public void deleteMessages(Collection<AndesMessageMetadata> messagesToRemove) throws AndesException {
         Map<String, List<AndesMessageMetadata>> storageSeparatedMessages =
                 new HashMap<>();
 
@@ -386,6 +385,16 @@ public class MessagingEngine {
         }
 
         //TODO:message can be in delivery path. If so we need to decrement slot message count
+    }
+
+    /**
+     * Delete a list of messages from the dead letter channel.
+     *
+     * @param messagesToRemove list of messages to remove
+     * @throws AndesException
+     */
+    public void deleteDLCMessages(List<AndesMessageMetadata> messagesToRemove) throws AndesException {
+        messageStore.deleteDLCMessages(messagesToRemove);
     }
 
     /**
