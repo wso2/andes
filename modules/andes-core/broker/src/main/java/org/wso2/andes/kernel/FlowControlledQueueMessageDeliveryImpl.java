@@ -24,9 +24,8 @@ import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.NoSuchElementException;
-import java.util.Set;
+import java.util.SortedSet;
 
 /**
  * Strategy definition for queue message delivery
@@ -44,19 +43,17 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
      * {@inheritDoc}
      */
     @Override
-    public int deliverMessageToSubscriptions(String destination, Set<DeliverableAndesMetadata> messages) throws
+    public int deliverMessageToSubscriptions(String destination, SortedSet<DeliverableAndesMetadata> messages) throws
             AndesException {
 
         int sentMessageCount = 0;
         boolean noSubscribersForDestination = false;
-        Iterator<DeliverableAndesMetadata> iterator = messages.iterator();
 
-
-        while (iterator.hasNext()) {
+        while (!messages.isEmpty()) {
 
             try {
 
-                DeliverableAndesMetadata message = iterator.next();
+                DeliverableAndesMetadata message = messages.first();
 
                 /**
                  * get all relevant type of subscriptions. This call does NOT
@@ -106,7 +103,7 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
                 }
 
                 if (numOfCurrentMsgDeliverySchedules == 1) {
-                    iterator.remove();
+                    messages.remove(message);
                     if (log.isDebugEnabled()) {
                         log.debug("Removing Scheduled to send message from buffer. MsgId= " + message.getMessageID());
                     }

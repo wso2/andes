@@ -44,17 +44,16 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
      * {@inheritDoc}
      */
     @Override
-    public int deliverMessageToSubscriptions(String destination, Set<DeliverableAndesMetadata> messages) throws
+    public int deliverMessageToSubscriptions(String destination, SortedSet<DeliverableAndesMetadata> messages) throws
             AndesException {
         int sentMessageCount = 0;
-        Iterator<DeliverableAndesMetadata> iterator = messages.iterator();
         List<DeliverableAndesMetadata> droppedTopicMessagesList = new ArrayList<>();
 
 
-        while (iterator.hasNext()) {
+        while (!messages.isEmpty()) {
 
             try {
-                DeliverableAndesMetadata message = iterator.next();
+                DeliverableAndesMetadata message = messages.first();
 
                 /**
                  * get all relevant type of subscriptions. This call does NOT
@@ -91,7 +90,7 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
                 }
 
                 if (subscriptions4Queue.size() == 0) {
-                    iterator.remove(); // remove buffer
+                    messages.remove(message);
                     droppedTopicMessagesList.add(message);
 
                     continue; // skip this iteration if no subscriptions for the message
@@ -118,7 +117,7 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
                 for (LocalSubscription localSubscription : subscriptions4Queue) {
                     MessageFlusher.getInstance().deliverMessageAsynchronously(localSubscription, message);
                 }
-                iterator.remove();
+                messages.remove(message);
                 if (log.isDebugEnabled()) {
                     log.debug("Removing Scheduled to send message from buffer. MsgId= " + message.getMessageID());
                 }
