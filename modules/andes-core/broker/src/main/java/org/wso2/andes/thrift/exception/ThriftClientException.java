@@ -21,10 +21,8 @@ package org.wso2.andes.thrift.exception;
 /**
  * ThriftClientException will be thrown when internal error comes when using MBThriftClient
  */
-public class ThriftClientException extends Exception {
+public class ThriftClientException extends Exception{
 
-    public ThriftClientException() {
-    }
 
     public ThriftClientException(String message) {
         super(message);

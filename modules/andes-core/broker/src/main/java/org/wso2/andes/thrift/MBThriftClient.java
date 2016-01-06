@@ -86,7 +86,7 @@ public class MBThriftClient {
 
         } catch (ThriftClientException e) {
             handleCoordinatorChanges();
-            throw new ConnectionException(e.getMessage());
+            throw new ConnectionException("Error occurred in thrift client " + e.getMessage(), e);
         }
     }
 
@@ -132,7 +132,7 @@ public class MBThriftClient {
             }
 
         } catch (ThriftClientException e) {
-            log.error("Error occurred while receiving coordinator details from map");
+            log.error("Error occurred while receiving coordinator details from map", e);
             handleCoordinatorChanges();
         }
     }
@@ -163,7 +163,7 @@ public class MBThriftClient {
                 throw new ConnectionException("Coordinator has changed", e);
             }
         } catch (ThriftClientException e) {
-            log.error("Error occurred while receiving coordinator details from map");
+            log.error("Error occurred while receiving coordinator details from map", e);
             handleCoordinatorChanges();
         }
         return deleteSuccess;
@@ -191,7 +191,7 @@ public class MBThriftClient {
                 throw new ConnectionException("Coordinator has changed", e);
             }
         } catch (ThriftClientException e) {
-            log.error("Error occurred while receiving coordinator details from map");
+            log.error("Error occurred while receiving coordinator details from map", e);
             handleCoordinatorChanges();
         }
     }
@@ -217,7 +217,7 @@ public class MBThriftClient {
                 throw new ConnectionException("Coordinator has changed", e);
             }
         } catch (ThriftClientException e) {
-            log.error(e.getMessage(), e);
+            log.error("Could not initialize the Thrift client." + e.getMessage(), e);
             handleCoordinatorChanges();
         }
     }
@@ -395,7 +395,7 @@ public class MBThriftClient {
                 throw new ConnectionException("Coordinator has changed", e);
             }
         } catch (ThriftClientException e) {
-            log.error("Error occurred while receiving coordinator details from map");
+            log.error("Error occurred while receiving coordinator details from map", e);
             handleCoordinatorChanges();
         }
         return globalSafeZone;

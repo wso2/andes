@@ -39,6 +39,10 @@ public class ConnectionException extends Exception{
         super(message, cause);
     }
 
+    public ConnectionException(String message, Exception cause) {
+        super(message, cause);
+    }
+
     public ConnectionException(Throwable cause) {
         super(cause);
     }
