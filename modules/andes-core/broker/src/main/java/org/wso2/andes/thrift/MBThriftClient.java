@@ -85,7 +85,6 @@ public class MBThriftClient {
             }
 
         } catch (ThriftClientException e) {
-            log.error("Error occurred while receiving coordinator details from map");
             handleCoordinatorChanges();
             throw new ConnectionException(e.getMessage());
         }
