@@ -23,13 +23,21 @@ package org.wso2.andes.thrift.exception;
  */
 public class ThriftClientException extends Exception{
 
-
+    /***
+     * Constructor
+     * @param message descriptive message
+     */
     public ThriftClientException(String message) {
         super(message);
     }
 
-    public ThriftClientException(Throwable cause) {
-        super(cause);
+    /***
+     * Constructor
+     * @param message descriptive message
+     * @param cause reference to the exception for reference.
+     */
+    public ThriftClientException(String message, Throwable cause) {
+        super(message, cause);
     }
 
 }
