@@ -238,25 +238,25 @@ public class ClusterSubscriptionBitMapHandler implements ClusterSubscriptionHand
 
         // Loop through each constituent table for the new constituents
         for (int constituentIndex = 0; constituentIndex < subscribedDestinationConstituents.length;
-             constituentIndex++) {
-                    String currentConstituent = subscribedDestinationConstituents[constituentIndex];
-                    Map<String, BitSet> constituentTable = constituentTables.get(constituentIndex);
+                constituentIndex++) {
+            String currentConstituent = subscribedDestinationConstituents[constituentIndex];
+            Map<String, BitSet> constituentTable = constituentTables.get(constituentIndex);
 
-                    // Loop through each constituent row in the table and fill values
-                    for (Map.Entry<String, BitSet> constituentRow : constituentTable.entrySet()) {
-                        String constituentOfCurrentRow = constituentRow.getKey();
-                        BitSet bitSet = constituentRow.getValue();
+            // Loop through each constituent row in the table and fill values
+            for (Map.Entry<String, BitSet> constituentRow : constituentTable.entrySet()) {
+                String constituentOfCurrentRow = constituentRow.getKey();
+                BitSet bitSet = constituentRow.getValue();
 
-                        if (constituentOfCurrentRow.equals(currentConstituent)) {
+                if (constituentOfCurrentRow.equals(currentConstituent)) {
                     bitSet.set(subscriptionIndex);
                 } else if (NULL_CONSTITUENT.equals(constituentOfCurrentRow)) {
-                        // Check if this constituent being null matches the destination if we match it with
-                        // a null constituent
-                        String wildcardDestination = NULL_CONSTITUENT + constituentsDelimiter +
-                                currentConstituent;
-                        bitSet.set(subscriptionIndex, isMatchForSubscriptionType(wildcardDestination,
-                                matchDestinationForNull));
-//                    }
+                    // Check if this constituent being null matches the destination if we match it with
+                    // a null constituent
+                    String wildcardDestination = NULL_CONSTITUENT + constituentsDelimiter +
+                                                 currentConstituent;
+                    bitSet.set(subscriptionIndex, isMatchForSubscriptionType(wildcardDestination,
+                                                                             matchDestinationForNull));
+                    //                    }
                 } else if (OTHER_CONSTITUENT.equals(constituentOfCurrentRow)) {
                     // Check if other is matched by comparing wildcard through specific wildcard matching
                     // Create a mock destinations with current constituent added last and check if it match with a
@@ -264,17 +264,15 @@ public class ClusterSubscriptionBitMapHandler implements ClusterSubscriptionHand
                     String wildCardDestination = OTHER_CONSTITUENT + constituentsDelimiter + currentConstituent;
 
                     bitSet.set(subscriptionIndex, isMatchForSubscriptionType(wildCardDestination,
-                            matchDestinationForOther));
-                } else if (singleLevelWildCard.equals(currentConstituent) ||
-                        multiLevelWildCard.equals(currentConstituent)) {
+                                                                             matchDestinationForOther));
+                } else if (singleLevelWildCard.equals(currentConstituent)
+                           || multiLevelWildCard.equals(currentConstituent)) {
                     // If there is any wildcard at this position, then this should match.
                     bitSet.set(subscriptionIndex);
                 } else {
                     bitSet.set(subscriptionIndex, false);
                 }
-
             }
-
         }
 
         int noOfMaxConstituents = constituentTables.size();

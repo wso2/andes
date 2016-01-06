@@ -44,6 +44,7 @@ import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.queue.SimpleQueueEntryList;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.server.store.StorableMessageMetaData;
+import org.wso2.andes.server.store.StoredMessage;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.store.StoredAMQPMessage;
 import org.wso2.andes.subscription.AMQPLocalSubscription;
@@ -63,8 +64,8 @@ import java.util.regex.Pattern;
  */
 public class AMQPUtils {
 
-    public static final String TOPIC_AND_CHILDREN_WILDCARD = ".#";
-    public static final String IMMEDIATE_CHILDREN_WILDCARD = ".*";
+    public static final String TOPIC_AND_CHILDREN_WILDCARD = "#";
+    public static final String IMMEDIATE_CHILDREN_WILDCARD = "*";
     public static String DIRECT_EXCHANGE_NAME = "amq.direct";
 
     public static String TOPIC_EXCHANGE_NAME = "amq.topic";
@@ -147,7 +148,7 @@ public class AMQPUtils {
         long messageId = metadata.getMessageID();
         //create message with meta data. This has access to message content
         StorableMessageMetaData metaData = convertAndesMetadataToAMQMetadata(metadata.getMessage());
-        QpidStoredMessage<MessageMetaData> message = new QpidStoredMessage<MessageMetaData>(
+        StoredMessage<MessageMetaData> message = new QpidStoredMessage<MessageMetaData>(
                 new StoredAMQPMessage(messageId, metaData), content);
         AMQMessage amqMessage = new AMQMessage(message);
         amqMessage.setAndesMetadataReference(metadata);
@@ -418,13 +419,23 @@ public class AMQPUtils {
         if (queueBoundRoutingKey.equals(messageRoutingKey)) {
             isMatching = true;
         } else if (queueBoundRoutingKey.indexOf(TOPIC_AND_CHILDREN_WILDCARD) > 1) {
-            String p = queueBoundRoutingKey.substring(0, queueBoundRoutingKey.indexOf(TOPIC_AND_CHILDREN_WILDCARD));
-            Pattern pattern = Pattern.compile(p + IMMEDIATE_CHILDREN_WILDCARD);
+            int wildcardIndex = queueBoundRoutingKey.indexOf(TOPIC_AND_CHILDREN_WILDCARD);
+            int partitionIndex = wildcardIndex == 0 ? 0 : wildcardIndex - 1;
+
+            // Extract destination part before wild card character
+            String wildcardPrefix = queueBoundRoutingKey.substring(0, partitionIndex);
+
+            Pattern pattern = Pattern.compile(wildcardPrefix + "*");
             Matcher matcher = pattern.matcher(messageRoutingKey);
             isMatching = matcher.matches();
         } else if (queueBoundRoutingKey.indexOf(IMMEDIATE_CHILDREN_WILDCARD) > 1) {
-            String p = queueBoundRoutingKey.substring(0, queueBoundRoutingKey.indexOf(IMMEDIATE_CHILDREN_WILDCARD));
-            Pattern pattern = Pattern.compile("^" + p + "[.][^.]+$");
+            int wildcardIndex = queueBoundRoutingKey.indexOf(IMMEDIATE_CHILDREN_WILDCARD);
+            int partitionIndex = wildcardIndex == 0 ? 0 : wildcardIndex - 1;
+
+            // Extract destination part before wild card character
+            String wildcardPrefix = queueBoundRoutingKey.substring(0, partitionIndex);
+
+            Pattern pattern = Pattern.compile("^" + wildcardPrefix + "[.][^.]+$");
             Matcher matcher = pattern.matcher(messageRoutingKey);
             isMatching = matcher.matches();
         }
