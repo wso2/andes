@@ -44,6 +44,7 @@ import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.queue.SimpleQueueEntryList;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.server.store.StorableMessageMetaData;
+import org.wso2.andes.server.store.StoredMessage;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.store.StoredAMQPMessage;
 import org.wso2.andes.subscription.AMQPLocalSubscription;
@@ -132,6 +133,18 @@ public class AMQPUtils {
         StoredAMQPMessage message = new StoredAMQPMessage(messageId, metaData);
         AMQMessage amqMessage = new AMQMessage(message);
         return amqMessage;
+    }
+
+    /**
+     * Create a new AMQMessage out of StoredMessage and content
+     * @param storedMessage StoredMessage object
+     * @return instance of AMQMessage
+     */
+    public static AMQMessage getQueueEntryFromStoredMessage(StoredMessage<MessageMetaData> storedMessage,
+                                                            AndesContent content) {
+        QpidStoredMessage<MessageMetaData> message = new QpidStoredMessage<>(
+                storedMessage, content);
+        return new AMQMessage(message);
     }
 
     /**

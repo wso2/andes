@@ -77,14 +77,20 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
 
                 int numOfCurrentMsgDeliverySchedules = 0;
 
+                boolean subscriberWithMatchingSelectorFound = false;
+
                 /**
                  * if message is addressed to queues, only ONE subscriber should
                  * get the message. Otherwise, loop for every subscriber
                  */
                 for (int j = 0; j < subscriptions4Queue.size(); j++) {
+
                     LocalSubscription localSubscription = MessageFlusher.getInstance().
                             findNextSubscriptionToSent(destination, subscriptions4Queue);
-                    if (localSubscription.hasRoomToAcceptMessages()) {
+
+                    if (localSubscription.hasRoomToAcceptMessages()
+                            && localSubscription.isMessageAcceptedBySelector(message)) {
+
                         if (log.isDebugEnabled()) {
                             log.debug("Scheduled to send id = " + message.getMessageID());
                         }
@@ -98,6 +104,7 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
                         message.markAsScheduledToDeliver(localSubscription);
                         MessageFlusher.getInstance().deliverMessageAsynchronously(localSubscription, message);
                         numOfCurrentMsgDeliverySchedules++;
+                        subscriberWithMatchingSelectorFound = true;
 
                         //for queue messages and durable topic messages (as they are now queue messages)
                         // we only send to one selected subscriber if it is a queue message
@@ -106,18 +113,30 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
                 }
 
                 if (numOfCurrentMsgDeliverySchedules == 1) {
+
                     iterator.remove();
+
                     if (log.isDebugEnabled()) {
                         log.debug("Removing Scheduled to send message from buffer. MsgId= " + message.getMessageID());
                     }
+
                     sentMessageCount++;
+
                 } else {
-                    if (log.isDebugEnabled()) {
-                        log.debug("All subscriptions for destination " + destination + " have max unacked " +
-                                "messages " + message.getDestination());
+
+                    //if no subscriber has a matching selector, route message to DLC queue
+                    if(!subscriberWithMatchingSelectorFound) {
+                        Andes.getInstance().moveMessageToDeadLetterChannel(message, message.getDestination());
+                        iterator.remove();
+                    } else {
+                        if (log.isDebugEnabled()) {
+                            log.debug("All subscriptions for destination " + destination
+                                    + " have max unacked " + "messages " + message.getDestination());
+                        }
+                        //if we continue message order will break
+                        break;
                     }
-                    //if we continue message order will break
-                    break;
+
                 }
 
             } catch (NoSuchElementException ex) {
