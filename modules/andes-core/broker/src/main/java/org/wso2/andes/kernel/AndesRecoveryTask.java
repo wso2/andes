@@ -21,6 +21,7 @@ package org.wso2.andes.kernel;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.server.NameValidationUtils;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.store.FailureObservingStoreManager;
@@ -135,7 +136,14 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 			for (AndesQueue queue : queuesStored) {
 				for (QueueListener listener : queueListeners) {
 					log.warn("Recovering node. Adding queue " + queue.toString());
-					listener.handleClusterQueuesChanged(queue, QueueListener.QueueEvent.ADDED);
+					/**
+					 * This is to avoid MQTT queues(cleanSession=false) being registered in qpid registry. Topic/Queue
+					 * name validations are different from AMQP spec to MQTT spec. Therefore the MQTT queues are
+					 * identified through the following way.
+					 */
+					if (NameValidationUtils.isValidQueueName(queue.queueName)) {
+						listener.handleClusterQueuesChanged(queue, QueueListener.QueueEvent.ADDED);
+					}
 				}
 			}
 
