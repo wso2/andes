@@ -33,10 +33,12 @@ public interface SubscriptionManagementInformation {
      * MBean service to get filtered queue subscriptions
      * @param isDurable of type String (acceptable values => * | true | false)
      * @param isActive of type String (acceptable values => * | true | false)
+     * @param protocolType The protocol type of the subscriptions
+     * @param destinationType The destination type of the subscriptions
      * @return array of queue subscriptions
      */
     @MBeanAttribute(name="AllSubscriptions",description = "All subscriptions")
-    String[] getAllSubscriptions(
+    String[] getSubscriptions(
             @MBeanOperationParameter(name = "isDurable" ,description = "get durable ?") String isDurable,
             @MBeanOperationParameter(name = "isActive" ,description = "get active ?") String isActive,
             @MBeanOperationParameter(

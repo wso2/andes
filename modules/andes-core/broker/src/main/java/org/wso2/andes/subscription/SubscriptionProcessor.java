@@ -45,26 +45,46 @@ import java.util.Set;
  */
 public class SubscriptionProcessor {
 
-    private class Pair {
+    /**
+     * An object that acts as a composite key to subscription store map structure.
+     */
+    private class StoreKey {
 
         ProtocolType protocolType;
 
         DestinationType destinationType;
 
-        public Pair(ProtocolType protocolType, DestinationType destinationType) {
+        public StoreKey(ProtocolType protocolType, DestinationType destinationType) {
             this.protocolType = protocolType;
             this.destinationType = destinationType;
         }
 
+        /**
+         * Generates object specific hashcode.
+         *
+         * HashCode = 2 * protocolType_hash + destinationType_hash
+         *
+         * 2 * is used to omit cases such as 2 + 3 == 3 + 2.
+         *
+         * @return Generated hash code.
+         */
         @Override
         public int hashCode() {
             return (2 * protocolType.hashCode()) + destinationType.hashCode();
         }
 
+        /**
+         * Evaluates whether the given object is equal to this.
+         *
+         * @param obj The object to compare
+         * @return True if protocol type and destination type is equal.
+         */
         @Override
         public boolean equals(Object obj) {
             boolean equal = false;
-            if (obj instanceof Pair && ((Pair) obj).protocolType == this.protocolType && ((Pair) obj).destinationType == this.destinationType) {
+            if (obj instanceof StoreKey &&
+                    ((StoreKey) obj).protocolType == this.protocolType
+                    && ((StoreKey) obj).destinationType == this.destinationType) {
                 equal = true;
             }
             return equal;
@@ -75,7 +95,7 @@ public class SubscriptionProcessor {
     /**
      * Keeps all the handlers for each subscription type.
      */
-    private Map<Pair, AndesSubscriptionStore> subscriptionHandlers = new HashMap<>();
+    private Map<StoreKey, AndesSubscriptionStore> subscriptionStores = new HashMap<>();
 
     /**
      * Add a processor for a given protocol
@@ -87,8 +107,8 @@ public class SubscriptionProcessor {
      */
     protected void addHandler(ProtocolType protocolType, DestinationType destinationType,
                               AndesSubscriptionStore andesSubscriptionStore) throws AndesException {
-        Pair pair = new Pair(protocolType, destinationType);
-        subscriptionHandlers.put(pair, andesSubscriptionStore);
+        StoreKey storeKey = new StoreKey(protocolType, destinationType);
+        subscriptionStores.put(storeKey, andesSubscriptionStore);
     }
 
     /**
@@ -112,9 +132,9 @@ public class SubscriptionProcessor {
      */
     private AndesSubscriptionStore getSubscriptionStore(ProtocolType protocolType, DestinationType destinationType) throws
             AndesException {
-        Pair pair = new Pair(protocolType, destinationType);
+        StoreKey storeKey = new StoreKey(protocolType, destinationType);
 
-        AndesSubscriptionStore andesSubscriptionStore = subscriptionHandlers.get(pair);
+        AndesSubscriptionStore andesSubscriptionStore = subscriptionStores.get(storeKey);
 
         if (null == andesSubscriptionStore) {
             throw new AndesException("Subscription Store for protocol type " + protocolType + " " +
@@ -193,7 +213,7 @@ public class SubscriptionProcessor {
     public Set<AndesSubscription> getActiveSubscribersForNode(String nodeID) {
         Set<AndesSubscription> subscriptions = new HashSet<>();
 
-        for (Map.Entry<Pair, AndesSubscriptionStore> entry : subscriptionHandlers.entrySet()) {
+        for (Map.Entry<StoreKey, AndesSubscriptionStore> entry : subscriptionStores.entrySet()) {
             for (AndesSubscription subscription : entry.getValue().getAllSubscriptions()) {
                 if (subscription.getSubscribedNode().equals(nodeID) && subscription.hasExternalSubscriptions()) {
                     subscriptions.add(subscription);
@@ -213,7 +233,7 @@ public class SubscriptionProcessor {
     public Set<String> getAllDestinations(DestinationType destinationType) {
         Set<String> topics = new HashSet<>();
 
-        for (Map.Entry<Pair, AndesSubscriptionStore> entry : subscriptionHandlers.entrySet()) {
+        for (Map.Entry<StoreKey, AndesSubscriptionStore> entry : subscriptionStores.entrySet()) {
             topics.addAll(entry.getValue().getAllDestinations(destinationType));
         }
 
@@ -232,7 +252,7 @@ public class SubscriptionProcessor {
     public Set<AndesSubscription> getAllSubscriptions() {
         Set<AndesSubscription> allSubscriptions = new HashSet<>();
 
-        for (Map.Entry<Pair, AndesSubscriptionStore> entry : subscriptionHandlers.entrySet()) {
+        for (Map.Entry<StoreKey, AndesSubscriptionStore> entry : subscriptionStores.entrySet()) {
             allSubscriptions.addAll(entry.getValue().getAllSubscriptions());
         }
 
@@ -248,10 +268,10 @@ public class SubscriptionProcessor {
      * oiajsdfja09320398_akafixthis_************
      */
     public Set<AndesSubscription> getAllSubscriptionsForDestinationType(ProtocolType protocolType, DestinationType destinationType) {
-        Pair pair = new Pair(protocolType, destinationType);
+        StoreKey storeKey = new StoreKey(protocolType, destinationType);
 
         Set<AndesSubscription> subscriptionsForDestinationType = new HashSet<>();
-        for (AndesSubscription subscription : subscriptionHandlers.get(pair).getAllSubscriptions()) {
+        for (AndesSubscription subscription : subscriptionStores.get(storeKey).getAllSubscriptions()) {
             if (subscription.getDestinationType() == destinationType) {
                 subscriptionsForDestinationType.add(subscription);
             }

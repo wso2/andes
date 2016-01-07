@@ -27,6 +27,12 @@ import org.wso2.andes.kernel.ProtocolType;
  */
 public class SubscriptionProcessorBuilder {
 
+    /**
+     * Build cluster subscription processor with relevant classes for processing cluster subscriptions.
+     *
+     * @return Subscription processor initialized for processing cluster subscriptions
+     * @throws AndesException
+     */
     public static SubscriptionProcessor getClusterSubscriptionProcessor() throws AndesException {
         SubscriptionProcessor subscriptionProcessor = new SubscriptionProcessor();
 
@@ -46,6 +52,12 @@ public class SubscriptionProcessorBuilder {
         return subscriptionProcessor;
     }
 
+    /**
+     * Build loca subscription processor with relevant classes for processing local subscriptions.
+     *
+     * @return Subscription processor initialized for processing local subscriptions
+     * @throws AndesException
+     */
     public static SubscriptionProcessor getLocalSubscriptionProcessor() throws AndesException {
         SubscriptionProcessor subscriptionProcessor = new SubscriptionProcessor();
 
@@ -54,6 +66,9 @@ public class SubscriptionProcessorBuilder {
                 new QueueSubscriptionStore());
         subscriptionProcessor.addHandler(ProtocolType.AMQP, DestinationType.TOPIC,
                 new TopicSubscriptionBitMapStore(ProtocolType.AMQP));
+
+        // Local durable topic subscription store is specific to local mode since subscriptions are stored
+        // against their targetQueue in this store
         subscriptionProcessor.addHandler(ProtocolType.AMQP, DestinationType.DURABLE_TOPIC,
                 new LocalDurableTopicSubscriptionStore());
 

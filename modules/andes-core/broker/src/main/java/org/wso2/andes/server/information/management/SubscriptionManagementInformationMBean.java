@@ -74,7 +74,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
      * {@inheritDoc}
      */
     @Override
-    public String[] getAllSubscriptions( String isDurable, String isActive, String protocolType,
+    public String[] getSubscriptions( String isDurable, String isActive, String protocolType,
                                          String destinationType) throws MBeanException {
         try {
 
@@ -237,6 +237,8 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
                 + "|" + subscription.hasExternalSubscriptions()
                 + "|" + pendingMessageCount
                 + "|" + subscription.getSubscribedNode()
-                + "|" + subscription.getSubscribedDestination();
+                + "|" + subscription.getSubscribedDestination()
+                + "|" + subscription.getProtocolType().name()
+                + "|" + subscription.getDestinationType().name();
     }
 }
