@@ -1019,11 +1019,13 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
                 if (o instanceof AbstractJMSMessage)
                 {
                     try {
-                        if ((lastRollbackedMessageTimestamp > 0) && ((AbstractJMSMessage)o).getJMSRedelivered() && (lastRollbackedMessageTimestamp >= ((AbstractJMSMessage) o).getJMSTimestamp())) {
+                        if ((lastRollbackedMessageTimestamp > 0) && ((AbstractJMSMessage) o).getJMSRedelivered() &&
+                                (lastRollbackedMessageTimestamp >= ((AbstractJMSMessage) o).getJMSTimestamp())) {
                             if (_logger.isDebugEnabled())
                             {
                                 if (o instanceof TextMessage) {
-                                    _logger.debug("Did not remove message " + ((TextMessage)o).getText() +" since its new relative to the rollback point.");
+                                    _logger.debug("Did not remove message " + ((TextMessage) o).getText() + " since its new relative to " +
+                                            "the rollback point.");
                                 }
                             }
                         } else {
