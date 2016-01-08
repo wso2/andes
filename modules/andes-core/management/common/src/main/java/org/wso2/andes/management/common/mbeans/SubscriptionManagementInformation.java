@@ -33,24 +33,20 @@ public interface SubscriptionManagementInformation {
      * MBean service to get filtered queue subscriptions
      * @param isDurable of type String (acceptable values => * | true | false)
      * @param isActive of type String (acceptable values => * | true | false)
+     * @param protocolType The protocol type of the subscriptions
+     * @param destinationType The destination type of the subscriptions
      * @return array of queue subscriptions
      */
-    @MBeanAttribute(name="AllQueueSubscriptions",description = "All queue subscriptions")
-    String[] getAllQueueSubscriptions(
+    @MBeanAttribute(name="AllSubscriptions",description = "All subscriptions")
+    String[] getSubscriptions(
             @MBeanOperationParameter(name = "isDurable" ,description = "get durable ?") String isDurable,
-            @MBeanOperationParameter(name = "isActive" ,description = "get active ?") String isActive);
-
-    /**
-     * MBean service to get filtered topic subscriptions
-     * @param isDurable of type String (acceptable values => * | true | false)
-     * @param isActive of type String (acceptable values => * | true | false)
-     * @return array of topic subscriptions
-     */
-    @MBeanAttribute(name="TopicSubscriptions",description = "All topic subscriptions")
-    String[] getAllTopicSubscriptions (
-            @MBeanOperationParameter(name = "isDurable" ,description = "get durable ?") String isDurable,
-            @MBeanOperationParameter(name = "isActive" ,description = "get active ?") String isActive)
-            throws MBeanException;
+            @MBeanOperationParameter(name = "isActive" ,description = "get active ?") String isActive,
+            @MBeanOperationParameter(
+                    name = "protocolType", description = "protocol of subscriptions") String protocolType,
+            @MBeanOperationParameter(
+                    name = "destinationType",
+                    description = "Destination type of the subscriptions") String destinationType)
+    throws MBeanException;
 
 
     /**
@@ -79,5 +75,10 @@ public interface SubscriptionManagementInformation {
             @MBeanOperationParameter(name = "subscriptionId", description = "ID of the Subscription to remove") String
                     subscriptionId,
             @MBeanOperationParameter(name = "destinationName", description = "Subscribed destination name") String
-                    destinationName);
+                    destinationName,
+            @MBeanOperationParameter(
+                    name = "protocolType", description = "protocol of subscriptions") String protocolType,
+            @MBeanOperationParameter(
+                    name = "destinationType",
+                    description = "Destination type of the subscriptions") String destinationType);
 }

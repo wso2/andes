@@ -25,10 +25,11 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesSubscription;
+import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.SubscriptionListener;
 import org.wso2.andes.subscription.LocalSubscription;
-import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.andes.subscription.SubscriptionEngine;
 
 import java.util.Collection;
 import java.util.TimerTask;
@@ -115,22 +116,22 @@ public class OrphanedSlotHandler implements SubscriptionListener {
             
             String destination = null;
             
-            if (subscription.isBoundToTopic()){ 
+            if (DestinationType.QUEUE == subscription.getDestinationType()){
+                //Queues and Topics
+                destination = subscription.getSubscribedDestination();
+            } else {
                 // ( effectively at this point (isDurable && isBoundToTopic()) evaluates to true
                 // Durable topics subscriptions, and shared durable subscriptions
                 // refer to : https://github.com/wso2/andes/wiki/Subscription-Types-and-Attributes
                 destination = subscription.getTargetQueue();
-            } else {
-              //Queues and Topics
-              destination = subscription.getSubscribedDestination();  
             }
             
-            SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
-            
-            // (!isDurable && isBoundToTopic) is a tautology for ( !  isDurable() ) 
+            SubscriptionEngine subscriptionEngine = AndesContext.getInstance().getSubscriptionEngine();
+
             // for queues, durable topic subscriptions, shared durable topic subscriptions scenarios
-            Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore
-                    .getActiveLocalSubscribers(destination, ! subscription.isDurable());
+            Collection<LocalSubscription> localSubscribersForQueue = subscriptionEngine
+                    .getActiveLocalSubscribers(destination, subscription.getProtocolType(),
+                            subscription.getDestinationType());
             if (localSubscribersForQueue.size() == 0) {
                 scheduleSlotToReassign(subscription.getStorageQueueName());
             } else {

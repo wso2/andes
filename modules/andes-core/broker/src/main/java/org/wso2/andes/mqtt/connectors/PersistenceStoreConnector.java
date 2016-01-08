@@ -157,7 +157,9 @@ public class PersistenceStoreConnector implements MQTTConnector {
 
             if (mqttTopicSubscriber.isDurable()) {
                 //We need to create a queue in-order to preserve messages relevant for the durable subscription
-                InboundQueueEvent createQueueEvent = new InboundQueueEvent(MQTTUtils.getTopicSpecificQueueName(clientID, topic), username, false, true);
+                InboundQueueEvent createQueueEvent = new InboundQueueEvent(
+                        MQTTUtils.getTopicSpecificQueueName(clientID, topic),
+                        username, false, true, ProtocolType.MQTT, DestinationType.TOPIC);
                 Andes.getInstance().createQueue(createQueueEvent);
             }
 
@@ -255,7 +257,8 @@ public class PersistenceStoreConnector implements MQTTConnector {
                 //There could be two types of events one is the disconnection due to the lost of the connection
                 //The other is un-subscription, if is the case of un-subscription the subscription should be removed
                 //Andes will automatically remove all the subscriptions bound to a queue when the queue is deleted
-                InboundQueueEvent queueChange = new InboundQueueEvent(queueIdentifier, username, false, true);
+                InboundQueueEvent queueChange = new InboundQueueEvent(queueIdentifier, username, false, true,
+                        ProtocolType.MQTT, DestinationType.DURABLE_TOPIC);
                 Andes.getInstance().deleteQueue(queueChange);
             } else {
                 //create a close subscription event
@@ -377,22 +380,26 @@ public class PersistenceStoreConnector implements MQTTConnector {
         boolean hasExternalSubscriptions = true;
         String queueIdentifier = MQTTUtils.getTopicSpecificQueueName(clientID, topic);
 
+        DestinationType destinationType;
+
         if (isDurable) {
             //For subscription that are durable we need to provide the queue name for the queue identifier
             targetQueue = queueIdentifier;
             targetQueueBoundExchange = AMQPUtils.DIRECT_EXCHANGE_NAME;
             isTargetQueueBoundAutoDeletable = 0;
+            destinationType = DestinationType.DURABLE_TOPIC;
         } else {
             //create a andes core LocalSubscription without giving queue names
             targetQueue = topic;
             targetQueueBoundExchange = AMQPUtils.TOPIC_EXCHANGE_NAME;
             isTargetQueueBoundAutoDeletable = 1;
+            destinationType = DestinationType.TOPIC;
         }
 
         LocalSubscription localSubscription = AndesUtils.createLocalSubscription(mqttLocalSubscription, queueIdentifier,
-                topic, true, true, isDurable, subscribedNode, subscribedTime, targetQueue, targetQueueOwner,
+                topic, true, isDurable, subscribedNode, subscribedTime, targetQueue, targetQueueOwner,
                 targetQueueBoundExchange, targetQueueBoundExchangeType, isTargetQueueBoundAutoDeletable,
-                hasExternalSubscriptions);
+                hasExternalSubscriptions, destinationType);
 
         return localSubscription;
     }

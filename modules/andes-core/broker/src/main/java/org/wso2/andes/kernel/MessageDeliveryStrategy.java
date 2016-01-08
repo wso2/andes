@@ -31,9 +31,10 @@ public interface MessageDeliveryStrategy {
      * and send the messages accordingly
      * @param destination destination of messages
      * @param messages messages to be sent
+     * @param destinationType The destination type of the subscriptions to send
      * @return number of messages sent
      * @throws AndesException in case of a delivery failure
      */
-    public int deliverMessageToSubscriptions(String destination, Set<DeliverableAndesMetadata> messages) throws
-            AndesException;
+    public int deliverMessageToSubscriptions(String destination, Set<DeliverableAndesMetadata> messages
+            , DestinationType destinationType) throws AndesException;
 }

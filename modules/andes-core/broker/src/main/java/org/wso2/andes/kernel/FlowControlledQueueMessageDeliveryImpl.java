@@ -21,7 +21,7 @@ package org.wso2.andes.kernel;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.subscription.LocalSubscription;
-import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.andes.subscription.SubscriptionEngine;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -34,18 +34,18 @@ import java.util.Set;
 public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliveryStrategy {
 
     private static Log log = LogFactory.getLog(FlowControlledQueueMessageDeliveryImpl.class);
-    private SubscriptionStore subscriptionStore;
+    private SubscriptionEngine subscriptionEngine;
 
-    public FlowControlledQueueMessageDeliveryImpl(SubscriptionStore subscriptionStore) {
-        this.subscriptionStore = subscriptionStore;
+    public FlowControlledQueueMessageDeliveryImpl(SubscriptionEngine subscriptionEngine) {
+        this.subscriptionEngine = subscriptionEngine;
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public int deliverMessageToSubscriptions(String destination, Set<DeliverableAndesMetadata> messages) throws
-            AndesException {
+    public int deliverMessageToSubscriptions(String destination, Set<DeliverableAndesMetadata> messages,
+                                             DestinationType destinationType) throws AndesException {
 
         int sentMessageCount = 0;
         boolean noSubscribersForDestination = false;
@@ -58,6 +58,8 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
 
                 DeliverableAndesMetadata message = iterator.next();
 
+                ProtocolType protocolType = AndesUtils.getProtocolTypeForMetaDataType(message.getMetaDataType());
+
                 /**
                  * get all relevant type of subscriptions. This call does NOT
                  * return hierarchical subscriptions for the destination. There
@@ -65,8 +67,8 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
                  * For durable topic subscriptions this should return queue subscription
                  * bound to unique queue based on subscription id
                  */
-                Collection<LocalSubscription> subscriptions4Queue =
-                        subscriptionStore.getActiveLocalSubscribers(destination, message.isTopic());
+                Collection<LocalSubscription> subscriptions4Queue = subscriptionEngine.getActiveLocalSubscribers(
+                        destination, protocolType, destinationType);
 
                 if (subscriptions4Queue.isEmpty()) {
                     // We don't have subscribers for this message
@@ -86,18 +88,16 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
                 for (int j = 0; j < subscriptions4Queue.size(); j++) {
 
                     LocalSubscription localSubscription = MessageFlusher.getInstance().
-                            findNextSubscriptionToSent(destination, subscriptions4Queue);
-
+                            findNextSubscriptionToSent(destination, protocolType, destinationType, subscriptions4Queue);
                     if (localSubscription.hasRoomToAcceptMessages()
                             && localSubscription.isMessageAcceptedBySelector(message)) {
-
                         if (log.isDebugEnabled()) {
                             log.debug("Scheduled to send id = " + message.getMessageID());
                         }
 
                         // In a re-queue for delivery scenario we need the correct destination. Hence setting
                         // it back correctly in AndesMetadata for durable subscription for topics
-                        if (localSubscription.isBoundToTopic()) {
+                        if (DestinationType.DURABLE_TOPIC == localSubscription.getDestinationType()) {
                             message.setDestination(localSubscription.getTargetQueue());
                         }
 

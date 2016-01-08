@@ -21,9 +21,8 @@ package org.wso2.andes.kernel;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.subscription.LocalSubscription;
-import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.andes.subscription.SubscriptionEngine;
 
 import java.util.*;
 
@@ -34,18 +33,18 @@ import java.util.*;
 public class SlowestSubscriberTopicMessageDeliveryImpl implements MessageDeliveryStrategy {
 
     private static Log log = LogFactory.getLog(SlowestSubscriberTopicMessageDeliveryImpl.class);
-    private SubscriptionStore subscriptionStore;
+    private SubscriptionEngine subscriptionEngine;
 
-    public SlowestSubscriberTopicMessageDeliveryImpl(SubscriptionStore subscriptionStore) {
-        this.subscriptionStore = subscriptionStore;
+    public SlowestSubscriberTopicMessageDeliveryImpl(SubscriptionEngine subscriptionEngine) {
+        this.subscriptionEngine = subscriptionEngine;
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public int deliverMessageToSubscriptions(String destination, Set<DeliverableAndesMetadata> messages) throws
-            AndesException {
+    public int deliverMessageToSubscriptions(String destination, Set<DeliverableAndesMetadata> messages,
+                                             DestinationType destinationType) throws AndesException {
 
         int sentMessageCount = 0;
         Iterator<DeliverableAndesMetadata> iterator = messages.iterator();
@@ -66,7 +65,9 @@ public class SlowestSubscriberTopicMessageDeliveryImpl implements MessageDeliver
                  * bound to unique queue based on subscription id
                  */
                 Collection<LocalSubscription> subscriptions4Queue =
-                        subscriptionStore.getActiveLocalSubscribers(destination, message.isTopic());
+                        subscriptionEngine.getActiveLocalSubscribers(message.getDestination(),
+                                AndesUtils.getProtocolTypeForMetaDataType(message.getMetaDataType()),
+                                destinationType);
 
                 //All subscription filtering logic for topics goes here
                 Iterator<LocalSubscription> subscriptionIterator = subscriptions4Queue.iterator();
@@ -87,16 +88,6 @@ public class SlowestSubscriberTopicMessageDeliveryImpl implements MessageDeliver
 
                     // Avoid sending if the selector of subscriber does not match
                     if(!subscription.isMessageAcceptedBySelector(message)) {
-                        subscriptionIterator.remove();
-                    }
-
-                    // Avoid sending if the subscriber is MQTT and message is not MQTT
-                    if (AndesSubscription.SubscriptionType.MQTT == subscription.getSubscriptionType()
-                            && MessageMetaDataType.META_DATA_MQTT != message.getMetaDataType()) {
-                        subscriptionIterator.remove();
-                        // Avoid sending if the subscriber is AMQP and message is MQTT
-                    } else if (AndesSubscription.SubscriptionType.AMQP == subscription.getSubscriptionType()
-                            && MessageMetaDataType.META_DATA_MQTT == message.getMetaDataType()) {
                         subscriptionIterator.remove();
                     }
                 }

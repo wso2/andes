@@ -45,9 +45,9 @@ public class ClusterCoordinationHandler implements QueueListener, ExchangeListen
             case DELETED:
                 //Delete remaining subscriptions from the local and cluster subscription maps
                 ClusterResourceHolder.getInstance().getSubscriptionManager().deleteAllLocalSubscriptionsOfBoundQueue(
-                        andesQueue.queueName);
+                        andesQueue.queueName, andesQueue.getProtocolType(), andesQueue.getDestinationType());
                 ClusterResourceHolder.getInstance().getSubscriptionManager().deleteAllClusterSubscriptionsOfBoundQueue(
-                        andesQueue.queueName);
+                        andesQueue.queueName, andesQueue.getProtocolType(), andesQueue.getDestinationType());
 
                 //delete queue
                 ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterQueueRemoved(andesQueue);

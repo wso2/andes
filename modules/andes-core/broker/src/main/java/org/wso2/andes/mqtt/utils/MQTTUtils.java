@@ -88,7 +88,6 @@ public class MQTTUtils {
      *
      * @param metaData      the information about the published message
      * @param messageID     the identity of the message
-     * @param topic         the topic the message was published
      * @param destination   the definition where the message should be sent to
      * @param persistence   should this message be persisted
      * @param contentLength the length of the message content

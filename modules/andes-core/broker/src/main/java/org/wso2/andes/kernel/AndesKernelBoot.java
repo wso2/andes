@@ -38,7 +38,7 @@ import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
 import org.wso2.andes.store.FailureObservingAndesContextStore;
 import org.wso2.andes.store.FailureObservingMessageStore;
-import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.andes.subscription.SubscriptionEngine;
 import org.wso2.andes.thrift.MBThriftServer;
 import org.wso2.carbon.context.CarbonContext;
 import org.wso2.carbon.user.api.UserStoreException;
@@ -254,8 +254,8 @@ public class AndesKernelBoot {
         AndesContext.getInstance().setAndesContextStore(contextStore);
         
         //create subscription store
-        SubscriptionStore subscriptionStore = new SubscriptionStore();
-        AndesContext.getInstance().setSubscriptionStore(subscriptionStore);
+        SubscriptionEngine subscriptionEngine = new SubscriptionEngine();
+        AndesContext.getInstance().setSubscriptionEngine(subscriptionEngine);
         
         /**
          * initialize subscription managing
@@ -267,7 +267,7 @@ public class AndesKernelBoot {
         // directly wire the instance without wrapped instance
         messageStore = new FailureObservingMessageStore(createMessageStoreFromConfig(contextStoreInConfig));
         MessagingEngine messagingEngine = MessagingEngine.getInstance();
-        messagingEngine.initialise(messageStore, subscriptionStore);
+        messagingEngine.initialise(messageStore, subscriptionEngine);
 
         // Setting the message store in the context store
         AndesContext.getInstance().setMessageStore(messageStore);
@@ -278,11 +278,11 @@ public class AndesKernelBoot {
 
         // initialise Andes context information related manager class
         AndesContextInformationManager contextInformationManager = 
-                new AndesContextInformationManager(amqpConstructStore, subscriptionStore,
+                new AndesContextInformationManager(amqpConstructStore, subscriptionEngine,
                                                    contextStore, messageStore);
         
         // When message stores are initialised initialise Andes as well.
-        Andes.getInstance().initialise(subscriptionStore, messagingEngine,
+        Andes.getInstance().initialise(subscriptionEngine, messagingEngine,
                 contextInformationManager, subscriptionManager);
 
         // initialize amqp constructs syncing into Qpid

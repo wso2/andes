@@ -27,6 +27,9 @@ public class AndesQueue {
     public boolean isDurable;
     public int subscriptionCount;
 
+    private ProtocolType protocolType;
+    private DestinationType destinationType;
+
     /**
      * Added to infer the state of the queue during concurrent message delivery.
      * Initial value before the first purge within this server session should be 0.
@@ -40,14 +43,19 @@ public class AndesQueue {
      * @param queueOwner  owner of the queue (virtual host)
      * @param isExclusive is queue exclusive
      * @param isDurable   is queue durable
+     * @param protocolType The protocol which the queue belongs to
+     * @param destinationType The destination type which the queue belongs to
      */
-    public AndesQueue(String queueName, String queueOwner, boolean isExclusive, boolean isDurable) {
+    public AndesQueue(String queueName, String queueOwner, boolean isExclusive, boolean isDurable,
+                      ProtocolType protocolType, DestinationType destinationType) {
         this.queueName = queueName;
         this.queueOwner = queueOwner;
         this.isExclusive = isExclusive;
         this.isDurable = isDurable;
         this.subscriptionCount = 1;
         this.lastPurgedTimestamp = 0L;
+        this.protocolType = protocolType;
+        this.destinationType = destinationType;
     }
 
     public Long getLastPurgedTimestamp() {
@@ -77,6 +85,10 @@ public class AndesQueue {
                 this.isDurable = Boolean.parseBoolean(tokens[1]);
             } else if ("lastPurgedTimestamp".equals(tokens[0])) {
                 this.lastPurgedTimestamp = Long.parseLong(tokens[1]);
+            } else if ("protocolType".equals(tokens[0])) {
+                this.protocolType = ProtocolType.valueOf(tokens[1]);
+            } else if ("destinationType".equals(tokens[0])) {
+                this.destinationType = DestinationType.valueOf(tokens[1]);
             }
         }
     }
@@ -94,7 +106,9 @@ public class AndesQueue {
                 ",queueOwner=" + queueOwner +
                 ",isExclusive=" + isExclusive +
                 ",isDurable=" + isDurable +
-                ",lastPurgedTimestamp=" + lastPurgedTimestamp;
+                ",lastPurgedTimestamp=" + lastPurgedTimestamp +
+                ",protocolType=" + protocolType.name() +
+                ",destinationType=" + destinationType.name();
     }
 
     public boolean equals(Object o) {
@@ -111,5 +125,21 @@ public class AndesQueue {
         return new HashCodeBuilder(17, 31).
                 append(queueName).
                 toHashCode();
+    }
+
+    public ProtocolType getProtocolType() {
+        return protocolType;
+    }
+
+    public void setProtocolType(ProtocolType protocolType) {
+        this.protocolType = protocolType;
+    }
+
+    public DestinationType getDestinationType() {
+        return destinationType;
+    }
+
+    public void setDestinationType(DestinationType destinationType) {
+        this.destinationType = destinationType;
     }
 }

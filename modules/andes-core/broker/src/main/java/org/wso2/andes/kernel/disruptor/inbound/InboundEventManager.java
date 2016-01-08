@@ -34,7 +34,7 @@ import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.disruptor.ConcurrentBatchEventHandler;
 import org.wso2.andes.kernel.disruptor.LogExceptionHandler;
 import org.wso2.andes.metrics.MetricsConstants;
-import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.andes.subscription.SubscriptionEngine;
 import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.manager.Gauge;
 import org.wso2.carbon.metrics.manager.Level;
@@ -76,7 +76,7 @@ public class InboundEventManager {
     private Disruptor<InboundEventContainer> disruptor;
     private final DisablePubAckImpl disablePubAck;
 
-    public InboundEventManager(SubscriptionStore subscriptionStore,
+    public InboundEventManager(SubscriptionEngine subscriptionEngine,
                                MessagingEngine messagingEngine) {
 
         Integer bufferSize = AndesConfigurationManager.readValue(
@@ -144,7 +144,7 @@ public class InboundEventManager {
                             new AckHandler(messagingEngine));
         }
 
-        MessagePreProcessor preProcessor = new MessagePreProcessor(subscriptionStore);
+        MessagePreProcessor preProcessor = new MessagePreProcessor(subscriptionEngine);
 
         // Order in which handlers run in Disruptor
         // - ContentChunkHandlers

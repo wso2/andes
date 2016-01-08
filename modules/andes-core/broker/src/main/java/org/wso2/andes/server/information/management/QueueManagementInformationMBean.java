@@ -30,17 +30,18 @@ import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.BasicContentHeaderProperties;
-import org.wso2.andes.kernel.DisablePubAckImpl;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesChannel;
-import org.wso2.andes.kernel.FlowControlListener;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesUtils;
-import org.wso2.andes.kernel.AndesSubscription;
+import org.wso2.andes.kernel.DestinationType;
+import org.wso2.andes.kernel.DisablePubAckImpl;
+import org.wso2.andes.kernel.FlowControlListener;
+import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.management.common.mbeans.QueueManagementInformation;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
@@ -71,9 +72,9 @@ import javax.management.openmbean.SimpleType;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Collections;
 
 /**
  * This class contains all operations such as addition, deletion, purging, browsing, etc. that are invoked by the UI
@@ -275,7 +276,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             // an exception if permission is denied.
 
             InboundQueueEvent andesQueue = AMQPUtils.createAndesQueue(queue);
-            int purgedMessageCount = Andes.getInstance().purgeQueue(andesQueue, false);
+            int purgedMessageCount = Andes.getInstance().purgeQueue(andesQueue);
             log.info("Total message count purged for queue (from store) : " + queueName + " : " +
                     purgedMessageCount + ". All in memory messages received before the purge call" +
                     " are abandoned from delivery phase. ");
@@ -352,7 +353,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                     String destination = metadata.getDestination();
 
                     metadata.setStorageQueueName(AndesUtils.getStorageQueueForDestination(destination,
-                            ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID(), false));
+                            ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID(),
+                            DestinationType.QUEUE));
 
                     messagesToRemove.add(metadata);
 
@@ -422,7 +424,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                     // Set the new destination queue
                     metadata.setDestination(newDestinationQueueName);
                     metadata.setStorageQueueName(AndesUtils.getStorageQueueForDestination(newDestinationQueueName,
-                            ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID(), false));
+                            ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID(),
+                            DestinationType.QUEUE));
 
                     metadata.updateMetadata(newDestinationQueueName, AMQPUtils.DIRECT_EXCHANGE_NAME);
                     AndesMessageMetadata clonedMetadata = metadata.shallowCopy(metadata.getMessageID());
@@ -817,8 +820,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      */
     public int getSubscriptionCount( String queueName){
         try {
-            return AndesContext.getInstance().getSubscriptionStore().numberOfSubscriptionsInCluster(queueName, false,
-                    AndesSubscription.SubscriptionType.AMQP);
+            return AndesContext.getInstance().getSubscriptionEngine().numberOfSubscriptionsInCluster(
+                    queueName, ProtocolType.AMQP, DestinationType.QUEUE);
         } catch (Exception e) {
             throw new RuntimeException("Error in getting subscriber count",e);
         }
