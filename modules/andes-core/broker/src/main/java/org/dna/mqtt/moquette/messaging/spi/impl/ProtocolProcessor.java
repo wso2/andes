@@ -379,16 +379,17 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
 
     /**
      * Method written by WSO2. Since we would be sequentially writing the message to the subscribers
-     *
-     * @param topic       the name of the topic the message was published
+     *  @param subscribedDestination The subscribed destination, this may include wildcards
+     * @param messageDestination The destination the message was published to
      * @param qos         the level of qos the message was published this could be either 0,1 or 2
      * @param message     the content of the message
      * @param retain      should this message retain
      * @param messageID   the unique identifier of the message
      */
-    public void publishToSubscriber(String topic, AbstractMessage.QOSType qos, ByteBuffer message,
-                                    boolean retain, Integer messageID, String mqttClientID) throws MQTTException {
-        Subscription subscription = subscriptions.getSubscriptions(topic, mqttClientID);
+    public void publishToSubscriber(String subscribedDestination, String messageDestination,
+                                    AbstractMessage.QOSType qos, ByteBuffer message, boolean retain, Integer messageID,
+                                    String mqttClientID) throws MQTTException {
+        Subscription subscription = subscriptions.getSubscriptions(subscribedDestination, mqttClientID);
 
         if (subscription != null) {
 
@@ -401,27 +402,27 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             //TODO check whether the QOS 0 messages should be retained
             if (qos == AbstractMessage.QOSType.MOST_ONE && subscription.isActive()) {
                 //QoS 0
-                sendPublish(subscription.getClientId(), topic, qos, message, retain);
+                sendPublish(subscription.getClientId(), messageDestination, qos, message, retain);
             } else {
                 //QoS 1 or 2
                 //if the target subscription is not clean session and is not connected => store it
                 if (!subscription.isCleanSession() && !subscription.isActive()) {
                     //clone the event with matching clientID
                     //TODO if its clean session we don't need to store it, it will be stored at the andes layer itself
-                    PublishEvent newPublishEvt = new PublishEvent(topic, qos, message, retain, subscription.getClientId(),
+                    PublishEvent newPublishEvt = new PublishEvent(subscribedDestination, qos, message, retain, subscription.getClientId(),
                             messageID, null);
                     m_storageService.storePublishForFuture(newPublishEvt);
                 } else {
                     //Then we need to store this
                  /*   if(qos.getValue() > 0){
-                        PublishEvent newPublishEvt = new PublishEvent(topic, qos, message, retain, subscription.getClientId(),
+                        PublishEvent newPublishEvt = new PublishEvent(subscribedDestination, qos, message, retain, subscription.getClientId(),
                                 messageID, null);
                         m_storageService.storePublishForFuture(newPublishEvt);
                     }*/
                     //publish
                     if (subscription.isActive()) {
                         //Change done by WSO2 will be overloading the method
-                        sendPublish(subscription.getClientId(), topic, qos, message, retain, messageID);
+                        sendPublish(subscription.getClientId(), messageDestination, qos, message, retain, messageID);
                     }
                 }
             }
