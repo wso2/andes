@@ -28,11 +28,12 @@ import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.kernel.slot.ConnectionException;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotCoordinationConstants;
 import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
+import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
+import org.wso2.andes.thrift.exception.ThriftClientException;
 import org.wso2.andes.thrift.slot.gen.SlotInfo;
 import org.wso2.andes.thrift.slot.gen.SlotManagementService;
 
@@ -83,6 +84,9 @@ public class MBThriftClient {
                 throw new ConnectionException("Coordinator has changed", e);
             }
 
+        } catch (ThriftClientException e) {
+            handleCoordinatorChanges();
+            throw new ConnectionException("Error occurred in thrift client " + e.getMessage(), e);
         }
     }
 
@@ -127,6 +131,9 @@ public class MBThriftClient {
                 throw new ConnectionException("Coordinator has changed", e);
             }
 
+        } catch (ThriftClientException e) {
+            log.error("Error occurred while receiving coordinator details from map", e);
+            handleCoordinatorChanges();
         }
     }
 
@@ -155,6 +162,9 @@ public class MBThriftClient {
                 handleCoordinatorChanges();
                 throw new ConnectionException("Coordinator has changed", e);
             }
+        } catch (ThriftClientException e) {
+            log.error("Error occurred while receiving coordinator details from map", e);
+            handleCoordinatorChanges();
         }
         return deleteSuccess;
     }
@@ -180,6 +190,9 @@ public class MBThriftClient {
                 handleCoordinatorChanges();
                 throw new ConnectionException("Coordinator has changed", e);
             }
+        } catch (ThriftClientException e) {
+            log.error("Error occurred while receiving coordinator details from map", e);
+            handleCoordinatorChanges();
         }
     }
 
@@ -203,6 +216,9 @@ public class MBThriftClient {
                 handleCoordinatorChanges();
                 throw new ConnectionException("Coordinator has changed", e);
             }
+        } catch (ThriftClientException e) {
+            log.error("Could not initialize the Thrift client." + e.getMessage(), e);
+            handleCoordinatorChanges();
         }
     }
 
@@ -212,24 +228,30 @@ public class MBThriftClient {
      *
      * @return a SlotManagementService client
      */
-    private static SlotManagementService.Client getServiceClient() throws TTransportException {
+    private static SlotManagementService.Client getServiceClient() throws TTransportException, ThriftClientException {
         if (client == null) {
             HazelcastAgent hazelcastAgent = HazelcastAgent.getInstance();
             String thriftCoordinatorServerIP = hazelcastAgent.getThriftServerDetailsMap().get(
                     SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_IP);
-            int thriftCoordinatorServerPort = Integer.parseInt(
-                    hazelcastAgent.getThriftServerDetailsMap().
-                            get(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_PORT));
-            transport = new TSocket(thriftCoordinatorServerIP,
-                    thriftCoordinatorServerPort);
-            try {
-                transport.open();
-                TProtocol protocol = new TBinaryProtocol(transport);
-                return new SlotManagementService.Client(protocol);
-            } catch (TTransportException e) {
-                log.error("Could not initialize the Thrift client. " + e.getMessage(), e);
-                throw new TTransportException(
-                        "Could not initialize the Thrift client. " + e.getMessage(), e);
+            String thriftCoordinatorServerPortString = hazelcastAgent.getThriftServerDetailsMap().
+                    get(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_PORT);
+            if((null == thriftCoordinatorServerIP) || (null == thriftCoordinatorServerPortString)){
+                throw new ThriftClientException(
+                        "Thrift coordinator details are not updated in the map yet");
+            }else{
+
+                int thriftCoordinatorServerPort = Integer.parseInt(thriftCoordinatorServerPortString);
+                transport = new TSocket(thriftCoordinatorServerIP,
+                        thriftCoordinatorServerPort);
+                try {
+                    transport.open();
+                    TProtocol protocol = new TBinaryProtocol(transport);
+                    return new SlotManagementService.Client(protocol);
+                } catch (TTransportException e) {
+                    log.error("Could not initialize the Thrift client. " + e.getMessage(), e);
+                    throw new TTransportException(
+                            "Could not initialize the Thrift client. " + e.getMessage(), e);
+                }
             }
 
         }
@@ -372,6 +394,9 @@ public class MBThriftClient {
                 handleCoordinatorChanges();
                 throw new ConnectionException("Coordinator has changed", e);
             }
+        } catch (ThriftClientException e) {
+            log.error("Error occurred while receiving coordinator details from map", e);
+            handleCoordinatorChanges();
         }
         return globalSafeZone;
     }
