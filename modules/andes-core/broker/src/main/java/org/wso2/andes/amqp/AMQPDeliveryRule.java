@@ -15,9 +15,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.wso2.andes.kernel;
+package org.wso2.andes.amqp;
 
 
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.queue.QueueEntry;
 
 /**

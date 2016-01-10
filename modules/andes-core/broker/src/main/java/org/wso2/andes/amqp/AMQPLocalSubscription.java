@@ -16,13 +16,11 @@
  * under the License.
  */
 
-package org.wso2.andes.subscription;
+package org.wso2.andes.amqp;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
-import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.kernel.AMQPDeliveryRule;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesContent;
@@ -30,9 +28,6 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesUtils;
 import org.wso2.andes.kernel.DestinationType;
-import org.wso2.andes.kernel.HasInterestRuleAMQP;
-import org.wso2.andes.kernel.MaximumNumOfDeliveryRuleAMQP;
-import org.wso2.andes.kernel.NoLocalRuleAMQP;
 import org.wso2.andes.kernel.ProtocolDeliveryFailureException;
 import org.wso2.andes.kernel.ProtocolDeliveryRulesFailureException;
 import org.wso2.andes.kernel.ProtocolMessage;
@@ -44,6 +39,7 @@ import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.store.StoredMessage;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionImpl;
+import org.wso2.andes.subscription.OutboundSubscription;
 import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.ArrayList;
@@ -113,10 +109,10 @@ public class AMQPLocalSubscription implements OutboundSubscription {
         if (  (! isBoundToTopic) || isDurable){ //evaluate this only for queues and durable subscriptions
             AMQPDeliveryRulesList.add(new MaximumNumOfDeliveryRuleAMQP(channel));
         }
-        //checking has interest delivery rule
-        //AMQPDeliveryRulesList.add(new HasInterestRuleAMQP(amqpSubscription));
+
         //checking no local delivery rule
         AMQPDeliveryRulesList.add(new NoLocalRuleAMQP(amqpSubscription, channel));
+
     }
 
     public boolean isActive() {
