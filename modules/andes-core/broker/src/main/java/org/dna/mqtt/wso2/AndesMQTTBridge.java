@@ -200,27 +200,29 @@ public final class AndesMQTTBridge {
     }
 
     /**
-     * When a message is sent the notification to the subscriber channels managed by the MQTT library will be notified
+     * When a message is sent the notification to the subscriber channels managed by the MQTT library will be notified.
      *
-     * @param topic     the topic of the message that the subscribers should be notified of
+     * @param subscribeDestination The destination the subscriber subscribed to which may include wildcards
+     * @param messageDestination The destination the message was published to
      * @param qos       the level of QOS the message was subscribed to
      * @param message   the content of the message
      * @param retain    should this message be persisted
-     * @param channelID the unique id of the subscription created by the protocol
      * @param messageID the identity of the message
+     * @param channelID the unique id of the subscription created by the protocol
      */
-    public void distributeMessageToSubscriptions(String topic, int qos, ByteBuffer message, boolean retain,
-                                                 int messageID, String channelID) throws MQTTException {
+    public void distributeMessageToSubscriptions(String subscribeDestination, String messageDestination, int qos, ByteBuffer message,
+                                                 boolean retain, int messageID, String channelID) throws MQTTException {
         if (null != mqttProtocolHandlingEngine) {
             //Need to set do a re position of bytes for writing to the buffer
             //Since the buffer needs to be initialized for reading before sending out
             final int bytesPosition = 0;
             message.position(bytesPosition);
             AbstractMessage.QOSType qosType = MQTTUtils.getQOSType(qos);
-            // mqttProtocolHandlingEngine.publish2Subscribers(topic, qosType, message, retain, andesMessageID);
-            mqttProtocolHandlingEngine.publishToSubscriber(topic, qosType, message, retain, messageID, channelID);
+
+            mqttProtocolHandlingEngine.publishToSubscriber(subscribeDestination, messageDestination, qosType, message,
+                    retain, messageID, channelID);
             if (log.isDebugEnabled()) {
-                log.debug("The message with id " + messageID + " for topic " + topic +
+                log.debug("The message with id " + messageID + " for destination " + messageDestination +
                         " was notified to its subscribers");
             }
 

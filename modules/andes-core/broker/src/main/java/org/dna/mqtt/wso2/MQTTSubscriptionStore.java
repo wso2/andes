@@ -74,8 +74,8 @@ public class MQTTSubscriptionStore extends SubscriptionsStore {
     }
 
     @Override
-    public Subscription getSubscriptions(String topic, String clientID) {
-        Subscribers subscribers = localSubscriptions.get(topic);
+    public Subscription getSubscriptions(String subscribedTopic, String clientID) {
+        Subscribers subscribers = localSubscriptions.get(subscribedTopic);
         return subscribers.getSubscriptionFromClientID(clientID);
     }
 
