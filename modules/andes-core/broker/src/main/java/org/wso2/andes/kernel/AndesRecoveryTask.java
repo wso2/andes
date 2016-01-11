@@ -135,7 +135,12 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 			for (AndesQueue queue : queuesStored) {
 				for (QueueListener listener : queueListeners) {
 					log.warn("Recovering node. Adding queue " + queue.toString());
-					listener.handleClusterQueuesChanged(queue, QueueListener.QueueEvent.ADDED);
+					/**
+					 * Ignoring MQTT queues when recovering as they are already stored in the database. 
+					 */
+					if (queue.getProtocolType() != ProtocolType.MQTT) {
+						listener.handleClusterQueuesChanged(queue, QueueListener.QueueEvent.ADDED);
+					}
 				}
 			}
 
