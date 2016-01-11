@@ -27,11 +27,14 @@ public interface CommonDeliveryRule {
     /**
      * Evaluate delivery rule. This returns true if the rule is passed. Should be called in kernel
      * before message is dispatched to the protocol. If failed message should not be sent and
-     * necessary actions should be taken
+     * necessary actions should be taken.
      *
-     * @param message message to evaluate rules
-     * @return true if rule is passed
+     * @param message Message to evaluate rules
+     * @param protocolType The protocol type of the message
+     * @param destinationType The destination type of the message
+     * @return True if rule is passed
      * @throws AndesException
      */
-    boolean evaluate(DeliverableAndesMetadata message) throws AndesException;
+    boolean evaluate(DeliverableAndesMetadata message, ProtocolType protocolType, DestinationType destinationType)
+            throws AndesException;
 }

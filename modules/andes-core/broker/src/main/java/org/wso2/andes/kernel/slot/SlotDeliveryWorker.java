@@ -26,6 +26,7 @@ import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.MessageFlusher;
+import org.wso2.andes.kernel.MessageDeliveryInfo;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.store.FailureObservingStoreManager;
@@ -122,10 +123,12 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                 String destinationOfMessagesInQueue = storageQueueData.getDestinationName();
                 DestinationType destinationType = storageQueueData.getDestinationType();
                 try {
+                    MessageDeliveryInfo messageDeliveryInfo =
+                            messageFlusher.getMessageDeliveryInfo(destinationOfMessagesInQueue,
+                                    storageQueueData.getProtocolType(), destinationType);
+
                     //Check in memory buffer in MessageFlusher has room
-                    if (messageFlusher.getMessageDeliveryInfo(destinationOfMessagesInQueue, storageQueueData
-                            .getProtocolType(), destinationType)
-                            .messageBufferHasRoom()) {
+                    if (messageDeliveryInfo.messageBufferHasRoom()) {
 
                         //get a slot from coordinator.
                         Slot currentSlot = requestSlot(storageQueueName);
@@ -143,8 +146,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                             if (log.isDebugEnabled()) {
                                 log.debug("Received an empty slot from slot manager");
                             }
-                            boolean sentFromMessageBuffer = sendFromMessageBuffer(destinationOfMessagesInQueue,
-                                    destinationType);
+                            boolean sentFromMessageBuffer = messageFlusher.sendMessagesInBuffer(messageDeliveryInfo);
                             if (!sentFromMessageBuffer) {
                                 //No available free slots
                                 idleQueueCounter++;
@@ -192,10 +194,9 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
 
                                 filterOverlappedMessages(trackedSlot, messagesRead);
                                 MessageFlusher.getInstance().sendMessageToBuffer(messagesRead, trackedSlot,
-                                        destinationType);
+                                        messageDeliveryInfo);
                                 MessageFlusher.getInstance()
-                                        .sendMessagesInBuffer(trackedSlot
-                                                .getDestinationOfMessagesInSlot(), destinationType);
+                                        .sendMessagesInBuffer(messageDeliveryInfo);
                             } else {
                                 currentSlot.setSlotInActive();
                                 SlotDeletionExecutor.getInstance().executeSlotDeletion(currentSlot);
@@ -210,7 +211,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                                     "The queue " + storageQueueName + " has no room. Thus sending " +
                                             "from buffer.");
                         }
-                        sendFromMessageBuffer(destinationOfMessagesInQueue, destinationType);
+                        messageFlusher.sendMessagesInBuffer(messageDeliveryInfo);
                     }
 
                 } catch (AndesException e) {
@@ -260,7 +261,8 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
         StorageQueueData storageQueueData = storageQueueDataMap.remove(storageQueue);
 
         if (null != storageQueueData) { // If null, this has already been removed when subscription disconnecting
-            MessageFlusher.getInstance().clearUpAllBufferedMessagesForDelivery(storageQueueData.getDestinationName());
+            MessageFlusher.getInstance().clearUpAllBufferedMessagesForDelivery(storageQueueData.getDestinationName(),
+                    storageQueueData.getDestinationType());
 
 
             Map<String, Slot> orphanedSlots = storageQueueToSlotTracker.remove(storageQueue);
@@ -378,24 +380,6 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
         return currentSlot;
     }
 
-
-    /**
-     * Send messages from buffer in MessageFlusher if the buffer is not empty
-     *
-     * @param msgDestination queue/topic message is addressed to
-     * @param destinationType The destination type of the messages
-     * @return whether the messages are sent from message buffer or not
-     * @throws AndesException
-     */
-    private boolean sendFromMessageBuffer(String msgDestination, DestinationType destinationType) throws AndesException {
-        boolean sentFromMessageBuffer = false;
-        if (!messageFlusher.isMessageBufferEmpty(msgDestination)) {
-            messageFlusher.sendMessagesInBuffer(msgDestination, destinationType);
-            sentFromMessageBuffer = true;
-        }
-        return sentFromMessageBuffer;
-    }
-
     /**
      * Add a queue to queue list of this SlotDeliveryWorkerThread
      *
@@ -408,7 +392,6 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
         StorageQueueData storageQueueData =
                 new StorageQueueData(storageQueueName, destination, protocolType, destinationType);
         storageQueueDataMap.put(storageQueueName, storageQueueData);
-        messageFlusher.prepareForDelivery(destination, protocolType, destinationType);
     }
 
     /**
