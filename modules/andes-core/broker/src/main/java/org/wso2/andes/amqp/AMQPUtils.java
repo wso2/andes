@@ -49,7 +49,7 @@ import org.wso2.andes.server.store.StorableMessageMetaData;
 import org.wso2.andes.server.store.StoredMessage;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.store.StoredAMQPMessage;
-import org.wso2.andes.subscription.AMQPLocalSubscription;
+import org.wso2.andes.amqp.AMQPLocalSubscription;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.OutboundSubscription;
 
