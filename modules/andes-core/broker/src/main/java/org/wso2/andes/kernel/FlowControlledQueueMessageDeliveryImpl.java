@@ -44,12 +44,15 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
      * {@inheritDoc}
      */
     @Override
-    public int deliverMessageToSubscriptions(String destination, Set<DeliverableAndesMetadata> messages,
-                                             DestinationType destinationType) throws AndesException {
+    public int deliverMessageToSubscriptions(MessageDeliveryInfo messageDeliveryInfo) throws AndesException {
 
+        Set<DeliverableAndesMetadata> messages = messageDeliveryInfo.getReadButUndeliveredMessages();
         int sentMessageCount = 0;
         boolean noSubscribersForDestination = false;
         Iterator<DeliverableAndesMetadata> iterator = messages.iterator();
+
+        String destination = messageDeliveryInfo.getDestination();
+        DestinationType destinationType = messageDeliveryInfo.getDestinationType();
 
 
         while (iterator.hasNext()) {
@@ -79,7 +82,7 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
 
                 int numOfCurrentMsgDeliverySchedules = 0;
 
-                boolean subscriberWithMatchingSelectorFound = false;
+                boolean subscriberWithMatchingSelectorFound = true;
 
                 /**
                  * if message is addressed to queues, only ONE subscriber should
@@ -88,9 +91,14 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
                 for (int j = 0; j < subscriptions4Queue.size(); j++) {
 
                     LocalSubscription localSubscription = MessageFlusher.getInstance().
-                            findNextSubscriptionToSent(destination, protocolType, destinationType, subscriptions4Queue);
-                    if (localSubscription.hasRoomToAcceptMessages()
-                            && localSubscription.isMessageAcceptedBySelector(message)) {
+                            findNextSubscriptionToSent(messageDeliveryInfo, subscriptions4Queue);
+                    if (localSubscription.hasRoomToAcceptMessages()) {
+
+                        if (!localSubscription.isMessageAcceptedBySelector(message)) {
+                            // If this doesn't match a selector we skip sending the message
+                            subscriberWithMatchingSelectorFound = false;
+                            break;
+                        }
                         if (log.isDebugEnabled()) {
                             log.debug("Scheduled to send id = " + message.getMessageID());
                         }
@@ -104,7 +112,6 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
                         message.markAsScheduledToDeliver(localSubscription);
                         MessageFlusher.getInstance().deliverMessageAsynchronously(localSubscription, message);
                         numOfCurrentMsgDeliverySchedules++;
-                        subscriberWithMatchingSelectorFound = true;
 
                         //for queue messages and durable topic messages (as they are now queue messages)
                         // we only send to one selected subscriber if it is a queue message

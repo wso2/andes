@@ -27,7 +27,6 @@ import org.wso2.andes.kernel.disruptor.delivery.DisruptorBasedFlusher;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionEngine;
-import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -35,8 +34,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentSkipListSet;
 
 
 /**
@@ -52,13 +49,12 @@ public class MessageFlusher {
     //per destination
     private Integer maxNumberOfReadButUndeliveredMessages = 5000;
 
-    private final int queueWorkerWaitInterval = 1000;
-
     /**
-     * Subscribed destination wise information
-     * the key here is the original destination of message. NOT storage queue name.
+     * The map of objects which keeps delivery information with respect to their DestinationType and the
+     * destination name. The destination name in this is NOT the storage queue name but the original destination.
      */
-    private Map<String, MessageDeliveryInfo> subscriptionCursar4QueueMap = new HashMap<>();
+    private Map<DestinationType, Map<String, MessageDeliveryInfo>> subscriptionCursar4QueueMap =
+            new HashMap<>();
 
     private SubscriptionEngine subscriptionEngine;
 
@@ -110,6 +106,9 @@ public class MessageFlusher {
 
     }
 
+    public Integer getMaxNumberOfReadButUndeliveredMessages() {
+        return maxNumberOfReadButUndeliveredMessages;
+    }
 
     /**
      * Initialize common delivery rules. These delivery rules apply
@@ -129,14 +128,17 @@ public class MessageFlusher {
      * Evaluating Delivery rules before sending the messages
      *
      * @param message AMQ Message
+     * @param protocolType The protocol type of the message
+     * @param destinationType The destination type of the message
      * @return IsOKToDelivery
      * @throws AndesException
      */
-    private boolean evaluateDeliveryRules(DeliverableAndesMetadata message) throws AndesException {
+    private boolean evaluateDeliveryRules(DeliverableAndesMetadata message, ProtocolType protocolType,
+                                          DestinationType destinationType) throws AndesException {
         boolean isOKToDelivery = true;
 
         for (CommonDeliveryRule rule : DeliveryRulesList) {
-            if (!rule.evaluate(message)) {
+            if (!rule.evaluate(message, protocolType, destinationType)) {
                 isOKToDelivery = false;
                 break;
             }
@@ -145,139 +147,25 @@ public class MessageFlusher {
     }
 
     /**
-     * Class to keep track of message delivery information destination wise
-     */
-    public class MessageDeliveryInfo {
-
-        /**
-         * Destination of the messages (not storage queue name). For durable topics
-         * this is the internal queue name with subscription id.
-         */
-        private String destination;
-
-        /**
-         * Subscription iterator
-         */
-        Iterator<LocalSubscription> iterator;
-
-        /**
-         * in-memory message list scheduled to be delivered. These messages will be flushed
-         * to subscriber
-         */
-        private Set<DeliverableAndesMetadata> readButUndeliveredMessages = new
-                ConcurrentSkipListSet<>();
-
-        /***
-         * In case of a purge, we must store the timestamp when the purge was called.
-         * This way we can identify messages received before that timestamp that fail and ignore them.
-         */
-        private Long lastPurgedTimestamp;
-
-        /***
-         * Constructor
-         * initialize lastPurgedTimestamp to 0.
-         */
-        public MessageDeliveryInfo() {
-            lastPurgedTimestamp = 0l;
-        }
-
-        /**
-         * Buffer messages to be delivered
-         *
-         * @param message message metadata to buffer
-         */
-        public void bufferMessage(DeliverableAndesMetadata message) {
-            readButUndeliveredMessages.add(message);
-            message.markAsBuffered();
-            //Tracing message
-            MessageTracer.trace(message, MessageTracer.METADATA_BUFFERED_FOR_DELIVERY);
-
-        }
-
-        /**
-         * Check if message buffer for destination is empty
-         *
-         * @return true if empty
-         */
-        public boolean isMessageBufferEmpty() {
-            return readButUndeliveredMessages.isEmpty();
-        }
-
-        /**
-         * Get the number of messages buffered for the destination to be delivered
-         *
-         * @return number of messages buffered
-         */
-        public int getSizeOfMessageBuffer() {
-            return readButUndeliveredMessages.size();
-        }
-
-        /**
-         * Returns boolean variable saying whether this destination has room or not
-         *
-         * @return whether this destination has room or not
-         */
-        public boolean messageBufferHasRoom() {
-            boolean hasRoom = true;
-            if (readButUndeliveredMessages.size() >= maxNumberOfReadButUndeliveredMessages) {
-                hasRoom = false;
-            }
-            return hasRoom;
-        }
-
-        /***
-         * Clear the read-but-undelivered collection of messages of the given queue from memory
-         * @return Number of messages that was in the read-but-undelivered buffer
-         */
-        public int clearReadButUndeliveredMessages() {
-
-            int messageCount = readButUndeliveredMessages.size();
-
-            readButUndeliveredMessages.clear();
-
-            return messageCount;
-        }
-
-        /***
-         * @return Last purged timestamp of queue.
-         */
-        public Long getLastPurgedTimestamp() {
-            return lastPurgedTimestamp;
-        }
-
-        /**
-         * set last purged timestamp for queue.
-         * @param lastPurgedTimestamp the time stamp of the message message which was purged most recently
-         */
-        public void setLastPurgedTimestamp(Long lastPurgedTimestamp) {
-            this.lastPurgedTimestamp = lastPurgedTimestamp;
-        }
-    }
-
-    /**
      * Get the next subscription for the given destination. If at end of the subscriptions, it circles
      * around to the first one
      *
-     * @param destination name of destination
-     * @param protocolType The protocol which the destination belongs to
-     * @param destinationType The type of the destination
+     * @param messageDeliveryInfo The message delivery information object
      * @param subscriptions4Queue subscriptions registered for the destination
      * @return subscription to deliver
      * @throws AndesException
      */
-    public LocalSubscription findNextSubscriptionToSent(String destination, ProtocolType protocolType,
-                                                        DestinationType destinationType,
+    public LocalSubscription findNextSubscriptionToSent(MessageDeliveryInfo messageDeliveryInfo,
                                                         Collection<LocalSubscription> subscriptions4Queue)
             throws AndesException {
         LocalSubscription localSubscription = null;
         boolean isValidLocalSubscription = false;
         if (subscriptions4Queue == null || subscriptions4Queue.size() == 0) {
-            subscriptionCursar4QueueMap.remove(destination);
+            subscriptionCursar4QueueMap.get(messageDeliveryInfo.getDestinationType()).remove(messageDeliveryInfo.getDestination());
             return null;
         }
 
-        MessageDeliveryInfo messageDeliveryInfo = getMessageDeliveryInfo(destination, protocolType, destinationType);
-        Iterator<LocalSubscription> it = messageDeliveryInfo.iterator;
+        Iterator<LocalSubscription> it = messageDeliveryInfo.getIterator();
         while (it.hasNext()) {
             localSubscription = it.next();
             if (subscriptions4Queue.contains(localSubscription)) {
@@ -300,7 +188,7 @@ public class MessageFlusher {
              return localSubscription;
         }else {
             it = subscriptions4Queue.iterator();
-            messageDeliveryInfo.iterator = it;
+            messageDeliveryInfo.setIterator(it);
             if (it.hasNext()) {
                 return it.next();
             } else {
@@ -321,47 +209,32 @@ public class MessageFlusher {
      */
     public MessageDeliveryInfo getMessageDeliveryInfo(String destination, ProtocolType protocolType,
                                                       DestinationType destinationType) throws AndesException {
-        MessageDeliveryInfo messageDeliveryInfo = subscriptionCursar4QueueMap.get(destination);
+
+        Map<String, MessageDeliveryInfo> infoMap = subscriptionCursar4QueueMap.get(destinationType);
+
+
+        if (null == infoMap) {
+            infoMap = new HashMap<>();
+        }
+
+        MessageDeliveryInfo messageDeliveryInfo = infoMap.get(destination);
+
         if (messageDeliveryInfo == null) {
-            messageDeliveryInfo = new MessageDeliveryInfo();
-            messageDeliveryInfo.destination = destination;
+            messageDeliveryInfo = new MessageDeliveryInfo(this);
+            messageDeliveryInfo.setDestination(destination);
             Collection<LocalSubscription> localSubscribersForQueue = subscriptionEngine.getActiveLocalSubscribers(
                     destination, protocolType, destinationType);
 
-            messageDeliveryInfo.iterator = localSubscribersForQueue.iterator();
-            subscriptionCursar4QueueMap.put(destination, messageDeliveryInfo);
+            messageDeliveryInfo.setIterator(localSubscribersForQueue.iterator());
+
+            messageDeliveryInfo.setProtocolType(protocolType);
+            messageDeliveryInfo.setDestinationType(destinationType);
+
+            infoMap.put(destination, messageDeliveryInfo);
+
+            subscriptionCursar4QueueMap.put(destinationType, infoMap);
         }
         return messageDeliveryInfo;
-    }
-
-    /**
-     * Initialize message flusher for delivering messages for the given destination. This is the destination consumers
-     * subscribe.
-     *
-     * @param destination Delivery Destination
-     * @param protocolType The protocol which the destination belongs to
-     * @param destinationType The type of the destination
-     * @throws AndesException
-     */
-    public void prepareForDelivery(String destination, ProtocolType protocolType, DestinationType destinationType)
-            throws AndesException {
-        MessageDeliveryInfo messageDeliveryInfo = new MessageDeliveryInfo();
-        messageDeliveryInfo.destination = destination;
-        Collection<LocalSubscription> localSubscribersForQueue = subscriptionEngine.getActiveLocalSubscribers(
-                destination, protocolType, destinationType);
-
-        messageDeliveryInfo.iterator = localSubscribersForQueue.iterator();
-        subscriptionCursar4QueueMap.put(destination, messageDeliveryInfo);
-    }
-
-    /**
-     * Validates if the the buffer is empty, the messages will be read through this buffer and will be delivered to the
-     * relevant subscriptions
-     * @param destination the name of the queue which hold the messages
-     * @return whether the buffer is empty
-     */
-    public boolean isMessageBufferEmpty(String destination) {
-        return subscriptionCursar4QueueMap.get(destination).isMessageBufferEmpty();
     }
 
     /**
@@ -371,25 +244,13 @@ public class MessageFlusher {
      *         AndesMetadata list
      * @param slot
      *         these messages are belonged to
-     * @param destinationType The destination type of the buffer
+     * @param messageDeliveryInfo The delivery information object for messages
      */
     public void sendMessageToBuffer(List<DeliverableAndesMetadata> messagesRead, Slot slot
-            , DestinationType destinationType) {
+            , MessageDeliveryInfo messageDeliveryInfo) {
         try {
             slot.incrementPendingMessageCount(messagesRead.size());
             for (DeliverableAndesMetadata message : messagesRead) {
-
-                /**
-                 * Rather than destination of the message, we get the destination of
-                 * the messages in the slot. In hierarchical topic case this will
-                 * represent subscription bound destination NOT message destination
-                 * (games.cricket.* Not games.cricket.SriLanka)
-                 */
-                String destination = slot.getDestinationOfMessagesInSlot();
-                ProtocolType protocolType = AndesUtils.getProtocolTypeForMetaDataType(message.getMetaDataType());
-
-                MessageDeliveryInfo messageDeliveryInfo =
-                        getMessageDeliveryInfo(destination, protocolType, destinationType);
                 messageDeliveryInfo.bufferMessage(message);
             }
         } catch (Throwable e) {
@@ -422,97 +283,62 @@ public class MessageFlusher {
     /**
      * Read messages from the buffer and send messages to subscribers.
      *
-     * @param subDestination The destination of the subscription
-     * @param destinationType The destination type of the subscription
+     * @param messageDeliveryInfo The delivery information object
      */
-    public void sendMessagesInBuffer(String subDestination, DestinationType destinationType) throws AndesException {
-        /**
-         * Now messages are read to the memory. Send the read messages to subscriptions
-         */
-        if (log.isDebugEnabled()) {
-            log.debug("Sending messages in buffer destination= " + subDestination);
-        }
-        long failureCount = 0;
-        MessageDeliveryInfo messageDeliveryInfo = subscriptionCursar4QueueMap.get(subDestination);
-        if (log.isDebugEnabled()) {
-            for (String dest : subscriptionCursar4QueueMap.keySet()) {
-                log.debug("Queue size of destination " + dest + " is :"
-                        + subscriptionCursar4QueueMap.get(dest).getSizeOfMessageBuffer());
-            }
-        }
-        try {
-            if(log.isDebugEnabled()) {
-                log.debug("Sending messages from buffer num of msg = "
-                        + messageDeliveryInfo.getSizeOfMessageBuffer());
-            }
-            sendMessagesToSubscriptions(messageDeliveryInfo.destination, messageDeliveryInfo.readButUndeliveredMessages,
-                    destinationType);
+    public boolean sendMessagesInBuffer(MessageDeliveryInfo messageDeliveryInfo) throws AndesException {
 
-        } catch (Exception e) {
+        boolean sentFromBuffer = false;
+
+        if (!messageDeliveryInfo.isMessageBufferEmpty()) {
             /**
-             * When there is a error, we will wait to avoid looping.
+             * Now messages are read to the memory. Send the read messages to subscriptions
              */
-            long waitTime = queueWorkerWaitInterval;
-            failureCount++;
-            long faultWaitTime = Math.max(waitTime * 5, failureCount * waitTime);
-            try {
-                Thread.sleep(faultWaitTime);
-            } catch (InterruptedException e1) {
-                //silently ignore
+            if (log.isDebugEnabled()) {
+                log.debug("Sending " + messageDeliveryInfo.getSizeOfMessageBuffer() + " messages from buffer "
+                        + " for destination : " + messageDeliveryInfo.getDestination());
+
+                for (Map.Entry<DestinationType, Map<String, MessageDeliveryInfo>> infoMap :
+                        subscriptionCursar4QueueMap.entrySet()) {
+
+                    for (Map.Entry<String, MessageDeliveryInfo> entry : infoMap.getValue().entrySet()) {
+                        log.debug("Queue size of destination " + entry.getKey() + " is :"
+                                + entry.getValue().getSizeOfMessageBuffer());
+                    }
+                }
             }
-            log.error("Error occurred while sending messages to subscribers from buffer", e);
-            throw new AndesException("Error occurred while sending messages to subscribers " +
-                                     "from message buffer", e);
+
+            sendMessagesToSubscriptions(messageDeliveryInfo);
+            sentFromBuffer = true;
         }
 
-
+        return sentFromBuffer;
     }
 
     /**
      * Check whether there are active subscribers and send
      *
-     * @param destination queue name
-     * @param messages    metadata set
-     * @param destinationType The destination type of the messages
+     * @param messageDeliveryInfo The delivery information object of the messages
      * @return how many messages sent
-     * @throws Exception
+     * @throws AndesException
      */
-    public int sendMessagesToSubscriptions(String destination, Set<DeliverableAndesMetadata> messages,
-                                           DestinationType destinationType)
-            throws Exception {
-
-        if(messages.iterator().hasNext()) {
-            //identify if this messages address queues or topics. There CANNOT be a mix
-            DeliverableAndesMetadata firstMessage = messages.iterator().next();
-
-            if (DestinationType.TOPIC == destinationType) {
-                return topicMessageFlusher.deliverMessageToSubscriptions(destination, messages, destinationType);
-            } else {
-                return queueMessageFlusher.deliverMessageToSubscriptions(destination, messages, destinationType);
-            }
+    public int sendMessagesToSubscriptions(MessageDeliveryInfo messageDeliveryInfo) throws AndesException {
+        int noOfSentMessages;
+        if (DestinationType.TOPIC == messageDeliveryInfo.getDestinationType()) {
+            noOfSentMessages = topicMessageFlusher.deliverMessageToSubscriptions(messageDeliveryInfo);
         } else {
-            if(log.isDebugEnabled()) {
-                // This exception can occur because the iterator of ConcurrentSkipListSet loads the
-                // at-the-time snapshot.
-                // Some records could be deleted by the time the iterator reaches them.
-                // However, this can only happen at the tail of the collection, not in middle, and it
-                // would cause the loop to blindly check for a batch of deleted records.
-                // Given this situation, this loop should break so the sendFlusher can re-trigger it.
-                // for tracing purposes can use this : log.warn("NoSuchElementException thrown",ex);
-                log.debug("No elements in andes metadata message set.");
-            }
-
-            // Since no messages were effected returning 0.
-            return 0;
+            noOfSentMessages = queueMessageFlusher.deliverMessageToSubscriptions(messageDeliveryInfo);
         }
+
+        return noOfSentMessages;
     }
 
     /**
      * Clear up all the buffered messages for delivery
      * @param destination destination of messages to delete
+     * @param destinationType the destination type of the messages
      */
-    public void clearUpAllBufferedMessagesForDelivery(String destination) {
-        subscriptionCursar4QueueMap.get(destination).clearReadButUndeliveredMessages();
+    public void clearUpAllBufferedMessagesForDelivery(String destination, DestinationType destinationType) {
+        subscriptionCursar4QueueMap.get(destinationType).get(destination).clearReadButUndeliveredMessages();
     }
 
     /**
@@ -535,7 +361,7 @@ public class MessageFlusher {
     public void deliverMessageAsynchronously(LocalSubscription subscription, DeliverableAndesMetadata message)
             throws AndesException {
 
-        if(evaluateDeliveryRules(message)) {
+        if(evaluateDeliveryRules(message, subscription.getProtocolType(), subscription.getDestinationType())) {
             if(log.isDebugEnabled()) {
                 log.debug("Scheduled message id= " + message.getMessageID() + " to be sent to subscription= " + subscription);
             }
@@ -557,10 +383,11 @@ public class MessageFlusher {
      * can cause message duplication.
      *
      * @param message message to reschedule
+     * @param destinationType the destination type of the messages
      */
-    public void reQueueMessage(DeliverableAndesMetadata message) {
+    public void reQueueMessage(DeliverableAndesMetadata message, DestinationType destinationType) {
         String destination = message.getDestination();
-        subscriptionCursar4QueueMap.get(destination).bufferMessage(message);
+        subscriptionCursar4QueueMap.get(destinationType).get(destination).bufferMessage(message);
     }
 
     public static MessageFlusher getInstance() {

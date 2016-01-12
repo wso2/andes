@@ -43,8 +43,9 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
      * {@inheritDoc}
      */
     @Override
-    public int deliverMessageToSubscriptions(String destination, Set<DeliverableAndesMetadata> messages,
-                                             DestinationType destinationType) throws AndesException {
+    public int deliverMessageToSubscriptions(MessageDeliveryInfo messageDeliveryInfo) throws AndesException {
+
+        Set<DeliverableAndesMetadata> messages = messageDeliveryInfo.getReadButUndeliveredMessages();
         int sentMessageCount = 0;
         Iterator<DeliverableAndesMetadata> iterator = messages.iterator();
         List<DeliverableAndesMetadata> droppedTopicMessagesList = new ArrayList<>();
@@ -65,7 +66,7 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
                 Collection<LocalSubscription> subscriptions4Queue =
                         subscriptionEngine.getActiveLocalSubscribers(message.getDestination(),
                                 AndesUtils.getProtocolTypeForMetaDataType(message.getMetaDataType()),
-                                destinationType);
+                                messageDeliveryInfo.getDestinationType());
 
                 //All subscription filtering logic for topics goes here
                 Iterator<LocalSubscription> subscriptionIterator = subscriptions4Queue.iterator();
@@ -75,13 +76,12 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
                     LocalSubscription subscription = subscriptionIterator.next();
 
                     /*
-                     * If this is a topic message, remove all durable topic subscriptions here
-                     * because durable topic subscriptions will get messages via queue path.
-                     * Also need to consider the arrival time of the message. Only topic
+                     * Consider the arrival time of the message. Only topic
                      * subscribers which appeared before publishing this message should receive it
                      */
-                    if (subscription.isDurable() || (subscription.getSubscribeTime() > message.getArrivalTime())
-                            || !subscription.getSubscribedDestination().equals(destination)) { // In wild cards, there can be others subscribers here as well
+                    if ((subscription.getSubscribeTime() > message.getArrivalTime())
+                            || !subscription.getSubscribedDestination().equals(messageDeliveryInfo.getDestination())) {
+                        // In wild cards, there can be others subscribers here as well
                         subscriptionIterator.remove();
                     }
 

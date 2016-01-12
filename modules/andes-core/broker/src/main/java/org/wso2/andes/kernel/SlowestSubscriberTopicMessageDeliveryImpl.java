@@ -43,9 +43,9 @@ public class SlowestSubscriberTopicMessageDeliveryImpl implements MessageDeliver
      * {@inheritDoc}
      */
     @Override
-    public int deliverMessageToSubscriptions(String destination, Set<DeliverableAndesMetadata> messages,
-                                             DestinationType destinationType) throws AndesException {
+    public int deliverMessageToSubscriptions(MessageDeliveryInfo messageDeliveryInfo) throws AndesException {
 
+        Set<DeliverableAndesMetadata> messages = messageDeliveryInfo.getReadButUndeliveredMessages();
         int sentMessageCount = 0;
         Iterator<DeliverableAndesMetadata> iterator = messages.iterator();
         List<DeliverableAndesMetadata> droppedTopicMessagesList = new ArrayList<>();
@@ -67,7 +67,7 @@ public class SlowestSubscriberTopicMessageDeliveryImpl implements MessageDeliver
                 Collection<LocalSubscription> subscriptions4Queue =
                         subscriptionEngine.getActiveLocalSubscribers(message.getDestination(),
                                 AndesUtils.getProtocolTypeForMetaDataType(message.getMetaDataType()),
-                                destinationType);
+                                messageDeliveryInfo.getDestinationType());
 
                 //All subscription filtering logic for topics goes here
                 Iterator<LocalSubscription> subscriptionIterator = subscriptions4Queue.iterator();
@@ -128,8 +128,8 @@ public class SlowestSubscriberTopicMessageDeliveryImpl implements MessageDeliver
                     sentMessageCount++;
                 } else {
                     if (log.isDebugEnabled()) {
-                        log.debug("Some subscriptions for destination " + destination + " have max unacked " +
-                                "messages " + message.getDestination());
+                        log.debug("Some subscriptions for destination " + messageDeliveryInfo.getDestination()
+                                + " have max unacked messages " + message.getDestination());
                     }
                     //if we continue message order will break
                     break;

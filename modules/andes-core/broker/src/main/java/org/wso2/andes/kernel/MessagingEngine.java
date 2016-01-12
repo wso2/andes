@@ -230,11 +230,12 @@ public class MessagingEngine {
      * any eligible subscriber to receive later. This also check message status before
      * re-schedule
      * @param messageMetadata message to reschedule
+     * @param destinationType the destination type of the messages
      * @throws AndesException in case of an error
      */
-    public void reQueueMessage(DeliverableAndesMetadata messageMetadata) throws AndesException {
+    public void reQueueMessage(DeliverableAndesMetadata messageMetadata, DestinationType destinationType) throws AndesException {
         if(!messageMetadata.isOKToDispose()) {
-            MessageFlusher.getInstance().reQueueMessage(messageMetadata);
+            MessageFlusher.getInstance().reQueueMessage(messageMetadata, destinationType);
             //Tracing Message
             MessageTracer.trace(messageMetadata.getMessageID(), messageMetadata.getDestination(),
                     MessageTracer.MESSAGE_REQUEUED_BUFFER);
@@ -278,7 +279,7 @@ public class MessagingEngine {
                                               DestinationType destinationType) throws AndesException {
 
         MessageFlusher messageFlusher = MessageFlusher.getInstance();
-        MessageFlusher.MessageDeliveryInfo messageDeliveryInfo =
+        MessageDeliveryInfo messageDeliveryInfo =
                 messageFlusher.getMessageDeliveryInfo(destination, protocolType, destinationType);
         messageDeliveryInfo.setLastPurgedTimestamp(purgedTimestamp);
         return messageDeliveryInfo.clearReadButUndeliveredMessages();
