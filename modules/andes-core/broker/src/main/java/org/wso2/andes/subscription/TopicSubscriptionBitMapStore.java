@@ -469,7 +469,7 @@ public class TopicSubscriptionBitMapStore implements AndesSubscriptionStore {
         if (StringUtils.isNotEmpty(destination)) {
 
             // constituentDelimiter is quoted to avoid making the delimiter a regex symbol
-            String[] constituents = destination.split(Pattern.quote(constituentsDelimiter));
+            String[] constituents = destination.split(Pattern.quote(constituentsDelimiter),-1);
 
             int noOfCurrentMaxConstituents = constituentTables.size();
 
