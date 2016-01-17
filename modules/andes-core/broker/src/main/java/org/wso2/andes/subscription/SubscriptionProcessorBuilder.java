@@ -64,8 +64,9 @@ public class SubscriptionProcessorBuilder {
         // Add handles for AMQP
         subscriptionProcessor.addHandler(ProtocolType.AMQP, DestinationType.QUEUE,
                 new QueueSubscriptionStore());
-        subscriptionProcessor.addHandler(ProtocolType.AMQP, DestinationType.TOPIC,
-                new TopicSubscriptionBitMapStore(ProtocolType.AMQP));
+
+        // Using queue subscription store for topics since wildcard matching is not required for local subscriptions
+        subscriptionProcessor.addHandler(ProtocolType.AMQP, DestinationType.TOPIC, new QueueSubscriptionStore());
 
         // Local durable topic subscription store is specific to local mode since subscriptions are stored
         // against their targetQueue in this store
@@ -73,8 +74,8 @@ public class SubscriptionProcessorBuilder {
                 new LocalDurableTopicSubscriptionStore());
 
         // Add handles for MQTT
-        subscriptionProcessor.addHandler(ProtocolType.MQTT, DestinationType.TOPIC,
-                new TopicSubscriptionBitMapStore(ProtocolType.MQTT));
+        // Using queue subscription store for topics since wildcard matching is not required for local subscriptions
+        subscriptionProcessor.addHandler(ProtocolType.MQTT, DestinationType.TOPIC, new QueueSubscriptionStore());
         subscriptionProcessor.addHandler(ProtocolType.MQTT, DestinationType.DURABLE_TOPIC,
                 new LocalDurableTopicSubscriptionStore());
 
