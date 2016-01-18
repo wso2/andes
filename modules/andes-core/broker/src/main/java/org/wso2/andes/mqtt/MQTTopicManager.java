@@ -174,6 +174,14 @@ public class MQTTopicManager {
                     log.debug("The topic " + topics + "has local subscriptions already");
                 }
             }
+
+            // If clean session is set to true, existing subscriptions with the same client ID which are clean session
+            // false should also be removed.
+            if (isCleanSession) {
+                 connector.removeSubscriber(this, topicName, mqttClientChannelID, username, subscriptionChannelID,
+                                                                                    false, mqttClientChannelID, qos);
+            }
+
             //First the topic should be registered in the cluster
             subscriptionID = registerTopicSubscriptionInCluster(topicName, mqttClientChannelID, username, isCleanSession,
                     qos, subscriptionChannelID);
@@ -401,7 +409,7 @@ public class MQTTopicManager {
             throws MQTTException, SubscriptionAlreadyExistsException {
         if (log.isDebugEnabled()) {
             log.debug("Cluster wide topic connection was created with id " + mqttClientID + " for topic " +
-                    topicName + " with clean session " + isCleanSession);
+                      topicName + " with clean session " + isCleanSession);
         }
 
         //Will register the topic cluster wide

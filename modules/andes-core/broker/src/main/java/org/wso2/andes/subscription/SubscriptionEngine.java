@@ -191,10 +191,12 @@ public class SubscriptionEngine {
     }
 
     /**
-     * Get ALL (ACTIVE + INACTIVE) local subscriptions whose bound queue is given
+     * Get ALL (ACTIVE + INACTIVE) cluster subscriptions whose bound queue is given
      *
-     * @param queueName Queue name to search
-     * @return List if matching subscriptions
+     * @param queueName       Queue name to search.
+     * @param protocolType    The protocol for the relevant subscription.
+     * @param destinationType The destination type for the relevant subscription.
+     * @return List if matching subscriptions.
      * @throws AndesException
      */
     public Set<AndesSubscription> getListOfClusterSubscriptionsBoundToQueue(String queueName, ProtocolType protocolType,
@@ -203,7 +205,7 @@ public class SubscriptionEngine {
 
         Set<AndesSubscription> subscriptionsOfQueue = new HashSet<>();
         Set<AndesSubscription> queueSubscriptions =
-                clusterSubscriptionProcessor.getMatchingSubscriptions(queueName, protocolType, destinationType);
+                clusterSubscriptionProcessor.getAllSubscriptionsForDestinationType(protocolType, destinationType);
 
         // Add queue subscriptions
         if (null != queueSubscriptions) {
