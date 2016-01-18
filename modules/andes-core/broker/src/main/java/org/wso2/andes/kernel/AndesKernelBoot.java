@@ -79,31 +79,26 @@ public class AndesKernelBoot {
     /**
      * This will boot up all the components in Andes kernel and bring the server to working state
      */
-    public static void bootAndesKernel() throws AndesException {
-        try {
-            isKernelShuttingDown = false;
-            //loadConfigurations - done from outside
-            //startAndesStores - done from outside
-            int threadPoolCount = 1;
-            andesRecoveryTaskScheduler = Executors.newScheduledThreadPool(threadPoolCount);
-            startAndesComponents();
-            startHouseKeepingThreads();
-            syncNodeWithClusterState();
-            registerMBeans();
-            startThriftServer();
-            startMessaging();
-            createSuperTenantDLC();
+    public static void initializeComponents() throws AndesException {
+        isKernelShuttingDown = false;
 
-            //Start slot deleting thread only if clustering is enabled.
-            //Otherwise slots assignment will not happen
-            if (AndesContext.getInstance().isClusteringEnabled()) {
-                SlotDeletionExecutor.getInstance().init();
-            }
+        //loadConfigurations - done from outside
+        //startAndesStores - done from outside
+        int threadPoolCount = 1;
+        andesRecoveryTaskScheduler = Executors.newScheduledThreadPool(threadPoolCount);
+        startAndesComponents();
+        startHouseKeepingThreads();
+        syncNodeWithClusterState();
+        registerMBeans();
+        startThriftServer();
+        Andes.getInstance().startSafeZoneAnalysisWorker();
 
-            Andes.getInstance().startSafeZoneAnalysisWorker();
-        } catch (JMException e) {
-            throw new AndesException("Unable to register Andes MBeans", e);
+        //Start slot deleting thread only if clustering is enabled.
+        //Otherwise slots assignment will not happen
+        if (AndesContext.getInstance().isClusteringEnabled()) {
+            SlotDeletionExecutor.getInstance().init();
         }
+
     }
 
     /**
@@ -360,24 +355,27 @@ public class AndesKernelBoot {
     }
 
     /**
-     * Register andes MBeans
+     * Register Andes MBeans
      *
-     * @throws JMException
      */
-    public static void registerMBeans() throws JMException {
+    public static void registerMBeans() throws AndesException {
 
-        ClusterManagementInformationMBean clusterManagementMBean = new
-                ClusterManagementInformationMBean(
-                ClusterResourceHolder.getInstance().getClusterManager());
-        clusterManagementMBean.register();
+        try {
+            ClusterManagementInformationMBean clusterManagementMBean = new
+                    ClusterManagementInformationMBean(
+                    ClusterResourceHolder.getInstance().getClusterManager());
+            clusterManagementMBean.register();
 
-        SubscriptionManagementInformationMBean subscriptionManagementInformationMBean = new
-                SubscriptionManagementInformationMBean();
-        subscriptionManagementInformationMBean.register();
+            SubscriptionManagementInformationMBean subscriptionManagementInformationMBean = new
+                    SubscriptionManagementInformationMBean();
+            subscriptionManagementInformationMBean.register();
 
-        MessageStatusInformationMBean messageStatusInformationMBean = new
-                MessageStatusInformationMBean();
-        messageStatusInformationMBean.register();
+            MessageStatusInformationMBean messageStatusInformationMBean = new
+                    MessageStatusInformationMBean();
+            messageStatusInformationMBean.register();
+        } catch (JMException ex) {
+            throw new AndesException("Unable to register Andes MBeans", ex);
+        }
     }
 
     /**
@@ -455,7 +453,7 @@ public class AndesKernelBoot {
     /**
      * Create a DEAD_LETTER_CHANNEL for the super tenant.
      */
-    private static void createSuperTenantDLC() throws AndesException {
+    public static void createSuperTenantDLC() throws AndesException {
         CarbonContext carbonContext = CarbonContext.getThreadLocalCarbonContext();
         try {
             String adminUserName = carbonContext.getUserRealm().getRealmConfiguration().getAdminUserName();

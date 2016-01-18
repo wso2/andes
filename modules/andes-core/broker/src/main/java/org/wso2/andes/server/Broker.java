@@ -287,15 +287,19 @@ public class Broker
 
             isActorSet = true;
 
+            /**
+             * Boot andes kernel before starting AMQP transport.
+             */
+            AndesKernelBoot.initializeComponents();
+
             startAMQPListener(config, options, serverConfig);
 
-            /**
-             * Boot andes kernel
-             */
-            AndesKernelBoot.bootAndesKernel();
+            AndesKernelBoot.startMessaging();
+            AndesKernelBoot.createSuperTenantDLC();
 
             AMQPUtils.DEFAULT_CONTENT_CHUNK_SIZE = AndesConfigurationManager.readValue(
                     AndesConfiguration.PERFORMANCE_TUNING_MAX_CONTENT_CHUNK_SIZE);
+
         } catch (ConfigurationException ce) {
             throw new AndesException("Unable to create configuration files based application registry", ce);
         } catch (AMQException amqe) {
