@@ -50,31 +50,28 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
         Iterator<DeliverableAndesMetadata> iterator = messages.iterator();
         List<DeliverableAndesMetadata> droppedTopicMessagesList = new ArrayList<>();
 
+        /**
+         * get all relevant type of subscriptions. This call does NOT
+         * return hierarchical subscriptions for the destination. There
+         * are duplicated messages for each different subscribed destination.
+         * For durable topic subscriptions this should return queue subscription
+         * bound to unique queue based on subscription id
+         */
+        Collection<LocalSubscription> subscriptions =
+                subscriptionEngine.getActiveLocalSubscribers(messageDeliveryInfo.getDestination(),
+                        messageDeliveryInfo.getProtocolType(), messageDeliveryInfo.getDestinationType());
 
         while (iterator.hasNext()) {
 
             try {
                 DeliverableAndesMetadata message = iterator.next();
 
-                /**
-                 * get all relevant type of subscriptions. This call does NOT
-                 * return hierarchical subscriptions for the destination. There
-                 * are duplicated messages for each different subscribed destination.
-                 * For durable topic subscriptions this should return queue subscription
-                 * bound to unique queue based on subscription id
-                 */
-                Collection<LocalSubscription> subscriptions4Queue =
-                        subscriptionEngine.getActiveLocalSubscribers(message.getDestination(),
-                                AndesUtils.getProtocolTypeForMetaDataType(message.getMetaDataType()),
-                                messageDeliveryInfo.getDestinationType());
+                List<LocalSubscription> subscriptionsToDeliver = new ArrayList<>();
+
+
 
                 //All subscription filtering logic for topics goes here
-                Iterator<LocalSubscription> subscriptionIterator = subscriptions4Queue.iterator();
-
-                while (subscriptionIterator.hasNext()) {
-
-                    LocalSubscription subscription = subscriptionIterator.next();
-
+                for (LocalSubscription subscription : subscriptions) {
                     /*
                      * Consider the arrival time of the message. Only topic
                      * subscribers which appeared before publishing this message should receive it
@@ -82,16 +79,18 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
                     if ((subscription.getSubscribeTime() > message.getArrivalTime())
                             || !subscription.getSubscribedDestination().equals(messageDeliveryInfo.getDestination())) {
                         // In wild cards, there can be others subscribers here as well
-                        subscriptionIterator.remove();
+                        continue;
                     }
 
                     // Avoid sending if the selector of subscriber does not match
                     if(!subscription.isMessageAcceptedBySelector(message)) {
-                        subscriptionIterator.remove();
+                        continue;
                     }
+
+                    subscriptionsToDeliver.add(subscription);
                 }
 
-                if (subscriptions4Queue.size() == 0) {
+                if (subscriptionsToDeliver.size() == 0) {
                     iterator.remove(); // remove buffer
                     droppedTopicMessagesList.add(message);
 
@@ -99,7 +98,7 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
                 }
 
                 boolean allTopicSubscriptionsSaturated = true;
-                for (LocalSubscription subscription : subscriptions4Queue) {
+                for (LocalSubscription subscription : subscriptionsToDeliver) {
                     if (subscription.hasRoomToAcceptMessages()) {
                         allTopicSubscriptionsSaturated = false;
                         break;
@@ -114,9 +113,9 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
                     break;
                 }
 
-                message.markAsScheduledToDeliver(subscriptions4Queue);
+                message.markAsScheduledToDeliver(subscriptionsToDeliver);
 
-                for (LocalSubscription localSubscription : subscriptions4Queue) {
+                for (LocalSubscription localSubscription : subscriptionsToDeliver) {
                     MessageFlusher.getInstance().deliverMessageAsynchronously(localSubscription, message);
                 }
 
