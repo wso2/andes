@@ -95,7 +95,7 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
                             if (!localSubscription.isMessageAcceptedBySelector(message)) {
                                 // If this doesn't match a selector we skip sending the message
                                 subscriberWithMatchingSelectorFound = false;
-                                break;
+                                continue; // continue on to match selectors of other subscribers
                             }
                             if (log.isDebugEnabled()) {
                                 log.debug("Scheduled to send id = " + message.getMessageID());
