@@ -49,7 +49,6 @@ import org.wso2.andes.server.store.StorableMessageMetaData;
 import org.wso2.andes.server.store.StoredMessage;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.store.StoredAMQPMessage;
-import org.wso2.andes.amqp.AMQPLocalSubscription;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.OutboundSubscription;
 
@@ -66,8 +65,8 @@ import java.util.regex.Pattern;
  */
 public class AMQPUtils {
 
-    public static final String TOPIC_AND_CHILDREN_WILDCARD = ".#";
-    public static final String IMMEDIATE_CHILDREN_WILDCARD = ".*";
+    public static final String TOPIC_AND_CHILDREN_WILDCARD = "#";
+    public static final String IMMEDIATE_CHILDREN_WILDCARD = "*";
     public static String DIRECT_EXCHANGE_NAME = "amq.direct";
 
     public static String TOPIC_EXCHANGE_NAME = "amq.topic";
@@ -453,13 +452,35 @@ public class AMQPUtils {
         if (queueBoundRoutingKey.equals(messageRoutingKey)) {
             isMatching = true;
         } else if (queueBoundRoutingKey.indexOf(TOPIC_AND_CHILDREN_WILDCARD) > 1) {
-            String p = queueBoundRoutingKey.substring(0, queueBoundRoutingKey.indexOf(TOPIC_AND_CHILDREN_WILDCARD));
-            Pattern pattern = Pattern.compile(p + IMMEDIATE_CHILDREN_WILDCARD);
+            int wildcardIndex = queueBoundRoutingKey.indexOf(TOPIC_AND_CHILDREN_WILDCARD);
+            int partitionIndex;
+
+            if (0 == wildcardIndex) {
+                partitionIndex = 0;
+            } else { // reduce one char for the constituent delimiter of topics
+                partitionIndex = wildcardIndex - 1;
+            }
+
+            // Extract destination part before wild card character
+            String wildcardPrefix = queueBoundRoutingKey.substring(0, partitionIndex);
+
+            Pattern pattern = Pattern.compile(wildcardPrefix + ".*");
             Matcher matcher = pattern.matcher(messageRoutingKey);
             isMatching = matcher.matches();
         } else if (queueBoundRoutingKey.indexOf(IMMEDIATE_CHILDREN_WILDCARD) > 1) {
-            String p = queueBoundRoutingKey.substring(0, queueBoundRoutingKey.indexOf(IMMEDIATE_CHILDREN_WILDCARD));
-            Pattern pattern = Pattern.compile("^" + p + "[.][^.]+$");
+            int wildcardIndex = queueBoundRoutingKey.indexOf(IMMEDIATE_CHILDREN_WILDCARD);
+            int partitionIndex;
+
+            if (0 == wildcardIndex) {
+                partitionIndex = 0;
+            } else { // reduce one char for the constituent delimiter of topics
+                partitionIndex = wildcardIndex - 1;
+            }
+
+            // Extract destination part before wild card character
+            String wildcardPrefix = queueBoundRoutingKey.substring(0, partitionIndex);
+
+            Pattern pattern = Pattern.compile("^" + wildcardPrefix + "[.][^.]+$");
             Matcher matcher = pattern.matcher(messageRoutingKey);
             isMatching = matcher.matches();
         }
