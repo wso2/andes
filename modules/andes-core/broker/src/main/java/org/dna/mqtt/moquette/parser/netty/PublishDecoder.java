@@ -31,18 +31,22 @@ import java.util.List;
  */
 class PublishDecoder extends DemuxDecoder {
 
-    private static Logger LOG = LoggerFactory.getLogger(PublishDecoder.class);
+    private static Logger log = LoggerFactory.getLogger(PublishDecoder.class);
 
     @Override
     void decode(AttributeMap ctx, ByteBuf in, List<Object> out) throws Exception {
-        LOG.info("decode invoked with buffer {}", in);
+        if (log.isTraceEnabled()) {
+            log.trace("decode invoked with buffer {}", in);
+        }
         in.resetReaderIndex();
         int startPos = in.readerIndex();
 
         //Common decoding part
         PublishMessage message = new PublishMessage();
         if (!decodeCommonHeader(message, in)) {
-            LOG.info("decode ask for more data after {}", in);
+            if (log.isDebugEnabled()) {
+                log.debug("decode ask for more data after {}", in);
+            }
             in.resetReaderIndex();
             return;
         }
