@@ -29,17 +29,21 @@ import org.dna.mqtt.moquette.proto.messages.UnsubAckMessage;
 import org.dna.mqtt.moquette.server.ConnectionDescriptor;
 import org.dna.mqtt.moquette.server.Constants;
 import org.dna.mqtt.moquette.server.IAuthenticator;
+import org.dna.mqtt.moquette.server.AuthenticationInfo;
+import org.dna.mqtt.moquette.server.IAuthorizer;
 import org.dna.mqtt.moquette.server.ServerChannel;
 import org.dna.mqtt.wso2.AndesMQTTBridge;
 import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.enums.MQTTAuthoriztionPermissionLevel;
 import org.wso2.andes.configuration.enums.MQTTUserAuthenticationScheme;
+import org.wso2.andes.configuration.enums.MQTTUserAuthorizationScheme;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.disruptor.LogExceptionHandler;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.MQTTAuthorizationSubject;
 import org.wso2.andes.mqtt.MQTTException;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
-import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -51,6 +55,7 @@ import java.util.concurrent.ThreadFactory;
 
 import static org.wso2.andes.configuration.enums.AndesConfiguration.TRANSPORTS_MQTT_DELIVERY_BUFFER_SIZE;
 import static org.wso2.andes.configuration.enums.AndesConfiguration.TRANSPORTS_MQTT_USER_ATHENTICATION;
+import static org.wso2.andes.configuration.enums.AndesConfiguration.TRANSPORTS_MQTT_USER_AUTHORIZATION;
 
 public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandler {
 
@@ -62,6 +67,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
     private SubscriptionsStore subscriptions;
     private IStorageService m_storageService;
     private IAuthenticator m_authenticator;
+    private IAuthorizer m_authorizer;
 
     /**
      * Keeps client data in memory for authorization of publishing and subscribing later. <ClientID, AuthData>
@@ -80,6 +86,11 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
      * Indicates (via configuration) that server should always expect credentials from users.
      */
     private boolean isAuthenticationRequired;
+
+    /**
+     * Indicates (via configuration) that server should check authorization before providing the access.
+     */
+    private boolean isAuthorizationRequired;
 
     ProtocolProcessor() {
     }
@@ -100,6 +111,24 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
 
         isAuthenticationRequired =
                     AndesConfigurationManager.readValue(TRANSPORTS_MQTT_USER_ATHENTICATION) == MQTTUserAuthenticationScheme.REQUIRED;
+
+        isAuthorizationRequired =
+					AndesConfigurationManager.readValue(TRANSPORTS_MQTT_USER_AUTHORIZATION) == MQTTUserAuthorizationScheme.REQUIRED;
+
+        //Initialize Authorization
+        if(isAuthorizationRequired){
+            String authorizerClassName = AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_MQTT_USER_AUTHORIZATION_CLASS);
+            try {
+                Class<? extends IAuthorizer> authorizerClass = Class.forName(authorizerClassName).asSubclass(IAuthorizer.class);
+                m_authorizer = authorizerClass.newInstance();
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException("unable to find the class authorizer: " +  authorizerClassName, e);
+            } catch (InstantiationException e) {
+                throw new RuntimeException("unable to create an instance of :" + authorizerClassName,e);
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException("unable to create an instance of :", e);
+            }
+        }
 
         Integer RingBufferSize = AndesConfigurationManager.readValue(TRANSPORTS_MQTT_DELIVERY_BUFFER_SIZE);
 
@@ -224,7 +253,8 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             if (msg.isPasswordFlag()) {
                 pwd = msg.getPassword();
             }
-            if (!m_authenticator.checkValid(username, pwd)) {
+            AuthenticationInfo authenticationInfo = m_authenticator.checkValid(username, pwd);
+            if (authenticationInfo == null || !authenticationInfo.isAuthenticated()) {
                 ConnAckMessage okResp = new ConnAckMessage();
                 okResp.setReturnCode(ConnAckMessage.BAD_USERNAME_OR_PASSWORD);
                 session.write(okResp);
@@ -233,10 +263,10 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
 
             // Keep the authorization details in memory to be used while publishing and subscribing
             // to validate the client
-            String carbonUsername = username.replace('!', '@');
-            authSubject.setTenantDomain(MultitenantUtils.getTenantDomain(carbonUsername));
-            authSubject.setUsername(MultitenantUtils.getTenantAwareUsername(carbonUsername));
+            authSubject.setUsername(authenticationInfo.getUsername());
+            authSubject.setTenantDomain(authenticationInfo.getTenantDomain());
             authSubject.setProtocolVersion(msg.getProcotolVersion());
+            authSubject.setProperties(authenticationInfo.getProperties());
         }
 
         authSubjects.put(msg.getClientID(), authSubject);
@@ -344,6 +374,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
         String tenant = MQTTUtils.getTenantFromTopic(topic);
 
         boolean authenticated = false;
+        boolean authorized = true;
         // Currently we avoid domain check for super tenant users
         // TODO: Need to implement a proper authentication model for tenant users to work with hierarchical topics
         if ((!isAuthenticationRequired && !authSubject.isUserFlag()) || (authSubject.isUserFlag() && (
@@ -351,9 +382,12 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
                 || tenant.equals(authSubject.getTenantDomain())))) {
             // user flag has to be set at this point, else not authenticated
             authenticated = true;
+            if (isAuthorizationRequired && m_authorizer != null) {
+                //authorize client with the topic and the permission level
+                authorized = m_authorizer.isAuthorized(authSubject, topic, MQTTAuthoriztionPermissionLevel.PUBLISH);
+            }
         }
-
-        if (authenticated) {
+        if (authenticated && authorized) {
             final AbstractMessage.QOSType qos = evt.getQos();
 
             String publishKey;
@@ -373,7 +407,8 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             }
         } else {
             // Log and continue since there is no method to inform the client about permission failure
-            log.error("Client " + clientID + " does not have permission to publish to tenant : " + tenant);
+            log.error("Client " + clientID + " does not have permission to publish to topic : " + topic);
+
         }
     }
 
@@ -789,11 +824,13 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
         MQTTAuthorizationSubject authSubject = authSubjects.get(clientID);
 
         boolean authenticatedForOneOrMore = false;
+        boolean authorized = true;
 
         for (SubscribeMessage.Couple req : msg.subscriptions()) {
 
             // Authorize subscribe
             String tenant = MQTTUtils.getTenantFromTopic(req.getTopicFilter());
+
 
             // Currently we avoid domain check for super tenant users
             // TODO: Need to implement a proper authentication model for tenant users to work with hierarchical topics
@@ -802,11 +839,16 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
                     || tenant.equals(authSubject.getTenantDomain())))) {
 
                 authenticatedForOneOrMore = true;
+                if (isAuthorizationRequired && m_authorizer != null) {
+                    authorized = m_authorizer.isAuthorized(authSubject, req.getTopicFilter(),
+                                                           MQTTAuthoriztionPermissionLevel.SUBSCRIBE);
+                }
             } else {
                 // User flag has to be set at this point, else not authenticated
                 // Log and return since no need to proceed with subscribing due to permissions.
-                log.error("Client " + clientID + " does not have permission to subscribe to topic : " +
-                          req.getTopicFilter());
+                log.error("Client " + clientID +
+                                  " does not have permission to subscribe to topic : " +
+                                  req.getTopicFilter());
 
                 // As per mqtt spec 3.1.1 sub ack should send to client if broker don't allow client
                 // to subscribe a topic.
@@ -819,24 +861,29 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
                 }
                 continue;
             }
-
-            AbstractMessage.QOSType qos = AbstractMessage.QOSType.values()[req.getQos()];
-            Subscription newSubscription = new Subscription(clientID, req.getTopicFilter(), qos, cleanSession);
-            subscribeSingleTopic(newSubscription);
-            //Will connect with the bridge to notify on the topic
-            //Andes Specific
-            try {
-                AndesMQTTBridge.getBridgeInstance().onTopicSubscription(req.getTopicFilter(), clientID,
-                                                                        authSubject.getUsername(),
-                                                                        qos, cleanSession);
-            } catch (Exception e) {
-                final String message = "Error when registering the subscriber ";
-                log.error(message + e.getMessage(), e);
-                throw new RuntimeException(message, e);
+            //if authorized then create a subscription
+			if(authorized) {
+                AbstractMessage.QOSType qos = AbstractMessage.QOSType.values()[req.getQos()];
+                Subscription newSubscription = new Subscription(clientID, req.getTopicFilter(), qos,
+                                                                cleanSession);
+                subscribeSingleTopic(newSubscription);
+                //Will connect with the bridge to notify on the topic
+                //Andes Specific
+                try {
+                    AndesMQTTBridge.getBridgeInstance().onTopicSubscription(req.getTopicFilter(),
+                                                                            clientID,
+                                                                            authSubject
+                                                                                    .getUsername(),
+                                                                            qos, cleanSession);
+                } catch (Exception e) {
+                    final String message = "Error when registering the subscriber ";
+                    log.error(message + e.getMessage(), e);
+                    throw new RuntimeException(message, e);
+                }
             }
         }
 
-        if (authenticatedForOneOrMore) {
+        if (authenticatedForOneOrMore & authorized) {
             SubAckMessage ackMessage = new SubAckMessage();
             ackMessage.setMessageID(msg.getMessageID());
 
@@ -851,6 +898,12 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             session.write(ackMessage);
         } else {
             log.error("Not sending sub ack message since client " + clientID + " does not have permission to subscribe to all given subscriptions.");
+            //Disconnect the client.
+            try {
+                processDisconnect(session, clientID, true);
+            } catch (InterruptedException e) {
+                log.error("Failed to disconnect the client " + clientID);
+            }
         }
     }
 

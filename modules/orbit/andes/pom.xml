@@ -158,11 +158,13 @@
                             com.google.common.util.concurrent;version="18.0.0",
                             com.google.common.cache;version="18.0.0",
                             org.wso2.carbon.andes.authentication.andes,
+                            org.wso2.carbon.andes.authorization.andes,
                             *;resolution:=optional
                         </Import-Package>
                         <Include-Resource>src/main/resources</Include-Resource>
                         <Bundle-Activator>org.wso2.andes.wso2.internal.QpidBundleActivator
                         </Bundle-Activator>
+                        <DynamicImport-Package>org.wso2.carbon.andes.extensions.*</DynamicImport-Package>
                     </instructions>
                 </configuration>
             </plugin>
