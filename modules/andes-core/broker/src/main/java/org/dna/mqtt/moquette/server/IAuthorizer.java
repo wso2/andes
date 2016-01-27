@@ -26,6 +26,13 @@ import org.wso2.andes.mqtt.MQTTAuthorizationSubject;
  */
 public interface IAuthorizer {
 
+	/**
+	 *
+	 * @param authorizationSubject passed from authentication.
+	 * @param topic that the client is requesting for access.
+	 * @param permissionLevel request permission level. This is either publish or subscribe.
+	 * @return
+	 */
 	boolean isAuthorized(MQTTAuthorizationSubject authorizationSubject, String topic,
 						 MQTTAuthoriztionPermissionLevel permissionLevel);
 }

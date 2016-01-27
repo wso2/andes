@@ -32,6 +32,7 @@ import org.dna.mqtt.moquette.server.IAuthenticator;
 import org.dna.mqtt.moquette.server.AuthenticationInfo;
 import org.dna.mqtt.moquette.server.IAuthorizer;
 import org.dna.mqtt.moquette.server.ServerChannel;
+import org.dna.mqtt.moquette.server.netty.exception.MQTTInitializationException;
 import org.dna.mqtt.wso2.AndesMQTTBridge;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
@@ -122,11 +123,11 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
                 Class<? extends IAuthorizer> authorizerClass = Class.forName(authorizerClassName).asSubclass(IAuthorizer.class);
                 m_authorizer = authorizerClass.newInstance();
             } catch (ClassNotFoundException e) {
-                throw new RuntimeException("unable to find the class authorizer: " +  authorizerClassName, e);
+                throw new MQTTInitializationException("Unable to find the class authorizer: " +  authorizerClassName, e);
             } catch (InstantiationException e) {
-                throw new RuntimeException("unable to create an instance of :" + authorizerClassName,e);
+                throw new MQTTInitializationException("Unable to create an instance of :" + authorizerClassName,e);
             } catch (IllegalAccessException e) {
-                throw new RuntimeException("unable to create an instance of :", e);
+                throw new MQTTInitializationException("Access of the instance in not allowed. :", e);
             }
         }
 
@@ -374,7 +375,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
         String tenant = MQTTUtils.getTenantFromTopic(topic);
 
         boolean authenticated = false;
-        boolean authorized = true;
+        boolean authorized = false;
         // Currently we avoid domain check for super tenant users
         // TODO: Need to implement a proper authentication model for tenant users to work with hierarchical topics
         if ((!isAuthenticationRequired && !authSubject.isUserFlag()) || (authSubject.isUserFlag() && (
@@ -385,7 +386,10 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             if (isAuthorizationRequired && m_authorizer != null) {
                 //authorize client with the topic and the permission level
                 authorized = m_authorizer.isAuthorized(authSubject, topic, MQTTAuthoriztionPermissionLevel.PUBLISH);
+            } else {
+                authorized = true;
             }
+
         }
         if (authenticated && authorized) {
             final AbstractMessage.QOSType qos = evt.getQos();
@@ -408,6 +412,14 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
         } else {
             // Log and continue since there is no method to inform the client about permission failure
             log.error("Client " + clientID + " does not have permission to publish to topic : " + topic);
+            //Disconnect the client.
+            try {
+                processDisconnect(evt.getSession(), clientID, true);
+            } catch (InterruptedException e) {
+                // Restore the interrupted status
+                Thread.currentThread().interrupt();
+                log.error("Failed to disconnect the client " + clientID);
+            }
 
         }
     }
@@ -824,7 +836,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
         MQTTAuthorizationSubject authSubject = authSubjects.get(clientID);
 
         boolean authenticatedForOneOrMore = false;
-        boolean authorized = true;
+        boolean authorized = false;
 
         for (SubscribeMessage.Couple req : msg.subscriptions()) {
 
@@ -842,6 +854,32 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
                 if (isAuthorizationRequired && m_authorizer != null) {
                     authorized = m_authorizer.isAuthorized(authSubject, req.getTopicFilter(),
                                                            MQTTAuthoriztionPermissionLevel.SUBSCRIBE);
+                    if(!authorized) {
+                        //Disconnect the client.
+                        log.error("Client " + clientID +
+                                          " does not have authorization to subscribe to topic : " +
+                                          req.getTopicFilter());
+
+                        // As per mqtt spec 3.1.1 sub ack should send to client if broker don't allow client
+                        // to subscribe a topic.
+                        if(authSubject.getProtocolVersion() == Utils.VERSION_3_1_1) {
+                            // 'forbidden subscription' return code has sent to client since client don't have
+                            // permission to subscribe the topic.
+                            SubAckMessage response = new SubAckMessage();
+                            response.setreturnCode(SubAckMessage.FORBIDDEN_SUBSCRIPTION);
+                            session.write(response);
+                        }
+                        try {
+                            processDisconnect(session, clientID, true);
+                        } catch (InterruptedException e) {
+                            // Restore the interrupted status
+                            Thread.currentThread().interrupt();
+                            log.error("Failed to disconnect the client " + clientID);
+                        }
+
+                    }
+                } else {
+                    authorized = true;
                 }
             } else {
                 // User flag has to be set at this point, else not authenticated
@@ -861,29 +899,28 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
                 }
                 continue;
             }
-            //if authorized then create a subscription
-			if(authorized) {
-                AbstractMessage.QOSType qos = AbstractMessage.QOSType.values()[req.getQos()];
-                Subscription newSubscription = new Subscription(clientID, req.getTopicFilter(), qos,
-                                                                cleanSession);
-                subscribeSingleTopic(newSubscription);
-                //Will connect with the bridge to notify on the topic
-                //Andes Specific
-                try {
-                    AndesMQTTBridge.getBridgeInstance().onTopicSubscription(req.getTopicFilter(),
-                                                                            clientID,
-                                                                            authSubject
-                                                                                    .getUsername(),
-                                                                            qos, cleanSession);
-                } catch (Exception e) {
-                    final String message = "Error when registering the subscriber ";
-                    log.error(message + e.getMessage(), e);
-                    throw new RuntimeException(message, e);
-                }
+
+            AbstractMessage.QOSType qos = AbstractMessage.QOSType.values()[req.getQos()];
+            Subscription newSubscription = new Subscription(clientID, req.getTopicFilter(), qos,
+                                                            cleanSession);
+            subscribeSingleTopic(newSubscription);
+            //Will connect with the bridge to notify on the topic
+            //Andes Specific
+            try {
+                AndesMQTTBridge.getBridgeInstance().onTopicSubscription(req.getTopicFilter(),
+                                                                        clientID,
+                                                                        authSubject
+                                                                                .getUsername(),
+                                                                        qos, cleanSession);
+            } catch (Exception e) {
+                final String message = "Error when registering the subscriber ";
+                log.error(message + e.getMessage(), e);
+                throw new RuntimeException(message, e);
             }
+
         }
 
-        if (authenticatedForOneOrMore & authorized) {
+        if (authenticatedForOneOrMore) {
             SubAckMessage ackMessage = new SubAckMessage();
             ackMessage.setMessageID(msg.getMessageID());
 
@@ -898,12 +935,6 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             session.write(ackMessage);
         } else {
             log.error("Not sending sub ack message since client " + clientID + " does not have permission to subscribe to all given subscriptions.");
-            //Disconnect the client.
-            try {
-                processDisconnect(session, clientID, true);
-            } catch (InterruptedException e) {
-                log.error("Failed to disconnect the client " + clientID);
-            }
         }
     }
 

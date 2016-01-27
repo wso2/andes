@@ -26,9 +26,19 @@ import java.util.Map;
  */
 public class AuthenticationInfo {
 
+	/**
+	 * this variable is used to check whether the client is authenticated.
+	 */
 	private boolean authenticated;
 	private String username;
 	private String tenantDomain;
+	/**
+	 * This is a property map that provide the flexibility to
+	 * pass authentication result to the authorization.
+	 * eg: key - "scopes"  value -"List<String> scopesList"
+	 * 		key - token_expiry_time  value - long.
+	 * 	similarly different properties can be passed for authorization.
+	 */
 	private Map<String, Object> properties = new HashMap<String, Object>();
 
 	/**
