@@ -323,11 +323,23 @@ public class SlotMessageCounter {
             if (slotSubmitLoopSkipCount == SLOT_SUBMIT_LOOP_SKIP_COUNT_THRESHOLD) {
                 //update current slot Deletion Safe Zone
                 try {
-                    if (log.isDebugEnabled()) {
-                        log.debug("Updating coordinator with local safe zone " + currentSlotDeleteSafeZone);
+
+                    long evaluatedSafeZone = currentSlotDeleteSafeZone;
+
+                    // If there are any slots pending submission to coordinator, we must lower the safe zone to their starting point.
+                    // If we do not consider pending slots at this calculation, safe zone will fly up unexpectedly.
+                    for (Map.Entry<String, Slot> slotEntry : queueToSlotMap.entrySet()) {
+                        if (!checkMessageLimitReached(slotEntry.getValue())) {
+                            evaluatedSafeZone = Math.min(slotEntry.getValue().getStartMessageId(), evaluatedSafeZone);
+                        }
                     }
 
-                    submitCurrentSafeZone(currentSlotDeleteSafeZone);
+                    if (log.isDebugEnabled()) {
+                        log.debug("Updating coordinator with local safe zone " + evaluatedSafeZone);
+                    }
+
+                    submitCurrentSafeZone(evaluatedSafeZone);
+                    currentSlotDeleteSafeZone = evaluatedSafeZone;
                     slotSubmitLoopSkipCount = 0;
                 } catch (ConnectionException e) {
                     log.error("Error while sending slot deletion safe zone update", e);
