@@ -103,7 +103,8 @@ public class SlotDeletionExecutor {
                         // Check DB for any remaining messages. (JIRA FIX: MB-1612)
                         // If there are any remaining messages wait till overlapped slot delivers the messages
                         if (MessagingEngine.getInstance().getMessageCountForQueueInRange(
-                                slot.getStorageQueueName(), slot.getStartMessageId(), slot.getEndMessageId()) > 0) {
+                                slot.getStorageQueueName(), slot.getStartMessageId(), slot.getEndMessageId()) == 0) {
+                            log.warn("ASITHA Deleting This Slot cos db is empty !!");
                             //invoke coordinator to delete slot
                             boolean deleteSuccess = deleteSlotAtCoordinator(slot);
                             if (!deleteSuccess) {
@@ -114,6 +115,8 @@ public class SlotDeletionExecutor {
                                         .getSlotWorker(slot.getStorageQueueName());
                                 slotWorker.deleteSlot(slot);
                             }
+                        } else {
+                            log.warn("ASITHA Could not Delete slot because db is not empty !");
                         }
                     }
 
