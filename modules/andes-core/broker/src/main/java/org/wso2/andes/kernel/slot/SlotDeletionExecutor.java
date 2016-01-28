@@ -104,7 +104,6 @@ public class SlotDeletionExecutor {
                         // If there are any remaining messages wait till overlapped slot delivers the messages
                         if (MessagingEngine.getInstance().getMessageCountForQueueInRange(
                                 slot.getStorageQueueName(), slot.getStartMessageId(), slot.getEndMessageId()) == 0) {
-                            log.warn("ASITHA Deleting This Slot cos db is empty !!");
                             //invoke coordinator to delete slot
                             boolean deleteSuccess = deleteSlotAtCoordinator(slot);
                             if (!deleteSuccess) {
