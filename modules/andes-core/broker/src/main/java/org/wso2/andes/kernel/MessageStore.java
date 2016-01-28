@@ -134,6 +134,18 @@ public interface MessageStore extends HealthAwareStore{
                                                    long lastMsgID) throws AndesException;
 
     /**
+     * Get number of messages in the queue withing the message id range
+     *
+     * @param storageQueueName name of the queue
+     * @param firstMessageId starting message id of the range
+     * @param lastMessageId end message id of the range
+     * @return number of messages for the queue within the provided message id range
+     * @throws AndesException
+     */
+    long getMessageCountForQueueInRange(final String storageQueueName, long firstMessageId, long lastMessageId)
+            throws AndesException;
+
+    /**
      * read  a metadata list from store specifying a starting message id and a count
      *
      * @param storageQueueName name of the queue

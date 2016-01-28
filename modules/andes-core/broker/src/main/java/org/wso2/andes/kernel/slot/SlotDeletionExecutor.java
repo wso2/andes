@@ -21,6 +21,7 @@ package org.wso2.andes.kernel.slot;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.MessagingEngine;
 
 import java.util.concurrent.ExecutorService;
@@ -86,33 +87,41 @@ public class SlotDeletionExecutor {
             while (!Thread.currentThread().isInterrupted()) {
                 try {
                     //Slot to attempt current deletion
-                    Slot deletionAttempt;
+                    Slot slot;
                     if (previouslyAttemptedSlot != null) {
                         //Previous attempt to deletion is not success. Therefore try again to delete by assign it to
                         //deletionAttempt
-                        deletionAttempt = previouslyAttemptedSlot;
+                        slot = previouslyAttemptedSlot;
                         previouslyAttemptedSlot = null;
                     } else {
                         //Previous attempt to delete slot is success, therefore taking next slot from queue
-                        deletionAttempt = slotsToDelete.poll(1, TimeUnit.SECONDS);
+                        slot = slotsToDelete.poll(1, TimeUnit.SECONDS);
                     }
                     //check current slot to delete is not null
-                    if (deletionAttempt != null) {
-                        //invoke coordinator to delete slot
-                        boolean deleteSuccess = deleteSlotAtCoordinator(deletionAttempt);
-                        if (!deleteSuccess) {
-                            //delete attempt not success, therefore reassign current deletion attempted slot to previous slot
-                            previouslyAttemptedSlot = deletionAttempt;
-                        } else {
-                            SlotDeliveryWorker slotWorker = SlotDeliveryWorkerManager.getInstance()
-                                                                                     .getSlotWorker(deletionAttempt.getStorageQueueName());
-                            slotWorker.deleteSlot(deletionAttempt);
+                    if (slot != null) {
+
+                        // Check DB for any remaining messages. (JIRA FIX: MB-1612)
+                        // If there are any remaining messages wait till overlapped slot delivers the messages
+                        if (MessagingEngine.getInstance().getMessageCountForQueueInRange(
+                                slot.getStorageQueueName(), slot.getStartMessageId(), slot.getEndMessageId()) > 0) {
+                            //invoke coordinator to delete slot
+                            boolean deleteSuccess = deleteSlotAtCoordinator(slot);
+                            if (!deleteSuccess) {
+                                //delete attempt not success, therefore reassign current deletion attempted slot to previous slot
+                                previouslyAttemptedSlot = slot;
+                            } else {
+                                SlotDeliveryWorker slotWorker = SlotDeliveryWorkerManager.getInstance()
+                                        .getSlotWorker(slot.getStorageQueueName());
+                                slotWorker.deleteSlot(slot);
+                            }
                         }
                     }
 
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    log.error("Error while trying to delete the slot.");
+                    log.error("Error while trying to delete the slot.", e);
+                } catch (AndesException e) {
+                    log.error("Error occurred while trying to delete slot", e);
                 }
             }
         }
