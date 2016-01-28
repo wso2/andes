@@ -524,6 +524,20 @@ public class MessagingEngine {
     }
 
     /**
+     * Get number of messages in the queue within the message id range
+     *
+     * @param storageQueueName name of the queue
+     * @param firstMessageId starting message id of the range
+     * @param lastMessageId end message id of the range
+     * @return number of messages for the queue within the provided message id range
+     * @throws AndesException
+     */
+    public long getMessageCountForQueueInRange(final String storageQueueName, long firstMessageId, long lastMessageId)
+            throws AndesException {
+        return messageStore.getMessageCountForQueueInRange(storageQueueName, firstMessageId, lastMessageId);
+    }
+
+    /**
      * Get message count in DLC for a specific queue.
      *
      * @param queueName    name of the storage queue

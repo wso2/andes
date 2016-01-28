@@ -371,7 +371,7 @@ public class Slot implements Serializable, Comparable<Slot> {
         if (messageCount == 0) {
 
             if (log.isDebugEnabled()) {
-                log.debug("Slot has no pending messages. Now re-checking slot for messages");
+                log.debug("Slot has no pending messages. Now re-checking slot for messages. " + this.toString());
             }
             setSlotInActive();
             SlotDeletionExecutor.getInstance().executeSlotDeletion(this);
