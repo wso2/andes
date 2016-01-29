@@ -425,18 +425,27 @@ public class MessagingEngine {
                 messagesOfStorageQueue = new ArrayList<>();
             }
             messagesOfStorageQueue.add(message);
-            storageSeparatedMessages.put(message.getStorageQueueName(), messagesOfStorageQueue);
-        }
-
-        //delete message content along with metadata
-        for (Map.Entry<String, List<AndesMessageMetadata>> entry : storageSeparatedMessages
-                .entrySet()) {
-            messageStore.deleteMessages(entry.getKey(), entry.getValue());
-        }
-        for (DeliverableAndesMetadata message : messagesToRemove) {
-            //mark messages as deleted
+            //storageSeparatedMessages.put(message.getStorageQueueName(), messagesOfStorageQueue);
+            message.markAsAboutToDeleted();
+            messageStore.deleteMessages(message.getStorageQueueName(), messagesOfStorageQueue);
             message.markAsDeletedMessage();
         }
+//
+//        // Marking messages as 'about to be deleted'
+//        for (DeliverableAndesMetadata messageToBeDeleted : messagesToRemove) {
+//            messageToBeDeleted.markAsAboutToDeleted();
+//        }
+//
+//        //delete message content along with metadata
+//        for (Map.Entry<String, List<AndesMessageMetadata>> entry : storageSeparatedMessages
+//                .entrySet()) {
+//            messageStore.deleteMessages(entry.getKey(), entry.getValue());
+//        }
+//
+//        for (DeliverableAndesMetadata message : messagesToRemove) {
+//            //mark messages as deleted
+//
+//        }
 
     }
 
