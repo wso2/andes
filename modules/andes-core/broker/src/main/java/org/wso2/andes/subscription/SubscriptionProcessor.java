@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  *   WSO2 Inc. licenses this file to you under the Apache License,
  *   Version 2.0 (the "License"); you may not use this file except
@@ -216,6 +216,26 @@ public class SubscriptionProcessor {
         for (Map.Entry<StoreKey, AndesSubscriptionStore> entry : subscriptionStores.entrySet()) {
             for (AndesSubscription subscription : entry.getValue().getAllSubscriptions()) {
                 if (subscription.getSubscribedNode().equals(nodeID) && subscription.hasExternalSubscriptions()) {
+                    subscriptions.add(subscription);
+                }
+            }
+        }
+
+        return subscriptions;
+    }
+
+    /**
+     * Get all subscribers registered within all types of subscription handlers for a specific node.
+     *
+     * @param nodeID The ID of the node
+     * @return Set of active subscriptions for the given node
+     */
+    public Set<AndesSubscription> getSubscribersForNode(String nodeID) {
+        Set<AndesSubscription> subscriptions = new HashSet<>();
+
+        for (Map.Entry<StoreKey, AndesSubscriptionStore> entry : subscriptionStores.entrySet()) {
+            for (AndesSubscription subscription : entry.getValue().getAllSubscriptions()) {
+                if (subscription.getSubscribedNode().equals(nodeID)) {
                     subscriptions.add(subscription);
                 }
             }
