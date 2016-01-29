@@ -1421,7 +1421,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
                 insertQueueToLastAssignedIDPS.executeUpdate();
             }
 
-
             connection.commit();
 
         } catch (SQLException e) {
