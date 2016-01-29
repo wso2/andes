@@ -1344,7 +1344,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
                 unAssignedSlot.setStorageQueueName(resultSet.getString(RDBMSConstants.STORAGE_QUEUE_NAME));
             }
 
-            logger.warn("ASITHA selectUnAssignedSlot for queue : " + queueName + " selected slot : " + unAssignedSlot);
+            //logger.warn("ASITHA selectUnAssignedSlot for queue : " + queueName + " selected slot : " + unAssignedSlot);
 
             return unAssignedSlot;
         } catch (SQLException e) {
@@ -1460,6 +1460,9 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             while (resultSet.next()) {
                 messageId = resultSet.getLong(RDBMSConstants.MESSAGE_ID);
             }
+
+            //logger.warn("Read Local safe zone for node : " + nodeId + " safeZone :  " + messageId);
+
             return messageId;
         } catch (SQLException e) {
             String errMsg =

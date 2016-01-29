@@ -40,6 +40,7 @@ public class SlotDeletionExecutor {
 
     private LinkedBlockingQueue<Slot> slotsToDelete = new LinkedBlockingQueue<Slot>();
 
+
     /**
      * Slot deletion thread factory in one MB node
      */
@@ -56,6 +57,10 @@ public class SlotDeletionExecutor {
      */
     private static SlotDeletionExecutor instance;
 
+    private int slotCount = 0;
+
+    private SlotDeletionTask slotDeletionTask;
+
     /**
      * SlotDeletionExecutor constructor
      */
@@ -68,7 +73,8 @@ public class SlotDeletionExecutor {
      */
     public void init() {
         this.slotDeletionExecutorService = Executors.newSingleThreadExecutor(namedThreadFactory);
-        this.slotDeletionExecutorService.submit(new SlotDeletionTask());
+        slotDeletionTask = new SlotDeletionTask();
+        this.slotDeletionExecutorService.submit(slotDeletionTask);
 
     }
 
@@ -80,11 +86,18 @@ public class SlotDeletionExecutor {
         //Slot which previously attempt to delete
         Slot previouslyAttemptedSlot = null;
 
+        void setLive(boolean live) {
+            isLive = live;
+        }
+
+        boolean isLive = true;
+
+
         /**
          * Running slot deletion task
          */
         public void run() {
-            while (!Thread.currentThread().isInterrupted()) {
+            while (isLive) {
                 try {
                     //Slot to attempt current deletion
                     Slot slot;
@@ -109,11 +122,13 @@ public class SlotDeletionExecutor {
                             if (!deleteSuccess) {
                                 //delete attempt not success, therefore reassign current deletion attempted slot to previous slot
 //                                previouslyAttemptedSlot = slot;
+
                                 slotsToDelete.put(slot);
                             } else {
                                 SlotDeliveryWorker slotWorker = SlotDeliveryWorkerManager.getInstance()
                                         .getSlotWorker(slot.getStorageQueueName());
                                 slotWorker.deleteSlot(slot);
+                                log.warn("ASITHA Slot Delete Success from node : " + slot);
                             }
                         } else {
                             log.warn("ASITHA Could not Delete slot because db is not empty !");
@@ -126,8 +141,18 @@ public class SlotDeletionExecutor {
                     log.error("Error while trying to delete the slot.", e);
                 } catch (AndesException e) {
                     log.error("Error occurred while trying to delete slot", e);
+                } catch (Throwable throwable){
+
+                    log.fatal("ASITHA SlotDeletionExecutor occurred a throwable", throwable);
+
+                }finally {
+                    if (slotCount % 200 == 0) {
+                        log.warn("ASITHA SLOT COUNT AT EXECUTOR : " + slotsToDelete.size());
+                    }
+                    slotCount++;
                 }
             }
+            log.fatal("=======================ASITHA SlotDeletionExecutor STOPPED WORKING WITH slots to delete: " + slotsToDelete.size());
         }
 
         /**
@@ -167,6 +192,7 @@ public class SlotDeletionExecutor {
      */
     public void stopSlotDeletionExecutor() {
         if (slotDeletionExecutorService != null) {
+            slotDeletionTask.setLive(false);;
             slotDeletionExecutorService.shutdown();
         }
     }
