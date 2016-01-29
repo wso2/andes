@@ -430,6 +430,8 @@ public class SlotManagerClusterMode {
 		String lockKeyForNodeId = nodeId + SlotManagerClusterMode.class;
 		synchronized (lockKeyForNodeId.intern()) {
 			slotAgent.deleteSlotAssignmentByQueueName(nodeId, queueName);
+            log.warn("Cleared assigned slots of queue " + queueName + " Assigned to node " +
+                    nodeId);
 			if (log.isDebugEnabled()) {
 				log.debug("Cleared assigned slots of queue " + queueName + " Assigned to node " +
 				          nodeId);

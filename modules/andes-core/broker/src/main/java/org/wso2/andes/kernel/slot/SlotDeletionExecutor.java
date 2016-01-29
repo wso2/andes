@@ -88,15 +88,15 @@ public class SlotDeletionExecutor {
                 try {
                     //Slot to attempt current deletion
                     Slot slot;
-                    if (previouslyAttemptedSlot != null) {
-                        //Previous attempt to deletion is not success. Therefore try again to delete by assign it to
-                        //deletionAttempt
-                        slot = previouslyAttemptedSlot;
-                        previouslyAttemptedSlot = null;
-                    } else {
+//                    if (previouslyAttemptedSlot != null) {
+//                        //Previous attempt to deletion is not success. Therefore try again to delete by assign it to
+//                        //deletionAttempt
+//                        slot = previouslyAttemptedSlot;
+//                        previouslyAttemptedSlot = null;
+//                    } else {
                         //Previous attempt to delete slot is success, therefore taking next slot from queue
                         slot = slotsToDelete.poll(1, TimeUnit.SECONDS);
-                    }
+//                    }
                     //check current slot to delete is not null
                     if (slot != null) {
 
@@ -108,7 +108,8 @@ public class SlotDeletionExecutor {
                             boolean deleteSuccess = deleteSlotAtCoordinator(slot);
                             if (!deleteSuccess) {
                                 //delete attempt not success, therefore reassign current deletion attempted slot to previous slot
-                                previouslyAttemptedSlot = slot;
+//                                previouslyAttemptedSlot = slot;
+                                slotsToDelete.put(slot);
                             } else {
                                 SlotDeliveryWorker slotWorker = SlotDeliveryWorkerManager.getInstance()
                                         .getSlotWorker(slot.getStorageQueueName());
@@ -116,6 +117,7 @@ public class SlotDeletionExecutor {
                             }
                         } else {
                             log.warn("ASITHA Could not Delete slot because db is not empty !");
+                            slotsToDelete.put(slot);
                         }
                     }
 
@@ -155,6 +157,7 @@ public class SlotDeletionExecutor {
      * @param slot slot to be removed from cluster
      */
     public void executeSlotDeletion(Slot slot) {
+        log.warn("ASITHA Slot Scheduled for Deletion : " + slot);
         slotsToDelete.add(slot);
 
     }
