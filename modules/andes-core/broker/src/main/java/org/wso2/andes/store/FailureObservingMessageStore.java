@@ -208,7 +208,19 @@ public class FailureObservingMessageStore implements MessageStore {
         }
     }
 
-    
+    /**
+     * {@inheritDoc}
+     */
+    public long getMessageCountForQueueInRange(final String storageQueueName, long firstMessageId, long lastMessageId)
+            throws AndesException {
+        try {
+            return wrappedInstance.getMessageCountForQueueInRange(storageQueueName, firstMessageId, lastMessageId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
     /**
      * {@inheritDoc}
      */

@@ -273,6 +273,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                     if (log.isDebugEnabled()) {
                         log.debug("Orphan slot situation and clear tracking of messages for slot = " + slot);
                     }
+
                     slot.markMessagesOfSlotAsReturned();
                 }
             }
