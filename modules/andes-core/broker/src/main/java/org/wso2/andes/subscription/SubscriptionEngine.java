@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -62,9 +62,9 @@ public class SubscriptionEngine {
         localSubscriptionProcessor = SubscriptionProcessorBuilder.getLocalSubscriptionProcessor();
 
         //Add subscribers gauge to metrics manager
-        MetricManager.gauge(Level.INFO, MetricsConstants.QUEUE_SUBSCRIBERS, new QueueSubscriberGauge());
+        MetricManager.gauge(MetricsConstants.QUEUE_SUBSCRIBERS, Level.INFO, new QueueSubscriberGauge());
         //Add topic gauge to metrics manager
-        MetricManager.gauge(Level.INFO, MetricsConstants.TOPIC_SUBSCRIBERS, new TopicSubscriberGauge());
+        MetricManager.gauge(MetricsConstants.TOPIC_SUBSCRIBERS, Level.INFO, new TopicSubscriberGauge());
     }
 
     /**
@@ -136,6 +136,16 @@ public class SubscriptionEngine {
      */
     public Set<AndesSubscription> getActiveClusterSubscribersForNode(String nodeID) {
         return clusterSubscriptionProcessor.getActiveSubscribersForNode(nodeID);
+    }
+
+    /**
+     * Get all cluster subscription entries subscribed on a given node.
+     *
+     * @param nodeID ID of the broker node
+     * @return list of subscriptions
+     */
+    public Set<AndesSubscription> getClusterSubscribersForNode(String nodeID) {
+        return clusterSubscriptionProcessor.getSubscribersForNode(nodeID);
     }
 
     /**

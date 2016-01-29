@@ -82,7 +82,7 @@ public class AndesSubscriptionManager {
     public void addSubscription(LocalSubscription localSubscription) throws AndesException, SubscriptionAlreadyExistsException {
         boolean durableTopicSubFoundAndUpdated = false;
         boolean hasActiveSubscriptions= false;
-        List<LocalSubscription> mockSubscriptionList = new ArrayList<LocalSubscription>();
+        List<LocalSubscription> mockSubscriptionList = new ArrayList<>();
         if(DestinationType.DURABLE_TOPIC == localSubscription.getDestinationType()) {
 
             Boolean allowSharedSubscribers = AndesConfigurationManager.readValue(AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
@@ -114,7 +114,7 @@ public class AndesSubscriptionManager {
 
             // If there are no matching active subscriptions
             if (!hasActiveSubscriptions) {
-                LocalSubscription mockSubscription = null;
+                LocalSubscription mockSubscription;
                 for (AndesSubscription matchingSubscription : matchingSubscriptions) {
                     if (!matchingSubscription.hasExternalSubscriptions()) {
                         //delete the above subscription (only if subscription is activated from a different node -
@@ -206,7 +206,7 @@ public class AndesSubscriptionManager {
     public void closeAllLocalSubscriptionsOfNode(String nodeID) throws AndesException {
         clusterSubscriptionModifyLock.writeLock().lock();
         try {
-            Set<AndesSubscription> activeSubscriptions = subscriptionEngine.getActiveClusterSubscribersForNode(nodeID);
+            Set<AndesSubscription> activeSubscriptions = subscriptionEngine.getClusterSubscribersForNode(nodeID);
 
             if (!activeSubscriptions.isEmpty()) {
                 for (AndesSubscription sub : activeSubscriptions) {
@@ -215,8 +215,8 @@ public class AndesSubscriptionManager {
                         LocalSubscription mockSubscription = convertClusterSubscriptionToMockLocalSubscription(sub);
                         mockSubscription.close();
                         subscriptionEngine.removeSubscriptionDirectly(sub);
-                        notifyClusterSubscriptionHasChanged(mockSubscription, SubscriptionListener.SubscriptionChange
-                                .DELETED);
+                        notifyClusterSubscriptionHasChanged(mockSubscription,
+                                                                    SubscriptionListener.SubscriptionChange.DELETED);
                     }
                 }
             }
