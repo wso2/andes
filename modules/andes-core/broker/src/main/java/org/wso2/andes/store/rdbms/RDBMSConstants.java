@@ -194,6 +194,13 @@ public class RDBMSConstants {
             + " WHERE " + QUEUE_ID + "=?"
             + " AND " + DLC_QUEUE_ID + "=-1";
 
+    protected static final String PS_SELECT_QUEUE_MESSAGE_RANGE_COUNT =
+            "SELECT COUNT(" + MESSAGE_ID + ") AS " + PS_ALIAS_FOR_COUNT
+            + " FROM " + METADATA_TABLE
+            + " WHERE " + QUEUE_ID + "=?"
+            + " AND " + MESSAGE_ID + " BETWEEN ? AND ?"
+            + " AND " + DLC_QUEUE_ID + "=-1";
+
     protected static final String ALIAS_FOR_QUEUES = "QUEUE_COUNT";
 
     /**
@@ -832,6 +839,7 @@ public class RDBMSConstants {
     protected static final String TASK_ADDING_METADATA_TO_QUEUE = "adding metadata to destination. ";
     protected static final String TASK_ADDING_METADATA_LIST_TO_QUEUE = "adding metadata list to destination. ";
     protected static final String TASK_RETRIEVING_ALL_QUEUE_MSG_COUNT = "retrieving message counts for all queues. ";
+    protected static final String TASK_RETRIEVING_RANGED_QUEUE_MSG_COUNT = "retrieving ranged message count for queue. ";
     protected static final String TASK_RETRIEVING_QUEUE_MSG_COUNT = "retrieving message count for queue. ";
     protected static final String TASK_RETRIEVING_QUEUE_MSG_COUNT_IN_DLC = "retrieving message count in DLC for"
                                                                            + " queue. ";

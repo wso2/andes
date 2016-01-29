@@ -327,6 +327,13 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
     }
 
     /**
+     * Mark as about to be deleted
+     */
+    public void markAsAboutToDeleted() {
+        addMessageStatus(MessageStatus.ABOUT_TO_DELETE);
+    }
+
+    /**
      * Mark as deleted message
      */
     public void markAsDeletedMessage() {

@@ -61,14 +61,14 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
      */
     private DataSource datasource;
 
-    
+
     /**
      * Contains utils methods related to connection health tests
      */
     private RDBMSStoreUtils rdbmsStoreUtils;
 
-    
-    
+
+
     /**
      * {@inheritDoc}
      */
@@ -78,9 +78,9 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
         RDBMSConnection rdbmsConnection = new RDBMSConnection();
         rdbmsConnection.initialize(connectionProperties);
-        
+
         rdbmsStoreUtils = new RDBMSStoreUtils(connectionProperties);
-        
+
         datasource = rdbmsConnection.getDataSource();
         logger.info("Andes Context Store initialised");
         return rdbmsConnection;
@@ -178,7 +178,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
         String destinationIdentifier = getDestinationIdentifier(subscription);
         String subscriptionID = subscription.getSubscribedNode() + "_" + subscription.getSubscriptionID();
-        
+
         try {
             connection = getConnection();
 
@@ -1303,6 +1303,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement.executeUpdate();
 
+
             connection.commit();
         } catch (SQLException e) {
             String errMsg =
@@ -1340,6 +1341,8 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
                 unAssignedSlot.setEndMessageId(resultSet.getLong(RDBMSConstants.END_MESSAGE_ID));
                 unAssignedSlot.setStorageQueueName(resultSet.getString(RDBMSConstants.STORAGE_QUEUE_NAME));
             }
+
+            logger.warn("ASITHA selectUnAssignedSlot for queue : " + queueName + " selected slot : " + unAssignedSlot);
 
             return unAssignedSlot;
         } catch (SQLException e) {
@@ -1873,7 +1876,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         } catch (SQLException e) {
             return false;
         }
-    
+
     }
 
     private String getDestinationIdentifier(AndesSubscription subscription) {

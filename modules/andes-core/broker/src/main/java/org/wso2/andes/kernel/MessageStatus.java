@@ -68,14 +68,19 @@ public enum MessageStatus {
     PURGED(8),
 
     /**
+     * Message is about to be deleted
+     */
+    ABOUT_TO_DELETE(9),
+
+    /**
      * Message is deleted from the store
      */
-    DELETED(9),
+    DELETED(10),
 
     /**
      * Slot of the message is returned back to the coordinator, causing message to remove from memory
      */
-    SLOT_RETURNED(10);
+    SLOT_RETURNED(11);
 
 
     private int code;
@@ -150,8 +155,11 @@ public enum MessageStatus {
         SCHEDULED_TO_SEND.next = EnumSet.of(ACKED_BY_ALL, BUFFERED, DLC_MESSAGE, SLOT_RETURNED);
         SCHEDULED_TO_SEND.previous = EnumSet.of(BUFFERED);
 
-        ACKED_BY_ALL.next = EnumSet.of(DELETED, SLOT_RETURNED);
+        ACKED_BY_ALL.next = EnumSet.of(ABOUT_TO_DELETE, SLOT_RETURNED);
         ACKED_BY_ALL.previous = EnumSet.of(SCHEDULED_TO_SEND);
+
+        ABOUT_TO_DELETE.next = EnumSet.of(DELETED, SLOT_REMOVED, SLOT_RETURNED);
+        ABOUT_TO_DELETE.previous = EnumSet.of(ACKED_BY_ALL);
 
         EXPIRED.next = EnumSet.of(DELETED, SLOT_RETURNED);
         EXPIRED.previous = EnumSet.allOf(MessageStatus.class);
@@ -159,11 +167,11 @@ public enum MessageStatus {
         DLC_MESSAGE.next = EnumSet.of(BUFFERED, SLOT_REMOVED, SLOT_RETURNED);
         DLC_MESSAGE.previous = EnumSet.of(SCHEDULED_TO_SEND);
 
-        PURGED.next = EnumSet.of(DELETED, SLOT_RETURNED);
+        PURGED.next = EnumSet.of(ABOUT_TO_DELETE, DELETED, SLOT_RETURNED);
         PURGED.previous = EnumSet.allOf(MessageStatus.class);
 
         DELETED.next = EnumSet.of(SLOT_REMOVED, SLOT_RETURNED);
-        DELETED.previous = EnumSet.of(EXPIRED, DLC_MESSAGE, PURGED);
+        DELETED.previous = EnumSet.of(ABOUT_TO_DELETE);
 
         SLOT_REMOVED.next = EnumSet.complementOf(EnumSet.allOf(MessageStatus.class));
         SLOT_REMOVED.previous = EnumSet.of(DELETED);

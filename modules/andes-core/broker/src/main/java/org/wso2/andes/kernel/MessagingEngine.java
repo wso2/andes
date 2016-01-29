@@ -425,18 +425,27 @@ public class MessagingEngine {
                 messagesOfStorageQueue = new ArrayList<>();
             }
             messagesOfStorageQueue.add(message);
-            storageSeparatedMessages.put(message.getStorageQueueName(), messagesOfStorageQueue);
-        }
-
-        //delete message content along with metadata
-        for (Map.Entry<String, List<AndesMessageMetadata>> entry : storageSeparatedMessages
-                .entrySet()) {
-            messageStore.deleteMessages(entry.getKey(), entry.getValue());
-        }
-        for (DeliverableAndesMetadata message : messagesToRemove) {
-            //mark messages as deleted
+            //storageSeparatedMessages.put(message.getStorageQueueName(), messagesOfStorageQueue);
+            message.markAsAboutToDeleted();
+            messageStore.deleteMessages(message.getStorageQueueName(), messagesOfStorageQueue);
             message.markAsDeletedMessage();
         }
+//
+//        // Marking messages as 'about to be deleted'
+//        for (DeliverableAndesMetadata messageToBeDeleted : messagesToRemove) {
+//            messageToBeDeleted.markAsAboutToDeleted();
+//        }
+//
+//        //delete message content along with metadata
+//        for (Map.Entry<String, List<AndesMessageMetadata>> entry : storageSeparatedMessages
+//                .entrySet()) {
+//            messageStore.deleteMessages(entry.getKey(), entry.getValue());
+//        }
+//
+//        for (DeliverableAndesMetadata message : messagesToRemove) {
+//            //mark messages as deleted
+//
+//        }
 
     }
 
@@ -521,6 +530,20 @@ public class MessagingEngine {
      */
     public long getMessageCountOfQueue(String queueName) throws AndesException {
         return messageStore.getMessageCountForQueue(queueName);
+    }
+
+    /**
+     * Get number of messages in the queue withing the message id range
+     *
+     * @param storageQueueName name of the queue
+     * @param firstMessageId starting message id of the range
+     * @param lastMessageId end message id of the range
+     * @return number of messages for the queue within the provided message id range
+     * @throws AndesException
+     */
+    public long getMessageCountForQueueInRange(final String storageQueueName, long firstMessageId, long lastMessageId)
+            throws AndesException {
+        return messageStore.getMessageCountForQueueInRange(storageQueueName, firstMessageId, lastMessageId);
     }
 
     /**
