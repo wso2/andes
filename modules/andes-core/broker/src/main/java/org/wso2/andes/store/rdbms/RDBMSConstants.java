@@ -194,6 +194,16 @@ public class RDBMSConstants {
             + " WHERE " + QUEUE_ID + "=?"
             + " AND " + DLC_QUEUE_ID + "=-1";
 
+    /**
+     * Prepared statement to retrieve message count within a message id range for a queue.
+     */
+    protected static final String PS_SELECT_RANGED_QUEUE_MESSAGE_COUNT =
+            "SELECT COUNT(" + MESSAGE_ID + ") AS " + PS_ALIAS_FOR_COUNT
+            + " FROM " + METADATA_TABLE
+            + " WHERE " + QUEUE_ID + "=?"
+            + " AND " + MESSAGE_ID + " BETWEEN ? AND ?"
+            + " AND " + DLC_QUEUE_ID + "=-1";
+
     protected static final String ALIAS_FOR_QUEUES = "QUEUE_COUNT";
 
     /**
@@ -812,11 +822,6 @@ public class RDBMSConstants {
             + " SET " + DLC_QUEUE_ID + "=?"
             + " WHERE " + MESSAGE_ID + "=?";
 
-
-    
-    
-    
-    
     // Message Store related jdbc tasks executed
     protected static final String TASK_STORING_MESSAGE_PARTS = "storing message parts.";
     protected static final String TASK_DELETING_MESSAGE_PARTS = "deleting message parts.";
@@ -832,6 +837,7 @@ public class RDBMSConstants {
     protected static final String TASK_ADDING_METADATA_TO_QUEUE = "adding metadata to destination. ";
     protected static final String TASK_ADDING_METADATA_LIST_TO_QUEUE = "adding metadata list to destination. ";
     protected static final String TASK_RETRIEVING_ALL_QUEUE_MSG_COUNT = "retrieving message counts for all queues. ";
+    protected static final String TASK_RETRIEVING_RANGED_QUEUE_MSG_COUNT = "retrieving ranged message count for queue. ";
     protected static final String TASK_RETRIEVING_QUEUE_MSG_COUNT = "retrieving message count for queue. ";
     protected static final String TASK_RETRIEVING_QUEUE_MSG_COUNT_IN_DLC = "retrieving message count in DLC for"
                                                                            + " queue. ";

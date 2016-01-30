@@ -803,7 +803,49 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         }
         return metadataList;
     }
-    
+
+    /**
+     * Get number of messages in the queue withing the message id range
+     *
+     * @param storageQueueName name of the queue
+     * @param firstMessageId starting message id of the range
+     * @param lastMessageId end message id of the range
+     * @return number of messages in queue withing the message id range
+     * @throws AndesException
+     */
+    public long getMessageCountForQueueInRange(final String storageQueueName, long firstMessageId, long lastMessageId)
+                                                                                                throws AndesException {
+
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        long messageCount = 0;
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
+        try {
+            connection = getConnection();
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_RANGED_QUEUE_MESSAGE_COUNT);
+            preparedStatement.setInt(1, getCachedQueueID(storageQueueName));
+            preparedStatement.setLong(2, firstMessageId);
+            preparedStatement.setLong(3, lastMessageId);
+
+            resultSet = preparedStatement.executeQuery();
+
+            if (resultSet.next()) {
+                messageCount = resultSet.getInt(RDBMSConstants.PS_ALIAS_FOR_COUNT);
+            }
+
+        } catch (SQLException e) {
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while retrieving ranged message count for " +
+                    "message ids between " + firstMessageId + " and " + lastMessageId + " from queue "
+                    + storageQueueName, e);
+        } finally {
+            contextRead.stop();
+            close(connection, preparedStatement, resultSet, RDBMSConstants.TASK_RETRIEVING_RANGED_QUEUE_MSG_COUNT);
+        }
+        return messageCount;
+
+    }
+
     /**
      * {@inheritDoc}
      */
