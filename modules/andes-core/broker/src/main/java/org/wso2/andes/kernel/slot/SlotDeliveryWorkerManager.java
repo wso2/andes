@@ -172,8 +172,7 @@ public class SlotDeliveryWorkerManager {
      * Start all the SlotDeliveryWorkers if not already in running state.
      */
     public void startAllSlotDeliveryWorkers() {
-        for (Map.Entry<Integer, SlotDeliveryWorker> entry :
-                slotDeliveryWorkerMap.entrySet()) {
+        for (Map.Entry<Integer, SlotDeliveryWorker> entry : slotDeliveryWorkerMap.entrySet()) {
             SlotDeliveryWorker slotDeliveryWorker = entry.getValue();
             if (!slotDeliveryWorker.isRunning()) {
                 slotDeliveryWorkerExecutor.execute(slotDeliveryWorker);

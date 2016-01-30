@@ -71,7 +71,7 @@ public class SlotCreator implements Runnable {
             log.info("Slot restoring started for " + queueName);
             initializeSlotMapForQueue();
             log.info("Slot restoring ended for " + queueName);
-        } catch (AndesException | ConnectionException e) {
+        } catch (Throwable e) {
             log.error("Error occurred in slot recovery", e);
         }
     }

@@ -26,7 +26,7 @@ import java.lang.String;
 /**
  * Connection exception will be thrown when unable to connect to the slot coordinator
  */
-public class ConnectionException extends Exception{
+public class ConnectionException extends Exception {
 
     public ConnectionException() {
     }
