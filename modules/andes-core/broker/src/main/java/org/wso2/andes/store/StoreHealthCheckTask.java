@@ -59,16 +59,20 @@ public class StoreHealthCheckTask implements Runnable {
     @Override
     public void run() {
 
-        String myNodeId = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
+        try {
+            String myNodeId = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
 
-        logger.info(String.format("about to check store [%s]'s operational status ", store.getClass()));
+            logger.info(String.format("about to check store [%s]'s operational status ", store.getClass()));
 
-        if (store.isOperational(myNodeId, System.currentTimeMillis())) {
+            if (store.isOperational(myNodeId, System.currentTimeMillis())) {
 
-            for (StoreHealthListener listener : healthListeners) {
-                listener.storeOperational(store);
+                for (StoreHealthListener listener : healthListeners) {
+                    listener.storeOperational(store);
+                }
+
             }
-
+        } catch (Throwable e) {
+            logger.error("Error occurred while checking store availability.", e);
         }
     }
 

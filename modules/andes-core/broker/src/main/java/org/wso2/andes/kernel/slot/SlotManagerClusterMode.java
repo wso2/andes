@@ -586,28 +586,30 @@ public class SlotManagerClusterMode {
             @Override
             public void run() {
 
-                long lastId = SlotMessageCounter.getInstance().getCurrentNodeSafeZoneId();
-                //TODO: Delete if the queue has not progressed
-                for (String queueName : queuesToRecover) {
-                    // Trigger a submit slot for each queue so that new slots are created
-                    // for queues that have not published any messages after a node crash
-                    try {
-                        updateMessageID(queueName, deletedNodeId, lastId - 1, lastId, lastId);
-                    } catch (AndesException ex) {
-                        log.error("Failed to update message id", ex);
-                    }
-                }
-                slotRecoveryScheduled.set(false);
                 try {
-                    if (log.isDebugEnabled()) {
-                        log.debug("Removing " + deletedNodeId +
-                                " from safe zone calculation.");
+                    long lastId = SlotMessageCounter.getInstance().getCurrentNodeSafeZoneId();
+                    //TODO: Delete if the queue has not progressed
+                    for (String queueName : queuesToRecover) {
+                        // Trigger a submit slot for each queue so that new slots are created
+                        // for queues that have not published any messages after a node crash
+                        try {
+                            updateMessageID(queueName, deletedNodeId, lastId - 1, lastId, lastId);
+                        } catch (AndesException ex) {
+                            log.error("Failed to update message id", ex);
+                        }
                     }
-                    slotAgent.removePublisherNode(deletedNodeId);
-                } catch (AndesException e) {
-                    log.error(
-                            "Failed to remove publisher node ID from safe zone calculation",
-                            e);
+                    slotRecoveryScheduled.set(false);
+                    try {
+                        if (log.isDebugEnabled()) {
+                            log.debug("Removing " + deletedNodeId + " from safe zone calculation.");
+                        }
+                        slotAgent.removePublisherNode(deletedNodeId);
+                    } catch (AndesException e) {
+                        log.error("Failed to remove publisher node ID from safe zone calculation", e);
+                    }
+
+                } catch (Throwable e) {
+                    log.error("Error occurred while trying to run recover slot scheduler", e);
                 }
             }
         }, SlotMessageCounter.getInstance().SLOT_SUBMIT_TIMEOUT, TimeUnit.MILLISECONDS);

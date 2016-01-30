@@ -217,12 +217,11 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                 } catch (AndesException e) {
                     log.error("Error running Message Store Reader " + e.getMessage(), e);
                 } catch (ConnectionException e) {
-                    log.error("Error occurred while connecting to the thrift coordinator " +
-                            e.getMessage(), e);
+                    log.error("Error occurred while connecting to the thrift coordinator " + e.getMessage(), e);
                     setRunning(false);
                     //Any exception should be caught here. Otherwise SDW thread will stop
                     //and MB node will become useless
-                } catch (Exception e) {
+                } catch (Throwable e) {
                     log.error("Error while running Slot Delivery Worker. ", e);
                 }
             }
