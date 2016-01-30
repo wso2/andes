@@ -51,6 +51,7 @@ public class MQTTUtils {
     private static final String PERSISTENCE = "Persistent";
     private static final String MESSAGE_CONTENT_LENGTH = "MessageContentLength";
     public static final String QOSLEVEL = "QOSLevel";
+    public static final String IS_COMPRESSED = "IsCompressed";
     //This will be required to be at the initial byte stream the meta data will have since when the message is processed
     //back from andes since the message relevancy is checked ex :- whether its amqp, mqtt etc
     public static final String MQTT_META_INFO = "\u0002MQTT Protocol v3.1";
@@ -88,18 +89,22 @@ public class MQTTUtils {
      *
      * @param metaData      the information about the published message
      * @param messageID     the identity of the message
+     * @param arrivalTime   the arrival time of the message
+     * @param topic         the value to indicate if this is a topic or not
+     * @param qos           the level of qos the message was published at
      * @param destination   the definition where the message should be sent to
      * @param persistence   should this message be persisted
      * @param contentLength the length of the message content
-     * @param qos           the level of qos the message was published at
+     * @param isCompressed  the value to indicate, if the message is compressed or not
      * @return the collective information as a bytes object
      */
     public static byte[] encodeMetaInfo(String metaData, long messageID, long arrivalTime, boolean topic, int qos,
-                                        String destination, boolean persistence, int contentLength) {
+                                        String destination, boolean persistence, int contentLength, boolean isCompressed) {
         byte[] metaInformation;
         String information = metaData + "?" + MESSAGE_ID + "=" + messageID + "," + ARRIVAL_TIME + "=" + arrivalTime
-                + "," +TOPIC + "=" + topic + "," + DESTINATION + "=" + destination + "," + PERSISTENCE
-                + "=" + persistence + "," + MESSAGE_CONTENT_LENGTH + "=" + contentLength + "," + QOSLEVEL + "=" + qos;
+                + "," + TOPIC + "=" + topic + "," + DESTINATION + "=" + destination + "," + PERSISTENCE
+                + "=" + persistence + "," + MESSAGE_CONTENT_LENGTH + "=" + contentLength + "," + QOSLEVEL + "=" + qos
+                + "," + IS_COMPRESSED + "=" + isCompressed;
         metaInformation = information.getBytes();
         return metaInformation;
     }
@@ -112,12 +117,13 @@ public class MQTTUtils {
      * @param qosLevel             the level of qos the message was published
      * @param messageContentLength the content length of the message
      * @param retain               should this message retain
-     * @param publisher          the uuid which will uniquely identify the publisher
+     * @param publisher            the uuid which will uniquely identify the publisher
+     * @param isCompressed         the value to indicate, if the message is compressed or not
      * @return the meta information compliant with the kernal
      */
     public static AndesMessageMetadata convertToAndesHeader(long messageID, String topic, int qosLevel,
                                                             int messageContentLength, boolean retain,
-                                                            MQTTPublisherChannel publisher) {
+                                                            MQTTPublisherChannel publisher, boolean isCompressed) {
         long receivedTime = System.currentTimeMillis();
 
         AndesMessageMetadata messageHeader = new AndesMessageMetadata();
@@ -130,6 +136,7 @@ public class MQTTUtils {
         messageHeader.setStorageQueueName(topic);
         messageHeader.setMetaDataType(MessageMetaDataType.META_DATA_MQTT);
         messageHeader.setQosLevel(qosLevel);
+        messageHeader.setCompressed(isCompressed);
         // message arrival time set to mb node's system time.
         messageHeader.setArrivalTime(receivedTime);
         if (log.isDebugEnabled()) {
@@ -139,7 +146,7 @@ public class MQTTUtils {
 
         byte[] andesMetaData = encodeMetaInfo(MQTT_META_INFO, messageHeader.getMessageID(), receivedTime,
                 messageHeader.isTopic(), qosLevel, messageHeader.getDestination(), messageHeader.isPersistent(),
-                messageContentLength);
+                messageContentLength, isCompressed);
 
         messageHeader.setMetadata(andesMetaData);
         return messageHeader;

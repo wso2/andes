@@ -61,6 +61,11 @@ public class MQTTMessageContext {
      */
     private Channel channel;
 
+    /**
+     * Value to indicate, if the message is a compressed one or not
+     */
+    private boolean isCompressed = false;
+
     public String getTopic() {
         return topic;
     }
@@ -123,6 +128,10 @@ public class MQTTMessageContext {
 
     public void setChannel(Channel channel) {
         this.channel = channel;
+    }
+
+    public boolean isCompressed() {
+        return isCompressed;
     }
 
 }

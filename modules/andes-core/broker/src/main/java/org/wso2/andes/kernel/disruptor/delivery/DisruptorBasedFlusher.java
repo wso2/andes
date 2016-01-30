@@ -69,6 +69,8 @@ public class DisruptorBasedFlusher {
                 AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_RING_BUFFER_SIZE);
         Integer parallelContentReaders = AndesConfigurationManager.readValue(
                 AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_PARALLEL_CONTENT_READERS);
+        Integer parallelDecompressionHandlers = AndesConfigurationManager.readValue(
+                AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_PARALLEL_DECOMPRESSION_HANDLERS);
         Integer parallelDeliveryHandlers = AndesConfigurationManager.readValue(
                 AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_PARALLEL_DELIVERY_HANDLERS);
         Integer contentSizeToBatch = AndesConfigurationManager.readValue(
@@ -104,13 +106,21 @@ public class DisruptorBasedFlusher {
             contentReadTaskBatchProcessor[i].setExceptionHandler(new DeliveryExceptionHandler());
         }
 
+        // Initialize decompression handlers
+        ContentDecompressionHandler[] decompressionEventHandlers =
+                new ContentDecompressionHandler[parallelDecompressionHandlers];
+        for (int i = 0; i < parallelDecompressionHandlers; i++) {
+            decompressionEventHandlers[i] = new ContentDecompressionHandler(maxContentChunkSize);
+        }
+
         // Initialize delivery handlers
         DeliveryEventHandler[] deliveryEventHandlers = new DeliveryEventHandler[parallelDeliveryHandlers];
         for (int i = 0; i < parallelDeliveryHandlers; i++) {
             deliveryEventHandlers[i] = new DeliveryEventHandler(i, parallelDeliveryHandlers);
         }
 
-        disruptor.handleEventsWith(contentReadTaskBatchProcessor).then(deliveryEventHandlers);
+        disruptor.handleEventsWith(contentReadTaskBatchProcessor).then(decompressionEventHandlers)
+                .then(deliveryEventHandlers);
 
         disruptor.start();
         ringBuffer = disruptor.getRingBuffer();

@@ -35,7 +35,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Disruptor handler used to load message content to memory.
+ * This is used to load message content to memory.
  */
 public class ContentCacheCreator {
     /**
@@ -66,25 +66,23 @@ public class ContentCacheCreator {
                 AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_CONTENT_CACHE_EXPIRY_TIME);
 
         contentCache = CacheBuilder.newBuilder().expireAfterWrite(expiryTime, TimeUnit.SECONDS).maximumSize(maximumSize)
-                                   .concurrencyLevel(1).build();
+                .concurrencyLevel(1).build();
     }
 
     /**
      * Load content for a message in to the memory.
      *
-     * @param eventDataList
-     *      List of delivery event data
-     * @throws AndesException
-     *         Thrown when getting content from the message store.
+     * @param eventDataList List of delivery event data
+     * @throws AndesException Thrown when getting content from the message store.
      */
     public void onEvent(List<DeliveryEventData> eventDataList) throws AndesException {
 
         Set<Long> messagesToFetch = new HashSet<>();
         List<DeliveryEventData> messagesWithoutContent = new ArrayList<>();
 
-        for (DeliveryEventData deliveryEventData: eventDataList) {
+        for (DeliveryEventData deliveryEventData : eventDataList) {
             ProtocolMessage metadata = deliveryEventData.getMetadata();
-            long messageID =  metadata.getMessageID();
+            long messageID = metadata.getMessageID();
 
             DisruptorCachedContent content = contentCache.getIfPresent(messageID);
 
@@ -107,7 +105,7 @@ public class ContentCacheCreator {
         for (DeliveryEventData deliveryEventData : messagesWithoutContent) {
 
             ProtocolMessage metadata = deliveryEventData.getMetadata();
-            long messageID =  metadata.getMessageID();
+            long messageID = metadata.getMessageID();
 
             // We check again for content put in cache in the previous iteration
             DisruptorCachedContent content = contentCache.getIfPresent(messageID);

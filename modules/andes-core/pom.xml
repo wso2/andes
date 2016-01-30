@@ -162,6 +162,10 @@
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
         </dependency>
+        <dependency>
+            <groupId>net.jpountz.lz4</groupId>
+            <artifactId>lz4</artifactId>
+        </dependency>
         <!--eclipse set-->
         <dependency>
             <groupId>org.eclipse.core</groupId>

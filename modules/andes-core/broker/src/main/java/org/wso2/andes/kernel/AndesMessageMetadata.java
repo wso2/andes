@@ -83,6 +83,8 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      */
     private MessageMetaDataType metaDataType;
 
+    private boolean isCompressed;
+
     /**
      * Properties that are not directly relevant to Andes but to protocols can be stored
      * in this map. But non of the data is persisted
@@ -100,7 +102,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      * When MQTT message received it's header will be converted to AndesMessageMetadata header. This
      * boolean state holds retain state of given andes message.
      * @see org.wso2.andes.mqtt.utils.MQTTUtils#convertToAndesHeader(long, String, int, int, boolean,
-     * org.wso2.andes.mqtt.MQTTPublisherChannel)
+     * org.wso2.andes.mqtt.MQTTPublisherChannel, boolean)
      *
      * This boolean state will be checked each time andes message received in MessagePreProcessor.
      * @see org.wso2.andes.kernel.disruptor.inbound.MessagePreProcessor#handleTopicRoutine(
@@ -247,14 +249,14 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         clone.metaDataType = metaDataType;
         clone.propertyMap = propertyMap;
         clone.messageContentLength = messageContentLength;
+        clone.isCompressed = isCompressed;
         return clone;
     }
 
 
     /**
-     * Update metadata of message. This will change AMQP bytes representing
-     * metadata. Routing key and exchange name will be set to the
-     * given values.
+     * Update metadata of message, after a change of the routing key and the exchange of a message. This will change
+     * AMQP bytes representing metadata. Routing key and exchange name will be set to the given values.
      *
      * @param newDestination  new routing key to set
      * @param newExchangeName new exchange name to set
@@ -262,7 +264,24 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
     public void updateMetadata(String newDestination, String newExchangeName) {
         this.metadata = createNewMetadata(this.metadata, newDestination, newExchangeName);
         this.destination = newDestination;
-        log.debug("updated andes message metadata id= " + messageID + " new destination = " + newDestination);
+        if (log.isDebugEnabled()) {
+            log.debug("updated andes message metadata id= " + messageID + " new destination = " + newDestination);
+        }
+    }
+
+    /**
+     * Update metadata of message, after a change of the compression state of the message. This will change AMQP bytes
+     * representing metadata. IsCompressed will be set to the given value.
+     *
+     * @param isCompressedMessage new value to indicate if the message is compressed or not
+     */
+    public void updateMetadata(boolean isCompressedMessage) {
+        this.metadata = createNewMetadata(this.metadata, isCompressedMessage);
+        this.isCompressed = isCompressedMessage;
+        if (log.isDebugEnabled()) {
+            log.debug("updated andes message metadata id = " + messageID + ", compression state of the message is " +
+                    isCompressedMessage);
+        }
     }
 
     public boolean isExpired() {
@@ -289,6 +308,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
             destination = ((MessageMetaData) mdt).getMessagePublishInfo().getRoutingKey().toString();
             this.messageContentLength = ((MessageMetaData) mdt).getContentSize();
             isTopic = ((MessageMetaData) mdt).getMessagePublishInfo().getExchange().equals(AMQPUtils.TOPIC_EXCHANGE_NAME);
+            isCompressed = ((MessageMetaData) mdt).isCompressed();
         }
         //For MQTT Specific Types
         if (type.equals(MessageMetaDataType.META_DATA_MQTT)) {
@@ -298,16 +318,18 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
             this.isPersistent = ((MQTTMessageMetaData) mdt).isPersistent();
             this.messageContentLength = ((MQTTMessageMetaData) mdt).getContentSize();
             this.qosLevel = ((MQTTMessageMetaData) mdt).getQosLevel();
+            this.isCompressed = ((MQTTMessageMetaData) mdt).isCompressed();
         }
 
     }
 
     /**
-     * Create a copy of metadata
+     * Create a copy of updated metadata, for durable topic subscriptions
+     *
      * @param originalMetadata source metadata that needs to be copied
-     * @param routingKey routing key of the message
-     * @param exchangeName exchange of the message
-     * @return copu of the metadata as a byte array
+     * @param routingKey       routing key of the message
+     * @param exchangeName     exchange of the message
+     * @return copy of the metadata as a byte array
      */
     private byte[] createNewMetadata(byte[] originalMetadata, String routingKey, String exchangeName) {
         ByteBuffer buf = ByteBuffer.wrap(originalMetadata);
@@ -315,15 +337,40 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         buf = buf.slice();
         MessageMetaDataType type = MessageMetaDataType.values()[originalMetadata[0]];
         metaDataType = type;
-        StorableMessageMetaData original_mdt = type.getFactory()
-                .createMetaData(buf);
+        StorableMessageMetaData originalMessageMetadata = type.getFactory().createMetaData(buf);
 
         byte[] underlying;
         //TODO need to implement factory pattern here
-        if (type.equals(MessageMetaDataType.META_DATA_MQTT)) {
-            underlying = MQTTMetaDataHandler.constructMetadata(routingKey, buf, original_mdt, exchangeName);
+        if ((MessageMetaDataType.META_DATA_MQTT).equals(type)) {
+            underlying = MQTTMetaDataHandler.constructMetadata(routingKey, buf, originalMessageMetadata, exchangeName);
         } else {
-            underlying = AMQPMetaDataHandler.constructMetadata(routingKey, buf, original_mdt, exchangeName);
+            underlying = AMQPMetaDataHandler.constructMetadata(routingKey, buf, originalMessageMetadata, exchangeName);
+        }
+
+        return underlying;
+    }
+
+    /**
+     * Create a copy of metadata
+     *
+     * @param originalMetadata          source metadata that needs to be copied
+     * @param isCompressed Value to indicate if the message is compressed or not
+     * @return copy of the metadata as a byte array
+     */
+    private byte[] createNewMetadata(byte[] originalMetadata, boolean isCompressed) {
+        ByteBuffer buf = ByteBuffer.wrap(originalMetadata);
+        buf.position(1);
+        buf = buf.slice();
+        MessageMetaDataType type = MessageMetaDataType.values()[originalMetadata[0]];
+        metaDataType = type;
+        StorableMessageMetaData originalMessageMetadata = type.getFactory().createMetaData(buf);
+
+        byte[] underlying;
+        //TODO need to implement factory pattern here
+        if ((MessageMetaDataType.META_DATA_MQTT).equals(type)) {
+            underlying = MQTTMetaDataHandler.constructMetadata(buf, originalMessageMetadata, isCompressed);
+        } else {
+            underlying = AMQPMetaDataHandler.constructMetadata(buf, originalMessageMetadata, isCompressed);
         }
 
         return underlying;
@@ -335,6 +382,14 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
 
     public void setMessageContentLength(int messageContentLength){
         this.messageContentLength = messageContentLength;
+    }
+
+    public boolean isCompressed() {
+        return isCompressed;
+    }
+
+    public void setCompressed(boolean isCompressed) {
+        this.isCompressed = isCompressed;
     }
 
     @Override

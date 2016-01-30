@@ -45,20 +45,24 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
     private int messageLength;
     //The level of qos, this can either be 0,1 or 2
     private int qosLevel;
+    //Value to indicate, if the message is a compressed one or not
+    private boolean _isCompressed = false;
 
 
     /**
      * Will create a metadat object through this method
      *
-     * @param mid           meta data identification
+     * @param mid                meta data identification
      * @param messageArrivalTime time message has arrived to broker
-     * @param topic         the name of the topic the message has being published
-     * @param destination   the detination the message should be sent to
-     * @param persistance   does it require the message to be persisted even after the delivery of the message
-     * @param messageLength the length of the message which was recived
+     * @param topic              the name of the topic the message has being published
+     * @param destination        the detination the message should be sent to
+     * @param persistance        does it require the message to be persisted even after the delivery of the message
+     * @param messageLength      the length of the message which was recived
+     * @param qos                The level of qos
+     * @param isCompressed       Value to indicate, if the message is a compressed one or not
      */
     public MQTTMessageMetaData(long mid, long messageArrivalTime, boolean topic, String destination, boolean
-            persistance, int messageLength,int qos) {
+            persistance, int messageLength,int qos, boolean isCompressed) {
         this.messageID = mid;
         this.messageArrivalTime = messageArrivalTime;
         this.isTopic = topic;
@@ -66,6 +70,7 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
         this.isPersistance = persistance;
         this.messageLength = messageLength;
         this.qosLevel = qos;
+        this._isCompressed = isCompressed;
     }
 
     @Override
@@ -125,6 +130,10 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
         return destination;
     }
 
+    public boolean isCompressed() {
+        return _isCompressed;
+    }
+
     public void setDestination(String destination) {
         this.destination = destination;
     }
@@ -166,12 +175,20 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
             int messageContentLength = Integer.parseInt(decodedValues.get("MessageContentLength"));
             int qos = Integer.parseInt(decodedValues.get("QOSLevel"));
             long messageArrivalTime = Long.parseLong(decodedValues.get(MQTTUtils.ARRIVAL_TIME));
+
+            // This is an optional property, to indicate; if the message is compressed or not
+            boolean isCompressed = false;
+            if (decodedValues.containsKey(MQTTUtils.IS_COMPRESSED)) {
+                isCompressed = Boolean.parseBoolean(decodedValues.get(MQTTUtils.IS_COMPRESSED));
+            }
+
             return new MQTTMessageMetaData(messageID,
                     messageArrivalTime,
                     isTopic,
                     decodedValues.get("Destination"),
                     isPersistant,
-                    messageContentLength,qos
+                    messageContentLength,qos,
+                    isCompressed
                     );
         }
     }

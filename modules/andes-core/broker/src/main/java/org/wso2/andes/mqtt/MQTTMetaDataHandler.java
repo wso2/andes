@@ -23,18 +23,49 @@ import org.wso2.andes.server.store.StorableMessageMetaData;
 import java.nio.ByteBuffer;
 
 /**
- * Will be used to clone meta information of MQTT related topic messages recived
+ * Will be used to clone meta information of MQTT related topic messages received
  */
 public class MQTTMetaDataHandler {
-    public static byte[] constructMetadata(String routingKey, ByteBuffer buf, StorableMessageMetaData originalMeataData,
+
+    /**
+     * Update message metadata for MQTT; after an update of the routing key and the exchange of a message, for
+     * durable topic subscriptions.
+     *
+     * @param routingKey       routing key of the message
+     * @param buf              buffer of the original metadata
+     * @param originalMetadata source metadata that needs to be copied
+     * @param exchange         exchange of the message
+     * @return copy of the metadata as a byte array
+     */
+    public static byte[] constructMetadata(String routingKey, ByteBuffer buf, StorableMessageMetaData originalMetadata,
                                            String exchange) {
 
         //For MQTT we just need to take a copy
-        MQTTMessageMetaData metaInformation = (MQTTMessageMetaData) originalMeataData;
+        MQTTMessageMetaData metaInformation = (MQTTMessageMetaData) originalMetadata;
         //Will re-encode the bytes
         return MQTTUtils.encodeMetaInfo(MQTTUtils.MQTT_META_INFO, metaInformation.getMessageID(), metaInformation
-                        .getMessageArrivalTime(),false, metaInformation.getQosLevel(), routingKey,
-                        metaInformation.isPersistent(), metaInformation.getContentSize());
+                        .getMessageArrivalTime(), false, metaInformation.getQosLevel(), routingKey,
+                metaInformation.isPersistent(), metaInformation.getContentSize(), metaInformation.isCompressed());
+
+    }
+
+    /**
+     * Update message metadata for MQTT; to indicate the message is a compressed one.
+     *
+     * @param buf                       buffer of the original metadata
+     * @param originalMetadata          source metadata that needs to be copied
+     * @param newCompressedMessageValue Value to indicate if the message is compressed or not
+     * @return copy of the metadata as a byte array
+     */
+    public static byte[] constructMetadata(ByteBuffer buf, StorableMessageMetaData originalMetadata,
+                                           boolean newCompressedMessageValue) {
+
+        //For MQTT we just need to take a copy
+        MQTTMessageMetaData metaInformation = (MQTTMessageMetaData) originalMetadata;
+        //Will re-encode the bytes
+        return MQTTUtils.encodeMetaInfo(MQTTUtils.MQTT_META_INFO, metaInformation.getMessageID(), metaInformation
+                        .getMessageArrivalTime(), false, metaInformation.getQosLevel(), metaInformation.getDestination(),
+                metaInformation.isPersistent(), metaInformation.getContentSize(), newCompressedMessageValue);
 
     }
 }

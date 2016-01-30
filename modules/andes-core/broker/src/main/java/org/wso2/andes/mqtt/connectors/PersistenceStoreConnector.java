@@ -122,7 +122,7 @@ public class PersistenceStoreConnector implements MQTTConnector {
             //Will Create the Andes Header
             AndesMessageMetadata messageHeader = MQTTUtils.convertToAndesHeader(messageID, messageContext.getTopic(),
                     messageContext.getQosLevel().getValue(), messageData.length, messageContext.isRetain(),
-                    publisher);
+                    publisher, messageContext.isCompressed());
 
             // Add properties to be used for publisher acks
             messageHeader.addProperty(MQTTUtils.CLIENT_ID, messageContext.getPublisherID());
