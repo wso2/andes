@@ -421,7 +421,14 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
             log.debug("Releasing tracking of messages for slot " + slot.toString());
         }
         slot.deleteAllMessagesInSlot();
-        storageQueueToSlotTracker.get(slot.getStorageQueueName()).remove(slot.getId());
+
+        Map<String, Slot> slotsOfQueue = storageQueueToSlotTracker.get(slot.getStorageQueueName());
+        if (null != slotsOfQueue) {
+            slotsOfQueue.remove(slot.getId());
+        } else {
+            log.warn("Slot has been deleted by the SlotDeliveryWorker before the SlotDeletionExecutor can get to it. Slot : " + slot);
+        }
+
     }
 
     /**
