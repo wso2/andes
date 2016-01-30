@@ -426,7 +426,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
         if (null != slotsOfQueue) {
             slotsOfQueue.remove(slot.getId());
         } else {
-            log.warn("Slot has been deleted by the SlotDeliveryWorker before the executor can get to it. Slot : " + slot);
+            log.warn("Slot has been deleted by the SlotDeliveryWorker before the SlotDeletionExecutor can get to it. Slot : " + slot);
         }
 
     }
