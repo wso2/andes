@@ -177,10 +177,11 @@ public class MQTTopicManager {
 
             // If clean session is set to true, existing subscriptions with the same client ID which are clean session
             // false should also be removed.
-            if (isCleanSession) {
+            //TODO we need to re think how we could solve this instead of having a DB lookup for existence of subs
+           /*  if (isCleanSession) {
                  connector.removeSubscriber(this, topicName, mqttClientChannelID, username, subscriptionChannelID,
                                                                                     false, mqttClientChannelID, qos);
-            }
+            }*/
 
             //First the topic should be registered in the cluster
             subscriptionID = registerTopicSubscriptionInCluster(topicName, mqttClientChannelID, username, isCleanSession,
