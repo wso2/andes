@@ -57,6 +57,11 @@ public class SlotDeletionExecutor {
     private static SlotDeletionExecutor instance;
 
     /**
+     * Reference of the deletion task.
+     */
+    private SlotDeletionTask slotDeletionTask;
+
+    /**
      * SlotDeletionExecutor constructor
      */
     private SlotDeletionExecutor() {
@@ -68,8 +73,8 @@ public class SlotDeletionExecutor {
      */
     public void init() {
         this.slotDeletionExecutorService = Executors.newSingleThreadExecutor(namedThreadFactory);
-        this.slotDeletionExecutorService.submit(new SlotDeletionTask());
-
+        slotDeletionTask = new SlotDeletionTask();
+        this.slotDeletionExecutorService.submit(slotDeletionTask);
     }
 
     /**
@@ -77,14 +82,20 @@ public class SlotDeletionExecutor {
      */
     class SlotDeletionTask implements Runnable {
 
-        //Slot which previously attempt to delete
-        Slot previouslyAttemptedSlot = null;
+        /**
+         * Condition running the task.
+         */
+        boolean isLive = true;
+
+        void setLive(boolean live) {
+            isLive = live;
+        }
 
         /**
          * Running slot deletion task
          */
         public void run() {
-            while (!Thread.currentThread().isInterrupted()) {
+            while (isLive) {
                 try {
                     // Slot to attempt current deletion
                     Slot slot = slotsToDelete.poll(1, TimeUnit.SECONDS);
@@ -113,11 +124,12 @@ public class SlotDeletionExecutor {
 
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    log.error("Error occurred while trying to delete the slot.", e);
-                } catch (AndesException e) {
-                    log.error("Error occurred while trying to delete the slot.", e);
+                    log.error("SlotDeletionTask was interrupted while trying to delete the slot.", e);
+                } catch (Throwable throwable){
+                    log.error("Unexpected error occurred while trying to delete the slot.", throwable);
                 }
             }
+            log.info("SlotDeletionExecutor has shutdown with " + slotsToDelete.size() + " slots to delete.");
         }
 
         /**
@@ -156,6 +168,7 @@ public class SlotDeletionExecutor {
      */
     public void stopSlotDeletionExecutor() {
         if (slotDeletionExecutorService != null) {
+            slotDeletionTask.setLive(false);
             slotDeletionExecutorService.shutdown();
         }
     }
