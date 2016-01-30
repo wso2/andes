@@ -430,7 +430,7 @@ public class TopicSubscriptionBitMapStore implements AndesSubscriptionStore {
                     int bitIndex = 0;
 
                     for (int i = 0; i < bitSet.size(); i++) {
-                        if (bitIndex == i) {
+                        if (bitIndex == subscriptionIndex) {
                             // If the this is the index to remove then skip this round
                             bitIndex++;
                         }
