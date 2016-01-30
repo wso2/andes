@@ -215,7 +215,7 @@ public class AndesSubscriptionManager {
                         LocalSubscription mockSubscription = convertClusterSubscriptionToMockLocalSubscription(sub);
                         mockSubscription.close();
                         subscriptionEngine.removeSubscriptionDirectly(sub);
-                        notifyClusterSubscriptionHasChanged(mockSubscription,
+                        notifyClusterSubscriptionHasChanged(sub,
                                                                     SubscriptionListener.SubscriptionChange.DELETED);
                     }
                 }
