@@ -100,7 +100,7 @@ public class ContentDecompressionHandler implements EventHandler<DeliveryEventDa
 
                 // Get the decompressed message, as a message part map
                 Map<Integer, AndesMessagePart> messagePartMapToDeliver = lz4CompressionHelper.getDecompressedMessage
-                        (contentList, originalMessageSize, maxChunkSize, messageID);
+                        (contentList, originalMessageSize, messageID);
 
                 // Creating the DisruptorCachedContent  to deliver
                 content = new DisruptorCachedContent(messagePartMapToDeliver, originalMessageSize, maxChunkSize);
