@@ -159,9 +159,9 @@
                             org.apache.commons.cli.*;version="1.2",
                             org.apache.commons.lang.*;version="2.3",
                             org.apache.commons.logging.*,
-                            com.google.common.base;version="18.0.0",
-                            com.google.common.util.concurrent;version="18.0.0",
-                            com.google.common.cache;version="18.0.0",
+                            com.google.common.base;version="19.0.0",
+                            com.google.common.util.concurrent;version="19.0.0",
+                            com.google.common.cache;version="19.0.0",
                             org.wso2.carbon.andes.authentication.andes,
                             *;resolution:=optional
                         </Import-Package>
