@@ -155,7 +155,7 @@
             <artifactId>mina-filter-ssl</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.lmax</groupId>
+            <groupId>org.wso2.orbit.com.lmax</groupId>
             <artifactId>disruptor</artifactId>
         </dependency>
         <dependency>
