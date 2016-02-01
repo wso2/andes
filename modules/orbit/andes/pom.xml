@@ -168,6 +168,7 @@
                         <Include-Resource>src/main/resources</Include-Resource>
                         <Bundle-Activator>org.wso2.andes.wso2.internal.QpidBundleActivator
                         </Bundle-Activator>
+                        <DynamicImport-Package>org.wso2.carbon.andes.extensions.*</DynamicImport-Package>
                     </instructions>
                 </configuration>
             </plugin>
