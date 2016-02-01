@@ -215,7 +215,7 @@ public class LZ4CompressionHelper {
 
         // Size of this map is equals to the minimum number of andes message parts that are needed
         Map<Integer, AndesMessagePart> messagePartMapToDeliver =
-                new HashMap<>((int) (Math.ceil(decompressedMessageLength / ((long) maxChunkSize))));
+                new HashMap<>((int) (Math.ceil(decompressedMessageLength / ((float) maxChunkSize))));
 
         int srcOffset = 0;
         int noOfElementsToCopy;
