@@ -54,7 +54,7 @@ public class LZ4CompressionHelper {
      * Maximum allowed chunk size to be stored in DB, in bytes.
      */
     static final int maxChunkSize = (int) AndesConfigurationManager.readValue(
-    AndesConfiguration.PERFORMANCE_TUNING_MAX_CONTENT_CHUNK_SIZE);
+            AndesConfiguration.PERFORMANCE_TUNING_MAX_CONTENT_CHUNK_SIZE);
 
     /**
      * Keep a reference to lz4 instance
@@ -80,7 +80,7 @@ public class LZ4CompressionHelper {
      */
     public AndesMessagePart getCompressedMessage(List<AndesMessagePart> partList, int originalContentLength) {
 
-        byte[] messageData = getByteArrayFromPartList(partList);
+        byte[] messageData = getByteArrayFromPartListForCompression(partList, originalContentLength);
 
         // Compress message content
         int maxCompressedLength = compressor.maxCompressedLength(originalContentLength);
@@ -105,7 +105,7 @@ public class LZ4CompressionHelper {
      */
     public Map<Integer, AndesMessagePart> getDecompressedMessage(Collection<AndesMessagePart> messagePartList, int
             originalContentLength, long messageID) {
-        byte[] compressedMessageContent = getByteArrayFromPartList(messagePartList);
+        byte[] compressedMessageContent = getByteArrayFromPartListForDecompression(messagePartList);
 
         // Decompress message content
         byte[] decompressedMessage = new byte[originalContentLength];
@@ -123,7 +123,7 @@ public class LZ4CompressionHelper {
      * @return Decompressed message content as an AndesMessagePart
      */
     public AndesMessagePart getDecompressedMessage(List<AndesMessagePart> partList, int originalContentLength) {
-        byte[] compressedMessageContent = getByteArrayFromPartList(partList);
+        byte[] compressedMessageContent = getByteArrayFromPartListForDecompression(partList);
 
         // Decompress message content
         byte[] decompressedMessage = new byte[originalContentLength];
@@ -138,12 +138,32 @@ public class LZ4CompressionHelper {
     }
 
     /**
-     * Make one byte array from data of andes message parts
+     * Make one byte array from data of andes message parts, when compress messages
      *
      * @param partList              Message content as an AndesMessagePart list
+     * @param originalContentLength Original message content length
      * @return Combined message content as a byte array
      */
-    private byte[] getByteArrayFromPartList(Collection<AndesMessagePart> partList) {
+    private byte[] getByteArrayFromPartListForCompression(Collection<AndesMessagePart> partList,
+                                                          int originalContentLength) {
+
+        byte[] messageData = new byte[originalContentLength];
+
+        for (AndesMessagePart messagePart : partList) {
+            byte[] messagePartData = messagePart.getData();
+            System.arraycopy(messagePartData, 0, messageData, messagePart.getOffset(), messagePartData.length);
+        }
+
+        return messageData;
+    }
+
+    /**
+     * Make one byte array from data of andes message parts, when decompress messages
+     *
+     * @param partList Message content as an AndesMessagePart list
+     * @return Combined message content as a byte array
+     */
+    private byte[] getByteArrayFromPartListForDecompression(Collection<AndesMessagePart> partList) {
 
         //Maximum data length can be greater than original content length after compression
         int maximumCompressedDataLength = partList.size() * maxChunkSize;
