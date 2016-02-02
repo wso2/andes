@@ -403,7 +403,11 @@ public class AMQPUtils {
         DestinationType destinationType;
 
         if (amqQueue.checkIfBoundToTopicExchange()) {
-            destinationType = DestinationType.TOPIC;
+            if(amqQueue.isDurable()) {
+                destinationType = DestinationType.DURABLE_TOPIC;
+            } else {
+                destinationType = DestinationType.TOPIC;
+            }
         } else {
             destinationType = DestinationType.QUEUE;
         }

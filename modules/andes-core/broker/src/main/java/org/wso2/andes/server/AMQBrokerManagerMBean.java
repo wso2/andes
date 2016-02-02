@@ -18,19 +18,9 @@
 
 package org.wso2.andes.server;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
-import javax.management.JMException;
-import javax.management.MBeanException;
-import javax.management.MalformedObjectNameException;
-import javax.management.ObjectName;
-
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.server.logging.LogMessage;
 import org.wso2.andes.management.common.mbeans.ManagedBroker;
 import org.wso2.andes.management.common.mbeans.ManagedQueue;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanConstructor;
@@ -39,6 +29,9 @@ import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.exchange.ExchangeFactory;
 import org.wso2.andes.server.exchange.ExchangeRegistry;
 import org.wso2.andes.server.exchange.ExchangeType;
+import org.wso2.andes.server.logging.LogMessage;
+import org.wso2.andes.server.logging.actors.CurrentActor;
+import org.wso2.andes.server.logging.actors.ManagementActor;
 import org.wso2.andes.server.management.AMQManagedObject;
 import org.wso2.andes.server.management.ManagedObject;
 import org.wso2.andes.server.queue.AMQQueue;
@@ -48,8 +41,14 @@ import org.wso2.andes.server.queue.QueueRegistry;
 import org.wso2.andes.server.store.DurableConfigurationStore;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostImpl;
-import org.wso2.andes.server.logging.actors.CurrentActor;
-import org.wso2.andes.server.logging.actors.ManagementActor;
+
+import javax.management.JMException;
+import javax.management.MBeanException;
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * This MBean implements the broker management interface and exposes the
@@ -313,15 +312,16 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
             boolean isQueueDeletable = ClusterResourceHolder.getInstance().
                     getVirtualHostConfigSynchronizer().checkIfQueueDeletable(queue);
             if(isQueueDeletable) {
+
+                //tell Andes kernel to remove queue
+                QpidAndesBridge.deleteQueue(queue);
+
                 // Removes the binding and unregister the queue.
                 queue.delete();
                 if (queue.isDurable())
                 {
                     _durableConfig.removeQueue(queue);
                 }
-
-                //tell Andes kernel to remove queue
-                QpidAndesBridge.deleteQueue(queue);
             } else {
                 _logActor.message( new LogMessage()
                 {
