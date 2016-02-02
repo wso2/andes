@@ -309,6 +309,8 @@ public class AndesSubscriptionManager {
     public synchronized void deleteAllLocalSubscriptionsOfBoundQueue(String boundQueueName, ProtocolType protocolType, DestinationType destinationType) throws AndesException{
         Set<LocalSubscription> subscriptionsOfQueue = subscriptionEngine.getListOfLocalSubscriptionsBoundToQueue(
                 boundQueueName, protocolType, destinationType);
+        subscriptionsOfQueue.addAll(subscriptionEngine.getListOfLocalSubscriptionsBoundToQueue(
+                boundQueueName, protocolType, DestinationType.DURABLE_TOPIC));
         for(LocalSubscription subscription : subscriptionsOfQueue) {
             subscription.close();
             subscriptionEngine.createDisconnectOrRemoveLocalSubscription(subscription, SubscriptionListener.SubscriptionChange.DELETED);
@@ -330,6 +332,8 @@ public class AndesSubscriptionManager {
     public synchronized void deleteAllClusterSubscriptionsOfBoundQueue(String boundQueueName, ProtocolType protocolType, DestinationType destinationType) throws AndesException{
         Set<AndesSubscription> subscriptionsOfQueue = subscriptionEngine.getListOfClusterSubscriptionsBoundToQueue(
                 boundQueueName, protocolType, destinationType);
+        subscriptionsOfQueue.addAll(subscriptionEngine.getListOfClusterSubscriptionsBoundToQueue(
+                boundQueueName, protocolType, DestinationType.DURABLE_TOPIC));
         for(AndesSubscription subscription : subscriptionsOfQueue) {
             subscriptionEngine.createDisconnectOrRemoveClusterSubscription(subscription, SubscriptionListener
                     .SubscriptionChange.DELETED);
