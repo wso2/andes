@@ -41,12 +41,11 @@ import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionImpl;
 import org.wso2.andes.subscription.OutboundSubscription;
 import org.wso2.andes.tools.utils.MessageTracer;
-
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 /**
@@ -97,7 +96,9 @@ public class AMQPLocalSubscription implements OutboundSubscription {
         this.isDurable = isDurable;
         this.isBoundToTopic = isBoundToTopic;
 
-        this.storedMessageCache = new HashMap<>();
+        //We leave the default values for initialCapacity and progression factor
+        //We re define concurrencyLevel as 2, since there will be only 2 threads which accesses it concurrently
+        this.storedMessageCache = new ConcurrentHashMap<>(16,0.75f,2);
     }
 
     /**
