@@ -18,11 +18,12 @@
 
 package org.wso2.andes.store.cache;
 
-import java.util.List;
-import java.util.Map;
-
+import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
+import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessagePart;
+
+import java.util.List;
 
 /**
  * Keeps track of messages that were stored (from this message broker instance).
@@ -32,22 +33,20 @@ import org.wso2.andes.kernel.AndesMessagePart;
  * performance)
  */
 public interface AndesMessageCache {
-    
+
     /**
      * Add the given message to cache
-     * 
-     * @param message
-     *            the message
+     *
+     * @param message the message
      */
     abstract void addToCache(AndesMessage message);
 
     /**
      * Removes given list of messages/ids from the cache
-     * 
-     * @param messagesToRemove
-     *            list of message Ids
+     *
+     * @param messagesToRemove list of message Ids
      */
-    abstract void removeFromCache(List<Long> messagesToRemove);
+    abstract void removeFromCache(LongArrayList messagesToRemove);
 
     /**
      * Removes a message with a given id from the cache
@@ -58,9 +57,8 @@ public interface AndesMessageCache {
 
     /**
      * Returns a message if found in cache
-     * 
-     * @param messageId
-     *            message id to look up
+     *
+     * @param messageId message id to look up
      * @return a message or null (if not found)
      */
     abstract AndesMessage getMessageFromCache(long messageId);
@@ -68,21 +66,18 @@ public interface AndesMessageCache {
     /**
      * Get the list of messages found from the cache.
      * <b> This method modifies the provided messageIDList </b>
-     * 
-     * @param messageIDList
-     *            message id to be found in cache.
-     * @param contentList
-     *            the list the fill
+     *
+     * @param messageIDList message id to be found in cache.
+     * @param contentList   the list the fill
      */
-    abstract void fillContentFromCache(List<Long> messageIDList, Map<Long, List<AndesMessagePart>> contentList);
+    abstract void fillContentFromCache(LongArrayList messageIDList,
+            LongObjectHashMap<List<AndesMessagePart>> contentList);
 
     /**
      * Return a {@link AndesMessagePart} from the cache.
-     * 
-     * @param messageId
-     *            id of the massage
-     * @param offsetValue
-     *            the offset value
+     *
+     * @param messageId   id of the massage
+     * @param offsetValue the offset value
      * @return a {@link AndesMessagePart} if the message is found otherwise null
      */
     abstract AndesMessagePart getContentFromCache(long messageId, int offsetValue);

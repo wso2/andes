@@ -18,6 +18,7 @@
 
 package org.wso2.andes.kernel;
 
+import com.gs.collections.impl.map.mutable.ConcurrentHashMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.queue.QueueEntry;
@@ -33,7 +34,6 @@ import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * This class holds utility methods for Andes. Commonly
@@ -45,29 +45,28 @@ public class AndesUtils {
     private static Log log = LogFactory.getLog(AndesUtils.class);
 
     //this constant will be used to prefix storage queue name for topics
-    public final static String TOPIC_NODE_QUEUE_PREFIX =  "TopicQueue";
+    public final static String TOPIC_NODE_QUEUE_PREFIX = "TopicQueue";
 
     //This will be used to co-relate between the message id used in the browser and the message id used internally in MB
     private static ConcurrentHashMap<String, Long> browserMessageIdCorrelater = new ConcurrentHashMap<String, Long>();
 
-    private  static PrintWriter printWriterGlobal;
+    private static PrintWriter printWriterGlobal;
 
-
-    public static String printAMQMessage(QueueEntry message){
-        ByteBuffer buf = ByteBuffer.allocate(100); 
+    public static String printAMQMessage(QueueEntry message) {
+        ByteBuffer buf = ByteBuffer.allocate(100);
         int readCount = message.getMessage().getContent(buf, 0);
-        return "("+ message.getMessage().getMessageNumber() + ")" + new String(buf.array(),0, readCount); 
+        return "(" + message.getMessage().getMessageNumber() + ")" + new String(buf.array(), 0, readCount);
     }
 
     /**
      * Register a mapping between browser message Id and Andes message Id. This is expected to be invoked
      * whenever messages are passed to the browser via a browser subscription and is expecting a return from browser
      * with browser message Id which needs to be resolved to Andes Message Id.
-     *
+     * <p>
      * These mappings should be cleaned after they have served their purpose.
      *
      * @param browserMessageId The browser message Id / External message Id
-     * @param andesMessageId Respective Andes message Id
+     * @param andesMessageId   Respective Andes message Id
      */
     public static synchronized void registerBrowserMessageId(String browserMessageId, long andesMessageId) {
         browserMessageIdCorrelater.put(browserMessageId, andesMessageId);
@@ -80,12 +79,12 @@ public class AndesUtils {
      * @param browserMessageIdList The browser message Id / External message Id list to be cleaned.
      */
     public static synchronized void unregisterBrowserMessageIds(String[] browserMessageIdList) {
-        for(String browserMessageId : browserMessageIdList) {
+        for (String browserMessageId : browserMessageIdList) {
             long andesMessageId = browserMessageIdCorrelater.remove(browserMessageId);
 
-            if(log.isDebugEnabled()) {
+            if (log.isDebugEnabled()) {
                 log.debug("Browser message Id " + browserMessageId + " related to Andes message Id " + andesMessageId +
-                    " was removed from browserMessageIdCorrecter");
+                        " was removed from browserMessageIdCorrecter");
             }
         }
     }
@@ -101,15 +100,15 @@ public class AndesUtils {
         if (browserMessageIdCorrelater.containsKey(browserMessageId)) {
             andesMessageId = browserMessageIdCorrelater.get(browserMessageId);
         } else {
-            andesMessageId =  -1L;
+            andesMessageId = -1L;
         }
         return andesMessageId;
     }
 
     public static void writeToFile(String whatToWrite, String filePath) {
         try {
-            if(printWriterGlobal == null) {
-                BufferedWriter bufferedWriter = new BufferedWriter( new FileWriter(filePath));
+            if (printWriterGlobal == null) {
+                BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(filePath));
                 printWriterGlobal = new PrintWriter(bufferedWriter);
             }
 
@@ -123,17 +122,18 @@ public class AndesUtils {
 
     /**
      * Generate storage queue name for a given destination
-     * @param destination subscribed routing key
-     * @param nodeID id of this node
+     *
+     * @param destination     subscribed routing key
+     * @param nodeID          id of this node
      * @param destinationType The destination type to generate storage queue for
-     * @return  storage queue name for destination
+     * @return storage queue name for destination
      */
     public static String getStorageQueueForDestination(String destination, String nodeID,
-                                                       DestinationType destinationType) {
+            DestinationType destinationType) {
         String storageQueueName;
         // We need to add a prefix so that we could differentiate if queue is created under the same name
         //as topic
-        if(DestinationType.TOPIC == destinationType) {
+        if (DestinationType.TOPIC == destinationType) {
             storageQueueName = new StringBuilder(TOPIC_NODE_QUEUE_PREFIX).append("|").
                     append(destination).append("|").append(nodeID).toString();
         } else {
@@ -142,26 +142,21 @@ public class AndesUtils {
         return storageQueueName;
     }
 
-    public static LocalSubscription createLocalSubscription(OutboundSubscription subscription,
-                                                            String subscriptionID, String destination,
-                                                            boolean isExclusive,
-                                                            boolean isDurable, String subscribedNode,
-                                                            long subscribeTime, String targetQueue,
-                                                            String targetQueueOwner, String targetQueueBoundExchange,
-                                                            String targetQueueBoundExchangeType,
-                                                            Short isTargetQueueBoundExchangeAutoDeletable,
-                                                            boolean hasExternalSubscriptions,
-                                                            DestinationType destinationType) {
+    public static LocalSubscription createLocalSubscription(OutboundSubscription subscription, String subscriptionID,
+            String destination, boolean isExclusive, boolean isDurable, String subscribedNode, long subscribeTime,
+            String targetQueue, String targetQueueOwner, String targetQueueBoundExchange,
+            String targetQueueBoundExchangeType, Short isTargetQueueBoundExchangeAutoDeletable,
+            boolean hasExternalSubscriptions, DestinationType destinationType) {
 
-        return new LocalSubscription(subscription, subscriptionID, destination, isExclusive,
-                isDurable, subscribedNode, subscribeTime, targetQueue, targetQueueOwner, targetQueueBoundExchange,
-                targetQueueBoundExchangeType, isTargetQueueBoundExchangeAutoDeletable, hasExternalSubscriptions,
-                destinationType);
+        return new LocalSubscription(subscription, subscriptionID, destination, isExclusive, isDurable, subscribedNode,
+                subscribeTime, targetQueue, targetQueueOwner, targetQueueBoundExchange, targetQueueBoundExchangeType,
+                isTargetQueueBoundExchangeAutoDeletable, hasExternalSubscriptions, destinationType);
 
     }
 
     /**
      * create andes ack data message
+     *
      * @param channelID id of the connection message was received
      * @param messageID id of the message
      * @return Andes Ack Data
@@ -169,7 +164,7 @@ public class AndesUtils {
     public static AndesAckData generateAndesAckMessage(UUID channelID, long messageID) throws AndesException {
         LocalSubscription localSubscription = AndesContext.getInstance().
                 getSubscriptionEngine().getLocalSubscriptionForChannelId(channelID);
-        if(null == localSubscription) {
+        if (null == localSubscription) {
             log.error("Cannot handle acknowledgement for message ID = " + messageID + " as subscription is closed "
                     + "channelID= " + "" + channelID);
             return null;
@@ -180,13 +175,14 @@ public class AndesUtils {
 
     /**
      * Get DeliverableAndesMetadata reference of a delivered message
+     *
      * @param messageID ID of the message
      * @param channelID ID of the channel message is delivered
      * @return DeliverableAndesMetadata reference
      * @throws AndesException
      */
-    public static DeliverableAndesMetadata lookupDeliveredMessage(long messageID, UUID channelID) throws
-            AndesException {
+    public static DeliverableAndesMetadata lookupDeliveredMessage(long messageID, UUID channelID)
+            throws AndesException {
         LocalSubscription localSubscription = AndesContext.getInstance().getSubscriptionEngine()
                 .getLocalSubscriptionForChannelId(channelID);
         return localSubscription.getMessageByMessageID(messageID);
@@ -201,8 +197,7 @@ public class AndesUtils {
      * durable topic subscription
      */
     private static boolean isPersistentQueue(String destination) {
-        if (destination.startsWith("tmp_") || destination.contains("carbon:") || destination
-                .startsWith("TempQueue")) {
+        if (destination.startsWith("tmp_") || destination.contains("carbon:") || destination.startsWith("TempQueue")) {
             return false;
         }
         return true;
