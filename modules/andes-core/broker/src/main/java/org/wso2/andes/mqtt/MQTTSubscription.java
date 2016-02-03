@@ -17,15 +17,12 @@
  */
 package org.wso2.andes.mqtt;
 
-
+import com.gs.collections.impl.map.mutable.ConcurrentHashMap;
 import org.dna.mqtt.wso2.QOSLevel;
-import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-
 
 /**
  * All the topicOccurrences relation to a topic will be maintained though the following class, attributes such as QOS
@@ -70,8 +67,7 @@ public class MQTTSubscription {
      * key- the cluster message id
      * value - message information {@link org.wso2.andes.mqtt.MQTTSubscriptionInformation}
      */
-    private Map<Long, MQTTSubscriptionInformation> clusterMessageToMessageInformation =
-            new ConcurrentHashMap<>();
+    private Map<Long, MQTTSubscriptionInformation> clusterMessageToMessageInformation = new ConcurrentHashMap<>();
 
     /**
      * Will add the details of the message that will be delivered among the topicOccurrences
@@ -126,17 +122,18 @@ public class MQTTSubscription {
      * Gets message meta information form a provided local id, meta information is required to send rejection for
      * un-acked messages.
      * {@link org.wso2.andes.kernel.Andes#messageRejected(org.wso2.andes.kernel.AndesMessageMetadata)}
+     *
      * @param localID the local message id generated before dispatching the message to its subscriptions
      * @return the meta information relevant for the message
      */
-    public DeliverableAndesMetadata getMessageMetaInformation(Integer localID){
+    public DeliverableAndesMetadata getMessageMetaInformation(Integer localID) {
         long clusterID = localMessageToClusterMessage.get(localID);
 
         MQTTSubscriptionInformation mqttSubscriptionInformation = clusterMessageToMessageInformation.get(clusterID);
 
-        if(null != mqttSubscriptionInformation){
+        if (null != mqttSubscriptionInformation) {
             return mqttSubscriptionInformation.getMetadata();
-        }else {
+        } else {
             return null;
         }
     }
@@ -162,7 +159,6 @@ public class MQTTSubscription {
     public void setSubscriptionChannel(UUID subscriptionChannel) {
         this.subscriptionChannel = subscriptionChannel;
     }
-
 
     /**
      * Will allow retrieval of the unique identifier of the subscriber
@@ -202,6 +198,7 @@ public class MQTTSubscription {
 
     /**
      * Will return the level of QOS the subscriber is bound to
+     *
      * @return QOS level
      */
     public QOSLevel getQOSLevel() {
