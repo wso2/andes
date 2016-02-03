@@ -18,13 +18,12 @@
 
 package org.wso2.andes.kernel;
 
+import com.gs.collections.impl.map.mutable.ConcurrentHashMap;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ConcurrentSkipListMap;
 
 /**
  * Class to keep track of message delivery information used for delivery.
@@ -47,8 +46,7 @@ public class MessageDeliveryInfo {
      * In-memory message list scheduled to be delivered. These messages will be flushed
      * to subscriber.Used Map instead of Set because of https://wso2.org/jira/browse/MB-1624
      */
-    private ConcurrentMap<Long, DeliverableAndesMetadata> readButUndeliveredMessages = new
-            ConcurrentSkipListMap<>();
+    private ConcurrentHashMap<Long, DeliverableAndesMetadata> readButUndeliveredMessages = new ConcurrentHashMap<>();
 
     /***
      * In case of a purge, we must store the timestamp when the purge was called.
@@ -90,6 +88,7 @@ public class MessageDeliveryInfo {
 
     /**
      * Re-buffer messages in case of failures
+     *
      * @param message Message metadata to buffer
      */
     public void reBufferMessage(DeliverableAndesMetadata message) {
@@ -133,6 +132,7 @@ public class MessageDeliveryInfo {
 
     /***
      * Clear the read-but-undelivered collection of messages of the given queue from memory
+     *
      * @return Number of messages that was in the read-but-undelivered buffer
      */
     public int clearReadButUndeliveredMessages() {
@@ -153,6 +153,7 @@ public class MessageDeliveryInfo {
 
     /**
      * set last purged timestamp for queue.
+     *
      * @param lastPurgedTimestamp the time stamp of the message message which was purged most recently
      */
     public void setLastPurgedTimestamp(Long lastPurgedTimestamp) {
