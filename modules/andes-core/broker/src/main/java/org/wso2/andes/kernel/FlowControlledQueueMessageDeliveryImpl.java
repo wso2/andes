@@ -46,7 +46,7 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
     @Override
     public int deliverMessageToSubscriptions(MessageDeliveryInfo messageDeliveryInfo) throws AndesException {
 
-        Set<DeliverableAndesMetadata> messages = messageDeliveryInfo.getReadButUndeliveredMessages();
+        Collection<DeliverableAndesMetadata> messages = messageDeliveryInfo.getReadButUndeliveredMessages();
         int sentMessageCount = 0;
         Iterator<DeliverableAndesMetadata> iterator = messages.iterator();
 

@@ -45,7 +45,7 @@ public class SlowestSubscriberTopicMessageDeliveryImpl implements MessageDeliver
     @Override
     public int deliverMessageToSubscriptions(MessageDeliveryInfo messageDeliveryInfo) throws AndesException {
 
-        Set<DeliverableAndesMetadata> messages = messageDeliveryInfo.getReadButUndeliveredMessages();
+        Collection<DeliverableAndesMetadata> messages = messageDeliveryInfo.getReadButUndeliveredMessages();
         int sentMessageCount = 0;
         Iterator<DeliverableAndesMetadata> iterator = messages.iterator();
         List<DeliverableAndesMetadata> droppedTopicMessagesList = new ArrayList<>();

@@ -21,9 +21,10 @@ package org.wso2.andes.kernel;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.tools.utils.MessageTracer;
 
+import java.util.Collection;
 import java.util.Iterator;
-import java.util.Set;
-import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.Map;
+import java.util.concurrent.ConcurrentSkipListMap;
 
 /**
  * Class to keep track of message delivery information used for delivery.
@@ -44,10 +45,10 @@ public class MessageDeliveryInfo {
 
     /**
      * In-memory message list scheduled to be delivered. These messages will be flushed
-     * to subscriber
+     * to subscriber.Used Map instead of Set because of https://wso2.org/jira/browse/MB-1624
      */
-    private Set<DeliverableAndesMetadata> readButUndeliveredMessages = new
-            ConcurrentSkipListSet<>();
+    private Map<Long, DeliverableAndesMetadata> readButUndeliveredMessages = new
+            ConcurrentSkipListMap<>();
 
     /***
      * In case of a purge, we must store the timestamp when the purge was called.
@@ -80,7 +81,7 @@ public class MessageDeliveryInfo {
      * @param message message metadata to buffer
      */
     public void bufferMessage(DeliverableAndesMetadata message) {
-        readButUndeliveredMessages.add(message);
+        readButUndeliveredMessages.put(message.getMessageID(),message);
         message.markAsBuffered();
         //Tracing message
         MessageTracer.trace(message, MessageTracer.METADATA_BUFFERED_FOR_DELIVERY);
@@ -154,8 +155,8 @@ public class MessageDeliveryInfo {
         this.destination = destination;
     }
 
-    public Set<DeliverableAndesMetadata> getReadButUndeliveredMessages() {
-        return readButUndeliveredMessages;
+    public Collection<DeliverableAndesMetadata> getReadButUndeliveredMessages() {
+        return readButUndeliveredMessages.values();
     }
 
     public Iterator<LocalSubscription> getIterator() {
