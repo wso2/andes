@@ -18,10 +18,8 @@
 
 package org.wso2.andes.store;
 
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ScheduledFuture;
-
+import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
+import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
@@ -34,11 +32,14 @@ import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.tools.utils.MessageTracer;
 
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ScheduledFuture;
+
 /**
  * Implementation of {@link MessageStore} which observes failures such is
  * connection errors. Any {@link MessageStore} implementation specified in
  * broker.xml will be wrapped by this class.
- * 
  */
 public class FailureObservingMessageStore implements MessageStore {
 
@@ -67,8 +68,7 @@ public class FailureObservingMessageStore implements MessageStore {
      */
     @Override
     public DurableStoreConnection initializeMessageStore(AndesContextStore contextStore,
-                                                         ConfigurationProperties connectionProperties)
-                                                                                                      throws AndesException {
+            ConfigurationProperties connectionProperties) throws AndesException {
         try {
             return wrappedInstance.initializeMessageStore(contextStore, connectionProperties);
         } catch (AndesStoreUnavailableException exception) {
@@ -107,7 +107,7 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public Map<Long, List<AndesMessagePart>> getContent(List<Long> messageIDList) throws AndesException {
+    public LongObjectHashMap<List<AndesMessagePart>> getContent(LongArrayList messageIDList) throws AndesException {
         try {
             return wrappedInstance.getContent(messageIDList);
         } catch (AndesStoreUnavailableException exception) {
@@ -131,7 +131,7 @@ public class FailureObservingMessageStore implements MessageStore {
      */
     @Override
     public void moveMetadataToQueue(long messageId, String currentQueueName, String targetQueueName)
-                                                                                                    throws AndesException {
+            throws AndesException {
         try {
             wrappedInstance.moveMetadataToQueue(messageId, currentQueueName, targetQueueName);
         } catch (AndesStoreUnavailableException exception) {
@@ -172,7 +172,7 @@ public class FailureObservingMessageStore implements MessageStore {
      */
     @Override
     public void updateMetadataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList)
-                                                                                                           throws AndesException {
+            throws AndesException {
         try {
             wrappedInstance.updateMetadataInformation(currentQueueName, metadataList);
         } catch (AndesStoreUnavailableException exception) {
@@ -198,8 +198,8 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public List<DeliverableAndesMetadata> getMetadataList(Slot slot, String storageQueueName, long firstMsgId, long
-            lastMsgID) throws AndesException {
+    public List<DeliverableAndesMetadata> getMetadataList(Slot slot, String storageQueueName, long firstMsgId,
+            long lastMsgID) throws AndesException {
         try {
             return wrappedInstance.getMetadataList(slot, storageQueueName, firstMsgId, lastMsgID);
         } catch (AndesStoreUnavailableException exception) {
@@ -224,9 +224,8 @@ public class FailureObservingMessageStore implements MessageStore {
     /**
      * {@inheritDoc}
      */
-    public List<Long> getNextNMessageIdsFromQueue(final String storageQueueName,
-                                                                       long firstMsgId, int count)
-            throws AndesException{
+    public LongArrayList getNextNMessageIdsFromQueue(final String storageQueueName, long firstMsgId, int count)
+            throws AndesException {
         try {
             return wrappedInstance.getNextNMessageIdsFromQueue(storageQueueName, firstMsgId, count);
         } catch (AndesStoreUnavailableException exception) {
@@ -235,13 +234,12 @@ public class FailureObservingMessageStore implements MessageStore {
         }
     }
 
-    
     /**
      * {@inheritDoc}
      */
     @Override
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(String storageQueueName, long firstMsgId,
-                                                                       int count) throws AndesException {
+            int count) throws AndesException {
         try {
             return wrappedInstance.getNextNMessageMetadataFromQueue(storageQueueName, firstMsgId, count);
         } catch (AndesStoreUnavailableException exception) {
@@ -255,11 +253,10 @@ public class FailureObservingMessageStore implements MessageStore {
      */
     @Override
     public List<AndesMessageMetadata> getNextNMessageMetadataForQueueFromDLC(String storageQueueName,
-                                                                             String dlcQueueName, long firstMsgId,
-                                                                             int count) throws AndesException {
+            String dlcQueueName, long firstMsgId, int count) throws AndesException {
         try {
-            return wrappedInstance.getNextNMessageMetadataForQueueFromDLC(storageQueueName, dlcQueueName, firstMsgId,
-                    count);
+            return wrappedInstance
+                    .getNextNMessageMetadataForQueueFromDLC(storageQueueName, dlcQueueName, firstMsgId, count);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -347,7 +344,7 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void deleteMessagesFromExpiryQueue(List<Long> messagesToRemove) throws AndesException {
+    public void deleteMessagesFromExpiryQueue(LongArrayList messagesToRemove) throws AndesException {
         try {
             wrappedInstance.deleteMessagesFromExpiryQueue(messagesToRemove);
         } catch (AndesStoreUnavailableException exception) {
@@ -361,7 +358,7 @@ public class FailureObservingMessageStore implements MessageStore {
      */
     @Override
     public void addMessageToExpiryQueue(Long messageId, Long expirationTime, boolean isMessageForTopic,
-                                        String destination) throws AndesException {
+            String destination) throws AndesException {
         try {
             wrappedInstance.addMessageToExpiryQueue(messageId, expirationTime, isMessageForTopic, destination);
         } catch (AndesStoreUnavailableException exception) {
@@ -400,7 +397,8 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public List<Long> getMessageIDsAddressedToQueue(String storageQueueName, Long startMessageID) throws AndesException {
+    public LongArrayList getMessageIDsAddressedToQueue(String storageQueueName, Long startMessageID)
+            throws AndesException {
         try {
             return wrappedInstance.getMessageIDsAddressedToQueue(storageQueueName, startMessageID);
         } catch (AndesStoreUnavailableException exception) {
@@ -538,7 +536,7 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void storeRetainedMessages(Map<String,AndesMessage> retainMap) throws AndesException {
+    public void storeRetainedMessages(Map<String, AndesMessage> retainMap) throws AndesException {
         try {
             wrappedInstance.storeRetainedMessages(retainMap);
         } catch (AndesStoreUnavailableException exception) {
@@ -586,8 +584,6 @@ public class FailureObservingMessageStore implements MessageStore {
         }
     }
 
-    
-    
     /**
      * {@inheritDoc}
      */
@@ -608,37 +604,36 @@ public class FailureObservingMessageStore implements MessageStore {
      */
     @Override
     public boolean isOperational(String testString, long testTime) {
-        
-            boolean operational = false;
-            if ( wrappedInstance.isOperational(testString, testTime)){
-                operational = true;
-                if ( storeHealthDetectingFuture != null){
-                 // we have detected that store is operational therefore
-                 // we don't need to run the periodic task to check weather store is available.
-                    storeHealthDetectingFuture.cancel(false);
-                    storeHealthDetectingFuture = null;
-                }
-                
+
+        boolean operational = false;
+        if (wrappedInstance.isOperational(testString, testTime)) {
+            operational = true;
+            if (storeHealthDetectingFuture != null) {
+                // we have detected that store is operational therefore
+                // we don't need to run the periodic task to check weather store is available.
+                storeHealthDetectingFuture.cancel(false);
+                storeHealthDetectingFuture = null;
             }
+
+        }
         return operational;
     }
 
     /**
      * A convenient method to notify all {@link StoreHealthListener}s that
      * context store became offline
-     * 
-     * @param e
-     *            the exception occurred.
+     *
+     * @param e the exception occurred.
      */
     private synchronized void notifyFailures(AndesStoreUnavailableException e) {
-        
+
         if (storeHealthDetectingFuture == null) {
             // this is the first failure 
             FailureObservingStoreManager.notifyStoreNonOperational(e, wrappedInstance);
             storeHealthDetectingFuture = FailureObservingStoreManager.scheduleHealthCheckTask(this);
-            
+
         }
-        
+
     }
-    
+
 }

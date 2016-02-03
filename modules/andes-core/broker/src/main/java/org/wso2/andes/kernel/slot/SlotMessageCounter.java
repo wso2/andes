@@ -19,6 +19,7 @@
 package org.wso2.andes.kernel.slot;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.gs.collections.impl.map.mutable.ConcurrentHashMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -35,7 +36,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
@@ -59,7 +59,6 @@ public class SlotMessageCounter {
      */
     private final ScheduledExecutorService submitSlotToCoordinatorExecutor;
 
-
     private Log log = LogFactory.getLog(SlotMessageCounter.class);
     private static SlotMessageCounter slotMessageCounter = new SlotMessageCounter();
     private final int slotWindowSize;
@@ -76,7 +75,7 @@ public class SlotMessageCounter {
 
     /**
      * Time between successive slot submit scheduled tasks.
-     * <p/>
+     * <p>
      * In a slow message publishing scenario, this is the delay for each message for delivery.
      * For instance if we publish one message per minute then each message will have to wait
      * till this timeout before the messages are submitted to the slot coordinator.
@@ -85,20 +84,20 @@ public class SlotMessageCounter {
 
     private SlotMessageCounter() {
 
-        SLOT_SUBMIT_TIMEOUT = AndesConfigurationManager.readValue(
-                AndesConfiguration.PERFORMANCE_TUNING_SUBMIT_SLOT_TIMER_PERIOD);
+        SLOT_SUBMIT_TIMEOUT = AndesConfigurationManager
+                .readValue(AndesConfiguration.PERFORMANCE_TUNING_SUBMIT_SLOT_TIMER_PERIOD);
 
         slotWindowSize = AndesConfigurationManager
                 .readValue(AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
 
-        timeOutForMessagesInQueue = AndesConfigurationManager.readValue
-                (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_MESSAGE_ACCUMULATION_TIMEOUT);
+        timeOutForMessagesInQueue = AndesConfigurationManager
+                .readValue(AndesConfiguration.PERFORMANCE_TUNING_SLOTS_MESSAGE_ACCUMULATION_TIMEOUT);
 
         slotSubmitLoopSkipCount = 0;
         slotCoordinator = MessagingEngine.getInstance().getSlotCoordinator();
 
-        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
-                .setNameFormat("SlotMessageCounterTimeoutTask").build();
+        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("SlotMessageCounterTimeoutTask")
+                .build();
         submitSlotToCoordinatorExecutor = Executors.newScheduledThreadPool(2, namedThreadFactory);
         scheduleSubmitSlotToCoordinatorTimer();
     }
@@ -109,7 +108,7 @@ public class SlotMessageCounter {
     private void scheduleSubmitSlotToCoordinatorTimer() {
         submitSlotToCoordinatorExecutor
                 .scheduleWithFixedDelay(new SlotTimeoutTask(), SLOT_SUBMIT_TIMEOUT, SLOT_SUBMIT_TIMEOUT,
-                                        TimeUnit.MILLISECONDS);
+                        TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -139,8 +138,7 @@ public class SlotMessageCounter {
                     /*
                     We do not do anything here since this operation will be run by timeout thread also
                      */
-                log.error("Error occurred while connecting to the thrift coordinator " + e
-                        .getMessage(), e);
+                log.error("Error occurred while connecting to the thrift coordinator " + e.getMessage(), e);
             }
         }
     }
@@ -179,8 +177,7 @@ public class SlotMessageCounter {
     /**
      * Submit last message ID in the slot to SlotManager.
      *
-     * @param storageQueueName
-     *         name of the queue which this slot belongs to
+     * @param storageQueueName name of the queue which this slot belongs to
      */
     public synchronized void submitSlot(String storageQueueName) throws AndesException {
         Slot slot = queueToSlotMap.get(storageQueueName);
@@ -194,8 +191,8 @@ public class SlotMessageCounter {
                     long localSafeZone = inferLocalSafeZone(storageQueueName);
                     slotTimeOutMap.remove(storageQueueName);
                     queueToSlotMap.remove(storageQueueName);
-                    slotCoordinator.updateMessageId(storageQueueName, slot.getStartMessageId(),
-                            slot.getEndMessageId(), localSafeZone);
+                    slotCoordinator.updateMessageId(storageQueueName, slot.getStartMessageId(), slot.getEndMessageId(),
+                            localSafeZone);
                 } catch (ConnectionException e) {
                     // we only log here since this is called again from timer task if previous attempt failed
                     log.error("Error occurred while connecting to the thrift coordinator.", e);
@@ -207,6 +204,7 @@ public class SlotMessageCounter {
     /**
      * Figure out if the currentStorageQueue's endMessageID is larger than startMessageID's of other queues. If yes,
      * set the minimum startMessageID from those queues as the local safe Zone.
+     *
      * @param currentStorageQueueName
      * @return Local Safe Zone
      */
@@ -214,10 +212,10 @@ public class SlotMessageCounter {
 
         long localSafeZone = queueToSlotMap.get(currentStorageQueueName).getEndMessageId();
 
-        for (Map.Entry<String,Slot> queueSlotEntry : queueToSlotMap.entrySet()) {
+        for (Map.Entry<String, Slot> queueSlotEntry : queueToSlotMap.entrySet()) {
 
             if (!queueSlotEntry.getKey().equals(currentStorageQueueName)) {
-                localSafeZone = Math.min(queueSlotEntry.getValue().getStartMessageId(),localSafeZone);
+                localSafeZone = Math.min(queueSlotEntry.getValue().getStartMessageId(), localSafeZone);
             }
         }
 
@@ -246,8 +244,7 @@ public class SlotMessageCounter {
     /**
      * Check if the slot window size has exceeded
      *
-     * @param slot
-     *         Slot
+     * @param slot Slot
      * @return true if slot window size has exceeded
      */
     private boolean checkMessageLimitReached(Slot slot) {
@@ -257,8 +254,7 @@ public class SlotMessageCounter {
     /**
      * Check if we slot is timed out
      *
-     * @param lastSlotUpdateTime
-     *         Last update time of the Slot
+     * @param lastSlotUpdateTime Last update time of the Slot
      * @return true if slot is timed-out
      */
     private boolean checkTimeOutReached(Long lastSlotUpdateTime) {
@@ -277,6 +273,7 @@ public class SlotMessageCounter {
     /**
      * Iterate through all the queues/topics and do a update message id event to the coordinator node with a offset
      * to the provided message id.
+     *
      * @param recoveryMessageId message id that is taken as the seed for the update message id event
      */
     public void sendRecoverySlotSubmit(long recoveryMessageId) {
@@ -284,9 +281,9 @@ public class SlotMessageCounter {
             log.info("Starting publisher slot recovery event with recovery message id " + recoveryMessageId);
             AndesContextStore contextStore = AndesContext.getInstance().getAndesContextStore();
             List<AndesQueue> queueList = contextStore.getAllQueuesStored();
-            for(AndesQueue queue: queueList) {
-                slotCoordinator.updateMessageId(queue.queueName, recoveryMessageId,
-                        recoveryMessageId, currentSlotDeleteSafeZone);
+            for (AndesQueue queue : queueList) {
+                slotCoordinator.updateMessageId(queue.queueName, recoveryMessageId, recoveryMessageId,
+                        currentSlotDeleteSafeZone);
                 // NOTE: Two queues can't have the same message id at the MB_SLOT_MESSAGE_ID table hence incrementing.
                 // Get fresh slot logic deletes the current 'last-queue-to-message-id' mapping with only the message id
                 recoveryMessageId++;
@@ -324,8 +321,7 @@ public class SlotMessageCounter {
         /**
          * Find and submit timed out slots to slot coordinator
          *
-         * @param slotTimeoutEntries
-         *         Set of slot last update time entries
+         * @param slotTimeoutEntries Set of slot last update time entries
          */
         private void updateCoordinatorWithTimedOutSlots(Set<Map.Entry<String, Long>> slotTimeoutEntries) {
             for (Map.Entry<String, Long> entry : slotTimeoutEntries) {

@@ -20,18 +20,23 @@ package org.wso2.andes.kernel.disruptor.delivery;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
+import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
+import com.gs.collections.impl.set.mutable.primitive.LongHashSet;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessagePart;
+import org.wso2.andes.kernel.DisruptorCachedContent;
+import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -77,7 +82,7 @@ public class ContentCacheCreator {
      */
     public void onEvent(List<DeliveryEventData> eventDataList) throws AndesException {
 
-        Set<Long> messagesToFetch = new HashSet<>();
+        LongHashSet messagesToFetch = new LongHashSet();
         List<DeliveryEventData> messagesWithoutContent = new ArrayList<>();
 
         for (DeliveryEventData deliveryEventData : eventDataList) {
@@ -99,8 +104,11 @@ public class ContentCacheCreator {
                 messagesWithoutContent.add(deliveryEventData);
             }
         }
+        LongArrayList longArrayList = new LongArrayList();
+        longArrayList.addAll(messagesToFetch);
 
-        Map<Long, List<AndesMessagePart>> contentListMap = MessagingEngine.getInstance().getContent(new ArrayList<>(messagesToFetch));
+        LongObjectHashMap<List<AndesMessagePart>> contentListMap = MessagingEngine.getInstance()
+                .getContent(longArrayList);
 
         for (DeliveryEventData deliveryEventData : messagesWithoutContent) {
 

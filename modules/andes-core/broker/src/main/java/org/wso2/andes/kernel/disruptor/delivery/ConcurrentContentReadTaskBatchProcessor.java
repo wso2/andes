@@ -18,6 +18,7 @@
 
 package org.wso2.andes.kernel.disruptor.delivery;
 
+import com.gs.collections.impl.set.mutable.primitive.LongHashSet;
 import com.lmax.disruptor.AlertException;
 import com.lmax.disruptor.EventProcessor;
 import com.lmax.disruptor.ExceptionHandler;
@@ -32,9 +33,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.ProtocolMessage;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -68,11 +67,8 @@ public class ConcurrentContentReadTaskBatchProcessor implements EventProcessor {
      * @param batchSize       size limit of total content size to batch. This is a loose limit
      */
     public ConcurrentContentReadTaskBatchProcessor(final RingBuffer<DeliveryEventData> ringBuffer,
-                                                   final SequenceBarrier sequenceBarrier,
-                                                   final ContentCacheCreator eventHandler,
-                                                   long turn,
-                                                   int groupCount,
-                                                   int batchSize ) {
+            final SequenceBarrier sequenceBarrier, final ContentCacheCreator eventHandler, long turn, int groupCount,
+            int batchSize) {
         if (turn >= groupCount) {
             throw new IllegalArgumentException("Turn should be less than groupCount");
         }
@@ -134,7 +130,7 @@ public class ConcurrentContentReadTaskBatchProcessor implements EventProcessor {
         DeliveryEventData event = null;
         int totalContentLength = 0;
         List<DeliveryEventData> eventList = new ArrayList<>(this.batchSize);
-        Set<Long> messageIDSet = new HashSet<>();
+        LongHashSet messageIDSet = new LongHashSet();
         long currentTurn;
         long nextSequence = sequence.get() + 1L;
         while (true) {
@@ -158,12 +154,12 @@ public class ConcurrentContentReadTaskBatchProcessor implements EventProcessor {
                     }
 
                     // Batch and invoke event handler. 
-                    if (((totalContentLength >= batchSize) || (nextSequence == availableSequence))
-                            && !eventList.isEmpty()) {
+                    if (((totalContentLength >= batchSize) || (nextSequence == availableSequence)) && !eventList
+                            .isEmpty()) {
 
                         eventHandler.onEvent(eventList);
                         if (log.isDebugEnabled()) {
-                            log.debug("Event handler called with message id list " + messageIDSet );
+                            log.debug("Event handler called with message id list " + messageIDSet);
                         }
 
                         // reset counters and lists
