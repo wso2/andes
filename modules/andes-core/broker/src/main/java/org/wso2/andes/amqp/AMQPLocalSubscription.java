@@ -41,12 +41,11 @@ import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionImpl;
 import org.wso2.andes.subscription.OutboundSubscription;
 import org.wso2.andes.tools.utils.MessageTracer;
-
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 /**
@@ -97,7 +96,7 @@ public class AMQPLocalSubscription implements OutboundSubscription {
         this.isDurable = isDurable;
         this.isBoundToTopic = isBoundToTopic;
 
-        this.storedMessageCache = new HashMap<>();
+        this.storedMessageCache = new ConcurrentHashMap<>();
     }
 
     /**
