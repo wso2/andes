@@ -16,6 +16,8 @@
 
 package org.wso2.andes.kernel;
 
+import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
+import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -77,7 +79,7 @@ public class Andes {
     private InboundEventManager inboundEventManager;
 
     /**
-     *  Andes context related information manager. Exchanges, Queues and Bindings.
+     * Andes context related information manager. Exchanges, Queues and Bindings.
      */
     private AndesContextInformationManager contextInformationManager;
     /**
@@ -137,11 +139,9 @@ public class Andes {
     /**
      * Initialise is package specific. We don't need outsiders initialising the API
      */
-    void initialise(SubscriptionEngine subscriptionEngine,
-                    MessagingEngine messagingEngine,
-                    AndesContextInformationManager contextInformationManager,
-                    AndesSubscriptionManager subscriptionManager) {
-        
+    void initialise(SubscriptionEngine subscriptionEngine, MessagingEngine messagingEngine,
+            AndesContextInformationManager contextInformationManager, AndesSubscriptionManager subscriptionManager) {
+
         this.contextInformationManager = contextInformationManager;
         this.messagingEngine = messagingEngine;
         this.subscriptionManager = subscriptionManager;
@@ -156,20 +156,21 @@ public class Andes {
      * assuming all messages in the slot range has been delivered.
      */
     public void startSafeZoneAnalysisWorker() {
-        SafeZoneUpdateEventTriggeringTask safeZoneUpdateTask =
-                new SafeZoneUpdateEventTriggeringTask(inboundEventManager);
+        SafeZoneUpdateEventTriggeringTask safeZoneUpdateTask = new SafeZoneUpdateEventTriggeringTask(
+                inboundEventManager);
 
         log.info("Starting Safe Zone Calculator for slots.");
-        safeZoneUpdateScheduler.scheduleAtFixedRate(safeZoneUpdateTask,
-                5, safeZoneUpdateTriggerInterval, TimeUnit.MILLISECONDS);
+        safeZoneUpdateScheduler
+                .scheduleAtFixedRate(safeZoneUpdateTask, 5, safeZoneUpdateTriggerInterval, TimeUnit.MILLISECONDS);
 
     }
 
     /**
      * When a message is received from a transport it should be converted to an AndesMessage and handed over to Andes
      * for delivery through this method.
-     * @param message AndesMessage
-     * @param andesChannel AndesChannel
+     *
+     * @param message       AndesMessage
+     * @param andesChannel  AndesChannel
      * @param pubAckHandler PubAckHandler
      */
     public void messageReceived(AndesMessage message, AndesChannel andesChannel, PubAckHandler pubAckHandler) {
@@ -186,14 +187,15 @@ public class Andes {
 
     /**
      * Acknowledgement received from clients for sent messages should be notified to Andes using this method.
+     *
      * @param ackData AndesAckData
      * @throws AndesException
      */
     public void ackReceived(AndesAckData ackData) throws AndesException {
 
         //Tracing Message
-        MessageTracer.trace(ackData.getAcknowledgedMessage().getMessageID(), ackData.getAcknowledgedMessage()
-                .getDestination(), MessageTracer.ACK_RECEIVED_FROM_PROTOCOL);
+        MessageTracer.trace(ackData.getAcknowledgedMessage().getMessageID(),
+                ackData.getAcknowledgedMessage().getDestination(), MessageTracer.ACK_RECEIVED_FROM_PROTOCOL);
 
         //Adding metrics meter for ack rate
 //        Meter ackMeter = MetricManager.meter(Level.INFO, MetricsConstants.ACK_RECEIVE_RATE);
@@ -227,6 +229,7 @@ public class Andes {
 
     /**
      * Close the local subscription with reference to the input subscription event.
+     *
      * @param subscriptionEvent disruptor event containing the subscription to close.
      * @throws AndesException
      */
@@ -243,10 +246,12 @@ public class Andes {
     /**
      * When a local subscription is created notify Andes through this method. This need to be called first to receive
      * any messages from this local subscription
+     *
      * @param subscriptionEvent InboundSubscriptionEvent
      * @throws SubscriptionAlreadyExistsException
      */
-    public void openLocalSubscription(InboundSubscriptionEvent subscriptionEvent) throws SubscriptionAlreadyExistsException, AndesException {
+    public void openLocalSubscription(InboundSubscriptionEvent subscriptionEvent)
+            throws SubscriptionAlreadyExistsException, AndesException {
         subscriptionEvent.prepareForNewSubscription(subscriptionManager);
         inboundEventManager.publishStateEvent(subscriptionEvent);
         subscriptionEvent.waitForCompletion();
@@ -275,7 +280,7 @@ public class Andes {
      * Shut down Andes.
      * NOTE: This is package specific. We don't need access outside from kernel for this task
      */
-    public void shutDown() throws AndesException{
+    public void shutDown() throws AndesException {
         InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
         kernelOpsEvent.gracefulShutdown(messagingEngine, inboundEventManager, flowControlManager);
         kernelOpsEvent.waitForTaskCompletion();
@@ -307,7 +312,7 @@ public class Andes {
      * Remove messages of the queue matching to given destination queue ( h2 / mysql etc. ).
      *
      * @param queueEvent queue event related to purge
-     * since we cannot guarantee that we caught all messages in delivery threads.)
+     *                   since we cannot guarantee that we caught all messages in delivery threads.)
      * @throws AndesException
      */
     public int purgeQueue(InboundQueueEvent queueEvent) throws AndesException {
@@ -316,8 +321,8 @@ public class Andes {
         try {
             return queueEvent.getPurgedCount(PURGE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         } catch (TimeoutException e) {
-            log.error("Purge event timed out. Purge may have failed or may take longer than " 
-                    + PURGE_TIMEOUT_SECONDS + " seconds", e);
+            log.error("Purge event timed out. Purge may have failed or may take longer than " + PURGE_TIMEOUT_SECONDS
+                    + " seconds", e);
         }
         return -1;
     }
@@ -331,8 +336,8 @@ public class Andes {
      */
     public void deleteMessages(List<DeliverableAndesMetadata> messagesToRemove, boolean moveToDeadLetterChannel)
             throws AndesException {
-        InboundDeleteMessagesEvent deleteMessagesEvent = new InboundDeleteMessagesEvent(
-                messagesToRemove, moveToDeadLetterChannel);
+        InboundDeleteMessagesEvent deleteMessagesEvent = new InboundDeleteMessagesEvent(messagesToRemove,
+                moveToDeadLetterChannel);
         deleteMessagesEvent.prepareForDelete(messagingEngine);
         inboundEventManager.publishStateEvent(deleteMessagesEvent);
     }
@@ -340,13 +345,14 @@ public class Andes {
     /**
      * Schedule to delete messages from store. Optionally move to dead letter channel. Here if the message
      * is still tracked in message delivery path, message states will be updated accordingly.
-     * @param messagesToRemove Collection of messages to remove
+     *
+     * @param messagesToRemove        Collection of messages to remove
      * @param moveToDeadLetterChannel if to move to DLc
      */
     public void deleteMessages(Collection<AndesMessageMetadata> messagesToRemove, boolean moveToDeadLetterChannel)
             throws AndesException {
-        InboundDeleteMessagesEvent deleteMessagesEvent = new InboundDeleteMessagesEvent(
-                messagesToRemove, moveToDeadLetterChannel);
+        InboundDeleteMessagesEvent deleteMessagesEvent = new InboundDeleteMessagesEvent(messagesToRemove,
+                moveToDeadLetterChannel);
         deleteMessagesEvent.prepareForDelete(messagingEngine);
         inboundEventManager.publishStateEvent(deleteMessagesEvent);
     }
@@ -357,8 +363,7 @@ public class Andes {
      * @param messagesToRemove List of messages to remove
      */
     public void deleteMessagesFromDLC(List<AndesMessageMetadata> messagesToRemove) throws AndesException {
-        InboundDeleteDLCMessagesEvent deleteDLCMessagesEvent
-                = new InboundDeleteDLCMessagesEvent(messagesToRemove);
+        InboundDeleteDLCMessagesEvent deleteDLCMessagesEvent = new InboundDeleteDLCMessagesEvent(messagesToRemove);
         deleteDLCMessagesEvent.prepareForDelete(messagingEngine);
         inboundEventManager.publishStateEvent(deleteDLCMessagesEvent);
     }
@@ -378,7 +383,8 @@ public class Andes {
     /**
      * Delete the queue from broker. This will purge the queue and
      * delete cluster-wide
-     * @param queueEvent  queue event for deleting queue
+     *
+     * @param queueEvent queue event for deleting queue
      * @throws AndesException
      */
     public void deleteQueue(InboundQueueEvent queueEvent) throws AndesException {
@@ -388,7 +394,8 @@ public class Andes {
 
     /**
      * Return the requested chunk of a message's content.
-     * @param messageID Unique ID of the Message
+     *
+     * @param messageID       Unique ID of the Message
      * @param offsetInMessage The offset of the required chunk in the Message content.
      * @return AndesMessagePart
      * @throws AndesException
@@ -411,7 +418,7 @@ public class Andes {
     /**
      * Message is rejected.
      *
-     * @param metadata message that is rejected.
+     * @param metadata  message that is rejected.
      * @param channelID ID of the connection channel reject is received
      * @throws AndesException
      */
@@ -440,8 +447,7 @@ public class Andes {
      * @throws AndesException
      */
     public void reQueueMessageToSubscriber(DeliverableAndesMetadata messageMetadata, LocalSubscription subscription)
-            throws
-            AndesException {
+            throws AndesException {
         MessagingEngine.getInstance().reQueueMessageToSubscriber(messageMetadata, subscription);
     }
 
@@ -452,8 +458,8 @@ public class Andes {
      * @param destinationQueueName The original destination queue of the message
      * @throws AndesException
      */
-    public void moveMessageToDeadLetterChannel(DeliverableAndesMetadata message, String destinationQueueName) throws
-            AndesException {
+    public void moveMessageToDeadLetterChannel(DeliverableAndesMetadata message, String destinationQueueName)
+            throws AndesException {
         MessagingEngine.getInstance().moveMessageToDeadLetterChannel(message, destinationQueueName);
     }
 
@@ -476,7 +482,7 @@ public class Andes {
      * @return map of message id:content chunk list
      * @throws AndesException
      */
-    public Map<Long, List<AndesMessagePart>> getContent(List<Long> messageIdList) throws AndesException {
+    public LongObjectHashMap<List<AndesMessagePart>> getContent(LongArrayList messageIdList) throws AndesException {
         return MessagingEngine.getInstance().getContent(messageIdList);
     }
 
@@ -533,9 +539,8 @@ public class Andes {
      * @return List of message metadata
      * @throws AndesException
      */
-    public List<DeliverableAndesMetadata> getMetaDataList(Slot slot, final String queueName, long firstMsgId, long
-            lastMsgID)
-            throws AndesException {
+    public List<DeliverableAndesMetadata> getMetaDataList(Slot slot, final String queueName, long firstMsgId,
+            long lastMsgID) throws AndesException {
         return MessagingEngine.getInstance().getMetaDataList(slot, queueName, firstMsgId, lastMsgID);
     }
 
@@ -549,8 +554,8 @@ public class Andes {
      * @return List of message metadata
      * @throws AndesException
      */
-    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName, long firstMsgId, int count)
-            throws AndesException {
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName, long firstMsgId,
+            int count) throws AndesException {
         return MessagingEngine.getInstance().getNextNMessageMetadataFromQueue(queueName, firstMsgId, count);
     }
 
@@ -578,10 +583,10 @@ public class Andes {
      * @return List of message metadata
      * @throws AndesException
      */
-    public List<AndesMessageMetadata> getNextNMessageMetadataInDLCForQueue(final String queueName, final String
-            dlcQueueName, long firstMsgId, int count) throws AndesException {
-        return MessagingEngine.getInstance().getNextNMessageMetadataInDLCForQueue(queueName, dlcQueueName,
-                firstMsgId, count);
+    public List<AndesMessageMetadata> getNextNMessageMetadataInDLCForQueue(final String queueName,
+            final String dlcQueueName, long firstMsgId, int count) throws AndesException {
+        return MessagingEngine.getInstance()
+                .getNextNMessageMetadataInDLCForQueue(queueName, dlcQueueName, firstMsgId, count);
     }
 
     /**
@@ -593,13 +598,14 @@ public class Andes {
      * @return List of message metadata
      * @throws AndesException
      */
-    public List<AndesMessageMetadata> getNextNMessageMetadataFromDLC(final String dlcQueueName, long firstMsgId, int
-            count) throws AndesException {
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromDLC(final String dlcQueueName, long firstMsgId,
+            int count) throws AndesException {
         return MessagingEngine.getInstance().getNextNMessageMetadataFromDLC(dlcQueueName, firstMsgId, count);
     }
 
     /**
      * Get expired but not yet deleted messages from message store.
+     *
      * @param limit upper bound for number of messages to be returned
      * @return AndesRemovableMetadata
      * @throws AndesException
@@ -631,8 +637,7 @@ public class Andes {
     /**
      * Create a new Andes channel for a new local channel.
      *
-     * @param listener
-     *         Local flow control listener
+     * @param listener Local flow control listener
      * @return AndesChannel
      */
     public AndesChannel createChannel(FlowControlListener listener) throws AndesException {
@@ -642,7 +647,7 @@ public class Andes {
     /**
      * Create a new Andes channel for a new local channel.
      *
-     * @param listener Local flow control listener
+     * @param listener  Local flow control listener
      * @param channelId the channel id
      * @return AndesChannel
      */
@@ -661,6 +666,7 @@ public class Andes {
 
     /**
      * Create andes binding in Andes kernel.
+     *
      * @param bindingsEvent InboundBindingEvent binding to be created
      * @throws AndesException
      */
@@ -694,10 +700,10 @@ public class Andes {
     /**
      * Delete exchange from andes kernel.
      *
-     * @param exchangeEvent  exchange to delete
+     * @param exchangeEvent exchange to delete
      * @throws AndesException
      */
-    public void deleteExchange(InboundExchangeEvent exchangeEvent) throws AndesException{
+    public void deleteExchange(InboundExchangeEvent exchangeEvent) throws AndesException {
         exchangeEvent.prepareForDeleteExchange(contextInformationManager);
         inboundEventManager.publishStateEvent(exchangeEvent);
     }
@@ -705,7 +711,7 @@ public class Andes {
     public boolean checkIfQueueDeletable(InboundQueueEvent queueEvent) throws AndesException {
         queueEvent.prepareForCheckIfQueueDeletable(contextInformationManager);
         inboundEventManager.publishStateEvent(queueEvent);
-        
+
         return queueEvent.IsQueueDeletable();
     }
 
@@ -717,8 +723,8 @@ public class Andes {
      * @throws AndesException
      */
     public InboundTransactionEvent newTransaction(AndesChannel channel) throws AndesException {
-        return new InboundTransactionEvent(messagingEngine, inboundEventManager,
-                MAX_TX_BATCH_SIZE, TX_EVENT_TIMEOUT, channel);
+        return new InboundTransactionEvent(messagingEngine, inboundEventManager, MAX_TX_BATCH_SIZE, TX_EVENT_TIMEOUT,
+                channel);
     }
 
     /**

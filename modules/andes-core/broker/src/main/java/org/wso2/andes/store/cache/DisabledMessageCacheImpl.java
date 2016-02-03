@@ -18,12 +18,12 @@
 
 package org.wso2.andes.store.cache;
 
-import java.util.List;
-import java.util.Map;
-
+import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
+import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessagePart;
 
+import java.util.List;
 
 /**
  * Implementation which doesn't cache any message. used when user disabled the
@@ -43,7 +43,7 @@ public class DisabledMessageCacheImpl implements AndesMessageCache {
      * {@inheritDoc}
      */
     @Override
-    public void removeFromCache(List<Long> messagesToRemove) {
+    public void removeFromCache(LongArrayList messagesToRemove) {
     }
 
     /**
@@ -67,7 +67,8 @@ public class DisabledMessageCacheImpl implements AndesMessageCache {
      * {@inheritDoc}
      */
     @Override
-    public void fillContentFromCache(List<Long> messageIDList, Map<Long, List<AndesMessagePart>> contentList) {
+    public void fillContentFromCache(LongArrayList messageIDList,
+            LongObjectHashMap<List<AndesMessagePart>> contentList) {
     }
 
     /**

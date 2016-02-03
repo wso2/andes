@@ -107,6 +107,15 @@
             <groupId>net.jpountz.lz4</groupId>
             <artifactId>lz4</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.goldmansachs</groupId>
+            <artifactId>gs-collections-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.goldmansachs</groupId>
+            <artifactId>gs-collections</artifactId>
+        </dependency>
+
         <!--MQTT Dependencies -->
         <dependency>
             <groupId>org.fusesource.hawtdb</groupId>
@@ -150,6 +159,8 @@
                             org.fusesource.hawtdb*,
                             org.wso2.andes.*;-split-package:=merge-last,
                             org.apache.mina.*;-split-package:=merge-last,
+                            org.dna.mqtt.*;-split-package:=merge-last,
+                            com.gs.collections.*;-split-package:=merge-last,
                             net.jpountz.*;-split-package:=merge-last
                         </Export-Package>
                         <Import-Package>
