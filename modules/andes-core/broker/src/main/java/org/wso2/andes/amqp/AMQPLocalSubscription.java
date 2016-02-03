@@ -96,7 +96,9 @@ public class AMQPLocalSubscription implements OutboundSubscription {
         this.isDurable = isDurable;
         this.isBoundToTopic = isBoundToTopic;
 
-        this.storedMessageCache = new ConcurrentHashMap<>();
+        //We leave the default values for initialCapacity and progression factor
+        //We re define concurrencyLevel as 2, since there will be only 2 threads which accesses it concurrently
+        this.storedMessageCache = new ConcurrentHashMap<>(16,0.75f,2);
     }
 
     /**
