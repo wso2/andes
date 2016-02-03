@@ -115,7 +115,13 @@ public class SlotDeletionExecutor {
                             } else {
                                 SlotDeliveryWorker slotWorker = SlotDeliveryWorkerManager.getInstance()
                                         .getSlotWorker(slot.getStorageQueueName());
-                                slotWorker.deleteSlot(slot);
+
+                                // slotWorker can be null.
+                                // For instance if the deletion request came from coordinator after a member leaves the
+                                // cluster and no subscribers on coordinator node.
+                                if (null != slotWorker) {
+                                    slotWorker.deleteSlot(slot);
+                                }
                             }
                         } else {
                             slotsToDelete.put(slot); // Not deleted. Hence puttng back in queue

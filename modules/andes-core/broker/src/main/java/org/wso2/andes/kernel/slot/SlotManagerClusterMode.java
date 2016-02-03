@@ -374,6 +374,8 @@ public class SlotManagerClusterMode {
 						log.debug("Returned slot " + slotToBeReAssigned + "from node " +
 						          nodeId + " as member left");
 					}
+				} else { // Delete empty slots
+					SlotDeletionExecutor.getInstance().executeSlotDeletion(slotToBeReAssigned);
 				}
 			}
 			slotAgent.deleteOverlappedSlots(nodeId);
@@ -387,10 +389,10 @@ public class SlotManagerClusterMode {
 	/**
 	 * Remove slot entry from slot assignment
 	 *
-	 * @param queueName name of the queue which is owned by the slot to be deleted
+	 * @param storageQueueName name of the queue which is owned by the slot to be deleted
 	 * @param emptySlot reference of the slot to be deleted
 	 */
-	public boolean deleteSlot(String queueName, Slot emptySlot, String nodeId) throws AndesException {
+	public boolean deleteSlot(String storageQueueName, Slot emptySlot, String nodeId) throws AndesException {
 		boolean slotDeleted = false;
 
 		long startMsgId = emptySlot.getStartMessageId();
@@ -403,9 +405,9 @@ public class SlotManagerClusterMode {
 		if (slotDeleteSafeZone > endMsgId) {
 			String lockKey = nodeId + SlotManagerClusterMode.class;
 			synchronized (lockKey.intern()) {
-				slotDeleted = slotAgent.deleteSlot(nodeId, queueName, startMsgId, endMsgId);
+				slotDeleted = slotAgent.deleteSlot(nodeId, storageQueueName, startMsgId, endMsgId);
 				if (log.isDebugEnabled()) {
-					log.debug(" Deleted slot id = " + emptySlot.getId() + " queue name = " + queueName + " deleteSuccess: " + slotDeleted);
+					log.debug(" Deleted slot id = " + emptySlot.getId() + " queue name = " + storageQueueName + " deleteSuccess: " + slotDeleted);
 				}
 			}
 		} else {
