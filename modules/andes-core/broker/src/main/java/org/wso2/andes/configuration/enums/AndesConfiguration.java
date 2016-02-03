@@ -474,12 +474,12 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * of acknowledgements batched around this number.
      */
     PERFORMANCE_TUNING_ACKNOWLEDGEMENT_HANDLER_BATCH_SIZE
-            ("performanceTuning/ackHandling/ackHandlerBatchSize", "30", Integer.class),
+            ("performanceTuning/ackHandling/ackHandlerBatchSize", "100", Integer.class),
 
     /**
      * Ack handler count for disruptor based event handling.
      */
-    PERFORMANCE_TUNING_ACK_HANDLER_COUNT("performanceTuning/ackHandling/ackHandlerCount", "8",
+    PERFORMANCE_TUNING_ACK_HANDLER_COUNT("performanceTuning/ackHandling/ackHandlerCount", "1",
             Integer.class ),
 
     /**
