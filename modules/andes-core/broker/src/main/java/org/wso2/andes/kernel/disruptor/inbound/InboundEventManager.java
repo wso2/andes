@@ -36,9 +36,9 @@ import org.wso2.andes.kernel.disruptor.LogExceptionHandler;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.subscription.SubscriptionEngine;
 import org.wso2.andes.tools.utils.MessageTracer;
-import org.wso2.carbon.metrics.manager.Gauge;
-import org.wso2.carbon.metrics.manager.Level;
-import org.wso2.carbon.metrics.manager.MetricManager;
+//import org.wso2.carbon.metrics.manager.Gauge;
+//import org.wso2.carbon.metrics.manager.Level;
+//import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -160,8 +160,8 @@ public class InboundEventManager {
         ringBuffer = disruptor.start();
 
         //Will add the gauge to metrics manager
-        MetricManager.gauge(Level.INFO, MetricsConstants.DISRUPTOR_INBOUND_RING, new InBoundRingGauge());
-        MetricManager.gauge(Level.INFO, MetricsConstants.DISRUPTOR_MESSAGE_ACK, new AckedMessageCountGauge());
+//        MetricManager.gauge(Level.INFO, MetricsConstants.DISRUPTOR_INBOUND_RING, new InBoundRingGauge());
+//        MetricManager.gauge(Level.INFO, MetricsConstants.DISRUPTOR_MESSAGE_ACK, new AckedMessageCountGauge());
     }
 
     /**
@@ -351,28 +351,28 @@ public class InboundEventManager {
         disruptor.shutdown();
     }
 
-    /**
-     * Utility to get the in bound ring gauge
-     */
-    private class InBoundRingGauge implements Gauge<Long> {
+//    /**
+//     * Utility to get the in bound ring gauge
+//     */
+//    private class InBoundRingGauge implements Gauge<Long> {
+//
+//        @Override
+//        public Long getValue() {
+//            //The total message size will be reduced by the remaining capacity to get the total ring size
+//            return ringBuffer.getBufferSize() - ringBuffer.remainingCapacity();
+//        }
+//    }
 
-        @Override
-        public Long getValue() {
-            //The total message size will be reduced by the remaining capacity to get the total ring size
-            return ringBuffer.getBufferSize() - ringBuffer.remainingCapacity();
-        }
-    }
-
-    /**
-     * Utility to get the acked message count
-     */
-    private class AckedMessageCountGauge implements Gauge<Integer> {
-
-        @Override
-        public Integer getValue() {
-            //Acknowledged message count at a given time
-            return ackedMessageCount.getAndSet(0);
-        }
-    }
+//    /**
+//     * Utility to get the acked message count
+//     */
+//    private class AckedMessageCountGauge implements Gauge<Integer> {
+//
+//        @Override
+//        public Integer getValue() {
+//            //Acknowledged message count at a given time
+//            return ackedMessageCount.getAndSet(0);
+//        }
+//    }
 
 }

@@ -27,9 +27,9 @@ import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
-import org.wso2.carbon.metrics.manager.Gauge;
-import org.wso2.carbon.metrics.manager.Level;
-import org.wso2.carbon.metrics.manager.MetricManager;
+//import org.wso2.carbon.metrics.manager.Gauge;
+//import org.wso2.carbon.metrics.manager.Level;
+//import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.ArrayList;
 import java.util.concurrent.Executors;
@@ -136,7 +136,7 @@ public class FlowControlManager  implements StoreHealthListener {
         executor = Executors.newSingleThreadScheduledExecutor(namedThreadFactory);
 
         //Will start the gauge
-        MetricManager.gauge(Level.INFO, MetricsConstants.ACTIVE_CHANNELS, new ChannelGauge());
+//        MetricManager.gauge(Level.INFO, MetricsConstants.ACTIVE_CHANNELS, new ChannelGauge());
     }
 
     /**
@@ -361,10 +361,9 @@ public class FlowControlManager  implements StoreHealthListener {
     /**
      * This will get current number of channels.
      */
-    private class ChannelGauge implements Gauge<Integer> {
-        @Override
-        public Integer getValue() {
-            return channels.size();
-        }
-    }
+//    private class ChannelGauge implements Gauge<Integer> {
+//        public Integer getValue() {
+//            return channels.size();
+//        }
+//    }
 }
