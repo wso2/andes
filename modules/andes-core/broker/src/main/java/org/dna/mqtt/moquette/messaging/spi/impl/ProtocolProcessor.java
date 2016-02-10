@@ -39,7 +39,7 @@ import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.MQTTAuthorizationSubject;
 import org.wso2.andes.mqtt.MQTTException;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
-import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
+//import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -233,10 +233,10 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
 
             // Keep the authorization details in memory to be used while publishing and subscribing
             // to validate the client
-            String carbonUsername = username.replace('!', '@');
-            authSubject.setTenantDomain(MultitenantUtils.getTenantDomain(carbonUsername));
-            authSubject.setUsername(MultitenantUtils.getTenantAwareUsername(carbonUsername));
-            authSubject.setProtocolVersion(msg.getProcotolVersion());
+//            String carbonUsername = username.replace('!', '@');
+//            authSubject.setTenantDomain(MultitenantUtils.getTenantDomain(carbonUsername));
+//            authSubject.setUsername(MultitenantUtils.getTenantAwareUsername(carbonUsername));
+//            authSubject.setProtocolVersion(msg.getProcotolVersion());
         }
 
         authSubjects.put(msg.getClientID(), authSubject);

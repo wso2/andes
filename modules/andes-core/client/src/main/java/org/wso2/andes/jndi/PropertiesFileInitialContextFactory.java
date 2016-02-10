@@ -32,8 +32,8 @@ import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.url.BindingURL;
 import org.wso2.andes.url.URLSyntaxException;
 import org.wso2.andes.util.Strings;
-import org.wso2.securevault.SecretResolver;
-import org.wso2.securevault.SecretResolverFactory;
+//import org.wso2.securevault.SecretResolver;
+//import org.wso2.securevault.SecretResolverFactory;
 
 import javax.jms.ConnectionFactory;
 import javax.jms.Destination;
@@ -196,14 +196,15 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
     private static void resolveEncryptedProperties(Hashtable environment) {
         if (environment != null) {
             Properties properties = convertToProperties(environment);
-            SecretResolver secretResolver = SecretResolverFactory.create(properties);
-            for (Object key : environment.keySet()) {
-                if (secretResolver != null && secretResolver.isInitialized()) {
-                    if (secretResolver.isTokenProtected(key.toString())) {
-                        environment.put(key.toString(), secretResolver.resolve(key.toString()));
-                    }
-                }
-            }
+            // TODO: C5-migration
+//            SecretResolver secretResolver = SecretResolverFactory.create(properties);
+//            for (Object key : environment.keySet()) {
+//                if (secretResolver != null && secretResolver.isInitialized()) {
+//                    if (secretResolver.isTokenProtected(key.toString())) {
+//                        environment.put(key.toString(), secretResolver.resolve(key.toString()));
+//                    }
+//                }
+//            }
         }
     }
 

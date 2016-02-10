@@ -52,21 +52,22 @@ public class RDBMSConnection extends DurableStoreConnection {
             jndiLookupName = connectionProperties.getProperty(RDBMSConstants.PROP_JNDI_LOOKUP_NAME);
             datasource = InitialContext.doLookup(jndiLookupName);
 
-            if (datasource instanceof org.apache.tomcat.jdbc.pool.DataSource) {
-                org.apache.tomcat.jdbc.pool.DataSource tcDataSource =
-                        (org.apache.tomcat.jdbc.pool.DataSource) datasource;
-                if (StringUtils.isNotBlank(tcDataSource.getUsername())) {
-                    dataSourceUserName = tcDataSource.getUsername();
-                }
-            }
+            // TODO: C5-migration
+//            if (datasource instanceof org.apache.tomcat.jdbc.pool.DataSource) {
+//                org.apache.tomcat.jdbc.pool.DataSource tcDataSource =
+//                        (org.apache.tomcat.jdbc.pool.DataSource) datasource;
+//                if (StringUtils.isNotBlank(tcDataSource.getUsername())) {
+//                    dataSourceUserName = tcDataSource.getUsername();
+//                }
+//            }
 
             connection = datasource.getConnection();
             logger.info("JDBC connection established with jndi config " + jndiLookupName);
         } catch (SQLException e) {
             throw new AndesException("Connecting to database failed with jndi lookup : " +
-                                     jndiLookupName + ". data source username : " +
+                                     jndiLookupName  /* + ". data source username : " +
                                      dataSourceUserName + ". SQL Error message : " +
-                                     e.getMessage(), e);
+                                     e.getMessage()*/, e);
         } catch (NamingException e) {
             throw new AndesException("Couldn't look up jndi entry for " +
                                      "\"" + jndiLookupName + "\"", e);
