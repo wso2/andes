@@ -34,11 +34,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.apache.axiom.om.OMElement;
-import org.apache.axiom.om.OMNode;
-import org.apache.axiom.om.impl.builder.StAXOMBuilder;
-import org.apache.axiom.om.impl.llom.OMElementImpl;
-import org.apache.axiom.om.xpath.AXIOMXPath;
+//import org.apache.axiom.om.OMElement;
+//import org.apache.axiom.om.OMNode;
+//import org.apache.axiom.om.impl.builder.StAXOMBuilder;
+//import org.apache.axiom.om.impl.llom.OMElementImpl;
+//import org.apache.axiom.om.xpath.AXIOMXPath;
 import org.apache.commons.configuration.CompositeConfiguration;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
@@ -47,17 +47,18 @@ import org.apache.commons.configuration.tree.xpath.XPathExpressionEngine;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.jaxen.JaxenException;
+//import org.jaxen.JaxenException;
 import org.w3c.dom.Document;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.configuration.util.ConfigurationProperty;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.carbon.utils.ServerConstants;
-import org.wso2.securevault.SecretResolver;
-import org.wso2.securevault.SecretResolverFactory;
-import org.wso2.securevault.secret.SecretLoadingModule;
-import org.wso2.securevault.secret.SingleSecretCallback;
+import org.wso2.carbon.kernel.utils.Utils;
+//import org.wso2.carbon.utils.ServerConstants;
+//import org.wso2.securevault.SecretResolver;
+//import org.wso2.securevault.SecretResolverFactory;
+//import org.wso2.securevault.secret.SecretLoadingModule;
+//import org.wso2.securevault.secret.SingleSecretCallback;
 
 import javax.xml.namespace.QName;
 import javax.xml.parsers.DocumentBuilder;
@@ -107,13 +108,6 @@ public class AndesConfigurationManager {
             "Therefore it is not a port property.";
 
     /**
-     * Main file path of configuration files into which all other andes-specific config files (if any)
-     * should be linked.
-     */
-    private static final String ROOT_CONFIG_FILE_PATH = System.getProperty(ServerConstants.CARBON_HOME) +
-            "/repository/conf/";
-
-    /**
      * File name of the main configuration file.
      */
     private static final String ROOT_CONFIG_FILE_NAME = "broker.xml";
@@ -145,7 +139,7 @@ public class AndesConfigurationManager {
      */
     public static void initialize(int portOffset) throws AndesException {
 
-        String brokerConfigFilePath = ROOT_CONFIG_FILE_PATH + ROOT_CONFIG_FILE_NAME;
+        String brokerConfigFilePath = Utils.getCarbonConfigHome() + ROOT_CONFIG_FILE_NAME;
         log.info("Main andes configuration located at : " + brokerConfigFilePath);
 
         try {
@@ -187,10 +181,10 @@ public class AndesConfigurationManager {
             String error = "Error occurred when trying to read the configuration file : " + brokerConfigFilePath;
             log.error(error, e);
             throw new AndesException(error, e);
-        } catch (JaxenException e) {
-            String error = "Error occurred when trying to process cipher text in file : " + brokerConfigFilePath;
-            log.error(error, e);
-            throw new AndesException(error, e);
+//        } catch (JaxenException e) {
+//            String error = "Error occurred when trying to process cipher text in file : " + brokerConfigFilePath;
+//            log.error(error, e);
+//            throw new AndesException(error, e);
         } catch (XMLStreamException e) {
             String error = "Error occurred when trying to process cipher text in file : " + brokerConfigFilePath;
             log.error(error, e);
@@ -478,37 +472,37 @@ public class AndesConfigurationManager {
      * Decrypt properties with secure vault and maintain on a separate hashmap for cross-reference.
      * @param filePath File path to the configuration file in question
      * @throws FileNotFoundException
-     * @throws JaxenException
+//     * @throws JaxenException
      * @throws XMLStreamException
      */
-    private static void decryptConfigurationFromFile(String filePath) throws FileNotFoundException, JaxenException, XMLStreamException {
-
-        cipherValueMap = new ConcurrentHashMap<String, String>();
-
-        StAXOMBuilder stAXOMBuilder = new StAXOMBuilder(new FileInputStream(new File(filePath)));
-        OMElement dom = stAXOMBuilder.getDocumentElement();
-
-        //Initialize the SecretResolver providing the configuration element.
-        SecretResolver secretResolver = SecretResolverFactory.create(dom, false);
-
-        AXIOMXPath xpathExpression = new AXIOMXPath ("//*[@*[local-name() = 'secretAlias']]");
-        List nodeList = xpathExpression.selectNodes(dom);
-
-        for (Object o : nodeList) {
-
-            String secretAlias = ((OMElement)o).getAttributeValue(SECURE_VAULT_QNAME);
-            String decryptedValue = "";
-
-            if (secretResolver != null && secretResolver.isInitialized()) {
-                if (secretResolver.isTokenProtected(secretAlias)) {
-                    decryptedValue = secretResolver.resolve(secretAlias);
-                }
-            } else {
-                log.warn("Error while trying to decipher secure property with secretAlias : " + secretAlias);
-            }
-
-            cipherValueMap.put(secretAlias,decryptedValue);
-        }
+    private static void decryptConfigurationFromFile(String filePath) throws FileNotFoundException, /*JaxenException,*/ XMLStreamException {
+//
+//        cipherValueMap = new ConcurrentHashMap<String, String>();
+//
+//        StAXOMBuilder stAXOMBuilder = new StAXOMBuilder(new FileInputStream(new File(filePath)));
+//        OMElement dom = stAXOMBuilder.getDocumentElement();
+//
+//        //Initialize the SecretResolver providing the configuration element.
+//        SecretResolver secretResolver = SecretResolverFactory.create(dom, false);
+//
+//        AXIOMXPath xpathExpression = new AXIOMXPath ("//*[@*[local-name() = 'secretAlias']]");
+//        List nodeList = xpathExpression.selectNodes(dom);
+//
+//        for (Object o : nodeList) {
+//
+//            String secretAlias = ((OMElement)o).getAttributeValue(SECURE_VAULT_QNAME);
+//            String decryptedValue = "";
+//
+//            if (secretResolver != null && secretResolver.isInitialized()) {
+//                if (secretResolver.isTokenProtected(secretAlias)) {
+//                    decryptedValue = secretResolver.resolve(secretAlias);
+//                }
+//            } else {
+//                log.warn("Error while trying to decipher secure property with secretAlias : " + secretAlias);
+//            }
+//
+//            cipherValueMap.put(secretAlias,decryptedValue);
+//        }
 
     }
 

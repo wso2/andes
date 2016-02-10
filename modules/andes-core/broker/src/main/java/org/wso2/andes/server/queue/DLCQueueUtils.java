@@ -80,14 +80,15 @@ public class DLCQueueUtils {
      * @return The Dead Letter Queue name for the tenant.
      */
     public static String generateDLCQueueNameFromTenant(String tenantDomain) {
-        //If the tenantDomain is either null of if it is "carbon.super", the DLC of the super domain will be returned
-        //Else, the dlc for the respective tenant will be returned
-        if (null != tenantDomain && !(org.wso2.carbon.base.MultitenantConstants.SUPER_TENANT_DOMAIN_NAME
-                .equals(tenantDomain))) {
-            return tenantDomain + AndesConstants.TENANT_SEPARATOR + AndesConstants.DEAD_LETTER_QUEUE_SUFFIX;
-        } else {
+        //TODO: C5-migration
+//        //If the tenantDomain is either null of if it is "carbon.super", the DLC of the super domain will be returned
+//        //Else, the dlc for the respective tenant will be returned
+//        if (null != tenantDomain && !(org.wso2.carbon.base.MultitenantConstants.SUPER_TENANT_DOMAIN_NAME
+//                .equals(tenantDomain))) {
+//            return tenantDomain + AndesConstants.TENANT_SEPARATOR + AndesConstants.DEAD_LETTER_QUEUE_SUFFIX;
+//        } else {
             return AndesConstants.DEAD_LETTER_QUEUE_SUFFIX;
-        }
+//        }
     }
 
     /**
@@ -127,11 +128,12 @@ public class DLCQueueUtils {
 
         String dlcQueueName;
 
-        if (org.wso2.carbon.base.MultitenantConstants.SUPER_TENANT_DOMAIN_NAME.equals(tenantName)) {
+        //TODO: C5-migration
+//        if (org.wso2.carbon.base.MultitenantConstants.SUPER_TENANT_DOMAIN_NAME.equals(tenantName)) {
             dlcQueueName = AndesConstants.DEAD_LETTER_QUEUE_SUFFIX;
-        } else {
-            dlcQueueName = tenantName + AndesConstants.TENANT_SEPARATOR + AndesConstants.DEAD_LETTER_QUEUE_SUFFIX;
-        }
+//        } else {
+//            dlcQueueName = tenantName + AndesConstants.TENANT_SEPARATOR + AndesConstants.DEAD_LETTER_QUEUE_SUFFIX;
+//        }
 
         // Try to retrieve queue to check if it is already available
         AMQQueue queue = queueRegistry.getQueue(new AMQShortString(dlcQueueName));
