@@ -403,11 +403,11 @@
                 <version>${carbon.kernel.version}</version>
             </dependency>
             <!--Carbon Metrics-->
-            <dependency>
-                <groupId>org.wso2.carbon.metrics</groupId>
-                <artifactId>org.wso2.carbon.metrics.manager</artifactId>
-                <version>${org.wso2.carbon.metrics.manager.version}</version>
-            </dependency>
+            <!--<dependency>-->
+                <!--<groupId>org.wso2.carbon.metrics</groupId>-->
+                <!--<artifactId>org.wso2.carbon.metrics.manager</artifactId>-->
+                <!--<version>${org.wso2.carbon.metrics.manager.version}</version>-->
+            <!--</dependency>-->
             <!--Thrift Dependency-->
             <dependency>
                 <groupId>libthrift.wso2</groupId>

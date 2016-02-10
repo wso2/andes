@@ -320,10 +320,10 @@
             <artifactId>org.wso2.carbon.core</artifactId>
         </dependency>
         <!--Carbon Metrics Dependencies-->
-        <dependency>
-            <groupId>org.wso2.carbon.metrics</groupId>
-            <artifactId>org.wso2.carbon.metrics.manager</artifactId>
-        </dependency>
+        <!--<dependency>-->
+            <!--<groupId>org.wso2.carbon.metrics</groupId>-->
+            <!--<artifactId>org.wso2.carbon.metrics.manager</artifactId>-->
+        <!--</dependency>-->
         <!--Thrift Dependency-->
         <dependency>
             <groupId>libthrift.wso2</groupId>
