@@ -17,7 +17,7 @@
  */
 package org.wso2.andes.server.store;
 
-import org.wso2.andes.mqtt.MQTTMessageMetaData;
+import org.wso2.carbon.andes.mqtt.MQTTMessageMetaData;
 import org.wso2.andes.server.message.MessageMetaData;
 import org.wso2.andes.server.message.MessageMetaData_0_10;
 

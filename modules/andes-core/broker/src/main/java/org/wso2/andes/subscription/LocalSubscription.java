@@ -32,7 +32,7 @@ import org.wso2.andes.kernel.MessageStatus;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.kernel.ProtocolType;
-import org.wso2.andes.mqtt.MQTTLocalSubscription;
+import org.wso2.carbon.andes.mqtt.MQTTLocalSubscription;
 
 import java.util.ArrayList;
 import java.util.List;
