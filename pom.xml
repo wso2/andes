@@ -459,6 +459,11 @@
                 <artifactId>org.eclipse.osgi.services</artifactId>
                 <version>${org.eclipse.osgi.services.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.wso2.carbon.mb</groupId>
+                <artifactId>mqtt</artifactId>
+                <version>3.5.0-SNAPSHOT</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
