@@ -139,7 +139,7 @@ public class AndesConfigurationManager {
      */
     public static void initialize(int portOffset) throws AndesException {
 
-        String brokerConfigFilePath = Utils.getCarbonConfigHome() + ROOT_CONFIG_FILE_NAME;
+        String brokerConfigFilePath = Utils.getCarbonConfigHome() + "/" + ROOT_CONFIG_FILE_NAME;
         log.info("Main andes configuration located at : " + brokerConfigFilePath);
 
         try {
@@ -477,7 +477,7 @@ public class AndesConfigurationManager {
      */
     private static void decryptConfigurationFromFile(String filePath) throws FileNotFoundException, /*JaxenException,*/ XMLStreamException {
 //
-//        cipherValueMap = new ConcurrentHashMap<String, String>();
+        cipherValueMap = new ConcurrentHashMap<String, String>();
 //
 //        StAXOMBuilder stAXOMBuilder = new StAXOMBuilder(new FileInputStream(new File(filePath)));
 //        OMElement dom = stAXOMBuilder.getDocumentElement();
