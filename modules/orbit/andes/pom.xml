@@ -27,7 +27,7 @@
 
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.wso2.andes.wso2</groupId>
-    <artifactId>andes</artifactId>
+    <artifactId>qpid</artifactId>
     <packaging>bundle</packaging>
     <name>WSO2 Carbon - Orbit - andes</name>
     <description>This bundle exports packages from andes jar files</description>
@@ -162,7 +162,6 @@
                             com.google.common.base;version="19.0.0",
                             com.google.common.util.concurrent;version="19.0.0",
                             com.google.common.cache;version="19.0.0",
-                            org.wso2.carbon.andes.authentication.andes,
                             *;resolution:=optional
                         </Import-Package>
                         <Include-Resource>src/main/resources</Include-Resource>
