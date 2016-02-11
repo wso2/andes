@@ -26,7 +26,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.ProtocolType;
-import org.wso2.andes.mqtt.utils.MQTTUtils;
+import org.wso2.carbon.andes.mqtt.utils.MQTTUtils;
 
 import java.util.*;
 import java.util.regex.Pattern;
