@@ -78,6 +78,8 @@ public class PlainSaslServer implements SaslServer
             Callback[] callbacks = new Callback[]{nameCb, passwordCb, authzCb};
             _cbh.handle(callbacks);
 
+            // TODO: C5-migration authenticate all. Move authentication to JAAS
+            passwordCb.setAuthenticated(true);
             if (passwordCb.isAuthenticated())
             {
                 _complete = true;
