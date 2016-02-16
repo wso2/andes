@@ -453,7 +453,9 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
              _logger.debug("dest="+ _destination.getQueueName()+  " took message [" + _synchronousQueue.size() + "]");
 
              try {
-                lastDispatchedMessageTimestamp = ((AbstractJMSMessage)o).getJMSTimestamp();
+                if (o instanceof AbstractJMSMessage) {
+                    lastDispatchedMessageTimestamp = ((AbstractJMSMessage)o).getJMSTimestamp();
+                }
              } catch (JMSException e) {
                 _logger.error("Error when reading the message at the point of dispatch from client buffer." + e);
              }
