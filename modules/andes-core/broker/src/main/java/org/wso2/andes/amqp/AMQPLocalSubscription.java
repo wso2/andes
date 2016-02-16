@@ -72,6 +72,7 @@ public class AMQPLocalSubscription implements OutboundSubscription {
     //if this subscription represent a topic subscription
     private  boolean isBoundToTopic;
 
+    private String protocolType;
     /*
      * This map works as a cache for queue entries, preventing need to convert
      * DeliverableAndesMetadata to queue entries two times
@@ -99,6 +100,8 @@ public class AMQPLocalSubscription implements OutboundSubscription {
         //We leave the default values for initialCapacity and progression factor
         //We re define concurrencyLevel as 2, since there will be only 2 threads which accesses it concurrently
         this.storedMessageCache = new ConcurrentHashMap<>(16,0.75f,2);
+
+        this.protocolType = AMQPUtils.PROTOCOL_TYPE;
     }
 
     /**
@@ -281,5 +284,10 @@ public class AMQPLocalSubscription implements OutboundSubscription {
         }
 
         return storageQueueName;
+    }
+
+    @Override
+    public String getProtocolType() {
+        return null;
     }
 }

@@ -17,15 +17,16 @@
  */
 package org.wso2.andes.server.message;
 
-import org.wso2.andes.framing.ContentHeaderBody;
-import org.wso2.andes.framing.BasicContentHeaderProperties;
-import org.wso2.andes.framing.EncodingUtils;
+import org.wso2.andes.AMQException;
+import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.framing.AMQShortString;
+import org.wso2.andes.framing.BasicContentHeaderProperties;
+import org.wso2.andes.framing.ContentHeaderBody;
+import org.wso2.andes.framing.EncodingUtils;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.framing.abstraction.MessagePublishInfo;
-import org.wso2.andes.server.store.StorableMessageMetaData;
 import org.wso2.andes.server.store.MessageMetaDataType;
-import org.wso2.andes.AMQException;
+import org.wso2.andes.server.store.StorableMessageMetaData;
 
 import java.nio.ByteBuffer;
 import java.util.Set;
@@ -223,6 +224,16 @@ public class MessageMetaData implements StorableMessageMetaData
     {
         BasicContentHeaderProperties properties = (BasicContentHeaderProperties) (_contentHeaderBody.getProperties());
         return properties.getDeliveryMode() ==  BasicContentHeaderProperties.PERSISTENT;
+    }
+
+    @Override
+    public boolean isTopic() {
+        return getMessagePublishInfo().getExchange().equals(AMQPUtils.TOPIC_EXCHANGE_NAME);
+    }
+
+    @Override
+    public String getDestination() {
+        return getMessagePublishInfo().getRoutingKey().toString();
     }
 
     public String get_clientIP() {
