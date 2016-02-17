@@ -165,6 +165,23 @@ public class MessageMetaData_0_10 implements StorableMessageMetaData
         return _deliveryProps == null ? false : _deliveryProps.getDeliveryMode() == MessageDeliveryMode.PERSISTENT;
     }
 
+    //todo: Add proper method implementations here
+    @Override
+    public boolean isTopic() {
+        return false;
+    }
+
+    @Override
+    public String getDestination() {
+        return null;
+    }
+
+    @Override
+    public boolean isCompressed() {
+        return false;
+    }
+
+
     public String getRoutingKey()
     {
         return _deliveryProps == null ? null : _deliveryProps.getRoutingKey();
