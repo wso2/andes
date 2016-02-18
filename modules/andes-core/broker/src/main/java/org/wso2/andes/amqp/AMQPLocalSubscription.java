@@ -31,6 +31,7 @@ import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.ProtocolDeliveryFailureException;
 import org.wso2.andes.kernel.ProtocolDeliveryRulesFailureException;
 import org.wso2.andes.kernel.ProtocolMessage;
+import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.message.MessageMetaData;
@@ -72,7 +73,7 @@ public class AMQPLocalSubscription implements OutboundSubscription {
     //if this subscription represent a topic subscription
     private  boolean isBoundToTopic;
 
-    private String protocolType;
+    private ProtocolType protocolType;
     /*
      * This map works as a cache for queue entries, preventing need to convert
      * DeliverableAndesMetadata to queue entries two times
@@ -101,7 +102,7 @@ public class AMQPLocalSubscription implements OutboundSubscription {
         //We re define concurrencyLevel as 2, since there will be only 2 threads which accesses it concurrently
         this.storedMessageCache = new ConcurrentHashMap<>(16,0.75f,2);
 
-        this.protocolType = AMQPUtils.PROTOCOL_TYPE;
+        this.protocolType = ProtocolType.AMQP;
     }
 
     /**
@@ -287,7 +288,7 @@ public class AMQPLocalSubscription implements OutboundSubscription {
     }
 
     @Override
-    public String getProtocolType() {
-        return null;
+    public ProtocolType getProtocolType() {
+        return protocolType;
     }
 }
