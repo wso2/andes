@@ -42,8 +42,8 @@ public class JKSStore {
     /**
      * Default values
      */
-    private final String DEFAULT_STORE_LOCATION = "repository" + File.separator + "resources" + File.separator +
-            "security" + File.separator + "wso2carbon.jks";
+    private final String DEFAULT_STORE_LOCATION = "resources" + File.separator + "security" + File.separator +
+            "wso2carbon.jks";
     private final String DEFAULT_STORE_PASSWORD = "wso2carbon";
 
     /**
