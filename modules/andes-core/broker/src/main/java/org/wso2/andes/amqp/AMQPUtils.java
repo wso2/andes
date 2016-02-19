@@ -71,8 +71,6 @@ public class AMQPUtils {
 
     public static String TOPIC_EXCHANGE_NAME = "amq.topic";
 
-    public static String PROTOCOL_TYPE = "AMQP";
-
     public static String DEFAULT_EXCHANGE_NAME = "<<default>>";
 
     public static String DEFAULT_ANDES_CHANNEL_IDENTIFIER = "AMQP-Unknown";

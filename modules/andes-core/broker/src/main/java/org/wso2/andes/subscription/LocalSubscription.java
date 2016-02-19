@@ -20,7 +20,6 @@ package org.wso2.andes.subscription;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContent;
@@ -31,8 +30,6 @@ import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.MessageStatus;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolMessage;
-import org.wso2.andes.kernel.ProtocolType;
-import org.wso2.andes.mqtt.MQTTUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -98,11 +95,7 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
         // In case of mock subscriptions, this becomes null
         if (null != subscription) {
             //We need to keep the protocolType in basic subscription for notification
-            if((AMQPUtils.PROTOCOL_TYPE).equals(subscription.getProtocolType())) {
-                setProtocolType(ProtocolType.AMQP);
-            } else if((MQTTUtils.PROTOCOL_TYPE).equals(subscription.getProtocolType())) {
-                setProtocolType(ProtocolType.MQTT);
-            }
+            setProtocolType(subscription.getProtocolType());
 
             setStorageQueueName(subscription.getStorageQueueName(destination, subscribedNode));
         }
