@@ -234,19 +234,9 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
 //                Meter ackMeter = MetricManager.meter(Level.INFO, MetricsConstants.ACK_SENT_RATE);
 //                ackMeter.mark();
 
-
-                if (message.getMetadata().isRetain()) {
-                    // Since there are no subscribers we don't need to store the original message.
-                    // Only the retained message need to be stored
-                    event.clearMessageList();
-                } else {
-                    // Since no matching subscribers and not a retained enabled message, Event can be
-                    // cleared and set to ignore the message by message writers
-                    event.clear();
-                    log.info("Message routing key: " + message.getMetadata().getDestination() + " No routes in " +
+                event.clearMessageList();
+                log.info("Message routing key: " + message.getMetadata().getDestination() + " No routes in " +
                              "cluster. Ignoring Message id " + message.getMetadata().getMessageID());
-                }
-
             }
 
         } catch (AndesException e) {
