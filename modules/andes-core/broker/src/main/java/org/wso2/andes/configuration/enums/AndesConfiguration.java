@@ -533,6 +533,11 @@ public enum AndesConfiguration implements ConfigurationProperty {
     MAX_TRANSACTION_BATCH_SIZE ("transaction/maxBatchSizeInBytes", "10000000", Integer.class),
 
     /**
+     * Maximum wait time (in seconds) for a transactional publisher commit, rollback or close event to complete on
+     * server side.
+     */
+    MAX_TRANSACTION_WAIT_TIMEOUT("transaction/maxWaitTimeout", "30", Long.class),
+    /**
      * The number of messages to be fetched per page when browsing message in management console.
      */
     MANAGEMENT_CONSOLE_MESSAGE_BROWSE_PAGE_SIZE("managementConsole" +
