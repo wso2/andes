@@ -18,10 +18,11 @@
 package org.wso2.andes.server.handler;
 
 
-import javax.security.sasl.SaslException;
-import javax.security.sasl.SaslServer;
+import javax.security.auth.Subject;
+import javax.security.auth.login.LoginException;
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
+import org.wso2.andes.amqp.AMQPAuthenticationManager;
 import org.wso2.andes.framing.ConnectionCloseBody;
 import org.wso2.andes.framing.ConnectionSecureBody;
 import org.wso2.andes.framing.ConnectionSecureOkBody;
@@ -30,9 +31,6 @@ import org.wso2.andes.framing.MethodRegistry;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.registry.ApplicationRegistry;
-import org.wso2.andes.server.security.auth.AuthenticationResult;
-import org.wso2.andes.server.security.auth.manager.AuthenticationManager;
-import org.wso2.andes.server.security.auth.sasl.UsernamePrincipal;
 import org.wso2.andes.server.state.AMQState;
 import org.wso2.andes.server.state.AMQStateManager;
 import org.wso2.andes.server.state.StateAwareMethodListener;
@@ -54,73 +52,36 @@ public class ConnectionSecureOkMethodHandler implements StateAwareMethodListener
 
     public void methodReceived(AMQStateManager stateManager, ConnectionSecureOkBody body, int channelId) throws AMQException
     {
+
         AMQProtocolSession session = stateManager.getProtocolSession();
-
-        AuthenticationManager authMgr = ApplicationRegistry.getInstance().getAuthenticationManager();
-
-        SaslServer ss = session.getSaslServer();
-        if (ss == null)
-        {
-            throw new AMQException("No SASL context set up in session");
-        }
         MethodRegistry methodRegistry = session.getMethodRegistry();
-        AuthenticationResult authResult = authMgr.authenticate(ss, body.getResponse());
-        switch (authResult.getStatus())
-        {
-            case ERROR:
-                Exception cause = authResult.getCause();
 
-                _logger.info("Authentication failed:" + (cause == null ? "" : cause.getMessage()));
 
-                // This should be abstracted
-                stateManager.changeState(AMQState.CONNECTION_CLOSING);
+        try {
+            Subject authSubject = AMQPAuthenticationManager.authenticate(body.getResponse());
 
-                ConnectionCloseBody connectionCloseBody =
-                        methodRegistry.createConnectionCloseBody(AMQConstant.NOT_ALLOWED.getCode(),
-                                                                 AMQConstant.NOT_ALLOWED.getName(),
-                                                                 body.getClazz(),
-                                                                 body.getMethod());
+           _logger.info("Connected as: " + AMQPAuthenticationManager.extractUserPrincipalFromSubject(authSubject));
+            stateManager.changeState(AMQState.CONNECTION_NOT_TUNED);
 
-                session.writeFrame(connectionCloseBody.generateFrame(0));
-                disposeSaslServer(session);
-                break;
-            case SUCCESS:
-                if (_logger.isInfoEnabled())
-                {
-                    _logger.info("Connected as: " + UsernamePrincipal.getUsernamePrincipalFromSubject(authResult.getSubject()));
-                }
-                stateManager.changeState(AMQState.CONNECTION_NOT_TUNED);
+            ConnectionTuneBody tuneBody =
+                    methodRegistry.createConnectionTuneBody(ApplicationRegistry.getInstance().getConfiguration()
+                                    .getMaxChannelCount(),
+                            ConnectionStartOkMethodHandler.getConfiguredFrameSize(),
+                            ApplicationRegistry.getInstance().getConfiguration().getHeartBeatDelay());
+            session.writeFrame(tuneBody.generateFrame(0));
+            session.setAuthorizedSubject(authSubject);
+        } catch (LoginException e) {
+            _logger.error("Authentication failure.", e);
 
-                ConnectionTuneBody tuneBody =
-                        methodRegistry.createConnectionTuneBody(ApplicationRegistry.getInstance().getConfiguration().getMaxChannelCount(),
-                                                                ConnectionStartOkMethodHandler.getConfiguredFrameSize(),
-                                                                ApplicationRegistry.getInstance().getConfiguration().getHeartBeatDelay());
-                session.writeFrame(tuneBody.generateFrame(0));
-                session.setAuthorizedSubject(authResult.getSubject());
-                disposeSaslServer(session);                
-                break;
-            case CONTINUE:
-                stateManager.changeState(AMQState.CONNECTION_NOT_AUTH);
+            stateManager.changeState(AMQState.CONNECTION_CLOSING);
 
-                ConnectionSecureBody secureBody = methodRegistry.createConnectionSecureBody(authResult.getChallenge());
-                session.writeFrame(secureBody.generateFrame(0));
-        }
-    }
+            ConnectionCloseBody connectionCloseBody =
+                    methodRegistry.createConnectionCloseBody(AMQConstant.NOT_ALLOWED.getCode(),
+                            AMQConstant.NOT_ALLOWED.getName(),
+                            body.getClazz(),
+                            body.getMethod());
 
-    private void disposeSaslServer(AMQProtocolSession ps)
-    {
-        SaslServer ss = ps.getSaslServer();
-        if (ss != null)
-        {
-            ps.setSaslServer(null);
-            try
-            {
-                ss.dispose();
-            }
-            catch (SaslException e)
-            {
-                _logger.error("Error disposing of Sasl server: " + e);
-            }
+            session.writeFrame(connectionCloseBody.generateFrame(0));
         }
     }
 }

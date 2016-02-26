@@ -26,14 +26,13 @@ import org.ietf.jgss.GSSManager;
 import org.ietf.jgss.GSSName;
 import org.ietf.jgss.Oid;
 
+import org.wso2.andes.AMQProtocolException;
+import org.wso2.andes.security.AMQPSecurityUtils;
 import org.wso2.andes.security.UsernamePasswordCallbackHandler;
 import static org.wso2.andes.transport.Connection.State.OPEN;
 import static org.wso2.andes.transport.Connection.State.RESUMING;
 import org.wso2.andes.transport.util.Logger;
 
-import javax.security.sasl.Sasl;
-import javax.security.sasl.SaslClient;
-import javax.security.sasl.SaslException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 import java.util.ArrayList;
@@ -134,44 +133,34 @@ public class ClientDelegate extends ConnectionDelegate
 
         try
         {
-            Map<String,Object> saslProps = new HashMap<String,Object>();
-            if (conSettings.isUseSASLEncryption())
-            {
-                saslProps.put(Sasl.QOP, "auth-conf");
-            }
             UsernamePasswordCallbackHandler handler =
                 new UsernamePasswordCallbackHandler();
             handler.initialise(conSettings.getUsername(), conSettings.getPassword());
-            SaslClient sc = Sasl.createSaslClient
-                (mechs, null, conSettings.getSaslProtocol(), conSettings.getSaslServerName(), saslProps, handler);
-            conn.setSaslClient(sc);
 
-            byte[] response = sc.hasInitialResponse() ?
-                sc.evaluateChallenge(new byte[0]) : null;
+            byte[] response = AMQPSecurityUtils.encodeCredentials(conSettings.getUsername(), conSettings.getPassword());
             conn.connectionStartOk
-                (clientProperties, sc.getMechanismName(), response,
+                (clientProperties, "PLAIN", response,
                  conn.getLocale());
         }
-        catch (SaslException e)
+        catch (AMQProtocolException e)
         {
             conn.exception(e);
         }
     }
 
-    @Override
-    public void connectionSecure(Connection conn, ConnectionSecure secure)
-    {
-        SaslClient sc = conn.getSaslClient();
-        try
-        {
-            byte[] response = sc.evaluateChallenge(secure.getChallenge());
-            conn.connectionSecureOk(response);
-        }
-        catch (SaslException e)
-        {
-            conn.exception(e);
-        }
-    }
+//    @Override
+//    public void connectionSecure(Connection conn, ConnectionSecure secure)
+//    {
+//        try
+//        {
+//            byte[] response = sc.evaluateChallenge(secure.getChallenge());
+//            conn.connectionSecureOk(response);
+//        }
+//        catch (SaslException e)
+//        {
+//            conn.exception(e);
+//        }
+//    }
 
     @Override
     public void connectionTune(Connection conn, ConnectionTune tune)
@@ -197,26 +186,6 @@ public class ClientDelegate extends ConnectionDelegate
     @Override
     public void connectionOpenOk(Connection conn, ConnectionOpenOk ok)
     {
-        SaslClient sc = conn.getSaslClient();
-        if (sc != null)
-        {
-            if (sc.getMechanismName().equals("GSSAPI"))
-            {
-                String id = getKerberosUser();
-                if (id != null)
-                {
-                    conn.setUserID(id);
-                }
-            }
-            else if (sc.getMechanismName().equals("EXTERNAL"))
-            {
-                if (conn.getSecurityLayer() != null)
-                {
-                    conn.setUserID(conn.getSecurityLayer().getUserID());
-                }
-            }
-        }
-        
         if (conn.isConnectionResuming())
         {
             conn.setState(RESUMING);
@@ -284,37 +253,5 @@ public class ClientDelegate extends ConnectionDelegate
             return -1;
         }
 
-    }
-
-    private String getKerberosUser()
-    {
-        log.debug("Obtaining userID from kerberos");
-        String service = conSettings.getSaslProtocol() + "@" + conSettings.getSaslServerName();
-        GSSManager manager = GSSManager.getInstance();
-
-        try
-        {
-            GSSName acceptorName = manager.createName(service,
-                GSSName.NT_HOSTBASED_SERVICE, KRB5_OID);
-
-            GSSContext secCtx = manager.createContext(acceptorName,
-                                                      KRB5_OID,
-                                                      null,
-                                                      GSSContext.INDEFINITE_LIFETIME);
-
-            secCtx.initSecContext(new byte[0], 0, 1);
-
-            if (secCtx.getSrcName() != null)
-            {
-                return secCtx.getSrcName().toString();
-            }
-
-        }
-        catch (GSSException e)
-        {
-            log.warn("Unable to retrieve userID from Kerberos due to error",e);
-        }
-
-        return null;
     }
 }

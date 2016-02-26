@@ -22,8 +22,11 @@ package org.wso2.andes.kernel;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.StoreConfiguration;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.security.AndesAuthenticationManager;
+import org.wso2.andes.security.AndesAuthorizationManager;
 import org.wso2.andes.server.cluster.ClusterAgent;
 import org.wso2.andes.subscription.SubscriptionEngine;
+import org.wso2.carbon.security.caas.user.core.service.RealmService;
 
 import java.util.List;
 
@@ -41,6 +44,21 @@ public class AndesContext {
     private static AndesContext instance = new AndesContext();
     private MessageStore messageStore;
     private int deliveryTimeoutForMessage;
+
+    /**
+     * The carbon realm service implementation which initializes the security modules.
+     */
+    private RealmService realmService;
+
+    /**
+     * The authentication manager which is used to authenticate users in Andes using carbon caas.
+     */
+    private AndesAuthenticationManager andesAuthenticationManager;
+
+    /**
+     * The authorization manager which is used to authorize actions in Andes using carbon caas.
+     */
+    private AndesAuthorizationManager andesAuthorizationManager = new AndesAuthorizationManager();
 
     /**
      * This is mainly used by Cluster Manager to manger cluster communication
@@ -236,5 +254,25 @@ public class AndesContext {
      */
     public void setMessageStore(MessageStore messageStore) {
         this.messageStore = messageStore;
+    }
+
+    public RealmService getRealmService() {
+        return realmService;
+    }
+
+    public void setRealmService(RealmService realmService) {
+        this.realmService = realmService;
+    }
+
+    public AndesAuthenticationManager getAndesAuthenticationManager() {
+        return andesAuthenticationManager;
+    }
+
+    public void setAndesAuthenticationManager(AndesAuthenticationManager andesAuthenticationManager) {
+        this.andesAuthenticationManager = andesAuthenticationManager;
+    }
+
+    public AndesAuthorizationManager getAndesAuthorizationManager() {
+        return andesAuthorizationManager;
     }
 }

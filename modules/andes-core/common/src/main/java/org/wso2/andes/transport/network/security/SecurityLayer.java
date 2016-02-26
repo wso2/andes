@@ -42,7 +42,6 @@ public class SecurityLayer
     ConnectionSettings settings;
     Connection con;
     SSLSecurityLayer sslLayer;
-    SASLSecurityLayer saslLayer;
 
     public SecurityLayer(Connection con)
     {
@@ -51,10 +50,6 @@ public class SecurityLayer
         if (settings.isUseSSL())
         {
             sslLayer = new SSLSecurityLayer();
-        }
-        if (settings.isUseSASLEncryption())
-        {
-            saslLayer = new SASLSecurityLayer();
         }
     }
 
@@ -65,11 +60,6 @@ public class SecurityLayer
         if (settings.isUseSSL())
         {
             sender = sslLayer.sender(sender);
-        }     
-        
-        if (settings.isUseSASLEncryption())
-        {
-            sender = saslLayer.sender(sender);
         }
         
         return sender;
@@ -82,11 +72,6 @@ public class SecurityLayer
         if (settings.isUseSSL())
         {
             receiver = sslLayer.receiver(receiver);
-        }        
-        
-        if (settings.isUseSASLEncryption())
-        {
-            receiver = saslLayer.receiver(receiver);
         }
         
         return receiver;
