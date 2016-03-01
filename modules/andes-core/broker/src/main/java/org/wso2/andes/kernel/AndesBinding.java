@@ -46,7 +46,7 @@ public class AndesBinding implements Serializable {
      *
      * @param bindingAsStr binding information as encoded string
      */
-    public AndesBinding(String bindingAsStr) {
+    public AndesBinding(String bindingAsStr) throws AndesException {
         String[] propertyToken = bindingAsStr.split("\\|");
         for (String pt : propertyToken) {
             String[] tokens = pt.split("&");

@@ -21,12 +21,9 @@ package org.wso2.andes.subscription;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.DestinationType;
-import org.wso2.andes.kernel.ProtocolType;
-import org.wso2.andes.mqtt.MQTTUtils;
 
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -41,7 +38,7 @@ import java.util.regex.Pattern;
  * Store subscriptions according to the respective protocol using bitmaps as the underlying data structure for
  * faster wildcard matching.
  */
-public class TopicSubscriptionBitMapStore implements AndesSubscriptionStore {
+public abstract class TopicSubscriptionBitMapStore implements AndesSubscriptionStore {
 
     private Log log = LogFactory.getLog(TopicSubscriptionBitMapStore.class);
 
@@ -59,8 +56,6 @@ public class TopicSubscriptionBitMapStore implements AndesSubscriptionStore {
      * The single level matching wildcard according to the current subscription type.
      */
     private String singleLevelWildCard;
-
-    private ProtocolType protocolType;
 
     // 'Null' and 'Other' constituents are picked from restricted topic characters
 
@@ -90,26 +85,17 @@ public class TopicSubscriptionBitMapStore implements AndesSubscriptionStore {
     private List<Map<String, BitSet>> constituentTables = new ArrayList<Map<String, BitSet>>();
 
     /**
-     * Initialize BitMapHandler with the subscription type.
+     * Initialize BitMapHandler with the protocol specific properties.
      *
-     * @param protocolType The protocol type to handle
-     * @throws AndesException
+     * @param multiLevelWildCard The wildcard used to specify any child level of any constituent
+     * @param singleLevelWildCard The wildcard to specify one level of any constituent
+     * @param constituentsDelimiter The delimiter to separate constituents
      */
-    public TopicSubscriptionBitMapStore(ProtocolType protocolType) throws AndesException {
-        if (ProtocolType.AMQP == protocolType) {
-            constituentsDelimiter = ".";
-            // AMQPUtils keep wildcard concatenated with constituent delimiter, hence removing them get wildcard only
-            multiLevelWildCard = AMQPUtils.TOPIC_AND_CHILDREN_WILDCARD.replace(constituentsDelimiter, "");
-            singleLevelWildCard = AMQPUtils.IMMEDIATE_CHILDREN_WILDCARD.replace(constituentsDelimiter, "");
-        } else if (ProtocolType.MQTT == protocolType) {
-            constituentsDelimiter = "/";
-            multiLevelWildCard = MQTTUtils.MULTI_LEVEL_WILDCARD;
-            singleLevelWildCard = MQTTUtils.SINGLE_LEVEL_WILDCARD;
-        } else {
-            throw new AndesException("Subscription type " + protocolType + " is not recognized.");
-        }
-
-        this.protocolType = protocolType;
+    public TopicSubscriptionBitMapStore(String multiLevelWildCard, String singleLevelWildCard,
+                                        String constituentsDelimiter) {
+        this.multiLevelWildCard = multiLevelWildCard;
+        this.singleLevelWildCard = singleLevelWildCard;
+        this.constituentsDelimiter = constituentsDelimiter;
     }
 
     /**
@@ -358,29 +344,6 @@ public class TopicSubscriptionBitMapStore implements AndesSubscriptionStore {
     }
 
     /**
-     * Return the match between the given two parameters with respect to the protocol.
-     *
-     * @param wildCardDestination    The destination with/without wildcard
-     * @param nonWildCardDestination The direct destination without wildcards
-     * @return Match status
-     * @throws AndesException
-     */
-    private boolean isMatchForProtocolType(String wildCardDestination, String nonWildCardDestination) throws
-            AndesException {
-        boolean matching = false;
-
-        if (ProtocolType.AMQP == protocolType) {
-            matching = AMQPUtils.isTargetQueueBoundByMatchingToRoutingKey(wildCardDestination, nonWildCardDestination);
-        } else if (ProtocolType.MQTT == protocolType) {
-            matching = MQTTUtils.isTargetQueueBoundByMatchingToRoutingKey(wildCardDestination, nonWildCardDestination);
-        } else {
-            throw new AndesException("Protocol type " + protocolType + " is not recognized.");
-        }
-
-        return matching;
-    }
-
-    /**
      * This methods adds a constituent table with only null and other constituents.
      * This is required when a message comes with more than the available number of constituents. If wildcard
      * subscriptions are available for those, they should match. Hence need to create these empty constituent tables.
@@ -573,6 +536,16 @@ public class TopicSubscriptionBitMapStore implements AndesSubscriptionStore {
 
         return topics;
     }
+
+    /**
+     * Returns whether a wildcard matches to a given destination according to the implemented protocol.
+     * Protocol specific implementation should be here.
+     *
+     * @param wildcardDestination The wildcard to match
+     * @param nonWildcardDestination The non-wildcard destination to match against
+     * @return True if non wildcard destination is implied by the wildcard
+     */
+    protected abstract boolean isMatchForProtocolType(String wildcardDestination, String nonWildcardDestination);
 
 
 }

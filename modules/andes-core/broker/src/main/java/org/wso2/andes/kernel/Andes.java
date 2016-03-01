@@ -34,6 +34,7 @@ import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.kernel.slot.Slot;
+import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionEngine;
 import org.wso2.andes.tools.utils.MessageTracer;
@@ -118,6 +119,11 @@ public class Andes {
     private final long TX_EVENT_TIMEOUT;
 
     /**
+     * Keeps all functional instances created by Andes.
+     */
+    private AndesContext andesContext;
+
+    /**
      * Instance of AndesAPI returned.
      *
      * @return AndesAPI
@@ -147,7 +153,7 @@ public class Andes {
      * @throws AndesException
      */
     public void recoverMessage(List<DeliverableAndesMetadata> recoverMsg, LocalSubscription subscription) throws AndesException {
-        MessagingEngine.getInstance().recoverMessage(recoverMsg, subscription);
+        messagingEngine.recoverMessage(recoverMsg, subscription);
     }
 
     /**
@@ -161,6 +167,7 @@ public class Andes {
         this.subscriptionManager = subscriptionManager;
 
         inboundEventManager = new InboundEventManager(subscriptionEngine, messagingEngine);
+        andesContext = AndesContext.getInstance();
 
         log.info("Andes API initialised.");
     }
@@ -415,7 +422,7 @@ public class Andes {
      * @throws AndesException
      */
     public AndesMessagePart getMessageContentChunk(long messageID, int offsetInMessage) throws AndesException {
-        return MessagingEngine.getInstance().getMessageContentChunk(messageID, offsetInMessage);
+        return messagingEngine.getMessageContentChunk(messageID, offsetInMessage);
     }
 
     /**
@@ -426,7 +433,7 @@ public class Andes {
      * @throws AndesException
      */
     public AndesMessageMetadata getMessageMetaData(long messageID) throws AndesException {
-        return MessagingEngine.getInstance().getMessageMetaData(messageID);
+        return messagingEngine.getMessageMetaData(messageID);
     }
 
     /**
@@ -437,7 +444,7 @@ public class Andes {
      * @throws AndesException
      */
     public void messageRejected(DeliverableAndesMetadata metadata, UUID channelID) throws AndesException {
-        MessagingEngine.getInstance().messageRejected(metadata, channelID);
+        messagingEngine.messageRejected(metadata, channelID);
     }
 
     /**
@@ -450,7 +457,7 @@ public class Andes {
      */
     public void updateMetaDataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList)
             throws AndesException {
-        MessagingEngine.getInstance().updateMetaDataInformation(currentQueueName, metadataList);
+        messagingEngine.updateMetaDataInformation(currentQueueName, metadataList);
     }
 
     /**
@@ -462,7 +469,7 @@ public class Andes {
      */
     public void reQueueMessageToSubscriber(DeliverableAndesMetadata messageMetadata, LocalSubscription subscription)
             throws AndesException {
-        MessagingEngine.getInstance().reQueueMessageToSubscriber(messageMetadata, subscription);
+        messagingEngine.reQueueMessageToSubscriber(messageMetadata, subscription);
     }
 
     /**
@@ -474,7 +481,7 @@ public class Andes {
      */
     public void moveMessageToDeadLetterChannel(DeliverableAndesMetadata message, String destinationQueueName)
             throws AndesException {
-        MessagingEngine.getInstance().moveMessageToDeadLetterChannel(message, destinationQueueName);
+        messagingEngine.moveMessageToDeadLetterChannel(message, destinationQueueName);
     }
 
     /**
@@ -486,7 +493,7 @@ public class Andes {
      * @throws AndesException
      */
     public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException {
-        return MessagingEngine.getInstance().getContent(messageId, offsetValue);
+        return messagingEngine.getContent(messageId, offsetValue);
     }
 
     /**
@@ -497,7 +504,7 @@ public class Andes {
      * @throws AndesException
      */
     public LongObjectHashMap<List<AndesMessagePart>> getContent(LongArrayList messageIdList) throws AndesException {
-        return MessagingEngine.getInstance().getContent(messageIdList);
+        return messagingEngine.getContent(messageIdList);
     }
 
     /**
@@ -507,7 +514,7 @@ public class Andes {
      * @return Map of queue names and the message count for each queue
      */
     public Map<String, Integer> getMessageCountForAllQueues(List<String> queueNames) throws AndesException {
-        return MessagingEngine.getInstance().getMessageCountForAllQueues(queueNames);
+        return messagingEngine.getMessageCountForAllQueues(queueNames);
     }
 
     /**
@@ -518,7 +525,7 @@ public class Andes {
      * @throws AndesException
      */
     public long getMessageCountOfQueue(String queueName) throws AndesException {
-        return MessagingEngine.getInstance().getMessageCountOfQueue(queueName);
+        return messagingEngine.getMessageCountOfQueue(queueName);
     }
 
     /**
@@ -529,7 +536,7 @@ public class Andes {
      * @throws AndesException
      */
     public long getMessageCountInDLC(String dlcQueueName) throws AndesException {
-        return MessagingEngine.getInstance().getMessageCountInDLC(dlcQueueName);
+        return messagingEngine.getMessageCountInDLC(dlcQueueName);
     }
 
     /**
@@ -541,7 +548,7 @@ public class Andes {
      * @throws AndesException
      */
     public long getMessageCountInDLCForQueue(String queueName, String dlcQueueName) throws AndesException {
-        return MessagingEngine.getInstance().getMessageCountInDLCForQueue(queueName, dlcQueueName);
+        return messagingEngine.getMessageCountInDLCForQueue(queueName, dlcQueueName);
     }
 
     /**
@@ -555,7 +562,7 @@ public class Andes {
      */
     public List<DeliverableAndesMetadata> getMetaDataList(Slot slot, final String queueName, long firstMsgId,
             long lastMsgID) throws AndesException {
-        return MessagingEngine.getInstance().getMetaDataList(slot, queueName, firstMsgId, lastMsgID);
+        return messagingEngine.getMetaDataList(slot, queueName, firstMsgId, lastMsgID);
     }
 
     /**
@@ -570,7 +577,7 @@ public class Andes {
      */
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName, long firstMsgId,
             int count) throws AndesException {
-        return MessagingEngine.getInstance().getNextNMessageMetadataFromQueue(queueName, firstMsgId, count);
+        return messagingEngine.getNextNMessageMetadataFromQueue(queueName, firstMsgId, count);
     }
 
     /**
@@ -584,7 +591,7 @@ public class Andes {
      */
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName, int offset, int count)
             throws AndesException {
-        return MessagingEngine.getInstance().getNextNMessageMetadataFromQueue(queueName, offset, count);
+        return messagingEngine.getNextNMessageMetadataFromQueue(queueName, offset, count);
     }
 
     /**
@@ -599,7 +606,7 @@ public class Andes {
      */
     public List<AndesMessageMetadata> getNextNMessageMetadataInDLCForQueue(final String queueName,
             final String dlcQueueName, long firstMsgId, int count) throws AndesException {
-        return MessagingEngine.getInstance()
+        return messagingEngine
                 .getNextNMessageMetadataInDLCForQueue(queueName, dlcQueueName, firstMsgId, count);
     }
 
@@ -614,7 +621,7 @@ public class Andes {
      */
     public List<AndesMessageMetadata> getNextNMessageMetadataFromDLC(final String dlcQueueName, long firstMsgId,
             int count) throws AndesException {
-        return MessagingEngine.getInstance().getNextNMessageMetadataFromDLC(dlcQueueName, firstMsgId, count);
+        return messagingEngine.getNextNMessageMetadataFromDLC(dlcQueueName, firstMsgId, count);
     }
 
     /**
@@ -625,7 +632,7 @@ public class Andes {
      * @throws AndesException
      */
     public List<AndesMessageMetadata> getExpiredMessages(int limit) throws AndesException {
-        return MessagingEngine.getInstance().getExpiredMessages(limit);
+        return messagingEngine.getExpiredMessages(limit);
     }
 
     /**
@@ -635,7 +642,7 @@ public class Andes {
      * @return last assign message id
      */
     public long getLastAssignedSlotMessageId(String queueName) throws AndesException {
-        return MessagingEngine.getInstance().getLastAssignedSlotMessageId(queueName);
+        return messagingEngine.getLastAssignedSlotMessageId(queueName);
     }
 
     /**
@@ -645,7 +652,7 @@ public class Andes {
      * @return id generated
      */
     public long generateNewMessageId() {
-        return MessagingEngine.getInstance().generateUniqueId();
+        return messagingEngine.generateUniqueId();
     }
 
     /**
@@ -749,7 +756,7 @@ public class Andes {
      * @throws AndesException
      */
     public List<DeliverableAndesMetadata> getRetainedMetadataByTopic(String topicName) throws AndesException {
-        return MessagingEngine.getInstance().getRetainedMessageByTopic(topicName);
+        return messagingEngine.getRetainedMessageByTopic(topicName);
     }
 
     /**
@@ -760,7 +767,7 @@ public class Andes {
      * @throws AndesException
      */
     public AndesContent getRetainedMessageContent(AndesMessageMetadata metadata) throws AndesException {
-        return MessagingEngine.getInstance().getRetainedMessageContent(metadata);
+        return messagingEngine.getRetainedMessageContent(metadata);
     }
 
     /**
@@ -769,6 +776,38 @@ public class Andes {
      */
     public void triggerRecoveryEvent() {
         inboundEventManager.publishRecoveryEvent();
+    }
+
+    /**
+     * Register a protocol in the Andes core.
+     * This is the entry point for a protocol into Andes.
+     * All data that are required for Andes to identify the new protocol should be passed on to Andes here using a
+     * ProtocolInfo object.
+     *
+     * @param protocolInfo The protocol information object
+     * @throws AndesException
+     */
+    public void registerProtocolType(ProtocolInfo protocolInfo) throws AndesException {
+        andesContext.getSubscriptionEngine().addSubscriptionHandlersForProtocol(protocolInfo);
+
+        ClusterResourceHolder.getInstance().getSubscriptionManager().reloadSubscriptionsForProtocolType(
+                protocolInfo.getProtocolType());
+
+        andesContext.getAndesContextStore().addProtocolType(protocolInfo.getProtocolType());
+    }
+
+    /**
+     * Unregister a protocol and remove it's details from Andes.
+     *
+     * @param protocolInfo The protocol information to be unregistered.
+     */
+    public void unregisterProtocolType(ProtocolInfo protocolInfo) {
+
+        andesContext.getSubscriptionEngine().removeSubscriptionHandlersForProtocol(protocolInfo);
+
+        andesContext.getAndesContextStore().removeProtocolType(protocolInfo.getProtocolType());
+
+        //TODO:Need to properly clean the subscriptions, deactivate active subscriptions .etc
     }
 
 }

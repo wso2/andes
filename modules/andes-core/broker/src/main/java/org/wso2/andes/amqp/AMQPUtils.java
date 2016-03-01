@@ -22,6 +22,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.framing.AMQShortString;
+import org.wso2.andes.framing.ProtocolVersion;
 import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
@@ -48,7 +49,6 @@ import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.server.store.StorableMessageMetaData;
 import org.wso2.andes.server.store.StoredMessage;
 import org.wso2.andes.server.subscription.Subscription;
-import org.wso2.andes.store.StoredAMQPMessage;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.OutboundSubscription;
 
@@ -85,6 +85,8 @@ public class AMQPUtils {
     /* Store previously queried message part as a cache so when the same part was required
      for the next chunk it can be retrieved without accessing the database */
     private static Map<Long, AndesMessagePart> messagePartCache = new HashMap<Long, AndesMessagePart>();
+
+    private static Map<ProtocolVersion, ProtocolType> protocolTypeMap = new HashMap<>();
 
     /**
      * convert Andes metadata list to qpid queue entry list
@@ -398,8 +400,9 @@ public class AMQPUtils {
      *
      * @param amqQueue qpid queue
      * @return andes queue
+     * @throws AndesException
      */
-    public static InboundQueueEvent createAndesQueue(AMQQueue amqQueue) {
+    public static InboundQueueEvent createAndesQueue(AMQQueue amqQueue) throws AndesException {
         DestinationType destinationType;
 
         if (amqQueue.checkIfBoundToTopicExchange()) {
@@ -410,7 +413,7 @@ public class AMQPUtils {
 
         return new InboundQueueEvent(amqQueue.getName(),
                 (amqQueue.getOwner() != null) ? amqQueue.getOwner().toString() : "null",
-                amqQueue.isExclusive(), amqQueue.isDurable(), ProtocolType.AMQP, destinationType);
+                amqQueue.isExclusive(), amqQueue.isDurable(), amqQueue.getProtocolType(), destinationType);
     }
 
     /**
@@ -431,8 +434,10 @@ public class AMQPUtils {
      * @param queue      qpid queue binding points
      * @param routingKey routing key
      * @return InboundBindingEvent binding event that wrap AndesBinding
+     * @throws AndesException
      */
-    public static InboundBindingEvent createAndesBinding(Exchange exchange, AMQQueue queue, AMQShortString routingKey) {
+    public static InboundBindingEvent createAndesBinding(Exchange exchange, AMQQueue queue,
+                                                         AMQShortString routingKey) throws AndesException {
         /**
          * we are checking the type of exchange to avoid the confusion
          * <<default>> exchange is actually a direct exchange. No need to keep two bindings
@@ -501,5 +506,24 @@ public class AMQPUtils {
         }
 
         return isWildCard;
+    }
+
+    /**
+     * Get matching protocol Type of Andes for a given ProtocolVersion of AMQP.
+     *
+     * @param protocolVersion The version of the AMQP protocol
+     * @return The ProtocolType object
+     * @throws AndesException
+     */
+    public static ProtocolType getProtocolTypeForVersion(ProtocolVersion protocolVersion) throws AndesException {
+
+        ProtocolType protocolType = protocolTypeMap.get(protocolVersion);
+
+        if (null == protocolType) {
+            protocolType = new ProtocolType("AMQP", protocolVersion.toString());
+            protocolTypeMap.put(protocolVersion, protocolType);
+        }
+
+        return protocolType;
     }
 }

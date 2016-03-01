@@ -19,9 +19,13 @@ package org.wso2.andes.server.transport;
 
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQUnknownExchangeType;
+import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
+import org.wso2.andes.framing.ProtocolVersion;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.exchange.*;
 import org.wso2.andes.server.filter.FilterManager;
@@ -1022,8 +1026,15 @@ public class ServerSessionDelegate extends SessionDelegate
     {
         String owner = body.getExclusive() ? session.getClientID() : null;
 
-        final AMQQueue queue = AMQQueueFactory.createAMQQueueImpl(queueName, body.getDurable(), owner, body.getAutoDelete(),
-                                                                  body.getExclusive(), virtualHost, body.getArguments());
+        ProtocolType protocolType = null;
+        try {
+            protocolType = AMQPUtils.getProtocolTypeForVersion(ProtocolVersion.defaultProtocolVersion());
+        } catch (AndesException e) {
+            throw new AMQException("Error retrieving protocol type", e);
+        }
+
+        final AMQQueue queue = AMQQueueFactory.createAMQQueueImpl(queueName, body.getDurable(), owner,
+                body.getAutoDelete(), body.getExclusive(), protocolType, virtualHost, body.getArguments());
 
         return queue;
     }

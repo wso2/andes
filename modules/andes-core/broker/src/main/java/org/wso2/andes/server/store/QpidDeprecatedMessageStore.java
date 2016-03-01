@@ -27,7 +27,7 @@ import org.wso2.andes.AMQStoreException;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.kernel.*;
-import org.wso2.andes.store.StoredAMQPMessage;
+import org.wso2.andes.amqp.StoredAMQPMessage;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.logging.LogSubject;

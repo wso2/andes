@@ -103,7 +103,7 @@ public class VirtualHostConfigSynchronizer implements
      */
     public void clusterQueueAdded(AndesQueue queue) throws AndesException {
         try {
-            queue(queue.queueName, queue.queueOwner, queue.isExclusive, null);
+            queue(queue.queueName, queue.queueOwner, queue.isExclusive, null, queue.getProtocolType());
             AndesContext.getInstance().getAMQPConstructStore().addQueue(queue, false);
         } catch (Exception e) {
             log.error("could not add cluster queue", e);
@@ -212,7 +212,8 @@ public class VirtualHostConfigSynchronizer implements
 
     //add the queue into internal qpid if NOT present
     @Override
-    public void queue(String queueName, String owner, boolean exclusive, FieldTable arguments) {
+    public void queue(String queueName, String owner, boolean exclusive, FieldTable arguments,
+                      ProtocolType protocolType) {
 
         synchronized (this) {
             try {
@@ -222,9 +223,9 @@ public class VirtualHostConfigSynchronizer implements
 
                 if (q == null) {
                     //if a new durable queue is added we can know it here
-                    q = AMQQueueFactory.createAMQQueueImpl(queueNameShortString, true, owner == null ? null : new AMQShortString(owner), false, exclusive, _virtualHost,
-                            arguments);
-                    _virtualHost.getQueueRegistry().registerQueue(q);
+                    q = AMQQueueFactory.createAMQQueueImpl(queueNameShortString, true,
+                            owner == null ? null : new AMQShortString(owner), false, exclusive, protocolType,
+                            _virtualHost, arguments);_virtualHost.getQueueRegistry().registerQueue(q);
                     _logger.info("Queue sync - Added Queue: " + queueName
                             + ", Owner: " + owner + ", IsExclusive: " + exclusive + ", Arguments: " + arguments);
                 }

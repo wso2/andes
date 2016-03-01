@@ -142,11 +142,6 @@ public class Main {
                         .withDescription("SSL port. Overrides any value in the config file")
                         .withLongOpt("sslport").create(BrokerOptions.SSL_PORTS);
 
-        Option mqttPort =
-                OptionBuilder.withArgName("mqttport").hasArg()
-                        .withDescription("MQTT port. Overrides any value in the config file")
-                        .withLongOpt("mqttport").create(BrokerOptions.MQTT_PORT);
-
         options.addOption(help);
         options.addOption(version);
         options.addOption(configFile);
@@ -160,7 +155,6 @@ public class Main {
         options.addOption(mport);
         options.addOption(bind);
         options.addOption(sslport);
-        options.addOption(mqttPort);
     }
 
     protected void execute() throws Exception {
@@ -206,15 +200,6 @@ public class Main {
             }
         }
 
-        String mqttPortStr = commandLine.getOptionValue(BrokerOptions.MQTT_PORT);
-        if (mqttPortStr != null) {
-            parseMQTTPort(options, mqttPortStr);
-        }
-        //TODO : Commented because this is ported to transport module
-//        } else {
-//            options.setMQTTPort(Server.DEFAULT_MQTT_PORT);
-//        }
-
         startBroker(options);
     }
 
@@ -228,18 +213,11 @@ public class Main {
         Broker broker = new Broker();
         //TODO Fix this properly
         broker.startup(options);
-
-        //Will start the MQTT Broker
-        //todo need to startup with the broker options inclusive
-        //TODO : Commented because this is ported to transport module
-
-//        startMQTTBroker(options);
     }
 
     protected void shutdown(final int status) {
         ApplicationRegistry.remove();
         System.exit(status);
-        //todo need to add the ability to gracefully shutdown the MQTT server
     }
 
     private static void parsePortArray(final BrokerOptions options, final Object[] ports,
@@ -255,16 +233,6 @@ public class Main {
                 } catch (NumberFormatException e) {
                     throw new InitException("Invalid port: " + port, e);
                 }
-            }
-        }
-    }
-
-    private static void parseMQTTPort(final BrokerOptions options, final String port) throws InitException {
-        if (port != null) {
-            try {
-                options.setMQTTPort(Integer.parseInt(String.valueOf(port)));
-            } catch (NumberFormatException e) {
-                throw new InitException("Invalid port: " + port, e);
             }
         }
     }

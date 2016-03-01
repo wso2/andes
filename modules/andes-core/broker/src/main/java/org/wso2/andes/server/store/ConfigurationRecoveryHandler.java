@@ -18,6 +18,7 @@
 package org.wso2.andes.server.store;
 
 import org.wso2.andes.framing.FieldTable;
+import org.wso2.andes.kernel.ProtocolType;
 
 import java.nio.ByteBuffer;
 
@@ -27,7 +28,7 @@ public interface ConfigurationRecoveryHandler
 
     public static interface QueueRecoveryHandler
     {
-        void queue(String queueName, String owner, boolean exclusive, FieldTable arguments);
+        void queue(String queueName, String owner, boolean exclusive, FieldTable arguments, ProtocolType protocolType);
         ExchangeRecoveryHandler completeQueueRecovery();
     }
 

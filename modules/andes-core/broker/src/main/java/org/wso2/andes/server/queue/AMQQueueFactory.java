@@ -20,8 +20,12 @@ package org.wso2.andes.server.queue;
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
+import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
+import org.wso2.andes.framing.ProtocolVersion;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.server.NameValidationUtils;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.configuration.qpid.QueueConfiguration;
@@ -127,12 +131,13 @@ public class AMQQueueFactory
     };
 
 
-    /** @see #createAMQQueueImpl(String, boolean, String, boolean, boolean, VirtualHost, Map) */
+    /** @see #createAMQQueueImpl(String, boolean, String, boolean, boolean, ProtocolType, VirtualHost, Map) */
     public static AMQQueue createAMQQueueImpl(AMQShortString name,
                                               boolean durable,
                                               AMQShortString owner,
                                               boolean autoDelete,
                                               boolean exclusive,
+                                              ProtocolType protocolType,
                                               VirtualHost virtualHost, final FieldTable arguments) throws AMQException
     {
         return createAMQQueueImpl(name == null ? null : name.toString(),
@@ -140,6 +145,7 @@ public class AMQQueueFactory
                                   owner == null ? null : owner.toString(),
                                   autoDelete,
                                   exclusive,
+                                  protocolType,
                                   virtualHost, FieldTable.convertToMap(arguments));
     }
 
@@ -149,6 +155,7 @@ public class AMQQueueFactory
                                               String owner,
                                               boolean autoDelete,
                                               boolean exclusive,
+                                              ProtocolType protocolType,
                                               VirtualHost virtualHost, Map<String, Object> arguments) throws AMQSecurityException
     {
         if (_logger.isDebugEnabled()) {
@@ -216,6 +223,8 @@ public class AMQQueueFactory
             q = new SimpleAMQQueue(queueName, durable, owner, autoDelete, exclusive, virtualHost, arguments);
         }
 
+        q.setProtocolType(protocolType);
+
         //Register the new queue
         virtualHost.getQueueRegistry().registerQueue(q);
         q.configure(virtualHost.getConfiguration().getQueueConfiguration(queueName));
@@ -267,8 +276,16 @@ public class AMQQueueFactory
             }
         }
 
-        AMQQueue q = createAMQQueueImpl(queueName, durable, owner, autodelete, exclusive, host, arguments);
-        q.configure(config);
+        AMQQueue q;
+
+        // This is called when initializing virtualhost, so the version is set to default
+        try {
+            ProtocolType protocolType = AMQPUtils.getProtocolTypeForVersion(ProtocolVersion.defaultProtocolVersion());
+            q = createAMQQueueImpl(queueName, durable, owner, autodelete, exclusive, protocolType, host, arguments);
+            q.configure(config);
+        } catch (AndesException e) {
+            throw new AMQException("Error retrieving protocol type", e);
+        }
         return q;
     }
 

@@ -40,7 +40,6 @@ import org.wso2.andes.framing.abstraction.ContentChunk;
 import org.wso2.andes.framing.abstraction.MessagePublishInfo;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesChannel;
-import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.FlowControlListener;
 import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
@@ -83,7 +82,7 @@ import org.wso2.andes.server.txn.LocalTransaction;
 import org.wso2.andes.server.txn.ServerTransaction;
 import org.wso2.andes.server.virtualhost.AMQChannelMBean;
 import org.wso2.andes.server.virtualhost.VirtualHost;
-import org.wso2.andes.store.StoredAMQPMessage;
+import org.wso2.andes.amqp.StoredAMQPMessage;
 
 import javax.management.JMException;
 import java.util.ArrayList;

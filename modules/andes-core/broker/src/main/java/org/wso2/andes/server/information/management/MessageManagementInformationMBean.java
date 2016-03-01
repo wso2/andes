@@ -24,7 +24,6 @@ import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.management.common.mbeans.MessageManagementInformation;
@@ -99,9 +98,9 @@ public class MessageManagementInformationMBean extends AMQManagedObject implemen
     @MBeanOperationParameter(name = "limit", description = "Maximum message count per request") int limit)
             throws MBeanException{
         List<CompositeData> compositeDataList = new ArrayList<>();
-        ProtocolType protocolType = ProtocolType.valueOf(protocolTypeAsString.toUpperCase());
-        DestinationType destinationType = DestinationType.valueOf(destinationTypeAsString.toUpperCase());
+
         try {
+            ProtocolType protocolType = new ProtocolType(protocolTypeAsString);
 
             List<AndesMessageMetadata> nextNMessageMetadataFromQueue;
             if (!DLCQueueUtils.isDeadLetterQueue(destinationName)) {
@@ -136,9 +135,9 @@ public class MessageManagementInformationMBean extends AMQManagedObject implemen
     @MBeanOperationParameter(name = "limit", description = "Maximum message count per request") int limit)
             throws MBeanException {
         List<CompositeData> compositeDataList = new ArrayList<>();
-        ProtocolType protocolType = ProtocolType.valueOf(protocolTypeAsString.toUpperCase());
-        DestinationType destinationType = DestinationType.valueOf(destinationTypeAsString.toUpperCase());
+
         try {
+            ProtocolType protocolType = new ProtocolType(protocolTypeAsString);
 
             List<AndesMessageMetadata> nextNMessageMetadataFromQueue;
             if (!DLCQueueUtils.isDeadLetterQueue(destinationName)) {
@@ -173,9 +172,8 @@ public class MessageManagementInformationMBean extends AMQManagedObject implemen
     @MBeanOperationParameter(name = "content", description = "Get content of message") boolean content)
             throws MBeanException {
         CompositeData message = null;
-        ProtocolType protocolType = ProtocolType.valueOf(protocolTypeAsString.toUpperCase());
-        DestinationType destinationType = DestinationType.valueOf(destinationTypeAsString.toUpperCase());
         try {
+            ProtocolType protocolType = new ProtocolType(protocolTypeAsString);
 
             List<AndesMessageMetadata> nextNMessageMetadataFromQueue;
             if (!DLCQueueUtils.isDeadLetterQueue(destinationName)) {
@@ -206,8 +204,7 @@ public class MessageManagementInformationMBean extends AMQManagedObject implemen
     @MBeanOperationParameter(name = "destinationType", description = "Destination Type") String destinationTypeAsString,
     @MBeanOperationParameter(name = "destinationName", description = "Destination Name") String destinationName)
             throws MBeanException {
-        ProtocolType protocolType = ProtocolType.valueOf(protocolTypeAsString.toUpperCase());
-        DestinationType destinationType = DestinationType.valueOf(destinationTypeAsString.toUpperCase());
+
         AMQQueue queue = queueRegistry.getQueue(new AMQShortString(destinationName));
 
         try {

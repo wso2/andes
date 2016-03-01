@@ -50,10 +50,10 @@ public class ClusterQueueChangedListener implements MessageListener<ClusterNotif
     public void onMessage(Message<ClusterNotification> message) {
         ClusterNotification clusterNotification = message.getMessageObject();
         log.debug("Handling cluster gossip: received a queue change notification " + clusterNotification.getDescription());
-        AndesQueue andesQueue = new AndesQueue(clusterNotification.getEncodedObjectAsString());
-        QueueListener.QueueEvent change = QueueListener.QueueEvent
-                .valueOf(clusterNotification.getChangeType());
         try {
+            AndesQueue andesQueue = new AndesQueue(clusterNotification.getEncodedObjectAsString());
+            QueueListener.QueueEvent change = QueueListener.QueueEvent
+                    .valueOf(clusterNotification.getChangeType());
             for (QueueListener queueListener : queueListeners) {
                 queueListener.handleClusterQueuesChanged(andesQueue, change);
             }

@@ -20,6 +20,7 @@ package org.wso2.andes.server.queue;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 import org.wso2.andes.server.logging.LogSubject;
@@ -272,4 +273,8 @@ public interface AMQQueue extends Managable, Comparable<AMQQueue>, ExchangeRefer
     ManagedObject getManagedObject();
 
     void setExclusive(boolean exclusive) throws AMQException;
+
+    ProtocolType getProtocolType();
+
+    void setProtocolType(ProtocolType protocolType);
 }

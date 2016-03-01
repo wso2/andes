@@ -21,7 +21,6 @@ package org.wso2.andes.kernel.disruptor.inbound;
 import com.lmax.disruptor.EventHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
@@ -210,7 +209,7 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                          * baring subscription bound queue name as the destination
                          */
                         clonedMessage.getMetadata().updateMetadata(subscription.getTargetQueue(),
-                                AMQPUtils.DIRECT_EXCHANGE_NAME);
+                                AndesUtils.DIRECT_EXCHANGE_NAME);
                     }
                     if (log.isDebugEnabled()) {
                         log.debug("Storing metadata queue " + subscription.getStorageQueueName() + " messageID "

@@ -27,6 +27,7 @@ import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.framing.BasicContentHeaderProperties;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
@@ -108,7 +109,8 @@ public class CompositeDataHelper {
 		 */
 		private Object[] getDestinationItemValue(AndesQueue destination, long messageCount) {
 			return new Object[]{destination.queueName, destination.queueOwner, destination.isDurable,
-			                    destination.subscriptionCount, messageCount, destination.getProtocolType().name(),
+			                    destination.subscriptionCount, messageCount,
+                                destination.getProtocolType().getProtocolName(),
 			                    destination.getDestinationType().name()};
 		}
 
@@ -188,7 +190,7 @@ public class CompositeDataHelper {
                                 subscription.hasExternalSubscriptions(),
                                 pendingMessageCount,
                                 subscription.getSubscribedNode(),
-                                subscription.getProtocolType().name(),
+                                subscription.getProtocolType().getProtocolName(),
                                 subscription.getDestinationType().name()};
         }
 
@@ -327,9 +329,9 @@ public class CompositeDataHelper {
 		private Object[] getMessageItemValue(ProtocolType protocolType,
                                              AndesMessageMetadata andesMessageMetadata,
                                              boolean getMessageContent) throws MBeanException {
-            if (ProtocolType.AMQP == protocolType) {
+            if ("AMQP".equals(protocolType.getProtocolName())) {
                 getJMSMessageItemValues(protocolType, andesMessageMetadata, getMessageContent);
-            } else if (ProtocolType.MQTT == protocolType){
+            } else {
                 throw new NotImplementedException();
             }
             return new Object[0];
@@ -372,7 +374,7 @@ public class CompositeDataHelper {
                 //get destination
                 String destination = andesMessageMetadata.getDestination();
 	            //get protocol type
-	            String protocolAsString = protocol.name();
+	            String protocolAsString = protocol.getProtocolName();
 
                 Map<String, String> properties = new HashMap<>();
                 //get AMQMessage from AndesMessageMetadata

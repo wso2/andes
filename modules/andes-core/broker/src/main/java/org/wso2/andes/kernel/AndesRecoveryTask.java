@@ -103,12 +103,11 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 	 *
 	 * @throws AndesException
 	 */
-	public void recoverExchangesQueuesBindingsSubscriptions() throws AndesException {
+	public void recoverExchangesQueuesBindings() throws AndesException {
 		if (isContextStoreOperational.get()) {
 			reloadExchangesFromDB();
 			reloadQueuesFromDB();
 			reloadBindingsFromDB();
-			reloadSubscriptions();
 		} else {
 			log.warn("AndesRecoveryTask was paused due to non-operational context store.");
 		}
@@ -153,11 +152,10 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 				for (QueueListener listener : queueListeners) {
 					log.warn("Recovering node. Adding queue " + queue.toString());
 					/**
-					 * Ignoring MQTT queues when recovering as they are already stored in the database. 
+					 * Ignoring MQTT queues when recovering as they are already stored in the database.
+					 * TODO: Fix - https://wso2.org/jira/browse/MB-1603
 					 */
-					if (queue.getProtocolType() != ProtocolType.MQTT) {
-						listener.handleClusterQueuesChanged(queue, QueueListener.QueueEvent.ADDED);
-					}
+					listener.handleClusterQueuesChanged(queue, QueueListener.QueueEvent.ADDED);
 				}
 			}
 

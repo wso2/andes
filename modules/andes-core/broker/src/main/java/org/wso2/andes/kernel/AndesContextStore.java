@@ -22,6 +22,7 @@ import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
 import org.wso2.andes.store.HealthAwareStore;
+import org.wso2.andes.subscription.BasicSubscription;
 
 import java.util.List;
 import java.util.Map;
@@ -44,11 +45,11 @@ public interface AndesContextStore extends HealthAwareStore{
                                                                                      AndesException;
 
     /**
-     * Get all durable encoded subscriptions as strings.
+     * Get all durable subscriptions stored in context store.
      *
-     * @return list of <id,subscriptions>
+     * @return set of all subscriptions
      */
-    Map<String, List<String>> getAllStoredDurableSubscriptions() throws AndesException;
+    Set<BasicSubscription> getAllStoredDurableSubscriptions() throws AndesException;
 
     /**
      * Get all stored durable subscriptions as a map with the subscription Ids as the the key
@@ -436,5 +437,26 @@ public interface AndesContextStore extends HealthAwareStore{
      * Close the context store
      */
     void close();
+
+    /**
+     * Add a registered protocol type to the context.
+     *
+     * @param protocolType The protocol type object
+     */
+    void addProtocolType(ProtocolType protocolType);
+
+    /**
+     * Get all registered protocols.
+     *
+     * @return Set of {@link ProtocolType} objects registered in Andes context
+     */
+    Set<ProtocolType> getProtocols();
+
+    /**
+     * Remove a protocol type from the store.
+     *
+     * @param protocolType The protocol type to remove
+     */
+    void removeProtocolType(ProtocolType protocolType);
 
 }

@@ -26,6 +26,7 @@ import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.configuration.qpid.*;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.pool.ReadWriteRunnable;
 import org.wso2.andes.pool.ReferenceCountingExecutorService;
 import org.wso2.andes.server.AMQChannel;
@@ -100,6 +101,8 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
     private final AtomicReference<SubscriptionList.SubscriptionNode> _lastSubscriptionNode = new AtomicReference<SubscriptionList.SubscriptionNode>(_subscriptionList.getHead());
 
     private volatile Subscription _exclusiveSubscriber;
+
+    private ProtocolType _protocolType;
 
 
 
@@ -2289,5 +2292,13 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
         }
 
         return result;
+    }
+
+    public ProtocolType getProtocolType() {
+        return _protocolType;
+    }
+
+    public void setProtocolType(ProtocolType protocolType) {
+        this._protocolType = protocolType;
     }
 }

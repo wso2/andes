@@ -119,7 +119,7 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
      *
      * @param queueAsStr queue information as encoded string
      */
-    public InboundQueueEvent(String queueAsStr) {
+    public InboundQueueEvent(String queueAsStr) throws AndesException {
         super(queueAsStr);
         purgedCount = SettableFuture.create();
         isEventComplete = SettableFuture.create();

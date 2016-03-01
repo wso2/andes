@@ -19,13 +19,14 @@
 package org.wso2.andes.subscription;
 
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.DestinationType;
-import org.wso2.andes.kernel.ProtocolType;
 
 /**
  * Builder class for {@link SubscriptionProcessor}.
  */
 public class SubscriptionProcessorBuilder {
+
+    SubscriptionProcessor clusterSubscriptionProcessor = new SubscriptionProcessor();
+    SubscriptionProcessor localSubscriptionProcessor = new SubscriptionProcessor();
 
     /**
      * Build cluster subscription processor with relevant classes for processing cluster subscriptions.
@@ -36,18 +37,18 @@ public class SubscriptionProcessorBuilder {
     public static SubscriptionProcessor getClusterSubscriptionProcessor() throws AndesException {
         SubscriptionProcessor subscriptionProcessor = new SubscriptionProcessor();
 
-        // Add handles for AMQP
-        subscriptionProcessor.addHandler(ProtocolType.AMQP, DestinationType.QUEUE, new QueueSubscriptionStore());
-        subscriptionProcessor.addHandler(ProtocolType.AMQP, DestinationType.TOPIC,
-                new TopicSubscriptionBitMapStore(ProtocolType.AMQP));
-        subscriptionProcessor.addHandler(ProtocolType.AMQP, DestinationType.DURABLE_TOPIC,
-                new TopicSubscriptionBitMapStore(ProtocolType.AMQP));
-
-        // Add handles for MQTT
-        subscriptionProcessor.addHandler(ProtocolType.MQTT, DestinationType.TOPIC,
-                new TopicSubscriptionBitMapStore(ProtocolType.MQTT));
-        subscriptionProcessor.addHandler(ProtocolType.MQTT, DestinationType.DURABLE_TOPIC,
-                new TopicSubscriptionBitMapStore(ProtocolType.MQTT));
+//        // Add handlers for AMQP
+//        subscriptionProcessor.addHandler(ProtocolType.AMQP, DestinationType.QUEUE, new QueueSubscriptionStore());
+//        subscriptionProcessor.addHandler(ProtocolType.AMQP, DestinationType.TOPIC,
+//                new TopicSubscriptionBitMapStore(ProtocolType.AMQP));
+//        subscriptionProcessor.addHandler(ProtocolType.AMQP, DestinationType.DURABLE_TOPIC,
+//                new TopicSubscriptionBitMapStore(ProtocolType.AMQP));
+//
+//        // Add handlers for MQTT
+//        subscriptionProcessor.addHandler(ProtocolType.MQTT, DestinationType.TOPIC,
+//                new TopicSubscriptionBitMapStore(ProtocolType.MQTT));
+//        subscriptionProcessor.addHandler(ProtocolType.MQTT, DestinationType.DURABLE_TOPIC,
+//                new TopicSubscriptionBitMapStore(ProtocolType.MQTT));
 
         return subscriptionProcessor;
     }
@@ -61,23 +62,23 @@ public class SubscriptionProcessorBuilder {
     public static SubscriptionProcessor getLocalSubscriptionProcessor() throws AndesException {
         SubscriptionProcessor subscriptionProcessor = new SubscriptionProcessor();
 
-        // Add handles for AMQP
-        subscriptionProcessor.addHandler(ProtocolType.AMQP, DestinationType.QUEUE,
-                new QueueSubscriptionStore());
-
-        // Using queue subscription store for topics since wildcard matching is not required for local subscriptions
-        subscriptionProcessor.addHandler(ProtocolType.AMQP, DestinationType.TOPIC, new QueueSubscriptionStore());
-
-        // Local durable topic subscription store is specific to local mode since subscriptions are stored
-        // against their targetQueue in this store
-        subscriptionProcessor.addHandler(ProtocolType.AMQP, DestinationType.DURABLE_TOPIC,
-                new LocalDurableTopicSubscriptionStore());
-
-        // Add handles for MQTT
-        // Using queue subscription store for topics since wildcard matching is not required for local subscriptions
-        subscriptionProcessor.addHandler(ProtocolType.MQTT, DestinationType.TOPIC, new QueueSubscriptionStore());
-        subscriptionProcessor.addHandler(ProtocolType.MQTT, DestinationType.DURABLE_TOPIC,
-                new LocalDurableTopicSubscriptionStore());
+//        // Add handlers for AMQP
+//        subscriptionProcessor.addHandler(ProtocolType.AMQP, DestinationType.QUEUE,
+//                new QueueSubscriptionStore());
+//
+//        // Using queue subscription store for topics since wildcard matching is not required for local subscriptions
+//        subscriptionProcessor.addHandler(ProtocolType.AMQP, DestinationType.TOPIC, new QueueSubscriptionStore());
+//
+//        // Local durable topic subscription store is specific to local mode since subscriptions are stored
+//        // against their targetQueue in this store
+//        subscriptionProcessor.addHandler(ProtocolType.AMQP, DestinationType.DURABLE_TOPIC,
+//                new LocalDurableTopicSubscriptionStore());
+//
+//        // Add handlers for MQTT
+//        // Using queue subscription store for topics since wildcard matching is not required for local subscriptions
+//        subscriptionProcessor.addHandler(ProtocolType.MQTT, DestinationType.TOPIC, new QueueSubscriptionStore());
+//        subscriptionProcessor.addHandler(ProtocolType.MQTT, DestinationType.DURABLE_TOPIC,
+//                new LocalDurableTopicSubscriptionStore());
 
         return subscriptionProcessor;
     }

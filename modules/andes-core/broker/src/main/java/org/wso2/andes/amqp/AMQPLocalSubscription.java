@@ -24,6 +24,7 @@ import org.wso2.andes.AMQException;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesContent;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesUtils;
@@ -42,6 +43,7 @@ import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionImpl;
 import org.wso2.andes.subscription.OutboundSubscription;
 import org.wso2.andes.tools.utils.MessageTracer;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -85,7 +87,7 @@ public class AMQPLocalSubscription implements OutboundSubscription {
 
 
     public AMQPLocalSubscription(AMQQueue amqQueue, Subscription amqpSubscription, boolean isDurable, boolean
-            isBoundToTopic) {
+            isBoundToTopic) throws AndesException {
 
         this.amqQueue = amqQueue;
         this.amqpSubscription = amqpSubscription;
@@ -102,7 +104,7 @@ public class AMQPLocalSubscription implements OutboundSubscription {
         //We re define concurrencyLevel as 2, since there will be only 2 threads which accesses it concurrently
         this.storedMessageCache = new ConcurrentHashMap<>(16,0.75f,2);
 
-        this.protocolType = ProtocolType.AMQP;
+        this.protocolType = new ProtocolType("AMQP", channel.getProtocolSession().getProtocolVersion().toString());
     }
 
     /**

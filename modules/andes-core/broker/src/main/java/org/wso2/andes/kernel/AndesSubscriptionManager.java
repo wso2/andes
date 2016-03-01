@@ -34,6 +34,7 @@ import org.wso2.andes.subscription.SubscriptionEngine;
 import java.util.*;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 
 public class AndesSubscriptionManager implements NetworkPartitionListener {
 
@@ -218,7 +219,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
                         mockSubscription.close();
                         subscriptionEngine.removeSubscriptionDirectly(sub);
                         notifyClusterSubscriptionHasChanged(sub,
-                                                                    SubscriptionListener.SubscriptionChange.DELETED);
+                                SubscriptionListener.SubscriptionChange.DELETED);
                     }
                 }
             }
@@ -393,39 +394,32 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
      * Reload subscriptions from DB storage and update cluster subscriptions in subscription store.
      */
     public void reloadSubscriptionsFromStorage() throws AndesException {
-
         clusterSubscriptionModifyLock.writeLock().lock();
 
-        try {
-            Map<String, List<String>> results = AndesContext.getInstance().getAndesContextStore()
-                    .getAllStoredDurableSubscriptions();
+        Set<BasicSubscription> dbSubscriptions = AndesContext.getInstance().getAndesContextStore()
+                .getAllStoredDurableSubscriptions();
 
-            Set<AndesSubscription> dbSubscriptions = new HashSet<>();
+
+        try {
             Set<AndesSubscription> memorySubscriptions = subscriptionEngine.getAllClusterSubscriptions();
 
-            for (Map.Entry<String, List<String>> entry : results.entrySet()) {
+            for (BasicSubscription subscription : dbSubscriptions) {
 
-                // Check for db subscriptions that are not available in memory and add them
-                for (String subscriptionAsStr : entry.getValue()) {
-                    BasicSubscription subscription = new BasicSubscription(subscriptionAsStr);
-                    dbSubscriptions.add(subscription);
+                if (subscriptionEngine.isSubscriptionAvailable(subscription)) {
+                    // Remove from list of memory subscriptions since this subscription is verified
+                    memorySubscriptions.remove(subscription);
 
-                    if (subscriptionEngine.isSubscriptionAvailable(subscription)) {
-                        // Remove from list of memory subscriptions since this subscription is verified
-                        memorySubscriptions.remove(subscription);
+                    if (DestinationType.DURABLE_TOPIC == subscription.getDestinationType()) {
+                        //for durable topic subscriptions we need to update anyway since active state could have changed
+                        subscriptionEngine.updateClusterSubscription(subscription);
 
-                        if (DestinationType.DURABLE_TOPIC == subscription.getDestinationType()){
-                            //for durable topic subscriptions we need to update anyway since active state could have changed
-                            subscriptionEngine.updateClusterSubscription(subscription);
-
-                        }
-                    } else {
-                        // Subscription not available in subscription store, need to add
-                        log.warn("Cluster Subscriptions are not in sync. Subscription not available in subscription "
-                                + "store but exists in DB. Thus adding " + subscription);
-                        subscriptionEngine.createDisconnectOrRemoveClusterSubscription(subscription, SubscriptionListener
-                                .SubscriptionChange.ADDED);
                     }
+                } else {
+                    // Subscription not available in subscription store, need to add
+                    log.warn("Cluster Subscriptions are not in sync. Subscription not available in subscription "
+                            + "store but exists in DB. Thus adding " + subscription);
+                    subscriptionEngine.createDisconnectOrRemoveClusterSubscription(subscription, SubscriptionListener
+                            .SubscriptionChange.ADDED);
                 }
             }
 
@@ -441,6 +435,52 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
         } finally {
             clusterSubscriptionModifyLock.writeLock().unlock();
         }
+    }
+
+    /**
+     * Reload subscriptions for a given protocol type.
+     *
+     * @param protocolType The protocol type to reload subscriptions for
+     * @throws AndesException
+     */
+    public void reloadSubscriptionsForProtocolType(ProtocolType protocolType) throws AndesException {
+
+        log.info("Recovering subscriptions for ProtocolType : " + protocolType);
+
+        clusterSubscriptionModifyLock.writeLock().lock();
+
+
+        Set<BasicSubscription> dbSubscriptions = AndesContext.getInstance().getAndesContextStore()
+                .getAllStoredDurableSubscriptions();
+
+        // Get set of matching protocol types
+        Set<BasicSubscription> protocolSubscriptions = dbSubscriptions.parallelStream().filter(
+                subscription -> protocolType.equals(subscription.getProtocolType())).collect(Collectors.toSet());
+
+
+        try {
+
+            for (BasicSubscription subscription : protocolSubscriptions) {
+
+                if (subscriptionEngine.isSubscriptionAvailable(subscription)) {
+
+                    if (DestinationType.DURABLE_TOPIC == subscription.getDestinationType()) {
+                        //for durable topic subscriptions we need to update anyway since active state could have changed
+                        subscriptionEngine.updateClusterSubscription(subscription);
+
+                    }
+                } else {
+                    // Subscription not available in subscription store, need to add
+                    log.warn("Cluster Subscriptions are not in sync. Subscription not available in subscription "
+                            + "store but exists in DB. Thus adding " + subscription);
+                    subscriptionEngine.createDisconnectOrRemoveClusterSubscription(subscription, SubscriptionListener
+                            .SubscriptionChange.ADDED);
+                }
+            }
+        } finally {
+            clusterSubscriptionModifyLock.writeLock().unlock();
+        }
+
     }
 
     private void notifyLocalSubscriptionHasChanged(final LocalSubscription subscription, final SubscriptionListener.SubscriptionChange change) throws AndesException {

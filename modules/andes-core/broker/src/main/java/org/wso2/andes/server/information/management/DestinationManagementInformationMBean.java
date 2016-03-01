@@ -92,9 +92,11 @@ public class DestinationManagementInformationMBean extends AMQManagedObject impl
     @MBeanOperationParameter(name = "limit", description = "Limit for result") int limit) throws MBeanException {
 
         List<CompositeData> compositeDataList = new ArrayList<>();
-        ProtocolType protocolType = ProtocolType.valueOf(protocolTypeAsString.toUpperCase());
-        DestinationType destinationType = DestinationType.valueOf(destinationTypeAsString.toUpperCase());
+
         try {
+            ProtocolType protocolType = new ProtocolType(protocolTypeAsString);
+            DestinationType destinationType = DestinationType.valueOf(destinationTypeAsString.toUpperCase());
+
             List<AndesQueue> destinations = AndesContext.getInstance().getAMQPConstructStore().getQueues(keyword)
                     .stream()
                     .skip(offset)
@@ -125,9 +127,11 @@ public class DestinationManagementInformationMBean extends AMQManagedObject impl
     @MBeanOperationParameter(name = "protocol", description = "Protocol") String protocolTypeAsString,
     @MBeanOperationParameter(name = "destinationType", description = "Destination Type") String destinationTypeAsString)
             throws MBeanException {
-        ProtocolType protocolType = ProtocolType.valueOf(protocolTypeAsString.toUpperCase());
-        DestinationType destinationType = DestinationType.valueOf(destinationTypeAsString.toUpperCase());
+
         try {
+            ProtocolType protocolType = new ProtocolType(protocolTypeAsString);
+            DestinationType destinationType = DestinationType.valueOf(destinationTypeAsString.toUpperCase());
+
             AMQBrokerManagerMBean brokerMBean = (AMQBrokerManagerMBean) virtualHost.getBrokerMBean();
             List<AndesQueue> destinations = AndesContext.getInstance().getAMQPConstructStore().getQueues(ALL_WILDCARD);
 
@@ -176,13 +180,16 @@ public class DestinationManagementInformationMBean extends AMQManagedObject impl
     @MBeanOperationParameter(name = "destinationName", description = "Destination Name") String destinationName,
     @MBeanOperationParameter(name = "currentUsername", description = "Current user's username") String currentUsername)
             throws MBeanException {
-        ProtocolType protocolType = ProtocolType.valueOf(protocolTypeAsString.toUpperCase());
-        DestinationType destinationType = DestinationType.valueOf(destinationTypeAsString.toUpperCase());
+
         AMQBrokerManagerMBean brokerMBean = (AMQBrokerManagerMBean) virtualHost.getBrokerMBean();
         CompositeData newDestination = null;
         try {
-            if (ProtocolType.AMQP == protocolType && DestinationType.QUEUE == destinationType) {
-                brokerMBean.createNewQueue(destinationName, currentUsername, true);
+            ProtocolType protocolType = new ProtocolType(protocolTypeAsString);
+            DestinationType destinationType = DestinationType.valueOf(destinationTypeAsString.toUpperCase());
+
+            if ("AMQP".equals(protocolType.getProtocolName()) && DestinationType.QUEUE == destinationType) {
+
+                brokerMBean.createNewQueue(destinationName, currentUsername, true, protocolTypeAsString);
 
                 MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
 
