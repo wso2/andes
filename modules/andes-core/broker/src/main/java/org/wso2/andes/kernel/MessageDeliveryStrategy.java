@@ -29,9 +29,12 @@ public interface MessageDeliveryStrategy {
      * and send the messages accordingly
      *
      * @param messageDeliveryInfo The message delivery information holder
+     * @param storageQueue Storage queue related to messages
+     *
      *
      * @return number of messages sent
      * @throws AndesException in case of a delivery failure
      */
-    public int deliverMessageToSubscriptions(MessageDeliveryInfo messageDeliveryInfo) throws AndesException;
+    public int deliverMessageToSubscriptions(MessageDeliveryInfo messageDeliveryInfo, String storageQueue) throws
+            AndesException;
 }
