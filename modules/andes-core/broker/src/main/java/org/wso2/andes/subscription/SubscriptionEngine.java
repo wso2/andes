@@ -28,10 +28,10 @@ import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.SubscriptionListener.SubscriptionChange;
-import org.wso2.andes.metrics.MetricsConstants;
-import org.wso2.carbon.metrics.manager.Gauge;
-import org.wso2.carbon.metrics.manager.Level;
-import org.wso2.carbon.metrics.manager.MetricManager;
+//import org.wso2.andes.metrics.MetricsConstants;
+//import org.wso2.carbon.metrics.manager.Gauge;
+//import org.wso2.carbon.metrics.manager.Level;
+//import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -61,10 +61,10 @@ public class SubscriptionEngine {
         clusterSubscriptionProcessor = SubscriptionProcessorBuilder.getClusterSubscriptionProcessor();
         localSubscriptionProcessor = SubscriptionProcessorBuilder.getLocalSubscriptionProcessor();
 
-        //Add subscribers gauge to metrics manager
-        MetricManager.gauge(MetricsConstants.QUEUE_SUBSCRIBERS, Level.INFO, new QueueSubscriberGauge());
-        //Add topic gauge to metrics manager
-        MetricManager.gauge(MetricsConstants.TOPIC_SUBSCRIBERS, Level.INFO, new TopicSubscriberGauge());
+//        //Add subscribers gauge to metrics manager
+//        MetricManager.gauge(MetricsConstants.QUEUE_SUBSCRIBERS, Level.INFO, new QueueSubscriberGauge());
+//        //Add topic gauge to metrics manager
+//        MetricManager.gauge(MetricsConstants.TOPIC_SUBSCRIBERS, Level.INFO, new TopicSubscriberGauge());
     }
 
     /**
@@ -490,27 +490,25 @@ public class SubscriptionEngine {
         return clusterSubscriptionProcessor.getAllSubscriptionsForDestinationType(protocolType, destinationType);
     }
 
-    /**
-     * Gauge will return total number of queue subscriptions for current node
-     */
-    private class QueueSubscriberGauge implements Gauge<Integer> {
-        @Override
-        public Integer getValue() {
-            return localSubscriptionProcessor.getAllSubscriptionsForDestinationType(ProtocolType.AMQP,
-                    DestinationType.QUEUE).size();
-
-        }
-    }
-
-    /**
-     * Gauge will return total number of topic subscriptions current node
-     */
-    private class TopicSubscriberGauge implements Gauge {
-        @Override
-        public Integer getValue() {
-            return localSubscriptionProcessor.getAllSubscriptionsForDestinationType(ProtocolType.AMQP,
-                    DestinationType.TOPIC).size();
-        }
-    }
+//    /**
+//     * Gauge will return total number of queue subscriptions for current node
+//     */
+//    private class QueueSubscriberGauge implements Gauge<Integer> {
+//        public Integer getValue() {
+//            return localSubscriptionProcessor.getAllSubscriptionsForDestinationType(ProtocolType.AMQP,
+//                    DestinationType.QUEUE).size();
+//
+//        }
+//    }
+//
+//    /**
+//     * Gauge will return total number of topic subscriptions current node
+//     */
+//    private class TopicSubscriberGauge implements Gauge {
+//        public Integer getValue() {
+//            return localSubscriptionProcessor.getAllSubscriptionsForDestinationType(ProtocolType.AMQP,
+//                    DestinationType.TOPIC).size();
+//        }
+//    }
 
 }

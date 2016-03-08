@@ -35,9 +35,9 @@ import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.subscription.SubscriptionEngine;
 import org.wso2.andes.tools.utils.MessageTracer;
-import org.wso2.carbon.metrics.manager.Level;
-import org.wso2.carbon.metrics.manager.Meter;
-import org.wso2.carbon.metrics.manager.MetricManager;
+//import org.wso2.carbon.metrics.manager.Level;
+//import org.wso2.carbon.metrics.manager.Meter;
+//import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -231,8 +231,8 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                 event.pubAckHandler.ack(message.getMetadata());
 
                 //Adding metrics meter for ack rate
-                Meter ackMeter = MetricManager.meter(Level.INFO, MetricsConstants.ACK_SENT_RATE);
-                ackMeter.mark();
+//                Meter ackMeter = MetricManager.meter(Level.INFO, MetricsConstants.ACK_SENT_RATE);
+//                ackMeter.mark();
 
                 event.clearMessageList();
                 log.info("Message routing key: " + message.getMetadata().getDestination() + " No routes in " +

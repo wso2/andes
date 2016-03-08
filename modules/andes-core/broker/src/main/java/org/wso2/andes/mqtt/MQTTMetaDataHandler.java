@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -17,10 +17,10 @@
  */
 package org.wso2.andes.mqtt;
 
-import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.store.StorableMessageMetaData;
 
 import java.nio.ByteBuffer;
+
 
 /**
  * Will be used to clone meta information of MQTT related topic messages received
@@ -44,7 +44,7 @@ public class MQTTMetaDataHandler {
         MQTTMessageMetaData metaInformation = (MQTTMessageMetaData) originalMetadata;
         //Will re-encode the bytes
         return MQTTUtils.encodeMetaInfo(MQTTUtils.MQTT_META_INFO, metaInformation.getMessageID(), metaInformation
-                        .getMessageArrivalTime(), false, metaInformation.getQosLevel(), routingKey,
+                        .getArrivalTime(), false, metaInformation.getQosLevel(), routingKey,
                 metaInformation.isPersistent(), metaInformation.getContentSize(), metaInformation.isCompressed());
 
     }
@@ -64,7 +64,8 @@ public class MQTTMetaDataHandler {
         MQTTMessageMetaData metaInformation = (MQTTMessageMetaData) originalMetadata;
         //Will re-encode the bytes
         return MQTTUtils.encodeMetaInfo(MQTTUtils.MQTT_META_INFO, metaInformation.getMessageID(), metaInformation
-                        .getMessageArrivalTime(), false, metaInformation.getQosLevel(), metaInformation.getDestination(),
+                        .getArrivalTime(), false, metaInformation.getQosLevel(), metaInformation
+                        .getDestination(),
                 metaInformation.isPersistent(), metaInformation.getContentSize(), newCompressedMessageValue);
 
     }

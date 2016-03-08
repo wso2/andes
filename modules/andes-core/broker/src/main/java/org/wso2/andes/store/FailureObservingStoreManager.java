@@ -27,8 +27,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
-import javax.mail.event.StoreListener;
-
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 
@@ -36,7 +34,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 /**
  * 
- * This class keeps track of all the {@link StoreListener}s and notifies when
+ * This class keeps track of all the {@link StoreHealthListener}s and notifies when
  * store becomes (non-)operational.
  * 
  */

@@ -18,7 +18,7 @@
 
 package org.wso2.andes.kernel;
 
-import org.apache.axis2.clustering.ClusteringAgent;
+
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.StoreConfiguration;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
@@ -35,7 +35,7 @@ public class AndesContext {
     private SubscriptionEngine subscriptionEngine;
     private AndesContextStore andesContextStore;
     private StoreConfiguration storeConfiguration;
-    private ClusteringAgent clusteringAgent;
+//    private CarbonHazelcastAgent clusteringAgent;
     private boolean isClusteringEnabled;
     private AMQPConstructStore AMQPConstructStore;
     private static AndesContext instance = new AndesContext();

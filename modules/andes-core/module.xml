@@ -51,7 +51,6 @@
   <property name="module.results"      location="${build.results}/${module}"/>
   <property name="module.failed"       location="${module.results}/FAILED"/>
   <property name="module.src"          location="src/main/java"/>
-  <property name="module.test.src"     location="src/test/java"/>
   <property name="module.bin"          location="bin"/>
   <property name="module.etc"          location="etc"/>
     
@@ -74,11 +73,6 @@
   <property name="module.qpid.jar"     location="${module.release.lib}/qpid-all.jar"/>
   <basename property="qpid.jar.name"  file="${module.qpid.jar}"/>
 
-  <property name="module.coverage"     location="${module.build}/coverage"/>
-  <property name="cobertura.datafile"  location="${module.instrumented}/cobetura.ser"/>
-
-
-  <available property="module.test.src.exists" file="${module.test.src}"/>
   <available property="module.etc.exists" file="${module.etc}"/>
   <available property="module.bin.exists" file="${module.bin}"/>
 
@@ -91,10 +85,6 @@
   <property name="module.test.excludes" value=""/>
 
   <map property="module.depends.path" value="${module.depends}" join="${path.separator}">
-    <globmapper from="*" to="${build.scratch}/*/classes"/>
-  </map>
-
-  <map property="module.test.depends.path" value="${module.test.depends}" join="${path.separator}">
     <globmapper from="*" to="${build.scratch}/*/classes"/>
   </map>
 
@@ -113,28 +103,9 @@
     </condition>
 
 
-    <!-- Add depenencies test dependencies to path -->
-    <map property="module.test.depends.libs" value="${module.test.depends}" join=" ">
-        <chainedmapper>
-            <filtermapper>
-                <replacestring from="${file.separator}" to="-"/>
-            </filtermapper>
-            <propertymapper from="*" to="*.libs"/>
-        </chainedmapper>
-    </map>
-    <condition property="module.test.depends.libs.includes" value="__EMPTY__" else="${module.test.depends.libs}">
-      <equals trim="true" arg1="${module.test.depends.libs}" arg2=""/>
-    </condition>
-
-
   <indirect name="module.libs"         variable="${module.name}.libs"/>
   <condition property="module.libs.includes" value="__EMPTY__" else="${module.libs}">
     <equals trim="true" arg1="${module.libs}" arg2=""/>
-  </condition>
-    
-  <indirect name="module.test.libs"    variable="${module.name}.test.libs"/>
-  <condition property="module.test.libs.includes" value="__EMPTY__" else="${module.test.libs}">
-    <equals trim="true" arg1="${module.test.libs}" arg2=""/>
   </condition>
 
   <path id="module.libs">
@@ -142,18 +113,9 @@
     <fileset dir="${project.root}" includes="${module.depends.libs.includes}"/>
   </path>
 
-  <path id="module.test.libs">
-    <fileset dir="${project.root}" includes="lib/*"/>
-    <fileset dir="${project.root}" includes="${module.test.depends.libs.includes}"/>
-  </path>
-
   <path id="module.src.path">
     <pathelement location="${module.src}"/>
     <pathelement location="${module.precompiled}"/>
-  </path>
-	
-  <path id="module.test.src.path">
-    <pathelement location="${module.test.src}"/>
   </path>
 
   <condition property="module.jar"
@@ -165,20 +127,10 @@
     </and>
   </condition>
 
-  <property name="module.test.jar"
-            location="${build.lib}/${project.name}-${module.name}-tests-${andes.version}.jar"/>
-
   <path id="module.class.path">
     <pathelement location="${module.classes}"/>
     <pathelement path="${module.depends.path}"/>
     <path refid="module.libs"/>
-  </path>
-
-  <path id="module.test.path">
-    <pathelement path="${module.test.classes}"/>
-    <path refid="module.class.path"/>
-    <pathelement path="${module.test.depends.path}"/>
-    <path refid="module.test.libs"/>
   </path>
 
   <property name="javac.deprecation" value="off"/>
@@ -188,18 +140,13 @@
     <echo-prop name="project.root"/>
     <echo-prop name="module"/>
     <echo-prop name="module.libs"/>
-    <echo-prop name="module.test.libs"/>
     <echo-prop name="module.name"/>
     <echo-prop name="module.jar"/>
     <echo-prop name="module.depends"/>
     <echo-prop name="module.depends.path"/>
-    <echo-prop name="module.test.depends"/>
-    <echo-prop name="module.test.depends.path"/>
-    <echo-prop name="module.depends.libs"/>
-    <echo-prop name="module.test.depends.libs"/>      
+    <echo-prop name="module.depends.libs"/>   
     <echo-path refid="module.src.path"/>
     <echo-path refid="module.class.path"/>
-    <echo-path refid="module.test.path"/>
   </target>
 
   <target name="prepare">
@@ -212,8 +159,6 @@
     <mkdir dir="${module.classes}"/>
     <mkdir dir="${module.precompiled}"/>
     <mkdir dir="${module.api}"/>
-    <mkdir dir="${module.test.api}"/>
-    <mkdir dir="${module.test.classes}"/>
     <mkdir dir="${module.results}"/>
   </target>
 
@@ -274,152 +219,10 @@
     </copy>
   </target>
 
-  <target name="precompile-tests" if="module.test.src.exists"/>
-
-  <target name="compile-tests" depends="compile,precompile-tests" if="module.test.src.exists"
-          description="compilte unit tests">
-    <javac target="${java.target}" source="${java.source}"
-           destdir="${module.test.classes}" debug="on"
-           deprecation="${javac.deprecation}"
-           srcdir="${module.test.src}" includeantruntime="false">
-      <classpath refid="module.test.path"/>
-    </javac>
-
-    <!-- copy any non java src files into the build tree, e.g. log4j.properties -->
-    <copy todir="${module.test.classes}" verbose="true">
-      <fileset dir="${module.test.src}">
-        <exclude name="**/*.java"/>
-        <exclude name="**/package.html"/>
-      </fileset>
-    </copy>
-  </target>
-
-
   <property name="profile" value="defaults"/>
-  <property name="testprofile.file" value="${test.profiles}/testprofile.${profile}"/>
-  
-  <available file="${testprofile.file}" property="testprofile.file.present"/>
-  <fail unless="testprofile.file.present" message="The requested test profile was not found: ${testprofile.file}"/>
-
-  <property file="${testprofile.file}" prefix="preload"/>
-  <property name="preload.include" value=""/>
-  <condition property="profiles"
-             value="${preload.include} ${profile}"
-             else="default ${preload.include} ${profile}">
-    <equals arg1="${profile}" arg2="default"/>
-  </condition>
-  <map property="_profile_files" value="${profiles}" join=" ">
-    <globmapper from="*" to="*.testprofile"/>
-  </map>
-  <concat destfile="${build.scratch}/test-${profile}.properties" force="no" fixlastline="yes">
-    <filelist dir="${test.profiles}" files="${_profile_files}"/>
-  </concat>
-  <property file="${build.scratch}/test-${profile}.properties"/>
-
-  <map property="test.excludefiles" value="${test.excludes}">
-    <globmapper from="*" to="${test.profiles}/*"/>
-  </map>
-
-
-  <condition property="dontruntest" value="dontruntest" else="runtest">
-         <contains substring="${module.name}" string="${exclude.modules}" />
-  </condition>
 
   <property name="jvm.args" value=""/>
   <property name="broker.existing.qpid.work" value=""/>
-
-  <target name="test" depends="build,compile-tests" if="module.test.src.exists"
-         unless="${dontruntest}" description="execute unit tests">
-
-    <delete file="${module.failed}"/>
-
-    <echo message="Using profile:${profile}" level="info"/>
-    <junit fork="yes" forkmode="once" maxmemory="${test.mem}" reloading="no"
-           haltonfailure="${haltonfailure}" haltonerror="${haltonerror}"
-           failureproperty="test.failures" printsummary="on" timeout="6000000" >
-
-      <jvmarg line="${jvm.args}" />
-
-      <sysproperty key="amqj.logging.level" value="${amqj.logging.level}"/>
-      <sysproperty key="amqj.server.logging.level" value="${amqj.server.logging.level}"/>
-      <sysproperty key="amqj.protocol.logging.level" value="${amqj.protocol.logging.level}"/>
-      <sysproperty key="log4j.debug" value="${log4j.debug}"/>
-      <sysproperty key="root.logging.level" value="${root.logging.level}"/>
-      <sysproperty key="log4j.configuration" value="${log4j.configuration}"/>
-      <sysproperty key="java.naming.factory.initial" value="${java.naming.factory.initial}"/>
-      <sysproperty key="java.naming.provider.url" value="${java.naming.provider.url}"/>
-      <sysproperty key="broker" value="${broker}"/>
-      <sysproperty key="broker.clean" value="${broker.clean}"/>
-      <sysproperty key="broker.clean.between.tests" value="${broker.clean.between.tests}"/>
-      <sysproperty key="broker.existing.qpid.work" value="${broker.existing.qpid.work}"/>
-      <sysproperty key="broker.persistent" value="${broker.persistent}"/>
-      <sysproperty key="broker.version" value="${broker.version}"/>
-      <sysproperty key="broker.ready" value="${broker.ready}" />
-      <sysproperty key="broker.stopped" value="${broker.stopped}" />
-      <sysproperty key="broker.config" value="${broker.config}" />
-      <sysproperty key="messagestore.class.name" value="${messagestore.class.name}" />
-      <sysproperty key="test.output" value="${module.results}"/>
-      <sysproperty key="qpid.amqp.version" value="${qpid.amqp.version}"/>
-
-      <syspropertyset>
-        <propertyref prefix="test"/>
-      </syspropertyset>
-      <syspropertyset>
-        <propertyref prefix="profile"/>
-      </syspropertyset>
-      <syspropertyset>
-        <propertyref prefix="javax.net.ssl"/>
-      </syspropertyset>  
-      <syspropertyset>
-         <propertyref prefix="broker"/>
-      </syspropertyset>
-      
-      <sysproperty key="max_prefetch" value ="${max_prefetch}"/>
-      <sysproperty key="qpid.dest_syntax" value ="${qpid.dest_syntax}"/>
-
-      <sysproperty key="example.plugin.target" value="${project.root}/build/lib/plugins"/>
-      <sysproperty key="QPID_EXAMPLE_HOME" value="${qpid.home}"/>
-      <sysproperty key="QPID_HOME" value="${qpid.home}"/>
-      <sysproperty key="QPID_WORK" value="${qpid.work}"/>
-
-      <formatter type="plain"/>
-      <formatter type="xml"/>
-
-      <classpath refid="module.test.path"/>
-
-      <batchtest todir="${module.results}">
-        <fileset dir="${module.test.src}" excludes="${module.test.excludes}">
-          <include name="**/${test}.java"/>
-        </fileset>
-      </batchtest>
-    </junit>
-
-    <antcall target="touch-failed"/>
-
-    <condition property="failed">
-      <and>
-        <isfalse value="${test.failures.ignore}"/>
-        <available file="${module.failed}"/>
-      </and>
-    </condition>
-
-    <fail if="failed" message="TEST SUITE FAILED"/>
-
-  </target>
-
-  <target name="report-module" description="generate junit reports for each module">
-    <junitreport todir="${module.results}">
-        <fileset dir="${module.results}">
-            <include name="TEST-*.xml"/>
-        </fileset>
-        <report format="frames" todir="${module.results}/report/html"/>
-    </junitreport> 
-  </target>
-
-  <target name="touch-failed" if="test.failures">
-    <touch file="${module.failed}"/>
-    <touch file="${build.failed}"/>
-  </target>
 
   <target name="copy-bin" if="module.bin.exists" description="copy bin directory if it exists to build tree">
     <copy todir="${build.bin}" failonerror="false">
@@ -449,7 +252,7 @@
 
   <target name="postbuild" description="run after a build"/>
 
-  <target name="build" depends="jar,jar-tests,jar-sources,libs,copy-bin,copy-etc,postbuild" description="compile and copy resources into build tree"/>
+  <target name="build" depends="jar,jar-sources,libs,copy-bin,copy-etc,postbuild" description="compile and copy resources into build tree"/>
   <target name="jar.manifest" depends="compile" if="module.manifest">
     <jar destfile="${module.jar}" basedir="${module.classes}" manifest="${module.manifest}"/>
   </target>
@@ -461,10 +264,6 @@
   </target>
 
   <target name="jar" depends="jar.manifest,jar.nomanifest" description="create jar"/>
-
-  <target name="jar-tests" depends="compile-tests" description="create unit test jar">
-    <jar destfile="${module.test.jar}" basedir="${module.test.classes}"/>
-  </target>
 
   <target name="jar-sources" depends="prepare" description="create sources jar">
     <jar destfile="${module.source.jar}">
@@ -523,25 +322,6 @@
     <javadoc access="${module.doc.access}" destdir="${module.api}" author="false" version="true" use="true"
         windowtitle="${project.name} - ${module.name} - API Documentation"
    		sourcepathref="module.src.path" classpathref="module.class.path" packagenames="*">
-      <arg value="-J-Dhttp.proxyHost=${http.proxyHost}"/>
-      <arg value="-J-Dhttp.proxyPort=${http.proxyPort}"/>
-      <bottom><![CDATA[<em><a href="http://www.apache.org/licenses/LICENSE-2.0">Licensed to the Apache Software Foundation</a></em>]]></bottom>
-      <link href="http://java.sun.com/j2se/1.5.0/docs/api/"/>
-      <link href="http://download.oracle.com/docs/cd/E17477_01/javaee/5/api/"/>
-      <link href="http://commons.apache.org/configuration/apidocs/"/>
-      <tag name="todo" scope="all" description="Todo:" />
-    </javadoc>
-  </target>
-
-  <uptodate property="test-doc.done" targetfile="${module.test.api}/index.html">
-    <srcfiles dir="${module.test.src}" includes="**/*.java"/>
-  </uptodate>
-
-  <property name="module.test.doc.access" value="public"/>
-  <target name="test-doc" depends="prepare" unless="testdoc.done" if="module.test.src.exists" description="generate test api-doc">
-    <javadoc access="${module.test.doc.access}" destdir="${module.test.api}" author="false" version="true" use="true"
-        windowtitle="${project.name} - ${module.name} - Test API Documentation"
-   		sourcepathref="module.test.src.path" classpathref="module.test.path" packagenames="*">
       <arg value="-J-Dhttp.proxyHost=${http.proxyHost}"/>
       <arg value="-J-Dhttp.proxyPort=${http.proxyPort}"/>
       <bottom><![CDATA[<em><a href="http://www.apache.org/licenses/LICENSE-2.0">Licensed to the Apache Software Foundation</a></em>]]></bottom>
@@ -664,70 +444,6 @@
       </fileset>
     </cobertura-instrument>
   </target>
-
-  <target name="cover-test" depends="instrument">
-
-    <mkdir dir="${build.coveragereport}" />
-    <junit fork="yes" forkmode="once" maxmemory="${test.mem}" reloading="no"
-           haltonfailure="${haltonfailure}" haltonerror="${haltonerror}"
-           failureproperty="test.failures" printsummary="on" timeout="600000" >
-
-      <sysproperty key="amqj.logging.level" value="${amqj.logging.level}"/>
-      <sysproperty key="amqj.protocol.logging.level" value="${amqj.protocol.logging.level}"/>
-      <sysproperty key="log4j.debug" value="${log4j.debug}"/>
-      <sysproperty key="root.logging.level" value="${root.logging.level}"/>
-      <sysproperty key="log4j.configuration" value="${log4j.configuration}"/>
-      <sysproperty key="java.naming.factory.initial" value="${java.naming.factory.initial}"/>
-      <sysproperty key="java.naming.provider.url" value="${java.naming.provider.url}"/>
-      <sysproperty key="broker" value="${broker}"/>
-      <sysproperty key="broker.clean" value="${broker.clean}"/>
-      <sysproperty key="broker.version" value="${broker.version}"/>
-      <sysproperty key="broker.ready" value="${broker.ready}" />
-      <sysproperty key="test.output" value="${module.results}"/>
-
-      <syspropertyset>
-        <propertyref prefix="test"/>
-      </syspropertyset>
-      <syspropertyset>
-          <propertyref prefix="broker"/>
-      </syspropertyset>
-
-      <sysproperty key="max_prefetch" value ="${max_prefetch}"/>
-      <sysproperty key="example.plugin.target" value="${project.root}/build/lib/plugins"/>
-      <sysproperty key="QPID_EXAMPLE_HOME" value="${project.root}/build"/>
-      <sysproperty key="QPID_HOME" value="${project.root}/build"/>
-
-      <sysproperty key="net.sourceforge.cobertura.datafile"
-		file="${cobertura.datafile}" />
-      
-      <formatter type="plain"/>
-      <formatter type="xml"/>
-
-      <classpath path="${module.instrumented}"/>
-      <classpath>
-        <fileset dir="${build}">
-	  <include name="**/classes-instrumented/*.class"/>
-	</fileset>
-      </classpath>
-      <classpath refid="module.test.path"/>
-      <classpath refid="cobertura.classpath"/>      
-
-      <batchtest todir="${module.results}">
-        <fileset dir="${module.test.src}" excludes="${module.test.excludes}">
-          <include name="**/${test}.java"/>
-        </fileset>
-      </batchtest>
-    </junit>
-  </target>
-
-  <target name="coverage-report" depends="cobertura-init">
-      <echo message="${cobertura.datafile}"/>
-      <cobertura-report format="html"
-                      destdir="${module.coverage}"
-		      datafile="${cobertura.datafile}">
-      <fileset dir="${module.src}" includes="**/*.java" />
-    </cobertura-report>
-  </target>
   
   <property name="version.file" location="${module.classes}/qpidversion.properties"/>
   <property file="${version.file}" prefix="old."/>
@@ -825,85 +541,5 @@ qpid.name=${project.name}
       </java>
       <touch file="${velocity.timestamp}" />
     </target>
-
-    <target name="eclipse" depends="eclipse-setup,eclipse-project,eclipse-source-only,eclipse-source-and-test"/>
-
-    <target name="eclipse-setup">
-      <taskdef name="eclipse" classname="prantl.ant.eclipse.EclipseTask" />
-
-      <!-- Build set of directories representing the dependencies -->
-
-      <dirset id="eclipse.required.projectdirs.path" dir="${project.root}" includes="${module.depends} ${module.test.depends} neverBeEmpty">
-        <!-- Select only those projects from module.depends that contain a build.xml.  This serves to exclude dependencies that
-             don't become Eclipse projects e.g. broker-plugins and common-tests -->
-        <present targetdir="${project.root}">
-          <mapper type="glob" from="*" to="*/build.xml"/>
-        </present>
-      </dirset>
-
-      <!-- Convert from the set of directories into Eclipse project names proceeded by forward slashes -->
-
-      <pathconvert property="eclipse.required.projectnames" refid="eclipse.required.projectdirs.path" pathsep=" " dirsep="-">
-        <map from="${project.root}${file.separator}" to=''/>
-      </pathconvert>
-      <map property="eclipse.required.slashedprojectnames" value="${eclipse.required.projectnames}" join="${path.separator}">
-        <globmapper from="*" to="/*"/>
-      </map>
-
-      <echo message="Ant module dependencies : ${module.depends} ${module.test.depends} converted to Eclipse required project(s): ${eclipse.required.slashedprojectnames}"/>
-      <path id="eclipse.required.slashedprojectnames.path">
-        <pathelement path="${eclipse.required.slashedprojectnames}"/>
-      </path>
-    </target>
-
-    <!-- Create the Eclipse .project -->
-    <target name="eclipse-project">
-      <eclipse updatealways="${eclipse.updatealways}">
-        <project name="${module.name}"/>
-
-        <!-- If the Eclipse task were to ever support the generation of
-             linked resources, we would configure it to generate
-             the following:
-
-             scratch_src -> ${module.precompiled}
-
-             in each project.   This would avoid the 'linked sources'
-             manual step documented on the Wiki.
-        -->
-      </eclipse>
-    </target>
     
-    <!-- Create the Eclipse .classpath -->
-    <target name="eclipse-source-only" unless="module.test.src.exists">
-      <eclipse updatealways="${eclipse.updatealways}">
-        <settings>
-          <jdtcore compilercompliance="${eclipse.compilercompliance}" />
-        </settings>
-        <classpath>
-          <container path="${eclipse.container}" />
-          <source path="${module.src}" />
-          <source pathref="eclipse.required.slashedprojectnames.path" />
-          <library pathref="module.libs"/>
-          <output path="classes" />
-        </classpath>
-      </eclipse>
-    </target>
-
-    <!-- Create the Eclipse .classpath -->
-    <target name="eclipse-source-and-test" if="module.test.src.exists">
-      <eclipse updatealways="${eclipse.updatealways}">
-        <settings>
-          <jdtcore compilercompliance="${eclipse.compilercompliance}" />
-        </settings>
-        <classpath>
-          <container path="${eclipse.container}" />
-          <source path="${module.src}" />
-          <source path="${module.test.src}" />
-          <source pathref="eclipse.required.slashedprojectnames.path" />
-          <library pathref="module.libs"/>
-          <library pathref="module.test.libs"/>
-          <output path="classes" />
-        </classpath>
-      </eclipse>
-    </target>
 </project>

@@ -27,6 +27,7 @@ import org.wso2.andes.mqtt.MQTTMetaDataHandler;
 import org.wso2.andes.server.message.MessageMetaData;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.server.store.StorableMessageMetaData;
+
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
@@ -101,8 +102,8 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      *
      * When MQTT message received it's header will be converted to AndesMessageMetadata header. This
      * boolean state holds retain state of given andes message.
-     * @see org.wso2.andes.mqtt.utils.MQTTUtils#convertToAndesHeader(long, String, int, int, boolean,
-     * org.wso2.andes.mqtt.MQTTPublisherChannel, boolean)
+     * @see org.wso2.carbon.andes.mqtt.utils.MQTTUtils#convertToAndesHeader(long, String, int, int, boolean,
+     * org.wso2.carbon.andes.mqtt.MQTTPublisherChannel, boolean)
      *
      * This boolean state will be checked each time andes message received in MessagePreProcessor.
      * @see org.wso2.andes.kernel.disruptor.inbound.MessagePreProcessor#handleTopicRoutine(
@@ -302,23 +303,24 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
                 .createMetaData(buf);
         //todo need to discuss on making the flow more generic
         if (type.equals(MessageMetaDataType.META_DATA_0_10) || type.equals(MessageMetaDataType.META_DATA_0_8)) {
-            isPersistent = ((MessageMetaData) mdt).isPersistent();
+            isPersistent = mdt.isPersistent();
             expirationTime = ((MessageMetaData) mdt).getMessageHeader().getExpiration();
-            arrivalTime = ((MessageMetaData) mdt).getArrivalTime();
+            arrivalTime = mdt.getArrivalTime();
             destination = ((MessageMetaData) mdt).getMessagePublishInfo().getRoutingKey().toString();
-            this.messageContentLength = ((MessageMetaData) mdt).getContentSize();
-            isTopic = ((MessageMetaData) mdt).getMessagePublishInfo().getExchange().equals(AMQPUtils.TOPIC_EXCHANGE_NAME);
-            isCompressed = ((MessageMetaData) mdt).isCompressed();
+            this.messageContentLength = mdt.getContentSize();
+            isTopic = ((MessageMetaData) mdt).getMessagePublishInfo().getExchange().equals(AMQPUtils
+                    .TOPIC_EXCHANGE_NAME);
+            isCompressed = mdt.isCompressed();
         }
         //For MQTT Specific Types
         if (type.equals(MessageMetaDataType.META_DATA_MQTT)) {
-            this.arrivalTime = ((MQTTMessageMetaData) mdt).getMessageArrivalTime();
-            this.isTopic = ((MQTTMessageMetaData) mdt).isTopic();
-            this.destination = ((MQTTMessageMetaData) mdt).getDestination();
-            this.isPersistent = ((MQTTMessageMetaData) mdt).isPersistent();
-            this.messageContentLength = ((MQTTMessageMetaData) mdt).getContentSize();
+            this.arrivalTime = mdt.getArrivalTime();
+            this.isTopic = mdt.isTopic();
+            this.destination = mdt.getDestination();
+            this.isPersistent = mdt.isPersistent();
+            this.messageContentLength = mdt.getContentSize();
             this.qosLevel = ((MQTTMessageMetaData) mdt).getQosLevel();
-            this.isCompressed = ((MQTTMessageMetaData) mdt).isCompressed();
+            this.isCompressed = mdt.isCompressed();
         }
 
     }

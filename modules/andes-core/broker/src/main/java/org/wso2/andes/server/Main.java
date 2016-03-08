@@ -17,12 +17,14 @@
  */
 package org.wso2.andes.server;
 
-import org.apache.commons.cli.*;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.OptionBuilder;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.apache.commons.cli.PosixParser;
 import org.apache.log4j.Logger;
-import org.apache.mina.util.SessionLog;
-import org.dna.mqtt.moquette.server.Server;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.server.Broker.InitException;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 
@@ -77,7 +79,8 @@ public class Main {
         Option help = new Option("h", "help", false, "print this message");
         Option version = new Option("v", "version", false, "print the version information and exit");
         Option configFile =
-                OptionBuilder.withArgName("file").hasArg().withDescription("use given configuration file").withLongOpt("config")
+                OptionBuilder.withArgName("file").hasArg().withDescription("use given configuration file")
+                        .withLongOpt("config")
                         .create("c");
         Option port =
                 OptionBuilder.withArgName("port").hasArg()
@@ -86,30 +89,35 @@ public class Main {
 
         Option exclude0_10 =
                 OptionBuilder.withArgName("exclude-0-10").hasArg()
-                        .withDescription("when listening on the specified port do not accept AMQP0-10 connections. The specified port must be one specified on the command line")
+                        .withDescription("when listening on the specified port do not accept AMQP0-10 connections. "
+                                         + "The specified port must be one specified on the command line")
                         .withLongOpt("exclude-0-10").create();
 
         Option exclude0_9_1 =
                 OptionBuilder.withArgName("exclude-0-9-1").hasArg()
-                        .withDescription("when listening on the specified port do not accept AMQP0-9-1 connections. The specified port must be one specified on the command line")
+                        .withDescription("when listening on the specified port do not accept AMQP0-9-1 connections. "
+                                         + "The specified port must be one specified on the command line")
                         .withLongOpt("exclude-0-9-1").create();
 
 
         Option exclude0_9 =
                 OptionBuilder.withArgName("exclude-0-9").hasArg()
-                        .withDescription("when listening on the specified port do not accept AMQP0-9 connections. The specified port must be one specified on the command line")
+                        .withDescription("when listening on the specified port do not accept AMQP0-9 connections. The"
+                                         + " specified port must be one specified on the command line")
                         .withLongOpt("exclude-0-9").create();
 
 
         Option exclude0_8 =
                 OptionBuilder.withArgName("exclude-0-8").hasArg()
-                        .withDescription("when listening on the specified port do not accept AMQP0-8 connections. The specified port must be one specified on the command line")
+                        .withDescription("when listening on the specified port do not accept AMQP0-8 connections. The"
+                                         + " specified port must be one specified on the command line")
                         .withLongOpt("exclude-0-8").create();
 
 
         Option mport =
                 OptionBuilder.withArgName("mport").hasArg()
-                        .withDescription("listen on the specified management port. Overrides any value in the config file")
+                        .withDescription("listen on the specified management port. Overrides any value in the config "
+                                         + "file")
                         .withLongOpt("mport").create("m");
 
 
@@ -120,12 +128,14 @@ public class Main {
         Option logconfig =
                 OptionBuilder.withArgName("logconfig").hasArg()
                         .withDescription("use the specified log4j xml configuration file. By "
-                                + "default looks for a file named " + BrokerOptions.DEFAULT_LOG_CONFIG_FILE
-                                + " in the same directory as the configuration file").withLongOpt("logconfig").create(BrokerOptions.LOG_CONFIG);
+                                         + "default looks for a file named " + BrokerOptions.DEFAULT_LOG_CONFIG_FILE
+                                         + " in the same directory as the configuration file").withLongOpt
+                        ("logconfig").create(BrokerOptions.LOG_CONFIG);
         Option logwatchconfig =
                 OptionBuilder.withArgName("logwatch").hasArg()
                         .withDescription("monitor the log file configuration file for changes. Units are seconds. "
-                                + "Zero means do not check for changes.").withLongOpt("logwatch").create(BrokerOptions.WATCH);
+                                         + "Zero means do not check for changes.").withLongOpt("logwatch").create
+                        (BrokerOptions.WATCH);
 
         Option sslport =
                 OptionBuilder.withArgName("sslport").hasArg()
@@ -199,17 +209,20 @@ public class Main {
         String mqttPortStr = commandLine.getOptionValue(BrokerOptions.MQTT_PORT);
         if (mqttPortStr != null) {
             parseMQTTPort(options, mqttPortStr);
-        } else {
-            options.setMQTTPort(Server.DEFAULT_MQTT_PORT);
         }
+        //TODO : Commented because this is ported to transport module
+//        } else {
+//            options.setMQTTPort(Server.DEFAULT_MQTT_PORT);
+//        }
 
         startBroker(options);
     }
 
-    protected void startMQTTBroker(final BrokerOptions options) throws Exception {
-        Server server = new Server();
-        server.startServer(options.getMQTTPort());
-    }
+    //TODO : Commented because this is ported to transport module
+//    protected void startMQTTBroker(final BrokerOptions options) throws Exception {
+//        Server server = new Server();
+//        server.startServer(options.getMQTTPort());
+//    }
 
     protected void startBroker(final BrokerOptions options) throws Exception {
         Broker broker = new Broker();
@@ -218,7 +231,9 @@ public class Main {
 
         //Will start the MQTT Broker
         //todo need to startup with the broker options inclusive
-        startMQTTBroker(options);
+        //TODO : Commented because this is ported to transport module
+
+//        startMQTTBroker(options);
     }
 
     protected void shutdown(final int status) {
@@ -259,7 +274,7 @@ public class Main {
         if (ports != null) {
             for (Object port : ports) {
                 try {
-                    options.addExcludedPort(excludedProtocol,Integer.parseInt(String.valueOf(port)));
+                    options.addExcludedPort(excludedProtocol, Integer.parseInt(String.valueOf(port)));
                 } catch (NumberFormatException e) {
                     throw new InitException("Invalid port for exclusion: " + port, e);
                 }

@@ -23,11 +23,21 @@ public interface StorableMessageMetaData
 {
     MessageMetaDataType getType();
 
-    int getStorableSize();
+    public int getStorableSize();
 
-    int writeToBuffer(int offsetInMetaData, ByteBuffer dest);
+    public int writeToBuffer(int offsetInMetaData, ByteBuffer dest);
 
-    int getContentSize();
+    public int getContentSize();
 
-    boolean isPersistent();
+    public long getArrivalTime();
+
+    public boolean isPersistent();
+
+    public boolean isTopic();
+
+    public String getDestination();
+
+    public boolean isCompressed();
+
+
 }

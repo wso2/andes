@@ -21,8 +21,8 @@ package org.wso2.andes.subscription;
 import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.ProtocolMessage;
+import org.wso2.andes.kernel.ProtocolType;
 
 import java.util.UUID;
 
@@ -80,5 +80,11 @@ public interface OutboundSubscription {
      * @return The storage queue name
      */
     public String getStorageQueueName(String destination, String subscribedNode);
+
+    /**
+     * Return the protocol type of the subscription.
+     * @return protocol type
+     */
+    public ProtocolType getProtocolType();
 
 }

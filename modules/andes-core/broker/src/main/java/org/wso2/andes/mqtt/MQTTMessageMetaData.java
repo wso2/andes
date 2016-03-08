@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -17,10 +17,8 @@
  */
 package org.wso2.andes.mqtt;
 
-import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.server.store.StorableMessageMetaData;
-
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
@@ -46,7 +44,7 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
     //The level of qos, this can either be 0,1 or 2
     private int qosLevel;
     //Value to indicate, if the message is a compressed one or not
-    private boolean _isCompressed = false;
+    private boolean isCompressed = false;
 
 
     /**
@@ -62,7 +60,7 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
      * @param isCompressed       Value to indicate, if the message is a compressed one or not
      */
     public MQTTMessageMetaData(long mid, long messageArrivalTime, boolean topic, String destination, boolean
-            persistance, int messageLength,int qos, boolean isCompressed) {
+            persistance, int messageLength, int qos, boolean isCompressed) {
         this.messageID = mid;
         this.messageArrivalTime = messageArrivalTime;
         this.isTopic = topic;
@@ -70,7 +68,7 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
         this.isPersistance = persistance;
         this.messageLength = messageLength;
         this.qosLevel = qos;
-        this._isCompressed = isCompressed;
+        this.isCompressed = isCompressed;
     }
 
     @Override
@@ -104,9 +102,10 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
 
     /**
      * Get time message has arrived to the broker
+     *
      * @return time in milli seconds
      */
-    public long getMessageArrivalTime() {
+    public long getArrivalTime() {
         return messageArrivalTime;
     }
 
@@ -131,7 +130,7 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
     }
 
     public boolean isCompressed() {
-        return _isCompressed;
+        return isCompressed;
     }
 
     public void setDestination(String destination) {
@@ -141,6 +140,7 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
     private static class MetaDataFactory implements MessageMetaDataType.Factory<MQTTMessageMetaData> {
         /**
          * Will decode the message meata data from the given buffer
+         *
          * @param buffer the message information which will be provided
          */
         private Map<String, String> decodeMetaData(ByteBuffer buffer) {
@@ -148,10 +148,10 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
 
             String information = new String(buffer.array());
             //Will split the Meta Body information
-            String[] message_parts = information.split("\\?");
+            String[] messageParts = information.split("\\?");
             //Check whether the message parts is split into 2 properly
-            if (message_parts.length > 1) {
-                for (String keyValue : message_parts[1].split(",")) {
+            if (messageParts.length > 1) {
+                for (String keyValue : messageParts[1].split(",")) {
                     String[] pairs = keyValue.split("=", 2);
                     decodedValues.put(pairs[0], pairs.length == 1 ? "" : pairs[1]);
                 }
@@ -161,7 +161,8 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
         }
 
         /**
-         * The values will be extracted from the bytestream and will be decoded         
+         * The values will be extracted from the bytestream and will be decoded
+         *
          * @param buf the bytes stream the data contains
          * @return meta data object
          */
@@ -187,9 +188,9 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
                     isTopic,
                     decodedValues.get("Destination"),
                     isPersistant,
-                    messageContentLength,qos,
+                    messageContentLength, qos,
                     isCompressed
-                    );
+            );
         }
     }
 }
