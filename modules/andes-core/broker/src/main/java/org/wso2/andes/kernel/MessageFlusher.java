@@ -284,8 +284,10 @@ public class MessageFlusher {
      * Read messages from the buffer and send messages to subscribers.
      *
      * @param messageDeliveryInfo The delivery information object
+     * @param storageQueue  Storage Queue related to destination of messages
      */
-    public boolean sendMessagesInBuffer(MessageDeliveryInfo messageDeliveryInfo) throws AndesException {
+    public boolean sendMessagesInBuffer(MessageDeliveryInfo messageDeliveryInfo, String storageQueue) throws
+            AndesException {
 
         boolean sentFromBuffer = false;
 
@@ -307,7 +309,7 @@ public class MessageFlusher {
                 }
             }
 
-            sendMessagesToSubscriptions(messageDeliveryInfo);
+            sendMessagesToSubscriptions(messageDeliveryInfo, storageQueue);
             sentFromBuffer = true;
         }
 
@@ -318,15 +320,17 @@ public class MessageFlusher {
      * Check whether there are active subscribers and send
      *
      * @param messageDeliveryInfo The delivery information object of the messages
+     * @param storageQueue storage queue of messages
      * @return how many messages sent
      * @throws AndesException
      */
-    public int sendMessagesToSubscriptions(MessageDeliveryInfo messageDeliveryInfo) throws AndesException {
+    public int sendMessagesToSubscriptions(MessageDeliveryInfo messageDeliveryInfo, String storageQueue) throws
+            AndesException {
         int noOfSentMessages;
         if (DestinationType.TOPIC == messageDeliveryInfo.getDestinationType()) {
-            noOfSentMessages = topicMessageFlusher.deliverMessageToSubscriptions(messageDeliveryInfo);
+            noOfSentMessages = topicMessageFlusher.deliverMessageToSubscriptions(messageDeliveryInfo, storageQueue);
         } else {
-            noOfSentMessages = queueMessageFlusher.deliverMessageToSubscriptions(messageDeliveryInfo);
+            noOfSentMessages = queueMessageFlusher.deliverMessageToSubscriptions(messageDeliveryInfo, storageQueue);
         }
 
         return noOfSentMessages;
