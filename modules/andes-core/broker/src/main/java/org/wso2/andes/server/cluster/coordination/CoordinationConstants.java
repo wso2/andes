@@ -73,6 +73,10 @@ public final class CoordinationConstants {
     public static String UNASSIGNED_SLOT_MAP_NAME = "unassignedSlotsMap";
 
     /**
+     * Name of the distributed map to keep track of node id (set in broker.xml)
+     */
+    public static String NODE_ID_MAP_NAME = "nodeIdMap";
+    /**
      *Name of the distributed map to store message ID list against queue name
      */
     public static String SLOT_ID_MAP_NAME = "slotIdMap";
