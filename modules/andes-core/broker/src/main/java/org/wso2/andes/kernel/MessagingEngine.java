@@ -19,7 +19,6 @@
 package org.wso2.andes.kernel;
 
 import org.apache.log4j.Logger;
-import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.slot.ConnectionException;
@@ -802,7 +801,7 @@ public class MessagingEngine {
      */
     public AndesContent getRetainedMessageContent(AndesMessageMetadata metadata) throws AndesException {
         long messageID = metadata.getMessageID();
-        int contentSize = AMQPUtils.convertAndesMetadataToAMQMetadata(metadata).getContentSize();
+        int contentSize = metadata.getMessageContentLength();
 
         Map<Integer, AndesMessagePart> retainedContentParts = messageStore.getRetainedContentParts(messageID);
 
