@@ -32,6 +32,8 @@ public class HazelcastLifecycleListener implements LifecycleListener {
 
     private static Log log = LogFactory.getLog(HazelcastLifecycleListener.class);
 
+    private AndesRecoveryTask recoveryTask;
+
     /**
      * On {MERGED} event all the topic listeners for the local node is added back. Since the data structures except for
      * IMaps are not merged after a split brain scenario within Hazelcast (data structures from MERGED nodes are
@@ -44,6 +46,13 @@ public class HazelcastLifecycleListener implements LifecycleListener {
         if (lifecycleEvent.getState() == LifecycleEvent.LifecycleState.MERGED) {
             log.info("Hazelcast cluster merge detected after a split brain. Updating unmerged data structures");
             HazelcastAgent.getInstance().addTopicListeners();
+            if (null != recoveryTask) {
+                recoveryTask.scheduleNow();
+            }
         }
+    }
+
+    public void setRecoveryTask(AndesRecoveryTask recoveryTask) {
+        this.recoveryTask = recoveryTask;
     }
 }

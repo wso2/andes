@@ -45,6 +45,8 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 	AndesContextStore andesContextStore;
 	AMQPConstructStore amqpConstructStore;
 
+    AtomicBoolean isRunning;
+
 	// set storeOperational to true since it can be assumed that the store is operational at startup
 	// if it is non-operational, the value will be updated immediately
 	AtomicBoolean isContextStoreOperational = new AtomicBoolean(true);
@@ -62,24 +64,37 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 
 		andesContextStore = AndesContext.getInstance().getAndesContextStore();
 		amqpConstructStore = AndesContext.getInstance().getAMQPConstructStore();
+        isRunning = new AtomicBoolean(false);
 	}
 
 	@Override
 	public void run() {
-		if (isContextStoreOperational.get()) {
-			try {
-				reloadExchangesFromDB();
-				reloadQueuesFromDB();
-				reloadBindingsFromDB();
-				reloadSubscriptions();
-			} catch (Throwable e) {
-				log.error("Error in running andes recovery task", e);
-			}
-		} else {
-			log.warn("AndesRecoveryTask was paused due to non-operational context store.");
-		}
-	}
 
+        if(!isRunning.compareAndSet(false, true)) {
+            return;
+        }
+        try {
+            if (isContextStoreOperational.get()) {
+                log.info("Running DB sync task.");
+
+                reloadExchangesFromDB();
+                reloadQueuesFromDB();
+                reloadBindingsFromDB();
+                reloadSubscriptions();
+
+            } else {
+                log.warn("AndesRecoveryTask was paused due to non-operational context store.");
+            }
+        } catch (Throwable e) {
+            log.error("Error in running andes recovery task", e);
+        } finally {
+            isRunning.set(false);
+        }
+    }
+
+    public void scheduleNow() {
+        run();
+    }
 	/**
 	 * reload and recover exchanges,
 	 * Queues, Bindings and Subscriptions
