@@ -76,6 +76,7 @@ public class AndesKernelBoot {
      */
     private static boolean isKernelShuttingDown = false;
 
+    private static AndesRecoveryTask andesRecoveryTask;
     /**
      * This will boot up all the components in Andes kernel and bring the server to working state
      */
@@ -327,12 +328,14 @@ public class AndesKernelBoot {
      * @throws AndesException
      */
     public static void startHouseKeepingThreads() throws AndesException {
+
         //reload exchanges/queues/bindings and subscriptions
-        AndesRecoveryTask andesRecoveryTask = new AndesRecoveryTask();
+        andesRecoveryTask = new AndesRecoveryTask();
         Integer scheduledPeriod = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_FAILOVER_VHOST_SYNC_TASK_INTERVAL);
         andesRecoveryTaskScheduler.scheduleAtFixedRate(andesRecoveryTask, scheduledPeriod,
                                                        scheduledPeriod, TimeUnit.SECONDS);
+        HazelcastAgent.getInstance().setRecoveryTask(andesRecoveryTask);
         ClusterResourceHolder.getInstance().setAndesRecoveryTask(andesRecoveryTask);
     }
 
