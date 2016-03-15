@@ -96,6 +96,11 @@ public class HazelcastAgent implements SlotAgent {
     private ITopic<ClusterNotification> exchangeChangeNotifierChannel;
 
     /**
+     * Distributed topic to sent among cluster nodes to run andes recover task.
+     */
+    private ITopic<ClusterNotification> dbSyncNotifierChannel;
+
+    /**
      * These distributed maps are used for slot management
      */
 
@@ -180,8 +185,10 @@ public class HazelcastAgent implements SlotAgent {
     private String bindingListenerId;
     private String exchangeListenerId;
     private String queueListenerId;
+    private String dbSyncNotificationListenerId;
 
     private HazelcastLifecycleListener lifecycleListener;
+
     /**
      * Private constructor.
      */
@@ -334,6 +341,24 @@ public class HazelcastAgent implements SlotAgent {
         }
         bindingListenerId = this.bindingChangeNotifierChannel.addMessageListener(clusterBindingChangedListener);
 
+        /**
+         * Adding database sync notification to run andes recovery task
+         */
+        //configure Hazelcast ring buffer and reliable topic for DB sync notification
+        addReliableTopicConfig(CoordinationConstants.HAZELCAST_DB_SYNC_NOTIFICATION_TOPIC_NAME,
+                ENABLE_STATISTICS, HAZELCAST_RELIABLE_TOPIC_READ_BACH_SIZE);
+        addRingBufferConfig(CoordinationConstants.HAZELCAST_DB_SYNC_NOTIFICATION_TOPIC_NAME,
+                HAZELCAST_RING_BUFFER_CAPACITY, hazelcastRingBufferTTL);
+
+        //add listener for DB sync notification
+        this.dbSyncNotifierChannel = this.hazelcastInstance.getReliableTopic(
+                CoordinationConstants.HAZELCAST_DB_SYNC_NOTIFICATION_TOPIC_NAME);
+        DatabaseSyncNotificationListener databaseSyncNotificationListener = new DatabaseSyncNotificationListener();
+        if (StringUtils.isNotEmpty(dbSyncNotificationListenerId)) {
+            this.dbSyncNotifierChannel.removeMessageListener(dbSyncNotificationListenerId);
+        }
+        dbSyncNotificationListenerId = this.dbSyncNotifierChannel.addMessageListener(databaseSyncNotificationListener);
+
     }
 
     public void notifySubscriptionsChanged(ClusterNotification clusterNotification) throws AndesException {
@@ -390,6 +415,20 @@ public class HazelcastAgent implements SlotAgent {
             log.error("Error while sending binding change notification"
                       + clusterNotification.getEncodedObjectAsString(), e);
             throw new AndesException("Error while sending binding change notification"
+                                     + clusterNotification.getEncodedObjectAsString(), e);
+        }
+    }
+
+    public void notifyDBSyncEvent(ClusterNotification clusterNotification) throws AndesException {
+        if (log.isDebugEnabled()) {
+            log.debug("GOSSIP: " + clusterNotification.getDescription());
+        }
+        try {
+            this.dbSyncNotifierChannel.publish(clusterNotification);
+        } catch (Exception e) {
+            log.error("Error while sending db sync notification"
+                      + clusterNotification.getEncodedObjectAsString(), e);
+            throw new AndesException("Error while sending db sync notification"
                                      + clusterNotification.getEncodedObjectAsString(), e);
         }
     }
