@@ -18,6 +18,8 @@
 
 package org.wso2.andes.kernel;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.hazelcast.util.executor.NamedThreadPoolExecutor;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -51,6 +53,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -76,7 +79,6 @@ public class AndesKernelBoot {
      */
     private static boolean isKernelShuttingDown = false;
 
-    private static AndesRecoveryTask andesRecoveryTask;
     /**
      * This will boot up all the components in Andes kernel and bring the server to working state
      */
@@ -86,6 +88,8 @@ public class AndesKernelBoot {
         //loadConfigurations - done from outside
         //startAndesStores - done from outside
         int threadPoolCount = 1;
+        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
+                .setNameFormat("AndesRecoveryTask-%d").build();
         andesRecoveryTaskScheduler = Executors.newScheduledThreadPool(threadPoolCount);
         startAndesComponents();
         startHouseKeepingThreads();
@@ -330,12 +334,11 @@ public class AndesKernelBoot {
     public static void startHouseKeepingThreads() throws AndesException {
 
         //reload exchanges/queues/bindings and subscriptions
-        andesRecoveryTask = new AndesRecoveryTask();
+        AndesRecoveryTask andesRecoveryTask = new AndesRecoveryTask();
         Integer scheduledPeriod = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_FAILOVER_VHOST_SYNC_TASK_INTERVAL);
         andesRecoveryTaskScheduler.scheduleAtFixedRate(andesRecoveryTask, scheduledPeriod,
                                                        scheduledPeriod, TimeUnit.SECONDS);
-        HazelcastAgent.getInstance().setRecoveryTask(andesRecoveryTask);
         ClusterResourceHolder.getInstance().setAndesRecoveryTask(andesRecoveryTask);
     }
 

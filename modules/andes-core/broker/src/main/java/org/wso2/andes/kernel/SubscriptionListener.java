@@ -30,7 +30,11 @@ public interface SubscriptionListener {
 	static enum SubscriptionChange{
         ADDED,
         DELETED,
-        DISCONNECTED
+        DISCONNECTED,
+        /**
+         * Merge subscriber after a split brain
+         */
+        MERGED
     }
 
     /**

@@ -34,6 +34,7 @@ import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesRecoveryTask;
+import org.wso2.andes.kernel.AndesSubscriptionManager;
 import org.wso2.andes.kernel.HazelcastLifecycleListener;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
@@ -187,8 +188,6 @@ public class HazelcastAgent implements SlotAgent {
     private String queueListenerId;
     private String dbSyncNotificationListenerId;
 
-    private HazelcastLifecycleListener lifecycleListener;
-
     /**
      * Private constructor.
      */
@@ -218,7 +217,7 @@ public class HazelcastAgent implements SlotAgent {
         // Set cluster agent in Andes Context
         clusterAgent = new HazelcastClusterAgent(hazelcastInstance);
         AndesContext.getInstance().setClusterAgent(clusterAgent);
-        lifecycleListener = new HazelcastLifecycleListener();
+        HazelcastLifecycleListener lifecycleListener = new HazelcastLifecycleListener();
         hazelcastInstance.getLifecycleService().addLifecycleListener(lifecycleListener);
         addTopicListeners();
 
@@ -245,10 +244,6 @@ public class HazelcastAgent implements SlotAgent {
                 .getAtomicLong(CoordinationConstants.INITIALIZATION_DONE_INDICATOR);
 
         log.info("Successfully initialized Hazelcast Agent");
-    }
-
-    public void setRecoveryTask(AndesRecoveryTask recoveryTask) {
-        lifecycleListener.setRecoveryTask(recoveryTask);
     }
 
     public void addTopicListeners() {
