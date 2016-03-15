@@ -24,6 +24,7 @@ import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.slot.OrphanedSlotHandler;
 import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
+import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.subscription.BasicSubscription;
 import org.wso2.andes.subscription.LocalSubscription;
@@ -418,6 +419,30 @@ public class AndesSubscriptionManager {
     private void notifyClusterSubscriptionHasChanged(final AndesSubscription subscription, final SubscriptionListener.SubscriptionChange change) throws AndesException {
         for (final SubscriptionListener listener : subscriptionListeners) {
             listener.handleClusterSubscriptionsChanged(subscription, change);
+        }
+    }
+
+    /**
+     * Notify cluster members with local subscriptions information after recovering from a split brain scenario
+     * @throws AndesException
+     */
+    public void updateSubscriptionsAfterClusterMerge() throws AndesException {
+        Set<LocalSubscription> subList = subscriptionStore.getActiveLocalSubscribers(true); // Topic subscribers
+        notifyLocalSubscriptionListToMembers(subList);
+        subList = subscriptionStore.getActiveLocalSubscribers(false); // Queue subscribers
+        notifyLocalSubscriptionListToMembers(subList);
+        HazelcastAgent.getInstance().notifyDBSyncEvent(new ClusterNotification("", "", ""));
+    }
+
+    /**
+     * Notify cluster members a merge
+     * @param subscriptionList
+     * @throws AndesException
+     */
+    private void notifyLocalSubscriptionListToMembers(Collection<LocalSubscription> subscriptionList)
+            throws AndesException{
+        for (LocalSubscription localSubscription: subscriptionList) {
+            subscriptionStore.updateLocalSubscriptionInDB(localSubscription);
         }
     }
 
