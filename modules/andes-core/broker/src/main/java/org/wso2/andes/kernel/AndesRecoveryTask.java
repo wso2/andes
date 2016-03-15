@@ -92,7 +92,7 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
         }
     }
 
-    public void scheduleNow() {
+    public void executeNow() {
         run();
     }
 	/**

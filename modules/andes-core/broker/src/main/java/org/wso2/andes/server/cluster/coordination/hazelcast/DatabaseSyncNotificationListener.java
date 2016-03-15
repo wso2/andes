@@ -19,8 +19,11 @@ package org.wso2.andes.server.cluster.coordination.hazelcast;
 
 import com.hazelcast.core.Message;
 import com.hazelcast.core.MessageListener;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesRecoveryTask;
 import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 
 /**
  * The following listener will receive notification through {@link com.hazelcast.core.ITopic} to execute the andes
@@ -28,13 +31,21 @@ import org.wso2.andes.server.ClusterResourceHolder;
  * {@link org.wso2.andes.subscription.SubscriptionStore} cluster maps.
  */
 public class DatabaseSyncNotificationListener implements MessageListener {
+    private static Log log = LogFactory.getLog(DatabaseSyncNotificationListener.class);
 
     /**
      * {@inheritDoc}
      */
     @Override
     public void onMessage(Message message) {
-        AndesRecoveryTask andesRecoveryTask = ClusterResourceHolder.getInstance().getAndesRecoveryTask();
-        andesRecoveryTask.scheduleNow();
+        try {
+            log.info("DB sync request received after a split brain recovery from cluster " + message.getPublishingMember());
+            AndesRecoveryTask andesRecoveryTask = ClusterResourceHolder.getInstance().getAndesRecoveryTask();
+            andesRecoveryTask.executeNow();
+            log.info("DB sync completed for the request from cluster " + message.getPublishingMember());
+        } catch (Throwable e) {
+            log.error("Exception occurred while syncing DB on request by " + message.getPublishingMember());
+            throw e;
+        }
     }
 }

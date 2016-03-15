@@ -22,6 +22,7 @@ import com.hazelcast.core.LifecycleEvent;
 import com.hazelcast.core.LifecycleListener;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 
 /**
@@ -32,27 +33,30 @@ public class HazelcastLifecycleListener implements LifecycleListener {
 
     private static Log log = LogFactory.getLog(HazelcastLifecycleListener.class);
 
-    private AndesRecoveryTask recoveryTask;
-
     /**
-     * On {MERGED} event all the topic listeners for the local node is added back. Since the data structures except for
+     * On {@link com.hazelcast.core.LifecycleEvent.LifecycleState} MERGED event all the topic listeners for the local node is added back. Since the data structures except for
      * IMaps are not merged after a split brain scenario within Hazelcast (data structures from MERGED nodes are
      * discarded)
-     * @param lifecycleEvent {LifecycleEvent}
+     * @param lifecycleEvent {@link LifecycleEvent}
      */
     @Override
     public void stateChanged(LifecycleEvent lifecycleEvent) {
-        log.info("Hazelcast instance lifecycle changed state to " + lifecycleEvent.getState());
-        if (lifecycleEvent.getState() == LifecycleEvent.LifecycleState.MERGED) {
-            log.info("Hazelcast cluster merge detected after a split brain. Updating unmerged data structures");
-            HazelcastAgent.getInstance().addTopicListeners();
-            if (null != recoveryTask) {
-                recoveryTask.scheduleNow();
+        try {
+            log.info("Hazelcast instance lifecycle changed state to " + lifecycleEvent.getState());
+            if (lifecycleEvent.getState() == LifecycleEvent.LifecycleState.MERGED) {
+                log.info("Hazelcast cluster merge detected after a split brain. Updating unmerged data structures");
+                HazelcastAgent.getInstance().addTopicListeners();
+                AndesSubscriptionManager andesSubscriptionManager = ClusterResourceHolder.getInstance()
+                        .getSubscriptionManager();
+                if(null != andesSubscriptionManager) {
+                    andesSubscriptionManager.updateSubscriptionsAfterClusterMerge();
+                } else {
+                    log.error("Andes Subscription Manager is not set. Local subscriptions are not synced with the " +
+                            "main cluster");
+                }
             }
+        } catch (Throwable e) {
+            log.error("Error occurred while handling Hazelcast state change event " + lifecycleEvent.getState(), e);
         }
-    }
-
-    public void setRecoveryTask(AndesRecoveryTask recoveryTask) {
-        this.recoveryTask = recoveryTask;
     }
 }
