@@ -170,6 +170,32 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
+    public boolean isSubscriptionExist(String subscriptionId) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+
+        try {
+            connection = getConnection();
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_IS_SUBSCRIPTION_EXIST);
+            preparedStatement.setString(1, subscriptionId);
+            resultSet = preparedStatement.executeQuery();
+
+            return resultSet.next();
+        } catch (SQLException e) {
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while "
+                    + RDBMSConstants.TASK_CHECK_SUBSCRIPTION_EXISTENCE, e);
+        } finally {
+            close(resultSet, RDBMSConstants.TASK_CHECK_SUBSCRIPTION_EXISTENCE);
+            close(preparedStatement, RDBMSConstants.TASK_CHECK_SUBSCRIPTION_EXISTENCE);
+            close(connection, RDBMSConstants.TASK_CHECK_SUBSCRIPTION_EXISTENCE);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void storeDurableSubscription(AndesSubscription subscription) throws AndesException {
 
         Connection connection = null;
