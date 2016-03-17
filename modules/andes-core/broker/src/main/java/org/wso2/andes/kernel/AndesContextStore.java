@@ -56,6 +56,13 @@ public interface AndesContextStore extends HealthAwareStore{
     public Map<String, String> getAllDurableSubscriptionsByID() throws AndesException;
 
     /**
+     * Check if a subscription present in database
+     * @return True if subscription present, false otherwise
+     * @throws AndesException
+     */
+    public boolean isSubscriptionExist(String subscriptionId) throws AndesException;
+
+    /**
      * Store subscription to the durable store.
      *
      * @param subscription The subscription to store
