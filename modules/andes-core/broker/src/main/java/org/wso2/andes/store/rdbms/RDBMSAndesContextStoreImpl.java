@@ -103,7 +103,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             preparedStatement = connection.prepareStatement(RDBMSConstants
                     .PS_SELECT_ALL_DURABLE_SUBSCRIPTIONS);
             resultSet = preparedStatement.executeQuery();
-            preparedStatement.setQueryTimeout(10);
 
             // create Subscriber Map
             while (resultSet.next()) {
@@ -146,7 +145,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
             preparedStatement = connection.prepareStatement(RDBMSConstants
                     .PS_SELECT_ALL_DURABLE_SUBSCRIPTIONS_WITH_SUB_ID);
-            preparedStatement.setQueryTimeout(10);
             resultSet = preparedStatement.executeQuery();
 
             // create the subscriber Map
@@ -180,7 +178,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         try {
             connection = getConnection();
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_IS_SUBSCRIPTION_EXIST);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setString(1, subscriptionId);
             resultSet = preparedStatement.executeQuery();
 
@@ -213,7 +210,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement = connection.prepareStatement(
                     RDBMSConstants.PS_INSERT_DURABLE_SUBSCRIPTION);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setString(1, destinationIdentifier);
             preparedStatement.setString(2, subscriptionID);
             preparedStatement.setString(3, subscription.encodeAsStr());
@@ -250,7 +246,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement = connection.prepareStatement(
                     RDBMSConstants.PS_UPDATE_DURABLE_SUBSCRIPTION);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setString(1, subscription.encodeAsStr());
             preparedStatement.setString(2, destinationIdentifier);
             preparedStatement.setString(3, subscriptionID);
@@ -281,7 +276,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         try {
             connection = getConnection();
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_UPDATE_DURABLE_SUBSCRIPTION_BY_ID);
-            preparedStatement.setQueryTimeout(10);
             for (Map.Entry<String, String> entry : subscriptions.entrySet()) {
                 preparedStatement.setString(1, entry.getValue());
                 preparedStatement.setString(2, entry.getKey());
@@ -321,7 +315,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
             preparedStatement = connection.prepareStatement(RDBMSConstants
                     .PS_DELETE_DURABLE_SUBSCRIPTION);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setString(1, destinationIdentifier);
             preparedStatement.setString(2, subscriptionID);
             preparedStatement.executeUpdate();
@@ -356,7 +349,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
 
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_INSERT_NODE_INFO);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setString(1, nodeID);
             preparedStatement.setString(2, data);
             preparedStatement.executeUpdate();
@@ -388,7 +380,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             connection = getConnection();
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_ALL_NODE_INFO);
-            preparedStatement.setQueryTimeout(10);
             resultSet = preparedStatement.executeQuery();
 
             while (resultSet.next()) {
@@ -424,7 +415,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
 
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_NODE_INFO);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setString(1, nodeID);
             preparedStatement.executeUpdate();
 
@@ -457,7 +447,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
                 preparedStatement = connection.prepareStatement(RDBMSConstants
                         .PS_INSERT_QUEUE_COUNTER);
-                preparedStatement.setQueryTimeout(10);
                 preparedStatement.setString(1, destinationQueueName);
                 preparedStatement.setLong(2, 0); // initial count is set to zero for parameter two
                 preparedStatement.executeUpdate();
@@ -495,7 +484,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         try {
             // check if queue already exist
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_QUEUE_COUNT);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setString(1, queueName);
             resultSet = preparedStatement.executeQuery();
 
@@ -523,7 +511,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         try {
             connection = getConnection();
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_QUEUE_COUNT);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setString(1, destinationQueueName);
 
             resultSet = preparedStatement.executeQuery();
@@ -559,7 +546,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             // RESET the queue counter to 0
             preparedStatement = connection
                     .prepareStatement(RDBMSConstants.PS_RESET_QUEUE_COUNT);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setString(1, storageQueueName);
 
             preparedStatement.execute();
@@ -590,7 +576,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
 
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_QUEUE_COUNTER);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setString(1, destinationQueueName);
             preparedStatement.executeUpdate();
 
@@ -621,7 +606,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
 
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_INCREMENT_QUEUE_COUNT);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setLong(1, incrementBy);
             preparedStatement.setString(2, destinationQueueName);
             preparedStatement.executeUpdate();
@@ -653,7 +637,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
 
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_DECREMENT_QUEUE_COUNT);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setLong(1, decrementBy);
             preparedStatement.setString(2, destinationQueueName);
             preparedStatement.executeUpdate();
@@ -694,7 +677,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
                 preparedStatement = connection
                         .prepareStatement(RDBMSConstants.PS_STORE_EXCHANGE_INFO);
-                preparedStatement.setQueryTimeout(10);
                 preparedStatement.setString(1, exchangeName);
                 preparedStatement.setString(2, exchangeInfo);
                 preparedStatement.executeUpdate();
@@ -727,7 +709,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
         try {
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_EXCHANGE);
-            preparedStatement.setQueryTimeout(10);
 
             preparedStatement.setString(1, exchangeName);
             resultSet = preparedStatement.executeQuery();
@@ -757,7 +738,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
             preparedStatement = connection
                     .prepareStatement(RDBMSConstants.PS_SELECT_ALL_EXCHANGE_INFO);
-            preparedStatement.setQueryTimeout(10);
             resultSet = preparedStatement.executeQuery();
 
             // traverse the result set and add it to exchange list and return the list
@@ -792,7 +772,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
 
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_EXCHANGE);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setString(1, exchangeName);
             preparedStatement.executeUpdate();
 
@@ -823,7 +802,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
 
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_INSERT_QUEUE_INFO);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setString(1, queueName);
             preparedStatement.setString(2, queueInfo);
             preparedStatement.executeUpdate();
@@ -862,7 +840,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         try {
             connection = getConnection();
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_ALL_QUEUE_INFO);
-            preparedStatement.setQueryTimeout(10);
             resultSet = preparedStatement.executeQuery();
 
             List<AndesQueue> queueList = new ArrayList<>();
@@ -900,7 +877,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
 
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_QUEUE_INFO);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setString(1, queueName);
             preparedStatement.executeUpdate();
 
@@ -932,7 +908,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
 
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_INSERT_BINDING);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setString(1, exchange);
             preparedStatement.setString(2, boundQueueName);
             preparedStatement.setString(3, bindingInfo);
@@ -969,7 +944,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement = connection.prepareStatement(RDBMSConstants
                     .PS_SELECT_BINDINGS_FOR_EXCHANGE);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setString(1, exchangeName);
             resultSet = preparedStatement.executeQuery();
 
@@ -1006,7 +980,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
 
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_BINDING);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setString(1, exchangeName);
             preparedStatement.setString(2, boundQueueName);
             preparedStatement.executeUpdate();
@@ -1123,7 +1096,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement =
                     connection.prepareStatement(RDBMSConstants.PS_INSERT_SLOT);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setLong(1, startMessageId);
             preparedStatement.setLong(2, endMessageId);
             preparedStatement.setString(3, storageQueueName);
@@ -1159,7 +1131,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
 
             deleteNonOverlappingSlotPS = connection.prepareStatement(RDBMSConstants.PS_DELETE_NON_OVERLAPPING_SLOT);
-            deleteNonOverlappingSlotPS.setQueryTimeout(10);
             deleteNonOverlappingSlotPS.setLong(1, startMessageId);
             deleteNonOverlappingSlotPS.setLong(2, endMessageId);
 
@@ -1169,7 +1140,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             if (rowsAffected == 0) {
                 // Check if the Slot exists in Store
                 getSlotPS = connection.prepareStatement(RDBMSConstants.PS_GET_SLOT);
-                getSlotPS.setQueryTimeout(10);
                 getSlotPS.setLong(1, startMessageId);
                 getSlotPS.setLong(2, endMessageId);
 
@@ -1219,7 +1189,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement =
                     connection.prepareStatement(RDBMSConstants.PS_DELETE_SLOTS_BY_QUEUE_NAME);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setString(1, queueName);
 
             preparedStatement.executeUpdate();
@@ -1248,7 +1217,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement =
                     connection.prepareStatement(RDBMSConstants.PS_DELETE_MESSAGE_IDS_BY_QUEUE_NAME);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setString(1, queueName);
 
             preparedStatement.executeUpdate();
@@ -1279,7 +1247,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement =
                     connection.prepareStatement(RDBMSConstants.PS_INSERT_SLOT_ASSIGNMENT);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setString(1, nodeId);
             preparedStatement.setString(2, queueName);
             preparedStatement.setLong(3, startMsgId);
@@ -1313,7 +1280,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement =
                     connection.prepareStatement(RDBMSConstants.PS_DELETE_SLOT_ASSIGNMENT);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setLong(1, startMessageId);
             preparedStatement.setLong(2, endMessageId);
 
@@ -1346,7 +1312,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement = connection
                     .prepareStatement(RDBMSConstants.PS_DELETE_SLOT_ASSIGNMENT_BY_QUEUE_NAME);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setString(1, nodeId);
             preparedStatement.setString(2, queueName);
 
@@ -1380,7 +1345,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement =
                     connection.prepareStatement(RDBMSConstants.PS_SELECT_UNASSIGNED_SLOT);
-            preparedStatement.setQueryTimeout(10);
 
             preparedStatement.setString(1, queueName);
             resultSet = preparedStatement.executeQuery();
@@ -1419,7 +1383,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement =
                     connection.prepareStatement(RDBMSConstants.PS_SELECT_QUEUE_TO_LAST_ASSIGNED_ID);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setString(1, queueName);
             resultSet = preparedStatement.executeQuery();
 
@@ -1453,21 +1416,18 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
             selectQueueToLastAssignIDPS =
                     connection.prepareStatement(RDBMSConstants.PS_SELECT_QUEUE_TO_LAST_ASSIGNED_ID);
-            selectQueueToLastAssignIDPS.setQueryTimeout(10);
             selectQueueToLastAssignIDPS.setString(1, queueName);
             resultSet = selectQueueToLastAssignIDPS.executeQuery();
 
             if(resultSet.next()){
                 updateQueueToLastAssignedIDPS =
                         connection.prepareStatement(RDBMSConstants.PS_UPDATE_QUEUE_TO_LAST_ASSIGNED_ID);
-                updateQueueToLastAssignedIDPS.setQueryTimeout(10);
                 updateQueueToLastAssignedIDPS.setLong(1, messageId);
                 updateQueueToLastAssignedIDPS.setString(2, queueName);
                 updateQueueToLastAssignedIDPS.executeUpdate();
             } else {
                 insertQueueToLastAssignedIDPS =
                         connection.prepareStatement(RDBMSConstants.PS_INSERT_QUEUE_TO_LAST_ASSIGNED_ID);
-                insertQueueToLastAssignedIDPS.setQueryTimeout(10);
 
                 insertQueueToLastAssignedIDPS.setString(1, queueName);
                 insertQueueToLastAssignedIDPS.setLong(2, messageId);
@@ -1504,7 +1464,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement =
                     connection.prepareStatement(RDBMSConstants.PS_SELECT_NODE_TO_LAST_PUBLISHED_ID);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setString(1, nodeId);
             resultSet = preparedStatement.executeQuery();
 
@@ -1539,21 +1498,18 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             selectNodeToLastPublishedIdPS =
                     connection.prepareStatement(RDBMSConstants.PS_SELECT_NODE_TO_LAST_PUBLISHED_ID);
-            selectNodeToLastPublishedIdPS.setQueryTimeout(10);
             selectNodeToLastPublishedIdPS.setString(1, nodeId);
             resultSet = selectNodeToLastPublishedIdPS.executeQuery();
 
             if(resultSet.next()){
                 updateNodeToLastPublishedIdPS =
                         connection.prepareStatement(RDBMSConstants.PS_UPDATE_NODE_TO_LAST_PUBLISHED_ID);
-                updateNodeToLastPublishedIdPS.setQueryTimeout(10);
                 updateNodeToLastPublishedIdPS.setLong(1, messageId);
                 updateNodeToLastPublishedIdPS.setString(2, nodeId);
                 updateNodeToLastPublishedIdPS.executeUpdate();
             } else {
                 insertNodeToLastPublishedIdPS =
                         connection.prepareStatement(RDBMSConstants.PS_INSERT_NODE_TO_LAST_PUBLISHED_ID);
-                insertNodeToLastPublishedIdPS.setQueryTimeout(10);
 
                 insertNodeToLastPublishedIdPS.setString(1, nodeId);
                 insertNodeToLastPublishedIdPS.setLong(2, messageId);
@@ -1585,7 +1541,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
 
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_PUBLISHER_ID);
-            preparedStatement.setQueryTimeout(10);
 
             preparedStatement.setString(1, nodeId);
 
@@ -1616,7 +1571,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement =
                     connection.prepareStatement(RDBMSConstants.PS_SELECT_MESSAGE_PUBLISHED_NODES);
-            preparedStatement.setQueryTimeout(10);
             resultSet = preparedStatement.executeQuery();
 
             while (resultSet.next()) {
@@ -1647,7 +1601,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
 
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SET_SLOT_STATE);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setInt(1, slotState.getCode());
             preparedStatement.setLong(2, startMessageId);
             preparedStatement.setLong(3, endMessageId);
@@ -1680,7 +1633,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement =
                     connection.prepareStatement(RDBMSConstants.PS_SELECT_OVERLAPPED_SLOT);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setString(1, queueName);
             preparedStatement.setString(2, nodeId);
             resultSet = preparedStatement.executeQuery();
@@ -1718,7 +1670,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement =
                     connection.prepareStatement(RDBMSConstants.PS_INSERT_SLOT_MESSAGE_ID);
-            preparedStatement.setQueryTimeout(10);
 
             preparedStatement.setString(1, queueName);
             preparedStatement.setLong(2, messageId);
@@ -1749,7 +1700,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
 
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_GET_MESSAGE_IDS);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setString(1, queueName);
             resultSet = preparedStatement.executeQuery();
 
@@ -1780,7 +1730,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
 
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_MESSAGE_ID);
-            preparedStatement.setQueryTimeout(10);
 
             preparedStatement.setLong(1, messageId);
 
@@ -1811,7 +1760,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement =
                     connection.prepareStatement(RDBMSConstants.PS_GET_ASSIGNED_SLOTS_BY_NODE_ID);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setString(1, nodeId);
             resultSet = preparedStatement.executeQuery();
 
@@ -1850,7 +1798,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement =
                     connection.prepareStatement(RDBMSConstants.PS_SELECT_ALL_SLOTS_BY_QUEUE_NAME);
-            preparedStatement.setQueryTimeout(10);
             preparedStatement.setString(1, queueName);
             resultSet = preparedStatement.executeQuery();
 
@@ -1889,7 +1836,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement =
                     connection.prepareStatement(RDBMSConstants.PS_GET_ALL_QUEUES);
-            preparedStatement.setQueryTimeout(10);
             resultSet = preparedStatement.executeQuery();
 
             while (resultSet.next()) {
@@ -1924,16 +1870,12 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         try {
             connection = getConnection();
             clearSlotTablePS = connection.prepareStatement(RDBMSConstants.PS_CLEAR_SLOT_TABLE);
-            clearSlotTablePS.setQueryTimeout(10);
             clearSlotTablePS.executeUpdate();
             clearSlotMessageIdTablePS = connection.prepareStatement(RDBMSConstants.PS_CLEAR_SLOT_MESSAGE_ID_TABLE);
-            clearSlotMessageIdTablePS.setQueryTimeout(10);
             clearSlotMessageIdTablePS.executeUpdate();
             clearNodeToLastPublisherIdPS = connection.prepareStatement(RDBMSConstants.PS_CLEAR_NODE_TO_LAST_PUBLISHED_ID);
-            clearNodeToLastPublisherIdPS.setQueryTimeout(10);
             clearNodeToLastPublisherIdPS.executeUpdate();
             clearQueueToLastAssignedIdPS = connection.prepareStatement(RDBMSConstants.PS_CLEAR_QUEUE_TO_LAST_ASSIGNED_ID);
-            clearQueueToLastAssignedIdPS.setQueryTimeout(10);
             clearQueueToLastAssignedIdPS.executeUpdate();
             connection.commit();
         } catch (SQLException e) {
