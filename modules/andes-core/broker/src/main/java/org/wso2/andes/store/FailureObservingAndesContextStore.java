@@ -416,6 +416,58 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
         wrappedAndesContextStoreInstance.close();
     }
 
+    @Override
+    public void updateLastPublishedMessageId(long nodeId, long queueId, long lastPublishedMessageId) throws
+            AndesException {
+        try {
+            wrappedAndesContextStoreInstance.updateLastPublishedMessageId(nodeId, queueId, lastPublishedMessageId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    @Override
+    public long getLastPublishedMessageId(long nodeId, long queueId) throws AndesException {
+        try {
+            return wrappedAndesContextStoreInstance.getLastPublishedMessageId(nodeId, queueId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    @Override
+    public void insertLastPublishedMessageId(long nodeId, long queueId, long lastPublishedMessageId) throws
+            AndesException {
+        try {
+            wrappedAndesContextStoreInstance.insertLastPublishedMessageId(nodeId, queueId, lastPublishedMessageId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    @Override
+    public Map<Long, Long> getLastPublishedMessageIdsOfAllNodes(long queueId) throws AndesException {
+        try {
+            return wrappedAndesContextStoreInstance.getLastPublishedMessageIdsOfAllNodes(queueId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    @Override
+    public Map<Long, Long> getNodeIdToLastAssignedId(long queueId) throws AndesException {
+        try {
+            return wrappedAndesContextStoreInstance.getNodeIdToLastAssignedId(queueId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
     /**
      * {@inheritDoc}.
      * <p>

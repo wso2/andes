@@ -23,9 +23,12 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
+
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -46,6 +49,7 @@ public class Slot implements Serializable, Comparable<Slot> {
      */
     private long startMessageId;
 
+    private Map<Long,SlotRange> nodeIdToRangeMap = new HashMap<>();
     /**
      * End message ID of the slot
      */
@@ -98,6 +102,10 @@ public class Slot implements Serializable, Comparable<Slot> {
         slotStates.add(slotState);
         pendingMessageCount = new AtomicInteger();
         messagesOfSlot = new ConcurrentHashMap<>();
+    }
+
+    public Slot(Map<Long, SlotRange> nodeIdToRangeMap){
+        this.nodeIdToRangeMap = nodeIdToRangeMap;
     }
 
     public Slot(long start, long end, String destinationOfMessagesInSlot) {
@@ -383,5 +391,9 @@ public class Slot implements Serializable, Comparable<Slot> {
      */
     public void incrementPendingMessageCount(int amount) {
         pendingMessageCount.addAndGet(amount);
+    }
+
+    public Map<Long, SlotRange> getNodeIdToRangeMap() {
+        return nodeIdToRangeMap;
     }
 }

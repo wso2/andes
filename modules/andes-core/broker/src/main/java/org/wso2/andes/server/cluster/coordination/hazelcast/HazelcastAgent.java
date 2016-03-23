@@ -491,13 +491,11 @@ public class HazelcastAgent implements SlotAgent {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+
     @Override
-    public void createSlot(long startMessageId, long endMessageId, String storageQueueName, String assignedNodeId)
-            throws AndesException {
-        //createSlot() method in Hazelcast agent does not need to perform anything
+    public void createSlot(String slotRanges, long publishedNodeId, long queueId, long assignedNodeId) throws
+            AndesException {
+
     }
 
     /**
@@ -1040,6 +1038,31 @@ public class HazelcastAgent implements SlotAgent {
     @Override
     public void clearSlotStorage() throws AndesException {
         // Maps will be automatically cleared.
+    }
+
+    @Override
+    public void updateLastPublishedMessageId(long uniqueNodeId, long queueId, long lastPublishedMessageId) {
+
+    }
+
+    @Override
+    public long getLastPublishedMessageId(long uniqueNodeId, long queueId) throws AndesException {
+        return 0;
+    }
+
+    @Override
+    public Map<Long, Long> getLastPublishedIdsOfAllNodes(long queueId) throws AndesException {
+        return null;
+    }
+
+    @Override
+    public void insertLastPublishedMessageId(long uniqueNodeId, long queueId, long lastPublishedMessageId) throws AndesException {
+
+    }
+
+    @Override
+    public Map<Long, Long> getNodeIdToLastAssignedId(long queueId) throws AndesException {
+        return null;
     }
 
     /**

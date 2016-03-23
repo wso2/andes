@@ -21,7 +21,6 @@ package org.wso2.andes.server.cluster.coordination.rdbms;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
@@ -30,13 +29,15 @@ import org.wso2.andes.kernel.slot.SlotState;
 import org.wso2.andes.server.cluster.coordination.SlotAgent;
 import org.wso2.andes.store.AndesDataIntegrityViolationException;
 import org.wso2.andes.store.AndesStoreUnavailableException;
+import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
-import org.wso2.andes.store.FailureObservingStoreManager;
 
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.TreeSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -77,20 +78,17 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
 
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void createSlot(long startMessageId, long endMessageId, String storageQueueName, String assignedNodeId)
-            throws AndesException {
 
-        String task = "create slot with start message id: " + startMessageId + ", end message id: " + endMessageId
-                      + " for queue: " + storageQueueName + " and node: " + assignedNodeId;
+    @Override
+    public void createSlot(String slotRanges, long publishedNodeId, long queueId, long
+            assignedNodeId) throws AndesException {
+        String task = "create slot with slot range: " + slotRanges
+                      + " for queueId: " + queueId + " from node: " + publishedNodeId;
 
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
             waitUntilStoresBecomeAvailable(task);
             try {
-                andesContextStore.createSlot(startMessageId, endMessageId, storageQueueName, assignedNodeId);
+                andesContextStore.createSlot(slotRanges, publishedNodeId, queueId, assignedNodeId);
                 break;
             } catch (AndesStoreUnavailableException e) {
                 handleFailure(attemptCount, task, e);
@@ -573,6 +571,123 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
             waitUntilStoresBecomeAvailable(task);
             try {
                 andesContextStore.clearSlotStorage();
+                break;
+            } catch (AndesStoreUnavailableException e) {
+                handleFailure(attemptCount, task, e);
+            }
+        }
+    }
+
+    @Override
+    public void updateLastPublishedMessageId(long uniqueNodeId, long queueId, long lastPublishedMessageId) throws AndesException {
+        String task = "update slot raw data with uniqueNodeId = " + uniqueNodeId + ", queueId = " + queueId + ", "
+                      + "last published Id = " + lastPublishedMessageId;
+
+        for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
+            waitUntilStoresBecomeAvailable(task);
+            try {
+                andesContextStore.updateLastPublishedMessageId(uniqueNodeId, queueId, lastPublishedMessageId);
+                break;
+            } catch (AndesStoreUnavailableException e) {
+                handleFailure(attemptCount, task, e);
+            }
+        }
+
+    }
+
+    @Override
+    public long getLastPublishedMessageId(long nodeId, long queueId) throws AndesException {
+        String task = "Get last published message Id of queue: " + queueId + " of node: " + nodeId ;
+
+        long lastMessageID = 0;
+        for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
+            waitUntilStoresBecomeAvailable(task);
+            try {
+                lastMessageID = andesContextStore.getLastPublishedMessageId(nodeId, queueId);
+                break;
+            } catch (AndesStoreUnavailableException e) {
+                handleFailure(attemptCount, task, e);
+            }
+        }
+        return lastMessageID;
+    }
+
+    @Override
+    public Map<Long, Long> getLastPublishedIdsOfAllNodes(long queueId) throws AndesException {
+        String task = "Get last published message Ids of queue: "+ queueId +" of all the nodes" ;
+
+        Map<Long, Long> nodeIdToMessasgeId = new HashMap<>();
+        for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
+            waitUntilStoresBecomeAvailable(task);
+            try {
+                nodeIdToMessasgeId = andesContextStore.getLastPublishedMessageIdsOfAllNodes(queueId);
+                break;
+            } catch (AndesStoreUnavailableException e) {
+                handleFailure(attemptCount, task, e);
+            }
+        }
+        return nodeIdToMessasgeId;
+    }
+
+    @Override
+    public void insertLastPublishedMessageId(long uniqueNodeId, long queueId, long lastPublishedMessageId) throws AndesException {
+        String task = "Put slot raw data with uniqueNodeId = " + uniqueNodeId + ", queueId = " + queueId + ", "
+                      + "last published Id = " + lastPublishedMessageId;
+
+        for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
+            waitUntilStoresBecomeAvailable(task);
+            try {
+                andesContextStore.insertLastPublishedMessageId(uniqueNodeId, queueId, lastPublishedMessageId);
+                break;
+            } catch (AndesStoreUnavailableException e) {
+                handleFailure(attemptCount, task, e);
+            }
+        }
+    }
+
+    @Override
+    public Map<Long, Long> getNodeIdToLastAssignedId(long queueId) throws AndesException {
+        String task = "Get last assigned message Ids of queue: "+ queueId +" of all the nodes" ;
+
+        Map<Long, Long> nodeIdToMessasgeId = new HashMap<>();
+        for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
+            waitUntilStoresBecomeAvailable(task);
+            try {
+                nodeIdToMessasgeId = andesContextStore.getNodeIdToLastAssignedId(queueId);
+                break;
+            } catch (AndesStoreUnavailableException e) {
+                handleFailure(attemptCount, task, e);
+            }
+        }
+        return nodeIdToMessasgeId;
+    }
+
+    @Override
+    public void updateNodeIdToLastAssignedId(long uniqueNodeId, long queueId, long lastAssignedMessageId) throws
+            AndesException {
+        String task = "update last assigned message ID with uniqueNodeId = " + uniqueNodeId + ", queueId = " +
+                      queueId + ", " + "last assigned message Id = " + lastAssignedMessageId;
+
+        for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
+            waitUntilStoresBecomeAvailable(task);
+            try {
+                andesContextStore.updateAssignedMessageId(uniqueNodeId, queueId, lastAssignedMessageId);
+                break;
+            } catch (AndesStoreUnavailableException e) {
+                handleFailure(attemptCount, task, e);
+            }
+        }
+    }
+
+    @Override
+    public void insertLastAssignedMessageId(long nodeId, long queueId, long lastAssignedMessageId) throws AndesException {
+        String task = "Put last assignend message Id = " + lastAssignedMessageId + " for the queue, queueId = " +
+                      queueId + ", " + " from node = " + nodeId;
+
+        for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
+            waitUntilStoresBecomeAvailable(task);
+            try {
+                andesContextStore.insertLastAssignedMessageId(nodeId, queueId, lastAssignedMessageId);
                 break;
             } catch (AndesStoreUnavailableException e) {
                 handleFailure(attemptCount, task, e);

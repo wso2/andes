@@ -28,7 +28,10 @@ import org.wso2.andes.server.cluster.coordination.SlotAgent;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.cluster.coordination.rdbms.DatabaseSlotAgent;
 
+import java.nio.ByteBuffer;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
@@ -51,6 +54,10 @@ public class SlotManagerClusterMode {
 	private static final SlotManagerClusterMode slotManager = new SlotManagerClusterMode();
 
 	private static final int SAFE_ZONE_EVALUATION_INTERVAL = 5 * 1000;
+
+	private final int slotWindowSize;
+
+	private Map<Long, Long> queueIdToAggregatedMessageCount = new HashMap<>();
 
 	//safe zone calculator
 	private final SlotDeleteSafeZoneCalc slotDeleteSafeZoneCalc;
@@ -91,8 +98,91 @@ public class SlotManagerClusterMode {
         log.info("Using " + slotMgtMode + " based slot management mode");
         firstMessageId = INITIAL_MESSAGE_ID;
         slotRecoveryScheduled = new AtomicBoolean(false);
+		slotWindowSize = AndesConfigurationManager
+				.readValue(AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
 
     }
+
+
+	/**
+	 * Record Slot related data (last message ID, storage queue name) for the queues sends by a publisher node
+	 *
+	 * @param slotsDataByteArray Byte array of unique node ID, queue ID and last message ID.
+	 * @throws AndesException
+	 */
+	public void updateSlotsData(byte[] slotsDataByteArray) throws AndesException {
+
+		ByteBuffer slotDataBuffer = ByteBuffer.wrap(slotsDataByteArray);
+		long uniqueNodeId = slotDataBuffer.getLong();
+		long queueId = slotDataBuffer.getLong();
+		long lastPublishedMessageId = slotDataBuffer.getLong();
+		long messageCount = slotDataBuffer.getLong();
+		Map<Long, Long> nodeIdToLastPublishedId = new HashMap<>();
+		Map<Long, Long> nodeIdToLastAssignedId = new HashMap<>();
+
+		 if( queueIdToAggregatedMessageCount.get(queueId) == null){
+			 queueIdToAggregatedMessageCount.put(queueId,0L);
+		 }
+		//Calculate the aggregated message count for this particular queue
+		long aggregatedMessageCount = queueIdToAggregatedMessageCount.get(queueId) + messageCount;
+		if(aggregatedMessageCount >= slotWindowSize){
+			//Reset the aggregated message count for this queue
+			queueIdToAggregatedMessageCount.put(queueId, 0L);
+			//Get last published node IDs in other nodes for this queue
+			nodeIdToLastPublishedId = slotAgent.getLastPublishedIdsOfAllNodes(queueId);
+			//Add this node's last published message ID to the map
+			nodeIdToLastPublishedId.put(uniqueNodeId, lastPublishedMessageId);
+			//Get last assigned node IDs in different nodes for this queue
+			nodeIdToLastAssignedId = slotAgent.getNodeIdToLastAssignedId(queueId);
+
+			Map<Long, SlotRange> nodeIdToSlotRangeMap = new HashMap<>();
+
+			for (Map.Entry<Long, Long> entry : nodeIdToLastPublishedId.entrySet()) {
+				long startMessageId = 0;
+				long endMessageId = entry.getValue();
+				if (nodeIdToLastAssignedId.get(entry.getKey()) != null) {
+					startMessageId = nodeIdToLastAssignedId.get(entry.getKey()) + 1;
+					slotAgent.updateNodeIdToLastAssignedId(entry.getKey(), queueId, entry.getValue());
+				} else {
+					slotAgent.insertLastAssignedMessageId(entry.getKey(), queueId, lastPublishedMessageId);
+				}
+				SlotRange slotRange = new SlotRange(startMessageId, endMessageId);
+				nodeIdToSlotRangeMap.put(entry.getKey(), slotRange);
+				slotAgent.updateLastPublishedMessageId(entry.getKey(), queueId, 0L);
+
+			}
+			Slot slot = new Slot(nodeIdToSlotRangeMap);
+			slotAgent.createSlot(getSlotRnagesString(slot), uniqueNodeId, queueId, -1);
+		}else{
+			/*
+			If aggregated message count is less than slot window size update the queueIdToAggregatedMessageCount with
+			the message count of newly arrived messages
+			 */
+			queueIdToAggregatedMessageCount.put(queueId, aggregatedMessageCount);
+			//Update the last published message ID in the database
+			if(slotAgent.getLastPublishedMessageId(uniqueNodeId, queueId) != 0) {
+				slotAgent.updateLastPublishedMessageId(uniqueNodeId, queueId, lastPublishedMessageId);
+			} else{
+				slotAgent.insertLastPublishedMessageId(uniqueNodeId, queueId, lastPublishedMessageId);
+			}
+		}
+
+
+	}
+
+	private String getSlotRnagesString(Slot slot){
+		String rangesString = "";
+		 for(Map.Entry<Long, SlotRange> entry: slot.getNodeIdToRangeMap().entrySet()){
+			rangesString = entry.getKey() + ":" + entry.getValue().getStartMessasgeId() + "-" + entry.getValue()
+					.getEndMessageId() + ",";
+		 }
+		rangesString  = rangesString.substring(0, rangesString.length()-1);
+		return  rangesString;
+	}
+
+
+
+
 
 
 	/**
