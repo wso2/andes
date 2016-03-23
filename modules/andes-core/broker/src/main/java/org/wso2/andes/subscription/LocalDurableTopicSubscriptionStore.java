@@ -51,7 +51,7 @@ public class LocalDurableTopicSubscriptionStore implements AndesSubscriptionStor
         Set<AndesSubscription> subscriptionSet = durableTopicSubscriptionMap.get(destination);
 
         if (null == subscriptionSet) {
-            subscriptionSet = new HashSet<>();
+            subscriptionSet = Collections.newSetFromMap(new ConcurrentHashMap<AndesSubscription, Boolean>());
             subscriptionSet.add(subscription);
 
             durableTopicSubscriptionMap.put(destination, subscriptionSet);
