@@ -29,6 +29,7 @@ import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.SubscriptionListener.SubscriptionChange;
 import org.wso2.andes.metrics.MetricsConstants;
+import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.carbon.metrics.manager.Gauge;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
@@ -93,8 +94,6 @@ public class SubscriptionEngine {
      * @param protocolType The subscription type to retrieve subscribers for
      * @param destinationType The destination type to retrieve subscribers for
      * @return list of matching subscriptions
-     * *****alskdjfowihasdkj*^*&%&**&&_akafixthis-for durable topics, destination type is set as queue in message meta data, but they are saved in
-     * topic messages list in subscription store
      */
     public Set<LocalSubscription> getActiveLocalSubscribers(String destination, ProtocolType protocolType,
                                                             DestinationType destinationType) throws AndesException {
@@ -146,6 +145,16 @@ public class SubscriptionEngine {
      */
     public Set<AndesSubscription> getClusterSubscribersForNode(String nodeID) {
         return clusterSubscriptionProcessor.getSubscribersForNode(nodeID);
+    }
+
+    /**
+     * Get all active local subscribers subscribed to current node.
+     *
+     * @return Set of active local subscribers.
+     */
+    public Set<AndesSubscription> getActiveLocalSubscribersForNode() {
+        return localSubscriptionProcessor.getActiveSubscribersForNode(
+                ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID());
     }
 
     /**
@@ -245,6 +254,7 @@ public class SubscriptionEngine {
         } else if (SubscriptionChange.DELETED == type) {
             clusterSubscriptionProcessor.removeSubscription(subscription);
         } else if (SubscriptionChange.DISCONNECTED == type) {
+            subscription.setHasExternalSubscriptions(false);
             clusterSubscriptionProcessor.updateSubscription(subscription);
         }
     }
