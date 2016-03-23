@@ -285,7 +285,6 @@ public class SubscriptionProcessor {
      * @param protocolType The protocol for which the subscriptions needs to be retrieved
      * @param destinationType The destination type for which the subscriptions needs to be retrieved
      * @return Set of matching subscriptions
-     * oiajsdfja09320398_akafixthis_************
      */
     public Set<AndesSubscription> getAllSubscriptionsForDestinationType(ProtocolType protocolType, DestinationType destinationType) {
         StoreKey storeKey = new StoreKey(protocolType, destinationType);

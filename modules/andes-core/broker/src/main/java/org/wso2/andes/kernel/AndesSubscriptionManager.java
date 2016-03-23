@@ -265,10 +265,7 @@ public class AndesSubscriptionManager {
          * Queue subscription representing durable topic will anyway deleted.
          * Topic subscription representing durable topic is deleted when binding is deleted
          */
-        // ***** akafixthis _ aka what is dis, why allowshared has been used here
         if(DestinationType.DURABLE_TOPIC == subscription.getDestinationType()) {
-            Boolean allowSharedSubscribers =  AndesConfigurationManager.readValue
-                    (AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
             /*
              * Last subscriptions is allowed mark as disconnected if last local
              * subscriptions to underlying queue is gone. Even if we look at cluster
@@ -427,9 +424,7 @@ public class AndesSubscriptionManager {
      * @throws AndesException
      */
     public void updateSubscriptionsAfterClusterMerge() throws AndesException {
-        Set<LocalSubscription> subList = subscriptionStore.getActiveLocalSubscribers(true); // Topic subscribers
-        notifyLocalSubscriptionListToMembers(subList);
-        subList = subscriptionStore.getActiveLocalSubscribers(false); // Queue subscribers
+        Set<AndesSubscription> subList = subscriptionEngine.getActiveLocalSubscribersForNode();
         notifyLocalSubscriptionListToMembers(subList);
         HazelcastAgent.getInstance().notifyDBSyncEvent(new ClusterNotification("", "", ""));
     }
@@ -439,10 +434,10 @@ public class AndesSubscriptionManager {
      * @param subscriptionList
      * @throws AndesException
      */
-    private void notifyLocalSubscriptionListToMembers(Collection<LocalSubscription> subscriptionList)
+    private void notifyLocalSubscriptionListToMembers(Collection<AndesSubscription> subscriptionList)
             throws AndesException{
-        for (LocalSubscription localSubscription: subscriptionList) {
-            subscriptionStore.updateLocalSubscriptionInDB(localSubscription);
+        for (AndesSubscription localSubscription: subscriptionList) {
+            AndesContext.getInstance().getAndesContextStore().updateDurableSubscription(localSubscription);
         }
     }
 
