@@ -37,6 +37,8 @@ import org.wso2.andes.thrift.exception.ThriftClientException;
 import org.wso2.andes.thrift.slot.gen.SlotInfo;
 import org.wso2.andes.thrift.slot.gen.SlotManagementService;
 
+import java.nio.ByteBuffer;
+
 /**
  * A wrapper client for the native thrift client. All the public methods in this class are
  * synchronized in order to avoid out of sequence response exception from thrift server. Only one
@@ -126,6 +128,26 @@ public class MBThriftClient {
                 //retry once
                 reConnectToServer();
                 client.updateMessageId(queueName, nodeId, startMessageId, endMessageId, localSafeZone);
+            } catch (TException e1) {
+                handleCoordinatorChanges();
+                throw new ConnectionException("Coordinator has changed", e);
+            }
+
+        } catch (ThriftClientException e) {
+            log.error("Error occurred while receiving coordinator details from map", e);
+            handleCoordinatorChanges();
+        }
+    }
+
+    public static synchronized void communicateQueueWiseSlot(ByteBuffer messageIdentifiers) throws ConnectionException {
+        try {
+            client = getServiceClient();
+            client.communicateQueueWiseSlot(messageIdentifiers);
+        } catch (TException e) {
+            try {
+                //retry once
+                reConnectToServer();
+                client.communicateQueueWiseSlot(messageIdentifiers);
             } catch (TException e1) {
                 handleCoordinatorChanges();
                 throw new ConnectionException("Coordinator has changed", e);

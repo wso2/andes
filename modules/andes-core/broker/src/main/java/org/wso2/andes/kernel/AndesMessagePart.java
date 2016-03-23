@@ -26,6 +26,7 @@ public class AndesMessagePart {
     int offSet = 0;
     private byte[] data;
     private int dataLength;
+    private int storageQueueID;
 
     public int getOffset() {
         return offSet;
@@ -57,6 +58,14 @@ public class AndesMessagePart {
 
     public void setDataLength(int dataLength) {
         this.dataLength = dataLength;
+    }
+
+    public int getStorageQueueID() {
+        return storageQueueID;
+    }
+
+    public void setStorageQueueID(int storageQueueID) {
+        this.storageQueueID = storageQueueID;
     }
 
     /**

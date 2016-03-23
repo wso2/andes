@@ -422,6 +422,16 @@ public class FailureObservingMessageStore implements MessageStore {
         }
     }
 
+    @Override
+    public int getCachedQueueID(String destinationQueueName) throws AndesException {
+        try {
+            return wrappedInstance.getCachedQueueID(destinationQueueName);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
     /**
      * {@inheritDoc}
      */

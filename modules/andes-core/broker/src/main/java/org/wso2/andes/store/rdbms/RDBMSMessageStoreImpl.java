@@ -24,16 +24,8 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.cache.Weigher;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
-import org.wso2.andes.kernel.AndesContextStore;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessage;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.DeliverableAndesMetadata;
-import org.wso2.andes.kernel.DurableStoreConnection;
-import org.wso2.andes.kernel.MessageStore;
+import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.slot.Slot;
-import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.store.AndesDataIntegrityViolationException;
 import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.store.cache.AndesMessageCache;
@@ -86,6 +78,11 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * the message cache in use ( intension is to optimize reads)
      */
     private AndesMessageCache messageCache;
+
+    /**
+     * Unique numberic ID to identify the local node. Used when storing message metadata and content.
+     */
+    private long nodeNumber;
     
     /**
      * Partially created prepared statement to retrieve content of multiple messages using IN operator
@@ -117,6 +114,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         
         this.messageCache = (new MessageCacheFactory()).create();
         initializeQueueMappingCache();
+
+        nodeNumber = AndesContext.getInstance().getClusterAgent().getUniqueIdForLocalNode();
 
         log.info("Message Store initialised");
         return rdbmsConnection;
@@ -205,8 +204,10 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     private void addContentToBatch(PreparedStatement preparedStatement, AndesMessagePart messagePart) throws SQLException {
         preparedStatement.setLong(1, messagePart.getMessageID());
-        preparedStatement.setInt(2, messagePart.getOffset());
-        preparedStatement.setBytes(3, messagePart.getData());
+        preparedStatement.setInt(2, messagePart.getStorageQueueID());
+        preparedStatement.setLong(3, nodeNumber);
+        preparedStatement.setInt(4, messagePart.getOffset());
+        preparedStatement.setBytes(5, messagePart.getData());
         preparedStatement.addBatch();
     }
 
@@ -439,7 +440,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             AndesMessageMetadata metadata = message.getMetadata();
             storeMetadataPS.setLong(1, metadata.getMessageID());
             storeMetadataPS.setInt(2, getCachedQueueID(metadata.getStorageQueueName()));
-            storeMetadataPS.setBytes(3, metadata.getMetadata());
+            storeMetadataPS.setLong(3, nodeNumber);
+            storeMetadataPS.setBytes(4, metadata.getMetadata());
 
             for (AndesMessagePart messagePart : message.getContentChunkList()) {
                 addContentToBatch(storeContentPS, messagePart);
@@ -589,7 +591,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_UPDATE_METADATA);
 
             for (AndesMessageMetadata metadata : metadataList) {
-                preparedStatement.setInt(1, getCachedQueueID(metadata.getStorageQueueName()));
+                preparedStatement.setInt(1, metadata.getStorageQueueID());
                 preparedStatement.setBytes(2, metadata.getMetadata());
                 preparedStatement.setLong(3, metadata.getMessageID());
                 preparedStatement.setInt(4, getCachedQueueID(currentQueueName));
@@ -632,7 +634,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         try {
             preparedStatement.setLong(1, metadata.getMessageID());
             preparedStatement.setInt(2, getCachedQueueID(queueName));
-            preparedStatement.setBytes(3, metadata.getMetadata());
+            preparedStatement.setLong(3, nodeNumber);
+            preparedStatement.setBytes(4, metadata.getMetadata());
             preparedStatement.addBatch();
         } catch (SQLException e) {
             throw rdbmsStoreUtils.convertSQLException("error occurred while adding metadata with messaged id: "
@@ -1292,7 +1295,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * @return corresponding queue id for the destination queue. On error -1 is returned
      * @throws AndesException
      */
-    private int getCachedQueueID(final String destinationQueueName) throws AndesException {
+    @Override
+    public int getCachedQueueID(final String destinationQueueName) throws AndesException {
         try {
             return queueMappings.get(destinationQueueName);
         } catch (ExecutionException e) {

@@ -30,7 +30,6 @@ import org.wso2.andes.kernel.slot.SlotCoordinatorStandalone;
 import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.kernel.slot.SlotManagerStandalone;
-import org.wso2.andes.kernel.slot.SlotMessageCounter;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
@@ -703,7 +702,7 @@ public class MessagingEngine {
         if (MBThriftClient.isReconnectingStarted()) {
             MBThriftClient.setReconnectingFlag(false);
         }
-        SlotMessageCounter.getInstance().stop();
+        //SlotMessageCounter.getInstance().stop();
         //Stop delivery disruptor
         MessageFlusher.getInstance().getFlusherExecutor().stop();
     }

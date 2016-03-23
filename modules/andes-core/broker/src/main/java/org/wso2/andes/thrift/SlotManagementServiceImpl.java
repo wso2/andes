@@ -26,6 +26,8 @@ import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.thrift.slot.gen.SlotInfo;
 import org.wso2.andes.thrift.slot.gen.SlotManagementService;
 
+import java.nio.ByteBuffer;
+
 /**
  * This is the implementation of SlotManagementService interface. This class contains operations
  * does on slots through slot manager.When thrift client calls the services on
@@ -60,6 +62,19 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
         if (AndesContext.getInstance().getClusterAgent().isCoordinator()) {
             try {
                 slotManager.updateMessageID(queueName, nodeId, startMessageId, endMessageId, localSafeZone);
+            } catch (AndesException e) {
+                throw new TException("Failed to update message id for queue: " + queueName + " nodeId: " + nodeId, e);
+            }
+        } else {
+            throw new TException("This node is not the slot coordinator right now");
+        }
+    }
+
+    @Override
+    public void communicateQueueWiseSlot(ByteBuffer messageIdentifiers) throws TException {
+        if (AndesContext.getInstance().getClusterAgent().isCoordinator()) {
+            try {
+                slotManager.comm(queueName, nodeId, startMessageId, endMessageId, localSafeZone);
             } catch (AndesException e) {
                 throw new TException("Failed to update message id for queue: " + queueName + " nodeId: " + nodeId, e);
             }

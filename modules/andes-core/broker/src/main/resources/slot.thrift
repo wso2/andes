@@ -32,6 +32,12 @@ service SlotManagementService {
     */
     void updateMessageId(1: string queueName, 2: string nodeId, 3: i64 startMessageId, 4: i64 endMessageId, 5: i64 localSafeZone),
 
+    /* Whenever the written message count amounts to a total divisible by SLOT_WINDOW_SIZE, or if the publisher is idle after publishing a 
+    *  lesser message count, this method is called from the node to define a slot range with the coordinator. 
+    *  The parameter is a bytebuffer containing 3 long values. 1) nodeID, 2) storageQueueID 3) messageID.
+    */
+    void communicateQueueWiseSlot(1: binary messageIdentifiers),
+
     /* Delete empty slots
     */
     bool deleteSlot(1: string queueName, 2: SlotInfo slotInfo, 3: string nodeId),

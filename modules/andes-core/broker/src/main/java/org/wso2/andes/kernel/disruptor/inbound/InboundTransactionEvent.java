@@ -21,13 +21,11 @@ package org.wso2.andes.kernel.disruptor.inbound;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.AndesChannel;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessage;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.kernel.slot.SlotMessageCounter;
+import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.slot.ConnectionException;
+import org.wso2.andes.thrift.MBThriftClient;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -94,11 +92,13 @@ public class InboundTransactionEvent implements AndesInboundStateEvent {
     private final long txWaitTimeout;
 
     /**
-     * Check whether messages are stored to DB for the current transaction. If this is true that means
+     * TODO Verify : Check whether messages are stored to DB for the current transaction. If this is true that means
      * messages are stored in DB but {@link org.wso2.andes.kernel.slot.SlotMessageCounter} is not
      * updated completely.
      */
     private boolean messagesStoredNotCommitted;
+
+    private AndesMessage lastMessageInEvent;
 
     /**
      * messages list to be committed, enqueued messages
@@ -118,6 +118,7 @@ public class InboundTransactionEvent implements AndesInboundStateEvent {
     }
 
     void addMessages(Collection<AndesMessage> messages) {
+        this.lastMessageInEvent = ((List<AndesMessage>)messages).get((messages.size() - 1));
         this.messageQueue.addAll(messages);
     }
 
@@ -308,7 +309,8 @@ public class InboundTransactionEvent implements AndesInboundStateEvent {
         try {
             messagesStoredNotCommitted = true;
             // update slot information for transaction related messages
-            SlotMessageCounter.getInstance().recordMetadataCountInSlot(getQueuedMessages());
+            //SlotMessageCounter.getInstance().recordMetadataCountInSlot(getQueuedMessages());
+            communicateSlotCompletion();
             messageQueue.clear();
             messagesStoredNotCommitted = false; // Once slots are updated rolling back is irrelevant.
             currentBatchSize = 0;
@@ -318,6 +320,27 @@ public class InboundTransactionEvent implements AndesInboundStateEvent {
             taskCompleted.setException(t);
             throw new AndesException("Exception occurred while committing transaction. Channel id " +
                     channel.getId(), t);
+        }
+    }
+
+    /**
+     * Communicate slot completion for given queue from this node.
+     */
+    private void communicateSlotCompletion() {
+
+        ByteBuffer messageIdentifiers = ByteBuffer.allocate(24);
+        long nodeNumber = AndesContext.getInstance().getClusterAgent().getUniqueIdForLocalNode();
+
+        messageIdentifiers.putLong(nodeNumber);
+        messageIdentifiers.putLong(lastMessageInEvent.getMetadata().getStorageQueueID());
+        messageIdentifiers.putLong(lastMessageInEvent.getMetadata().getMessageID());
+
+        try {
+            MBThriftClient.communicateQueueWiseSlot(messageIdentifiers);
+        } catch (ConnectionException e) {
+            log.error("Failed to communicate slot from node number : " + nodeNumber + " for queue : " +
+                    lastMessageInEvent.getMetadata().getStorageQueueName() + " with message ID : " +
+                    lastMessageInEvent.getMetadata().getMessageID());
         }
     }
 

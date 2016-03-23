@@ -297,6 +297,16 @@ public interface MessageStore extends HealthAwareStore{
     void addQueue(String storageQueueName) throws AndesException;
 
     /**
+     * This method caches the queue ids for destination queue names. If queried destination queue is
+     * not in cache, updates the cache and returns the queue id.
+     *
+     * @param destinationQueueName queue name
+     * @return corresponding queue id for the destination queue. On error -1 is returned
+     * @throws AndesException
+     */
+    int getCachedQueueID(String destinationQueueName) throws AndesException;
+
+    /**
      * Get a map of queue names and the message count in the database for each queue in the data store
      *
      * @param queueNames list of queue names of which the message count should be retrieved

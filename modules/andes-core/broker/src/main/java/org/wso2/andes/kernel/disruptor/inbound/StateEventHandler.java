@@ -21,18 +21,19 @@ package org.wso2.andes.kernel.disruptor.inbound;
 import com.lmax.disruptor.EventHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.AndesChannel;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessage;
-import org.wso2.andes.kernel.DeliverableAndesMetadata;
-import org.wso2.andes.kernel.MessageStatus;
-import org.wso2.andes.kernel.slot.SlotMessageCounter;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.slot.ConnectionException;
 import org.wso2.andes.metrics.MetricsConstants;
+import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
+import org.wso2.andes.thrift.MBThriftClient;
 import org.wso2.andes.tools.utils.MessageTracer;
 //import org.wso2.carbon.metrics.manager.Level;
 //import org.wso2.carbon.metrics.manager.Meter;
 //import org.wso2.carbon.metrics.manager.MetricManager;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 /**
@@ -42,9 +43,17 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
 
     private static Log log = LogFactory.getLog(StateEventHandler.class);
 
+    private final Integer SLOT_WINDOW_SIZE;
+    private int nodeNumber;
+
+    public StateEventHandler() {
+        SLOT_WINDOW_SIZE = AndesConfigurationManager
+                .readValue(AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
+        nodeNumber = AndesContext.getInstance().getClusterAgent().getUniqueIdForLocalNode();
+    }
+
     @Override
     public void onEvent(InboundEventContainer event, long sequence, boolean endOfBatch) throws Exception {
-
 
         if (log.isDebugEnabled()) {
             log.debug("[ sequence " + sequence + " ] Event received from disruptor. Event type: "
@@ -54,6 +63,9 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
         try {
             switch (event.getEventType()) {
                 case MESSAGE_EVENT:
+                    if (endOfBatch || (sequence % SLOT_WINDOW_SIZE == 0)) {
+                        communicateSlotCompletion(event);
+                    }
                     updateSlotsAndQueueCounts(event);
                     event.getChannel().recordRemovalFromBuffer(AndesChannel.getTotalChunkCount(event.getMessageList()));
                     break;
@@ -92,7 +104,30 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
     private void updateSlotDeleteSafeZone(InboundEventContainer event) {
 
         long currentSafeZoneVal = event.getSafeZoneLimit();
-        SlotMessageCounter.getInstance().updateSafeZoneForNode(currentSafeZoneVal);
+        //SlotMessageCounter.getInstance().updateSafeZoneForNode(currentSafeZoneVal);
+    }
+
+    /**
+     * Communicate slot completion for given queue from this node. This will be triggered for every 1000 messages
+     * per queue, or whenever the disruptor endOfBatch for this eventhandler is reached.
+     * @param event
+     */
+    private void communicateSlotCompletion(InboundEventContainer event) {
+        AndesMessage lastMessageInEvent = event.getLastMessage();
+
+        ByteBuffer messageIdentifiers = ByteBuffer.allocate(24);
+
+        messageIdentifiers.putLong(nodeNumber);
+        messageIdentifiers.putLong(lastMessageInEvent.getMetadata().getStorageQueueID());
+        messageIdentifiers.putLong(lastMessageInEvent.getMetadata().getMessageID());
+
+        try {
+            MBThriftClient.communicateQueueWiseSlot(messageIdentifiers);
+        } catch (ConnectionException e) {
+            log.error("Failed to communicate slot from node number : " + nodeNumber + " for queue : " +
+                    lastMessageInEvent.getMetadata().getStorageQueueName() + " with message ID : " +
+                    lastMessageInEvent.getMetadata().getMessageID());
+        }
     }
 
     /**
@@ -105,7 +140,7 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
         List<AndesMessage> messageList = eventContainer.getMessageList();
         // update last message ID in slot message counter. When the slot is filled the last message
         // ID of the slot will be submitted to the slot manager by SlotMessageCounter
-        SlotMessageCounter.getInstance().recordMetadataCountInSlot(messageList);
+        //TODO SlotMessageCounter.getInstance().recordMetadataCountInSlot(messageList);
 
         for (AndesMessage message : messageList) {
             //Tracing Message

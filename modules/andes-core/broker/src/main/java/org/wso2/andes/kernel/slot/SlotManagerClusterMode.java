@@ -589,7 +589,7 @@ public class SlotManagerClusterMode {
             public void run() {
 
                 try {
-                    long lastId = SlotMessageCounter.getInstance().getCurrentNodeSafeZoneId();
+                    long lastId = 0; //TODO SlotMessageCounter.getInstance().getCurrentNodeSafeZoneId();
                     //TODO: Delete if the queue has not progressed
                     for (String queueName : queuesToRecover) {
                         // Trigger a submit slot for each queue so that new slots are created
@@ -614,7 +614,7 @@ public class SlotManagerClusterMode {
                     log.error("Error occurred while trying to run recover slot scheduler", e);
                 }
             }
-        }, SlotMessageCounter.getInstance().SLOT_SUBMIT_TIMEOUT, TimeUnit.MILLISECONDS);
+        }, 10000/*TODO, SlotMessageCounter.getInstance().SLOT_SUBMIT_TIMEOUT*/, TimeUnit.MILLISECONDS);
 
         slotRecoveryScheduled.set(true);
 
@@ -629,6 +629,8 @@ public class SlotManagerClusterMode {
 	public Long getLastAssignedSlotMessageIdInClusterMode(String queueName) throws AndesException {
 		return slotAgent.getQueueToLastAssignedId(queueName);
 	}
+
+	public 
 
 	/**
 	 * Clear and reset slot storage

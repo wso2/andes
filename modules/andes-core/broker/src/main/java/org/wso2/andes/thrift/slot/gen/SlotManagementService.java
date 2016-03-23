@@ -28,6 +28,8 @@ public class SlotManagementService {
 
     public void updateMessageId(String queueName, String nodeId, long startMessageId, long endMessageId, long localSafeZone) throws org.apache.thrift.TException;
 
+    public void communicateQueueWiseSlot(ByteBuffer messageIdentifiers) throws org.apache.thrift.TException;
+
     public boolean deleteSlot(String queueName, SlotInfo slotInfo, String nodeId) throws org.apache.thrift.TException;
 
     public void reAssignSlotWhenNoSubscribers(String nodeId, String queueName) throws org.apache.thrift.TException;
@@ -50,6 +52,8 @@ public class SlotManagementService {
     public void getSlotInfo(String queueName, String nodeId, org.apache.thrift.async.AsyncMethodCallback<AsyncClient.getSlotInfo_call> resultHandler) throws org.apache.thrift.TException;
 
     public void updateMessageId(String queueName, String nodeId, long startMessageId, long endMessageId, long localSafeZone, org.apache.thrift.async.AsyncMethodCallback<AsyncClient.updateMessageId_call> resultHandler) throws org.apache.thrift.TException;
+
+    public void communicateQueueWiseSlot(ByteBuffer messageIdentifiers, org.apache.thrift.async.AsyncMethodCallback<AsyncClient.communicateQueueWiseSlot_call> resultHandler) throws org.apache.thrift.TException;
 
     public void deleteSlot(String queueName, SlotInfo slotInfo, String nodeId, org.apache.thrift.async.AsyncMethodCallback<AsyncClient.deleteSlot_call> resultHandler) throws org.apache.thrift.TException;
 
@@ -126,6 +130,26 @@ public class SlotManagementService {
     {
       updateMessageId_result result = new updateMessageId_result();
       receiveBase(result, "updateMessageId");
+      return;
+    }
+
+    public void communicateQueueWiseSlot(ByteBuffer messageIdentifiers) throws org.apache.thrift.TException
+    {
+      send_communicateQueueWiseSlot(messageIdentifiers);
+      recv_communicateQueueWiseSlot();
+    }
+
+    public void send_communicateQueueWiseSlot(ByteBuffer messageIdentifiers) throws org.apache.thrift.TException
+    {
+      communicateQueueWiseSlot_args args = new communicateQueueWiseSlot_args();
+      args.setMessageIdentifiers(messageIdentifiers);
+      sendBase("communicateQueueWiseSlot", args);
+    }
+
+    public void recv_communicateQueueWiseSlot() throws org.apache.thrift.TException
+    {
+      communicateQueueWiseSlot_result result = new communicateQueueWiseSlot_result();
+      receiveBase(result, "communicateQueueWiseSlot");
       return;
     }
 
@@ -263,7 +287,7 @@ public class SlotManagementService {
       }
 
       public SlotInfo getResult() throws org.apache.thrift.TException {
-        if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
+        if (getState() != State.RESPONSE_READ) {
           throw new IllegalStateException("Method call not finished!");
         }
         org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
@@ -307,12 +331,44 @@ public class SlotManagementService {
       }
 
       public void getResult() throws org.apache.thrift.TException {
-        if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
+        if (getState() != State.RESPONSE_READ) {
           throw new IllegalStateException("Method call not finished!");
         }
         org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
         org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
         (new Client(prot)).recv_updateMessageId();
+      }
+    }
+
+    public void communicateQueueWiseSlot(ByteBuffer messageIdentifiers, org.apache.thrift.async.AsyncMethodCallback<communicateQueueWiseSlot_call> resultHandler) throws org.apache.thrift.TException {
+      checkReady();
+      communicateQueueWiseSlot_call method_call = new communicateQueueWiseSlot_call(messageIdentifiers, resultHandler, this, ___protocolFactory, ___transport);
+      this.___currentMethod = method_call;
+      ___manager.call(method_call);
+    }
+
+    public static class communicateQueueWiseSlot_call extends org.apache.thrift.async.TAsyncMethodCall {
+      private ByteBuffer messageIdentifiers;
+      public communicateQueueWiseSlot_call(ByteBuffer messageIdentifiers, org.apache.thrift.async.AsyncMethodCallback<communicateQueueWiseSlot_call> resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
+        super(client, protocolFactory, transport, resultHandler, false);
+        this.messageIdentifiers = messageIdentifiers;
+      }
+
+      public void write_args(org.apache.thrift.protocol.TProtocol prot) throws org.apache.thrift.TException {
+        prot.writeMessageBegin(new org.apache.thrift.protocol.TMessage("communicateQueueWiseSlot", org.apache.thrift.protocol.TMessageType.CALL, 0));
+        communicateQueueWiseSlot_args args = new communicateQueueWiseSlot_args();
+        args.setMessageIdentifiers(messageIdentifiers);
+        args.write(prot);
+        prot.writeMessageEnd();
+      }
+
+      public void getResult() throws org.apache.thrift.TException {
+        if (getState() != State.RESPONSE_READ) {
+          throw new IllegalStateException("Method call not finished!");
+        }
+        org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
+        org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
+        (new Client(prot)).recv_communicateQueueWiseSlot();
       }
     }
 
@@ -345,7 +401,7 @@ public class SlotManagementService {
       }
 
       public boolean getResult() throws org.apache.thrift.TException {
-        if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
+        if (getState() != State.RESPONSE_READ) {
           throw new IllegalStateException("Method call not finished!");
         }
         org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
@@ -380,7 +436,7 @@ public class SlotManagementService {
       }
 
       public void getResult() throws org.apache.thrift.TException {
-        if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
+        if (getState() != State.RESPONSE_READ) {
           throw new IllegalStateException("Method call not finished!");
         }
         org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
@@ -415,7 +471,7 @@ public class SlotManagementService {
       }
 
       public long getResult() throws org.apache.thrift.TException {
-        if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
+        if (getState() != State.RESPONSE_READ) {
           throw new IllegalStateException("Method call not finished!");
         }
         org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
@@ -447,7 +503,7 @@ public class SlotManagementService {
       }
 
       public void getResult() throws org.apache.thrift.TException {
-        if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
+        if (getState() != State.RESPONSE_READ) {
           throw new IllegalStateException("Method call not finished!");
         }
         org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
@@ -471,6 +527,7 @@ public class SlotManagementService {
     private static <I extends Iface> Map<String,  org.apache.thrift.ProcessFunction<I, ? extends  org.apache.thrift.TBase>> getProcessMap(Map<String,  org.apache.thrift.ProcessFunction<I, ? extends  org.apache.thrift.TBase>> processMap) {
       processMap.put("getSlotInfo", new getSlotInfo());
       processMap.put("updateMessageId", new updateMessageId());
+      processMap.put("communicateQueueWiseSlot", new communicateQueueWiseSlot());
       processMap.put("deleteSlot", new deleteSlot());
       processMap.put("reAssignSlotWhenNoSubscribers", new reAssignSlotWhenNoSubscribers());
       processMap.put("updateCurrentMessageIdForSafeZone", new updateCurrentMessageIdForSafeZone());
@@ -487,13 +544,12 @@ public class SlotManagementService {
         return new getSlotInfo_args();
       }
 
-        @Override
-        protected boolean isOneway() {
-            return false;
-        }
+      @Override
+      protected boolean isOneway() {
+        return false;
+      }
 
-
-        public getSlotInfo_result getResult(I iface, getSlotInfo_args args) throws org.apache.thrift.TException {
+      public getSlotInfo_result getResult(I iface, getSlotInfo_args args) throws org.apache.thrift.TException {
         getSlotInfo_result result = new getSlotInfo_result();
         result.success = iface.getSlotInfo(args.queueName, args.nodeId);
         return result;
@@ -509,14 +565,35 @@ public class SlotManagementService {
         return new updateMessageId_args();
       }
 
-        @Override
-        protected boolean isOneway() {
-            return false;
-        }
+      @Override
+      protected boolean isOneway() {
+        return false;
+      }
 
       public updateMessageId_result getResult(I iface, updateMessageId_args args) throws org.apache.thrift.TException {
         updateMessageId_result result = new updateMessageId_result();
         iface.updateMessageId(args.queueName, args.nodeId, args.startMessageId, args.endMessageId, args.localSafeZone);
+        return result;
+      }
+    }
+
+    private static class communicateQueueWiseSlot<I extends Iface> extends org.apache.thrift.ProcessFunction<I, communicateQueueWiseSlot_args> {
+      public communicateQueueWiseSlot() {
+        super("communicateQueueWiseSlot");
+      }
+
+      public communicateQueueWiseSlot_args getEmptyArgsInstance() {
+        return new communicateQueueWiseSlot_args();
+      }
+
+      @Override
+      protected boolean isOneway() {
+        return false;
+      }
+
+      public communicateQueueWiseSlot_result getResult(I iface, communicateQueueWiseSlot_args args) throws org.apache.thrift.TException {
+        communicateQueueWiseSlot_result result = new communicateQueueWiseSlot_result();
+        iface.communicateQueueWiseSlot(args.messageIdentifiers);
         return result;
       }
     }
@@ -530,10 +607,10 @@ public class SlotManagementService {
         return new deleteSlot_args();
       }
 
-        @Override
-        protected boolean isOneway() {
-            return false;
-        }
+      @Override
+      protected boolean isOneway() {
+        return false;
+      }
 
       public deleteSlot_result getResult(I iface, deleteSlot_args args) throws org.apache.thrift.TException {
         deleteSlot_result result = new deleteSlot_result();
@@ -552,10 +629,10 @@ public class SlotManagementService {
         return new reAssignSlotWhenNoSubscribers_args();
       }
 
-        @Override
-        protected boolean isOneway() {
-            return false;
-        }
+      @Override
+      protected boolean isOneway() {
+        return false;
+      }
 
       public reAssignSlotWhenNoSubscribers_result getResult(I iface, reAssignSlotWhenNoSubscribers_args args) throws org.apache.thrift.TException {
         reAssignSlotWhenNoSubscribers_result result = new reAssignSlotWhenNoSubscribers_result();
@@ -573,10 +650,10 @@ public class SlotManagementService {
         return new updateCurrentMessageIdForSafeZone_args();
       }
 
-        @Override
-        protected boolean isOneway() {
-            return false;
-        }
+      @Override
+      protected boolean isOneway() {
+        return false;
+      }
 
       public updateCurrentMessageIdForSafeZone_result getResult(I iface, updateCurrentMessageIdForSafeZone_args args) throws org.apache.thrift.TException {
         updateCurrentMessageIdForSafeZone_result result = new updateCurrentMessageIdForSafeZone_result();
@@ -595,10 +672,10 @@ public class SlotManagementService {
         return new clearAllActiveSlotRelationsToQueue_args();
       }
 
-        @Override
-        protected boolean isOneway() {
-            return false;
-        }
+      @Override
+      protected boolean isOneway() {
+        return false;
+      }
 
       public clearAllActiveSlotRelationsToQueue_result getResult(I iface, clearAllActiveSlotRelationsToQueue_args args) throws org.apache.thrift.TException {
         clearAllActiveSlotRelationsToQueue_result result = new clearAllActiveSlotRelationsToQueue_result();
@@ -2108,6 +2185,515 @@ public class SlotManagementService {
     @Override
     public String toString() {
       StringBuilder sb = new StringBuilder("updateMessageId_result(");
+      boolean first = true;
+
+      sb.append(")");
+      return sb.toString();
+    }
+
+    public void validate() throws org.apache.thrift.TException {
+      // check for required fields
+    }
+
+    private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
+      try {
+        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (org.apache.thrift.TException te) {
+        throw new java.io.IOException(te);
+      }
+    }
+
+    private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, ClassNotFoundException {
+      try {
+        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (org.apache.thrift.TException te) {
+        throw new java.io.IOException(te);
+      }
+    }
+
+  }
+
+  public static class communicateQueueWiseSlot_args implements org.apache.thrift.TBase<communicateQueueWiseSlot_args, communicateQueueWiseSlot_args._Fields>, java.io.Serializable, Cloneable   {
+    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("communicateQueueWiseSlot_args");
+
+    private static final org.apache.thrift.protocol.TField MESSAGE_IDENTIFIERS_FIELD_DESC = new org.apache.thrift.protocol.TField("messageIdentifiers", org.apache.thrift.protocol.TType.STRING, (short)1);
+
+    public ByteBuffer messageIdentifiers; // required
+
+    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+      MESSAGE_IDENTIFIERS((short)1, "messageIdentifiers");
+
+      private static final Map<String, _Fields> byName = new HashMap<String, _Fields>();
+
+      static {
+        for (_Fields field : EnumSet.allOf(_Fields.class)) {
+          byName.put(field.getFieldName(), field);
+        }
+      }
+
+      /**
+       * Find the _Fields constant that matches fieldId, or null if its not found.
+       */
+      public static _Fields findByThriftId(int fieldId) {
+        switch(fieldId) {
+          case 1: // MESSAGE_IDENTIFIERS
+            return MESSAGE_IDENTIFIERS;
+          default:
+            return null;
+        }
+      }
+
+      /**
+       * Find the _Fields constant that matches fieldId, throwing an exception
+       * if it is not found.
+       */
+      public static _Fields findByThriftIdOrThrow(int fieldId) {
+        _Fields fields = findByThriftId(fieldId);
+        if (fields == null) throw new IllegalArgumentException("Field " + fieldId + " doesn't exist!");
+        return fields;
+      }
+
+      /**
+       * Find the _Fields constant that matches name, or null if its not found.
+       */
+      public static _Fields findByName(String name) {
+        return byName.get(name);
+      }
+
+      private final short _thriftId;
+      private final String _fieldName;
+
+      _Fields(short thriftId, String fieldName) {
+        _thriftId = thriftId;
+        _fieldName = fieldName;
+      }
+
+      public short getThriftFieldId() {
+        return _thriftId;
+      }
+
+      public String getFieldName() {
+        return _fieldName;
+      }
+    }
+
+    // isset id assignments
+
+    public static final Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    static {
+      Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.MESSAGE_IDENTIFIERS, new org.apache.thrift.meta_data.FieldMetaData("messageIdentifiers", org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING          , true)));
+      metaDataMap = Collections.unmodifiableMap(tmpMap);
+      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(communicateQueueWiseSlot_args.class, metaDataMap);
+    }
+
+    public communicateQueueWiseSlot_args() {
+    }
+
+    public communicateQueueWiseSlot_args(
+      ByteBuffer messageIdentifiers)
+    {
+      this();
+      this.messageIdentifiers = messageIdentifiers;
+    }
+
+    /**
+     * Performs a deep copy on <i>other</i>.
+     */
+    public communicateQueueWiseSlot_args(communicateQueueWiseSlot_args other) {
+      if (other.isSetMessageIdentifiers()) {
+        this.messageIdentifiers = org.apache.thrift.TBaseHelper.copyBinary(other.messageIdentifiers);
+;
+      }
+    }
+
+    public communicateQueueWiseSlot_args deepCopy() {
+      return new communicateQueueWiseSlot_args(this);
+    }
+
+    @Override
+    public void clear() {
+      this.messageIdentifiers = null;
+    }
+
+    public byte[] getMessageIdentifiers() {
+      setMessageIdentifiers(org.apache.thrift.TBaseHelper.rightSize(messageIdentifiers));
+      return messageIdentifiers == null ? null : messageIdentifiers.array();
+    }
+
+    public ByteBuffer bufferForMessageIdentifiers() {
+      return messageIdentifiers;
+    }
+
+    public communicateQueueWiseSlot_args setMessageIdentifiers(byte[] messageIdentifiers) {
+      setMessageIdentifiers(messageIdentifiers == null ? (ByteBuffer)null : ByteBuffer.wrap(messageIdentifiers));
+      return this;
+    }
+
+    public communicateQueueWiseSlot_args setMessageIdentifiers(ByteBuffer messageIdentifiers) {
+      this.messageIdentifiers = messageIdentifiers;
+      return this;
+    }
+
+    public void unsetMessageIdentifiers() {
+      this.messageIdentifiers = null;
+    }
+
+    /** Returns true if field messageIdentifiers is set (has been assigned a value) and false otherwise */
+    public boolean isSetMessageIdentifiers() {
+      return this.messageIdentifiers != null;
+    }
+
+    public void setMessageIdentifiersIsSet(boolean value) {
+      if (!value) {
+        this.messageIdentifiers = null;
+      }
+    }
+
+    public void setFieldValue(_Fields field, Object value) {
+      switch (field) {
+      case MESSAGE_IDENTIFIERS:
+        if (value == null) {
+          unsetMessageIdentifiers();
+        } else {
+          setMessageIdentifiers((ByteBuffer)value);
+        }
+        break;
+
+      }
+    }
+
+    public Object getFieldValue(_Fields field) {
+      switch (field) {
+      case MESSAGE_IDENTIFIERS:
+        return getMessageIdentifiers();
+
+      }
+      throw new IllegalStateException();
+    }
+
+    /** Returns true if field corresponding to fieldID is set (has been assigned a value) and false otherwise */
+    public boolean isSet(_Fields field) {
+      if (field == null) {
+        throw new IllegalArgumentException();
+      }
+
+      switch (field) {
+      case MESSAGE_IDENTIFIERS:
+        return isSetMessageIdentifiers();
+      }
+      throw new IllegalStateException();
+    }
+
+    @Override
+    public boolean equals(Object that) {
+      if (that == null)
+        return false;
+      if (that instanceof communicateQueueWiseSlot_args)
+        return this.equals((communicateQueueWiseSlot_args)that);
+      return false;
+    }
+
+    public boolean equals(communicateQueueWiseSlot_args that) {
+      if (that == null)
+        return false;
+
+      boolean this_present_messageIdentifiers = true && this.isSetMessageIdentifiers();
+      boolean that_present_messageIdentifiers = true && that.isSetMessageIdentifiers();
+      if (this_present_messageIdentifiers || that_present_messageIdentifiers) {
+        if (!(this_present_messageIdentifiers && that_present_messageIdentifiers))
+          return false;
+        if (!this.messageIdentifiers.equals(that.messageIdentifiers))
+          return false;
+      }
+
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      return 0;
+    }
+
+    public int compareTo(communicateQueueWiseSlot_args other) {
+      if (!getClass().equals(other.getClass())) {
+        return getClass().getName().compareTo(other.getClass().getName());
+      }
+
+      int lastComparison = 0;
+      communicateQueueWiseSlot_args typedOther = (communicateQueueWiseSlot_args)other;
+
+      lastComparison = Boolean.valueOf(isSetMessageIdentifiers()).compareTo(typedOther.isSetMessageIdentifiers());
+      if (lastComparison != 0) {
+        return lastComparison;
+      }
+      if (isSetMessageIdentifiers()) {
+        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.messageIdentifiers, typedOther.messageIdentifiers);
+        if (lastComparison != 0) {
+          return lastComparison;
+        }
+      }
+      return 0;
+    }
+
+    public _Fields fieldForId(int fieldId) {
+      return _Fields.findByThriftId(fieldId);
+    }
+
+    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+      org.apache.thrift.protocol.TField field;
+      iprot.readStructBegin();
+      while (true)
+      {
+        field = iprot.readFieldBegin();
+        if (field.type == org.apache.thrift.protocol.TType.STOP) { 
+          break;
+        }
+        switch (field.id) {
+          case 1: // MESSAGE_IDENTIFIERS
+            if (field.type == org.apache.thrift.protocol.TType.STRING) {
+              this.messageIdentifiers = iprot.readBinary();
+            } else { 
+              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
+            }
+            break;
+          default:
+            org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
+        }
+        iprot.readFieldEnd();
+      }
+      iprot.readStructEnd();
+
+      // check for required fields of primitive type, which can't be checked in the validate method
+      validate();
+    }
+
+    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+      validate();
+
+      oprot.writeStructBegin(STRUCT_DESC);
+      if (this.messageIdentifiers != null) {
+        oprot.writeFieldBegin(MESSAGE_IDENTIFIERS_FIELD_DESC);
+        oprot.writeBinary(this.messageIdentifiers);
+        oprot.writeFieldEnd();
+      }
+      oprot.writeFieldStop();
+      oprot.writeStructEnd();
+    }
+
+    @Override
+    public String toString() {
+      StringBuilder sb = new StringBuilder("communicateQueueWiseSlot_args(");
+      boolean first = true;
+
+      sb.append("messageIdentifiers:");
+      if (this.messageIdentifiers == null) {
+        sb.append("null");
+      } else {
+        org.apache.thrift.TBaseHelper.toString(this.messageIdentifiers, sb);
+      }
+      first = false;
+      sb.append(")");
+      return sb.toString();
+    }
+
+    public void validate() throws org.apache.thrift.TException {
+      // check for required fields
+    }
+
+    private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
+      try {
+        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (org.apache.thrift.TException te) {
+        throw new java.io.IOException(te);
+      }
+    }
+
+    private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, ClassNotFoundException {
+      try {
+        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (org.apache.thrift.TException te) {
+        throw new java.io.IOException(te);
+      }
+    }
+
+  }
+
+  public static class communicateQueueWiseSlot_result implements org.apache.thrift.TBase<communicateQueueWiseSlot_result, communicateQueueWiseSlot_result._Fields>, java.io.Serializable, Cloneable   {
+    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("communicateQueueWiseSlot_result");
+
+
+
+    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+;
+
+      private static final Map<String, _Fields> byName = new HashMap<String, _Fields>();
+
+      static {
+        for (_Fields field : EnumSet.allOf(_Fields.class)) {
+          byName.put(field.getFieldName(), field);
+        }
+      }
+
+      /**
+       * Find the _Fields constant that matches fieldId, or null if its not found.
+       */
+      public static _Fields findByThriftId(int fieldId) {
+        switch(fieldId) {
+          default:
+            return null;
+        }
+      }
+
+      /**
+       * Find the _Fields constant that matches fieldId, throwing an exception
+       * if it is not found.
+       */
+      public static _Fields findByThriftIdOrThrow(int fieldId) {
+        _Fields fields = findByThriftId(fieldId);
+        if (fields == null) throw new IllegalArgumentException("Field " + fieldId + " doesn't exist!");
+        return fields;
+      }
+
+      /**
+       * Find the _Fields constant that matches name, or null if its not found.
+       */
+      public static _Fields findByName(String name) {
+        return byName.get(name);
+      }
+
+      private final short _thriftId;
+      private final String _fieldName;
+
+      _Fields(short thriftId, String fieldName) {
+        _thriftId = thriftId;
+        _fieldName = fieldName;
+      }
+
+      public short getThriftFieldId() {
+        return _thriftId;
+      }
+
+      public String getFieldName() {
+        return _fieldName;
+      }
+    }
+    public static final Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    static {
+      Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      metaDataMap = Collections.unmodifiableMap(tmpMap);
+      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(communicateQueueWiseSlot_result.class, metaDataMap);
+    }
+
+    public communicateQueueWiseSlot_result() {
+    }
+
+    /**
+     * Performs a deep copy on <i>other</i>.
+     */
+    public communicateQueueWiseSlot_result(communicateQueueWiseSlot_result other) {
+    }
+
+    public communicateQueueWiseSlot_result deepCopy() {
+      return new communicateQueueWiseSlot_result(this);
+    }
+
+    @Override
+    public void clear() {
+    }
+
+    public void setFieldValue(_Fields field, Object value) {
+      switch (field) {
+      }
+    }
+
+    public Object getFieldValue(_Fields field) {
+      switch (field) {
+      }
+      throw new IllegalStateException();
+    }
+
+    /** Returns true if field corresponding to fieldID is set (has been assigned a value) and false otherwise */
+    public boolean isSet(_Fields field) {
+      if (field == null) {
+        throw new IllegalArgumentException();
+      }
+
+      switch (field) {
+      }
+      throw new IllegalStateException();
+    }
+
+    @Override
+    public boolean equals(Object that) {
+      if (that == null)
+        return false;
+      if (that instanceof communicateQueueWiseSlot_result)
+        return this.equals((communicateQueueWiseSlot_result)that);
+      return false;
+    }
+
+    public boolean equals(communicateQueueWiseSlot_result that) {
+      if (that == null)
+        return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      return 0;
+    }
+
+    public int compareTo(communicateQueueWiseSlot_result other) {
+      if (!getClass().equals(other.getClass())) {
+        return getClass().getName().compareTo(other.getClass().getName());
+      }
+
+      int lastComparison = 0;
+      communicateQueueWiseSlot_result typedOther = (communicateQueueWiseSlot_result)other;
+
+      return 0;
+    }
+
+    public _Fields fieldForId(int fieldId) {
+      return _Fields.findByThriftId(fieldId);
+    }
+
+    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+      org.apache.thrift.protocol.TField field;
+      iprot.readStructBegin();
+      while (true)
+      {
+        field = iprot.readFieldBegin();
+        if (field.type == org.apache.thrift.protocol.TType.STOP) { 
+          break;
+        }
+        switch (field.id) {
+          default:
+            org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
+        }
+        iprot.readFieldEnd();
+      }
+      iprot.readStructEnd();
+
+      // check for required fields of primitive type, which can't be checked in the validate method
+      validate();
+    }
+
+    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+      oprot.writeStructBegin(STRUCT_DESC);
+
+      oprot.writeFieldStop();
+      oprot.writeStructEnd();
+    }
+
+    @Override
+    public String toString() {
+      StringBuilder sb = new StringBuilder("communicateQueueWiseSlot_result(");
       boolean first = true;
 
       sb.append(")");

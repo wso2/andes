@@ -22,27 +22,14 @@ import com.lmax.disruptor.EventHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.kernel.AndesChannel;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessage;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.AndesSubscription;
-import org.wso2.andes.kernel.AndesUtils;
-import org.wso2.andes.kernel.DestinationType;
-import org.wso2.andes.kernel.ProtocolType;
-import org.wso2.andes.metrics.MetricsConstants;
-import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.kernel.*;
 import org.wso2.andes.subscription.SubscriptionEngine;
 import org.wso2.andes.tools.utils.MessageTracer;
 //import org.wso2.carbon.metrics.manager.Level;
 //import org.wso2.carbon.metrics.manager.Meter;
 //import org.wso2.carbon.metrics.manager.MetricManager;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * This event processor goes through the ring buffer first and update AndesMessage data event objects.
@@ -71,9 +58,6 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                 break;
             case TRANSACTION_COMMIT_EVENT:
                 preProcessTransaction(inboundEvent, sequence);
-                break;
-            case SAFE_ZONE_DECLARE_EVENT:
-                setSafeZoneLimit(inboundEvent, sequence);
                 break;
         }
         inboundEvent.preProcessed = true;
@@ -107,19 +91,6 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
     }
 
     /**
-     * Calculate the current safe zone for this node (using the last generated message ID)
-     * @param event event
-     * @param sequence position of the event at the event ring buffer
-     */
-    private void setSafeZoneLimit(InboundEventContainer event, long sequence) {
-        long safeZoneLimit = idGenerator.getNextId();
-        event.setSafeZoneLimit(safeZoneLimit);
-        if(log.isDebugEnabled()){
-            log.debug("[ Sequence " + sequence + " ] Pre processing message. Setting the Safe Zone " + safeZoneLimit);
-        }
-    }
-
-    /**
      * Route the message to queue/queues of subscribers matching in AMQP way. Hierarchical topic message routing is
      * evaluated here. This will duplicate message for each "subscription destination (not message destination)" at
      * different nodes
@@ -128,9 +99,20 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
      * @param message Routing details updated for the given {@link org.wso2.andes.kernel.AndesMessage}
      * @param sequence Disruptor slot sequence number
      */
-    private void updateRoutingInformation(InboundEventContainer event, AndesMessage message, long sequence) {
+    private void updateRoutingInformation(InboundEventContainer event, AndesMessage message, long sequence) throws AndesException {
 
         AndesChannel andesChannel = event.getChannel();
+
+        if (message.getMetadata().isTopic()) {
+            handleTopicRoutine(event, message, andesChannel);
+        } else {
+            andesChannel.recordAdditionToBuffer(message.getContentChunkList().size());
+            AndesMessageMetadata messageMetadata = message.getMetadata();
+            messageMetadata.setStorageQueueName(messageMetadata.getDestination());
+            messageMetadata.setStorageQueueID(AndesContext.getInstance().getMessageStore().
+                    getCachedQueueID(messageMetadata.getDestination()));
+            event.addMessage(message);
+        }
 
         // Messages are processed in the order they arrive at ring buffer By this processor.
         // By setting message ID through message pre processor we assure, even in a multi publisher scenario, there is
@@ -142,14 +124,7 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                     + message.getMetadata().getMessageID());
         }
 
-        if (message.getMetadata().isTopic()) {
-            handleTopicRoutine(event, message, andesChannel);
-        } else {
-            andesChannel.recordAdditionToBuffer(message.getContentChunkList().size());
-            AndesMessageMetadata messageMetadata = message.getMetadata();
-            messageMetadata.setStorageQueueName(messageMetadata.getDestination());
-            event.addMessage(message);
-        }
+
     }
 
     private void handleTopicRoutine(InboundEventContainer event, AndesMessage message, AndesChannel andesChannel) {
@@ -189,6 +164,11 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                     //determined by destination of the message. So should be
                     //updated (but internal metadata will have topic name as usual)
                     clonedMessage.getMetadata().setStorageQueueName(subscription.getStorageQueueName());
+
+                    clonedMessage.getMetadata().setStorageQueueID(AndesContext.getInstance().getMessageStore().
+                            getCachedQueueID(subscription.getStorageQueueName()));
+
+                    setMessageID(clonedMessage);
 
                     if (MessageTracer.isEnabled()) {
                         MessageTracer.trace(message, MessageTracer.MESSAGE_CLONED + clonedMessage.getMetadata()
@@ -252,7 +232,7 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
      * @return Cloned reference of AndesMessage
      */
     private AndesMessage cloneAndesMessageMetadataAndContent(AndesMessage message) {
-        long newMessageId = idGenerator.getNextId();
+        long newMessageId = idGenerator.getNextId(message.getMetadata().getStorageQueueID());
         AndesMessageMetadata clonedMetadata = message.getMetadata().shallowCopy(newMessageId);
         AndesMessage clonedMessage = new AndesMessage(clonedMetadata);
 
@@ -271,7 +251,7 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
      * @param message messageID
      */
     private void setMessageID(AndesMessage message) {
-        long messageId = idGenerator.getNextId();
+        long messageId = idGenerator.getNextId(message.getMetadata().getStorageQueueID());
 
         //Tracing message
         if (MessageTracer.isEnabled()) {
@@ -282,8 +262,10 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
 
         for (AndesMessagePart messagePart: message.getContentChunkList()) {
             messagePart.setMessageID(messageId);
+            messagePart.setStorageQueueID(message.getMetadata().getStorageQueueID());
         }
     }
+
 
     /**
      * Generates IDs. This id generator cannot be used in a multi threaded environment. Removed any locking behaviour to
@@ -291,47 +273,30 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
      */
     private static class MessageIDGenerator {
 
-        /** REFERENCE_START time set to 2011 */
-        private static final long REFERENCE_START = 41L * 365L * 24L * 60L * 60L * 1000L;
-        private int uniqueIdForNode;
-        private long lastTimestamp;
-        private long lastID;
-        private int offset;
+        /**
+         * This map contains the current message index of each queue based on the key of queue_id.
+         */
+        private HashMap<Integer, Long> queueToMessageIndex;
 
         MessageIDGenerator() {
-            uniqueIdForNode = 0;
-            lastTimestamp = 0;
-            lastID = 0;
-            offset = 0;
+            queueToMessageIndex = new HashMap<>();
+            //TODO Recover last indexes from the queues for the given node ID from the database.
         }
 
         /**
-         * Out of 64 bits for long, we will use the range as follows
-         * [1 sign bit][45bits for time spent from reference time in milliseconds][8bit node id][10 bit offset for ID
-         * falls within the same timestamp]
-         * This assumes there will not be more than 1024 hits within a given millisecond. Range is sufficient for
-         * 6029925857 years.
-         *
+         * The messageID is generated to be unique within the scope of a single storage queue in a single node.
+         * In order to use a globally unique messageID, the nodeID + QueueID + messageID + protocolID is required.
          * @return Generated ID
          */
-        public long getNextId() {
+        public long getNextId(int queueId) {
 
-            // id might change at runtime. Hence reading the value
-            uniqueIdForNode = ClusterResourceHolder.getInstance().getClusterManager().getUniqueIdForLocalNode();
-            long ts = System.currentTimeMillis();
+            if (queueToMessageIndex.containsKey(queueId)) {
+                queueToMessageIndex.put(queueId, 0L);
+            }
 
-            if (ts == lastTimestamp) {
-                offset = offset + 1;
-            } else {
-                offset = 0;
-            }
-            lastTimestamp = ts;
-            long id = (ts - REFERENCE_START) * 256 * 1024 + uniqueIdForNode * 1024 + offset;
-            if (lastID == id) {
-                throw new RuntimeException("duplicate ids detected. This should never happen");
-            }
-            lastID = id;
-            return id;
+            long nextIdForQueue = queueToMessageIndex.get(queueId) + 1;
+            queueToMessageIndex.put(queueId, nextIdForQueue);
+            return nextIdForQueue;
         }
     }
 }

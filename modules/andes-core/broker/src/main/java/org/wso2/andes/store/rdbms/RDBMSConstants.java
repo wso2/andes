@@ -102,6 +102,8 @@ public class RDBMSConstants {
     protected static final String DESTINATION_QUEUE = "MESSAGE_DESTINATION";
     protected static final String TOPIC_NAME = "TOPIC_NAME";
     protected static final String TOPIC_ID = "TOPIC_ID";
+    protected static final String PROTOCOL_ID = "PROTOCOL_ID";
+    protected static final String NODE_NUMBER = "NODE_NUMBER";
 
     // Andes Context Store tables
     protected static final String DURABLE_SUB_TABLE = "MB_DURABLE_SUBSCRIPTION";
@@ -149,8 +151,10 @@ public class RDBMSConstants {
     protected static final String PS_INSERT_MESSAGE_PART =
             "INSERT INTO " + CONTENT_TABLE + "("
             + MESSAGE_ID + ","
+            + QUEUE_ID + ","
+            + NODE_NUMBER + ","
             + MSG_OFFSET + ","
-            + MESSAGE_CONTENT + ") VALUES (?, ?, ?)";
+            + MESSAGE_CONTENT + ") VALUES (?, ?, ?, ?, ?)";
 
     protected static final String PS_RETRIEVE_MESSAGE_PART =
             "SELECT " + MESSAGE_CONTENT
@@ -166,9 +170,11 @@ public class RDBMSConstants {
             "INSERT INTO " + METADATA_TABLE + " ("
             + MESSAGE_ID + ","
             + QUEUE_ID + ","
+            + NODE_NUMBER + ","
+            + PROTOCOL_ID + ","
             + DLC_QUEUE_ID + ","
             + METADATA + ")"
-            + " VALUES ( ?,?,-1,? )";
+            + " VALUES ( ?, ?, ?, -1, ?)";
 
     protected static final String PS_INSERT_EXPIRY_DATA =
             "INSERT INTO " + EXPIRATION_TABLE + " ("

@@ -215,6 +215,7 @@ public class AMQPUtils {
         amqMetadata.writeToBuffer(0, buf);
 
         AndesMessageMetadata metadata = new AndesMessageMetadata(amqMessage.getMessageId(),underlying,true);
+        metadata.setProtocolMessageID(amqMetadata.getMessageHeader().getMessageId());
         metadata.setExpirationTime(amqMessage.getExpiration());
         metadata.setArrivalTime(amqMessage.getArrivalTime());
         metadata.setMessageContentLength(amqMetadata.getContentSize());
