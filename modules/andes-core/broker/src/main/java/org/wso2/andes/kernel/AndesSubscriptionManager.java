@@ -24,6 +24,7 @@ import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.slot.OrphanedSlotHandler;
 import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
+import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.subscription.BasicSubscription;
 import org.wso2.andes.subscription.LocalSubscription;
@@ -264,10 +265,7 @@ public class AndesSubscriptionManager {
          * Queue subscription representing durable topic will anyway deleted.
          * Topic subscription representing durable topic is deleted when binding is deleted
          */
-        // ***** akafixthis _ aka what is dis, why allowshared has been used here
         if(DestinationType.DURABLE_TOPIC == subscription.getDestinationType()) {
-            Boolean allowSharedSubscribers =  AndesConfigurationManager.readValue
-                    (AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
             /*
              * Last subscriptions is allowed mark as disconnected if last local
              * subscriptions to underlying queue is gone. Even if we look at cluster
@@ -418,6 +416,28 @@ public class AndesSubscriptionManager {
     private void notifyClusterSubscriptionHasChanged(final AndesSubscription subscription, final SubscriptionListener.SubscriptionChange change) throws AndesException {
         for (final SubscriptionListener listener : subscriptionListeners) {
             listener.handleClusterSubscriptionsChanged(subscription, change);
+        }
+    }
+
+    /**
+     * Notify cluster members with local subscriptions information after recovering from a split brain scenario
+     * @throws AndesException
+     */
+    public void updateSubscriptionsAfterClusterMerge() throws AndesException {
+        Set<AndesSubscription> subList = subscriptionEngine.getActiveLocalSubscribersForNode();
+        notifyLocalSubscriptionListToMembers(subList);
+        HazelcastAgent.getInstance().notifyDBSyncEvent(new ClusterNotification("", "", ""));
+    }
+
+    /**
+     * Notify cluster members a merge
+     * @param subscriptionList
+     * @throws AndesException
+     */
+    private void notifyLocalSubscriptionListToMembers(Collection<AndesSubscription> subscriptionList)
+            throws AndesException{
+        for (AndesSubscription localSubscription: subscriptionList) {
+            AndesContext.getInstance().getAndesContextStore().updateDurableSubscription(localSubscription);
         }
     }
 

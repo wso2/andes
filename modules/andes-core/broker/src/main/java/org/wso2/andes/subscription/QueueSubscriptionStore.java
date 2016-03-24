@@ -47,7 +47,7 @@ public class QueueSubscriptionStore implements AndesSubscriptionStore {
         Set<AndesSubscription> subscriptionSet = queueSubscriptionMap.get(destination);
 
         if (null == subscriptionSet) {
-            subscriptionSet = new HashSet<>();
+            subscriptionSet = Collections.newSetFromMap(new ConcurrentHashMap<AndesSubscription, Boolean>());
             subscriptionSet.add(subscription);
 
             queueSubscriptionMap.put(destination, subscriptionSet);
