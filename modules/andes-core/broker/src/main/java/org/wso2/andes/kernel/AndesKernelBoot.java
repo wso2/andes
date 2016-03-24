@@ -18,6 +18,8 @@
 
 package org.wso2.andes.kernel;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.hazelcast.util.executor.NamedThreadPoolExecutor;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -51,6 +53,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -85,6 +88,8 @@ public class AndesKernelBoot {
         //loadConfigurations - done from outside
         //startAndesStores - done from outside
         int threadPoolCount = 1;
+        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
+                .setNameFormat("AndesRecoveryTask-%d").build();
         andesRecoveryTaskScheduler = Executors.newScheduledThreadPool(threadPoolCount);
         startAndesComponents();
         startHouseKeepingThreads();
@@ -327,6 +332,7 @@ public class AndesKernelBoot {
      * @throws AndesException
      */
     public static void startHouseKeepingThreads() throws AndesException {
+
         //reload exchanges/queues/bindings and subscriptions
         AndesRecoveryTask andesRecoveryTask = new AndesRecoveryTask();
         Integer scheduledPeriod = AndesConfigurationManager.readValue

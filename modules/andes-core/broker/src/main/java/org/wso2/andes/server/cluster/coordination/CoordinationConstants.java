@@ -42,6 +42,11 @@ public final class CoordinationConstants {
     public static String HAZELCAST_BINDING_CHANGED_NOTIFIER_TOPIC_NAME = "BINDING_CHANGED";
 
     /**
+     * Hazelcast distributed topic name to send binding notifications to cluster nodes
+     */
+    public static String HAZELCAST_DB_SYNC_NOTIFICATION_TOPIC_NAME = "DB_SYNC_NOTIFICATION";
+
+    /**
      * Hazelcast distributed topic name to send coordinator change notifications to cluster nodes
      */
     public static String HAZELCAST_COORDINATOR_CHANGED_NOTIFIER_TOPIC_NAME = "COORDINATOR_CHANGED";
@@ -72,6 +77,10 @@ public final class CoordinationConstants {
      */
     public static String UNASSIGNED_SLOT_MAP_NAME = "unassignedSlotsMap";
 
+    /**
+     * Name of the distributed map to keep track of node id (set in broker.xml)
+     */
+    public static String NODE_ID_MAP_NAME = "nodeIdMap";
     /**
      *Name of the distributed map to store message ID list against queue name
      */

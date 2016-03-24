@@ -354,6 +354,10 @@ public class RDBMSConstants {
             "SELECT " + DURABLE_SUB_ID + "," + DURABLE_SUB_DATA
             + " FROM " + DURABLE_SUB_TABLE;
 
+    protected static final String PS_IS_SUBSCRIPTION_EXIST =
+            "SELECT 1 FROM " + DURABLE_SUB_TABLE
+            + " WHERE " + DURABLE_SUB_ID + "=?";
+
     protected static final String PS_DELETE_DURABLE_SUBSCRIPTION =
             "DELETE FROM " + DURABLE_SUB_TABLE
             + " WHERE " + DESTINATION_IDENTIFIER + "=?"
@@ -875,6 +879,8 @@ public class RDBMSConstants {
     protected static final String TASK_UPDATING_DURABLE_SUBSCRIPTION = "updating durable subscription";
     protected static final String TASK_UPDATING_DURABLE_SUBSCRIPTIONS = "updating durable subscriptions";
     protected static final String TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTIONS = "retrieving all durable subscriptions. ";
+
+    protected static final String TASK_CHECK_SUBSCRIPTION_EXISTENCE = "checking subscription existence";
 
     protected static final String TASK_REMOVING_DURABLE_SUBSCRIPTION = "removing durable subscription. ";
     protected static final String TASK_STORING_NODE_INFORMATION = "storing node information";

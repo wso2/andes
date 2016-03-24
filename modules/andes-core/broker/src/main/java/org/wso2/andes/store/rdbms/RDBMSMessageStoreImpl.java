@@ -1450,12 +1450,12 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * @param task              task that was done by the closed prepared statement.
      */
     protected void close(PreparedStatement preparedStatement, String task) {
-        if (preparedStatement != null) {
-            try {
+        try {
+            if (preparedStatement != null && !preparedStatement.isClosed()) {
                 preparedStatement.close();
-            } catch (SQLException e) {
-                log.error("Closing prepared statement failed after " + task, e);
             }
+        } catch (SQLException e) {
+            log.error("Closing prepared statement failed after " + task, e);
         }
     }
 
@@ -1467,8 +1467,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * @param task              task that was done by the closed prepared statement.
      */
     private void close(Connection connection, PreparedStatement preparedStatement, String task) {
-        close(connection, task);
         close(preparedStatement, task);
+        close(connection, task);
     }
 
     /**
@@ -1480,9 +1480,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * @param task              task that was done by the closed prepared statement.
      */
     private void close(Connection connection, PreparedStatement preparedStatement, ResultSet resultSet, String task) {
-        close(connection, task);
-        close(preparedStatement, task);
         close(resultSet, task);
+        close(preparedStatement, task);
+        close(connection, task);
     }
 
     /**
@@ -1492,12 +1492,12 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * @param task      task that was done by the closed result set.
      */
     protected void close(ResultSet resultSet, String task) {
-        if (resultSet != null) {
-            try {
+        try {
+            if (resultSet != null && !resultSet.isClosed()) {
                 resultSet.close();
-            } catch (SQLException e) {
-                log.error("Closing result set failed after " + task, e);
             }
+        } catch (SQLException e) {
+            log.error("Closing result set failed after " + task, e);
         }
     }
 
