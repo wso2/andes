@@ -146,7 +146,8 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                             if (log.isDebugEnabled()) {
                                 log.debug("Received an empty slot from slot manager");
                             }
-                            boolean sentFromMessageBuffer = messageFlusher.sendMessagesInBuffer(messageDeliveryInfo);
+                            boolean sentFromMessageBuffer = messageFlusher.sendMessagesInBuffer(messageDeliveryInfo,
+                                    storageQueueName);
                             if (!sentFromMessageBuffer) {
                                 //No available free slots
                                 idleQueueCounter++;
@@ -196,7 +197,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                                 MessageFlusher.getInstance().sendMessageToBuffer(messagesRead, trackedSlot,
                                         messageDeliveryInfo);
                                 MessageFlusher.getInstance()
-                                        .sendMessagesInBuffer(messageDeliveryInfo);
+                                        .sendMessagesInBuffer(messageDeliveryInfo, storageQueueName);
                             } else {
                                 currentSlot.setSlotInActive();
                                 SlotDeletionExecutor.getInstance().executeSlotDeletion(currentSlot);
@@ -211,7 +212,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                                     "The queue " + storageQueueName + " has no room. Thus sending " +
                                             "from buffer.");
                         }
-                        messageFlusher.sendMessagesInBuffer(messageDeliveryInfo);
+                        messageFlusher.sendMessagesInBuffer(messageDeliveryInfo, storageQueueName);
                     }
 
                 } catch (AndesException e) {
