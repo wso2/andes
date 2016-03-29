@@ -124,7 +124,7 @@ public class SlotDeletionExecutor {
                                 }
                             }
                         } else {
-                            slotsToDelete.put(slot); // Not deleted. Hence puttng back in queue
+                            slotsToDelete.put(slot); // Not deleted. Hence putting back in queue
                         }
                     }
 
@@ -151,7 +151,7 @@ public class SlotDeletionExecutor {
                         (slot.getStorageQueueName(), slot);
             } catch (ConnectionException e) {
                 log.error("Error while trying to delete the slot " + slot + " Thrift connection failed. " +
-                        "Rescheduling delete.");
+                        "Rescheduling delete.", e);
 
             }
             return deleteSuccess;
