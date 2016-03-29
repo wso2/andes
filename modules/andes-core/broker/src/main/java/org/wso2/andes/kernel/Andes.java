@@ -110,6 +110,13 @@ public class Andes {
     private final int MAX_TX_BATCH_SIZE;
 
     /**
+     * Transaction events such as commit, rollback and close are blocking calls waiting on
+     * {@link com.google.common.util.concurrent.SettableFuture} objects. This is the maximum
+     * wait time for the completion of those events
+     */
+    private final long TX_EVENT_TIMEOUT;
+
+    /**
      * Instance of AndesAPI returned.
      *
      * @return AndesAPI
@@ -126,6 +133,7 @@ public class Andes {
         this.flowControlManager = new FlowControlManager();
         MAX_TX_BATCH_SIZE = AndesConfigurationManager.
                 readValue(AndesConfiguration.MAX_TRANSACTION_BATCH_SIZE);
+        TX_EVENT_TIMEOUT = AndesConfigurationManager.readValue(AndesConfiguration.MAX_TRANSACTION_WAIT_TIMEOUT);
     }
 
     /**
@@ -698,7 +706,7 @@ public class Andes {
      */
     public InboundTransactionEvent newTransaction(AndesChannel channel) throws AndesException {
         return new InboundTransactionEvent(messagingEngine, inboundEventManager,
-                MAX_TX_BATCH_SIZE, channel);
+                MAX_TX_BATCH_SIZE, TX_EVENT_TIMEOUT, channel);
     }
 
     /**

@@ -34,6 +34,8 @@ import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * This is the Andes transaction event related class. This event object handles
@@ -85,6 +87,11 @@ public class InboundTransactionEvent implements AndesInboundStateEvent {
      * Reference to the channel of the publisher
      */
     private final AndesChannel channel;
+
+    /**
+     * maximum wait time for commit, rollback or close event to complete
+     */
+    private final long txWaitTimeout;
 
     /**
      * Check whether messages are stored to DB for the current transaction. If this is true that means
@@ -143,15 +150,17 @@ public class InboundTransactionEvent implements AndesInboundStateEvent {
      * @param eventManager InboundEventManager
      * @param maxBatchSize maximum batch size for a commit
      * @param channel AndesChannel
+     * @param txWaitTimeout maximum wait time for commit, rollback or close event to complete
      */
     public InboundTransactionEvent(MessagingEngine messagingEngine, InboundEventManager eventManager,
-                                   int maxBatchSize, AndesChannel channel) {
+                                   int maxBatchSize, long txWaitTimeout, AndesChannel channel) {
         this.messagingEngine = messagingEngine;
         this.eventManager = eventManager;
         messageQueue = new ConcurrentLinkedQueue<>();
         taskCompleted = SettableFuture.create();
         this.maxBatchSize = maxBatchSize;
         this.channel = channel;
+        this.txWaitTimeout = txWaitTimeout;
     }
 
     /**
@@ -345,11 +354,17 @@ public class InboundTransactionEvent implements AndesInboundStateEvent {
      */
     private Boolean waitForCompletion() throws AndesException {
         try {
-            return taskCompleted.get();
+            return taskCompleted.get(txWaitTimeout, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } catch (ExecutionException e) {
-            throw new AndesException("Error occurred while processing transaction event " + eventType, e);
+            String errMsg = "Error occurred while processing transaction event " + eventType;
+            log.error(errMsg, e);
+            throw new AndesException(errMsg, e);
+        } catch (TimeoutException e) {
+            String errMsg = eventType + " Timeout. Didn't complete within " + txWaitTimeout + " seconds.";
+            log.error(errMsg, e);
+            throw new AndesException(errMsg, e);
         }
         return false;
     }
