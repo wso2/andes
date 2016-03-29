@@ -251,7 +251,7 @@ public class MessageFlusher {
         try {
             slot.incrementPendingMessageCount(messagesRead.size());
             for (DeliverableAndesMetadata message : messagesRead) {
-                messageDeliveryInfo.bufferMessage(message);
+                messageDeliveryInfo.reBufferMessage(message);
             }
         } catch (Throwable e) {
             log.fatal("Error scheduling messages for delivery", e);
@@ -391,7 +391,7 @@ public class MessageFlusher {
      */
     public void reQueueMessage(DeliverableAndesMetadata message, DestinationType destinationType) {
         String destination = message.getDestination();
-        subscriptionCursar4QueueMap.get(destinationType).get(destination).bufferMessage(message);
+        subscriptionCursar4QueueMap.get(destinationType).get(destination).reBufferMessage(message);
     }
 
     public static MessageFlusher getInstance() {
