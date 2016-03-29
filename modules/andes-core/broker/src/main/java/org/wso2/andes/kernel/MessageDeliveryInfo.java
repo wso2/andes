@@ -23,7 +23,7 @@ import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.Map;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 /**
@@ -47,7 +47,7 @@ public class MessageDeliveryInfo {
      * In-memory message list scheduled to be delivered. These messages will be flushed
      * to subscriber.Used Map instead of Set because of https://wso2.org/jira/browse/MB-1624
      */
-    private Map<Long, DeliverableAndesMetadata> readButUndeliveredMessages = new
+    private ConcurrentMap<Long, DeliverableAndesMetadata> readButUndeliveredMessages = new
             ConcurrentSkipListMap<>();
 
     /***
@@ -84,6 +84,17 @@ public class MessageDeliveryInfo {
         readButUndeliveredMessages.put(message.getMessageID(),message);
         message.markAsBuffered();
         //Tracing message
+        MessageTracer.trace(message, MessageTracer.METADATA_BUFFERED_FOR_DELIVERY);
+
+    }
+
+    /**
+     * Re-buffer messages in case of failures
+     * @param message Message metadata to buffer
+     */
+    public void reBufferMessage(DeliverableAndesMetadata message) {
+        readButUndeliveredMessages.putIfAbsent(message.getMessageID(), message);
+        message.markAsBuffered();//Tracing message
         MessageTracer.trace(message, MessageTracer.METADATA_BUFFERED_FOR_DELIVERY);
 
     }
