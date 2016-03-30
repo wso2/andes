@@ -138,17 +138,19 @@ public class SlotManagerClusterMode {
 			Map<Long, SlotRange> nodeIdToSlotRangeMap = new HashMap<>();
 
 			for (Map.Entry<Long, Long> entry : nodeIdToLastPublishedId.entrySet()) {
-				long startMessageId = 0;
-				long endMessageId = entry.getValue();
-				if (nodeIdToLastAssignedId.get(entry.getKey()) != null) {
-					startMessageId = nodeIdToLastAssignedId.get(entry.getKey()) + 1;
-					slotAgent.updateNodeIdToLastAssignedId(entry.getKey(), queueId, entry.getValue());
-				} else {
-					slotAgent.insertLastAssignedMessageId(entry.getKey(), queueId, lastPublishedMessageId);
+				if (entry.getValue() != 0L) {
+					long startMessageId = 0;
+					long endMessageId = entry.getValue();
+					if (nodeIdToLastAssignedId.get(entry.getKey()) != null) {
+                        startMessageId = nodeIdToLastAssignedId.get(entry.getKey()) + 1;
+                        slotAgent.updateNodeIdToLastAssignedId(entry.getKey(), queueId, entry.getValue());
+                    } else {
+                        slotAgent.insertLastAssignedMessageId(entry.getKey(), queueId, lastPublishedMessageId);
+                    }
+					SlotRange slotRange = new SlotRange(startMessageId, endMessageId);
+					nodeIdToSlotRangeMap.put(entry.getKey(), slotRange);
+					slotAgent.updateLastPublishedMessageId(entry.getKey(), queueId, 0L);
 				}
-				SlotRange slotRange = new SlotRange(startMessageId, endMessageId);
-				nodeIdToSlotRangeMap.put(entry.getKey(), slotRange);
-				slotAgent.updateLastPublishedMessageId(entry.getKey(), queueId, 0L);
 
 			}
 			Slot slot = new Slot(nodeIdToSlotRangeMap);
@@ -279,6 +281,65 @@ public class SlotManagerClusterMode {
 		return slotToBeAssigned;
 
 	}
+
+
+
+	/**
+	 * Create a new slot from store
+	 *
+	 * @param queueName name of the queue
+	 * @param nodeId id of the node
+	 * @return slot object
+	 */
+	private Slot getFreshSlot2(String queueName, String nodeId) throws AndesException {
+
+		Slot slotToBeAssigned = null;
+		TreeSet<Long> messageIDSet;
+		// Get message id set from database
+		messageIDSet = slotAgent.getMessageIds(queueName);
+
+		if (null != messageIDSet && !(messageIDSet.isEmpty())) {
+
+			slotToBeAssigned = new Slot();
+			//start msgID will be last assigned ID + 1 so that slots are created with no
+			// message ID gaps in-between
+			long lastAssignedId = slotAgent.getQueueToLastAssignedId(queueName);
+
+			if (0L != lastAssignedId) {
+				slotToBeAssigned.setStartMessageId(lastAssignedId + 1);
+			} else {
+				slotToBeAssigned.setStartMessageId(0L);
+			}
+
+			//end messageID will be the lowest in published message ID list. Get and remove
+			slotToBeAssigned.setEndMessageId(messageIDSet.pollFirst());
+
+			//remove polled message id from database
+
+
+
+
+
+			slotAgent.deleteMessageId(queueName, slotToBeAssigned.getEndMessageId());
+
+			//set storage queue name (db queue to read messages from)
+			slotToBeAssigned.setStorageQueueName(queueName);
+
+			//modify last assigned ID by queue to database
+			slotAgent.updateOverlappedSlots();createSlot(slotToBeAssigned.getStartMessageId(), slotToBeAssigned.getEndMessageId(),
+					slotToBeAssigned.getStorageQueueName(), nodeId);
+
+			slotAgent.setQueueToLastAssignedId(queueName, slotToBeAssigned.getEndMessageId());
+
+			if (log.isDebugEnabled()) {
+				log.debug("Giving a slot from fresh pool. Slot: " + slotToBeAssigned.getId());
+			}
+		}
+		return slotToBeAssigned;
+
+	}
+
+
 
 	/**
 	 * Get an unassigned slot (slots dropped by sudden subscription closes)
