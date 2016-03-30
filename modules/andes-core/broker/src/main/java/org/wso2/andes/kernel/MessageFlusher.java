@@ -251,7 +251,7 @@ public class MessageFlusher {
         try {
             slot.incrementPendingMessageCount(messagesRead.size());
             for (DeliverableAndesMetadata message : messagesRead) {
-                messageDeliveryInfo.reBufferMessage(message);
+                messageDeliveryInfo.bufferMessage(message);
             }
         } catch (Throwable e) {
             log.fatal("Error scheduling messages for delivery", e);
@@ -273,7 +273,7 @@ public class MessageFlusher {
             MessageDeliveryInfo messageDeliveryInfo =
                     getMessageDeliveryInfo(destination, protocolType, destinationType);
             for (DeliverableAndesMetadata metadata : messages) {
-                messageDeliveryInfo.bufferMessage(metadata);
+                messageDeliveryInfo.reBufferMessage(metadata);
             }
         } catch (AndesException e) {
             log.fatal("Error scheduling messages for delivery", e);

@@ -203,7 +203,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
         String destinationIdentifier = getDestinationIdentifier(subscription);
-        String subscriptionID = subscription.getSubscribedNode() + "_" + subscription.getSubscriptionID();
+        String subscriptionID = this.generateSubscriptionID(subscription);
         
         try {
             connection = getConnection();
@@ -238,7 +238,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
         String destinationIdentifier = getDestinationIdentifier(subscription);
-        String subscriptionID = subscription.getSubscribedNode() + "_" + subscription.getSubscriptionID();
+        String subscriptionID = this.generateSubscriptionID(subscription);
 
         try {
 
@@ -304,7 +304,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         PreparedStatement preparedStatement = null;
 
         String destinationIdentifier = getDestinationIdentifier(subscription);
-        String subscriptionID = subscription.getSubscribedNode() + "_" + subscription.getSubscriptionID();
+        String subscriptionID = this.generateSubscriptionID(subscription);
 
         String task = RDBMSConstants.TASK_REMOVING_DURABLE_SUBSCRIPTION + "destination: " +
                 destinationIdentifier + " sub id: " + subscriptionID;
@@ -1909,5 +1909,16 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
     private String getDestinationIdentifier(AndesSubscription subscription) {
         return subscription.getDestinationType() + "." + subscription.getSubscribedDestination();
+    }
+
+    /**
+     * Generates a unique ID for a subscription based on node ID, destination and subscriber's ID
+     *
+     * @param subscription The subscription
+     * @return A subscription ID
+     */
+    private String generateSubscriptionID(AndesSubscription subscription) {
+        return subscription.getSubscribedNode() + "_" + subscription.getSubscribedDestination() + "_" + subscription
+                .getSubscriptionID();
     }
 }

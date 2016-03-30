@@ -62,7 +62,7 @@ class HeartbeatDiagnostics
         private final String[] messages = new String[50];
         private int i;
 
-        private void save(String msg)
+        private synchronized void save(String msg)
         {
             messages[i++] = msg;
             if(i >= messages.length){
