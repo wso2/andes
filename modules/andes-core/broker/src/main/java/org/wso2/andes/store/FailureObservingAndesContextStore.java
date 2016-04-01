@@ -480,17 +480,32 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
 
     @Override
     public void updateAssignedMessageId(long uniqueNodeId, long queueId, long lastAssignedMessageId) throws AndesException {
-
+        try {
+            wrappedAndesContextStoreInstance.updateAssignedMessageId(uniqueNodeId, queueId, lastAssignedMessageId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
     }
 
     @Override
     public void insertLastAssignedMessageId(long nodeId, long queueId, long lastAssignedMessageId) throws AndesException {
-
+        try {
+            wrappedAndesContextStoreInstance.insertLastAssignedMessageId(nodeId, queueId, lastAssignedMessageId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
     }
 
     @Override
     public Slot selectNewSlot(String queueName) throws AndesException {
-        return null;
+        try {
+            return wrappedAndesContextStoreInstance.selectNewSlot(queueName);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
     }
 
     /**
