@@ -38,6 +38,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Slot implements Serializable, Comparable<Slot> {
 
     private static Log log = LogFactory.getLog(Slot.class);
+    private long queueId;
 
     /**
      * Number of messages in the slot
@@ -104,9 +105,15 @@ public class Slot implements Serializable, Comparable<Slot> {
         messagesOfSlot = new ConcurrentHashMap<>();
     }
 
-    public Slot(Map<Long, SlotRange> nodeIdToRangeMap){
-        this.nodeIdToRangeMap = nodeIdToRangeMap;
+    public Slot(Map<Long, SlotRange> nodeIdToRangeMap, long queueId){
+        this.setNodeIdToRangeMap(nodeIdToRangeMap);
+        this.setQueueId(queueId);
     }
+
+    public Slot(Map<Long, SlotRange> nodeIdToRangeMap){
+        this.setNodeIdToRangeMap(nodeIdToRangeMap);
+    }
+
 
     public Slot(long start, long end, String destinationOfMessagesInSlot) {
         this();
@@ -395,5 +402,17 @@ public class Slot implements Serializable, Comparable<Slot> {
 
     public Map<Long, SlotRange> getNodeIdToRangeMap() {
         return nodeIdToRangeMap;
+    }
+
+    public void setNodeIdToRangeMap(Map<Long, SlotRange> nodeIdToRangeMap) {
+        this.nodeIdToRangeMap = nodeIdToRangeMap;
+    }
+
+    public long getQueueId() {
+        return queueId;
+    }
+
+    public void setQueueId(long queueId) {
+        this.queueId = queueId;
     }
 }

@@ -43,7 +43,7 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
         if (AndesContext.getInstance().getClusterAgent().isCoordinator()) {
             SlotInfo slotInfo = new SlotInfo();
             try {
-                Slot slot = slotManager.getSlot(queueName, nodeId);
+                Slot slot = slotManager.getSlot(Long.valueOf(queueName), Long.valueOf(nodeId));
                 if (null != slot) {
                     slotInfo = new SlotInfo(slot.getStartMessageId(), slot.getEndMessageId(),
                             slot.getStorageQueueName(), nodeId, slot.isAnOverlappingSlot());

@@ -491,10 +491,8 @@ public class HazelcastAgent implements SlotAgent {
         }
     }
 
-
     @Override
-    public void createSlot(String slotRanges, long publishedNodeId, long queueId, long assignedNodeId) throws
-            AndesException {
+    public void createSlot(String slotRanges, long publishedNodeId, long queueId) throws AndesException {
 
     }
 
@@ -611,10 +609,16 @@ public class HazelcastAgent implements SlotAgent {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
+    public Slot getUnAssignedSlot(long queueId) throws AndesException {
+        return null;
+    }
+
+    @Override
+    public void updateSlotAssignment(long nodeId, long queueId, Slot allocatedSlot) throws AndesException {
+
+    }
+
     public Slot getUnAssignedSlot(String queueName) throws AndesException {
         Slot slotToBeAssigned = null;
         try {
@@ -635,10 +639,6 @@ public class HazelcastAgent implements SlotAgent {
         return slotToBeAssigned;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public void updateSlotAssignment(String nodeId, String queueName, Slot allocatedSlot) throws AndesException {
         TreeSet<Slot> currentSlotList;
         HashMap<String, TreeSet<Slot>> queueToSlotMap;
@@ -733,6 +733,7 @@ public class HazelcastAgent implements SlotAgent {
         // In hazelcast slot state is already stored in slot object. This method is used only in
         // database slot management.
     }
+
 
     /**
      * {@inheritDoc}
@@ -1062,6 +1063,21 @@ public class HazelcastAgent implements SlotAgent {
 
     @Override
     public Map<Long, Long> getNodeIdToLastAssignedId(long queueId) throws AndesException {
+        return null;
+    }
+
+    @Override
+    public void updateNodeIdToLastAssignedId(long uniqueNodeId, long queueId, long lastAssignedMessageId) throws AndesException {
+
+    }
+
+    @Override
+    public void insertLastAssignedMessageId(long uniqueNodeId, long queueId, long lastAssignedMessageId) throws AndesException {
+
+    }
+
+    @Override
+    public Slot getSlot(long queueId) throws AndesException {
         return null;
     }
 

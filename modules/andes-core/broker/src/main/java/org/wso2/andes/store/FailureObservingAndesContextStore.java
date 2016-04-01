@@ -408,6 +408,16 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
         }
     }
 
+    @Override
+    public void createSlot(String slotRanges, long publishedNodeId, long queueId) throws AndesException {
+        try {
+            wrappedAndesContextStoreInstance.createSlot(slotRanges, publishedNodeId, queueId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -468,6 +478,21 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
         }
     }
 
+    @Override
+    public void updateAssignedMessageId(long uniqueNodeId, long queueId, long lastAssignedMessageId) throws AndesException {
+
+    }
+
+    @Override
+    public void insertLastAssignedMessageId(long nodeId, long queueId, long lastAssignedMessageId) throws AndesException {
+
+    }
+
+    @Override
+    public Slot selectNewSlot(long queueId) throws AndesException {
+        return null;
+    }
+
     /**
      * {@inheritDoc}.
      * <p>
@@ -509,27 +534,6 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
                                                                    wrappedAndesContextStoreInstance);
             storeHealthDetectingFuture = FailureObservingStoreManager.scheduleHealthCheckTask(this);
 
-        }
-    }
-
-
-    /**
-     * Create a new slot in store
-     *
-     * @param startMessageId   start message id of slot
-     * @param endMessageId     end message id of slot
-     * @param storageQueueName name of storage queue name
-     * @param assignedNodeId Node id of assigned node
-     * @throws AndesException
-     */
-    @Override
-    public void createSlot(long startMessageId, long endMessageId, String storageQueueName, String assignedNodeId) throws AndesException {
-        try {
-            wrappedAndesContextStoreInstance.createSlot(startMessageId, endMessageId, storageQueueName,
-                                                        assignedNodeId);
-        } catch (AndesStoreUnavailableException exception) {
-            notifyFailures(exception);
-            throw exception;
         }
     }
 
@@ -617,18 +621,13 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     }
 
     /**
-     * Update assignment information in slot store
-     *
-     * @param nodeId     id of node
-     * @param queueName  name of queue
-     * @param startMsgId start message id of slot
-     * @param endMsgId   end message id of slot
-     * @throws AndesException
+     * {@inheritDoc}
      */
     @Override
-    public void createSlotAssignment(String nodeId, String queueName, long startMsgId, long endMsgId) throws AndesException {
+    public void createSlotAssignment(long nodeId, long queueId, String slotRangesString) throws
+            AndesException {
         try {
-            wrappedAndesContextStoreInstance.createSlotAssignment(nodeId, queueName, startMsgId, endMsgId);
+            wrappedAndesContextStoreInstance.createSlotAssignment(nodeId, queueId, slotRangesString);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -638,14 +637,14 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     /**
      * Select unassigned slots for a given queue name
      *
-     * @param queueName name of queue
+     * @param queueId name of queue
      * @return unassigned slot object if found
      * @throws AndesException
      */
     @Override
-    public Slot selectUnAssignedSlot(String queueName) throws AndesException {
+    public Slot selectUnAssignedSlot(long queueId) throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.selectUnAssignedSlot(queueName);
+            return wrappedAndesContextStoreInstance.selectUnAssignedSlot(queueId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

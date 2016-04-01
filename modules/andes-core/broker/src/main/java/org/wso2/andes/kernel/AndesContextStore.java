@@ -259,11 +259,9 @@ public interface AndesContextStore extends HealthAwareStore{
      * @param slotRanges
      * @param publishedNodeId
      * @param queueId  ID of the storage queue
-     * @param assignedNodeId id of assigned node
      * @throws AndesException
      */
-    void createSlot(String slotRanges, long publishedNodeId, long queueId, long
-            assignedNodeId)throws AndesException;
+    void createSlot(String slotRanges, long publishedNodeId, long queueId)throws AndesException;
 
     /**
      * Delete a slot from store.
@@ -308,21 +306,20 @@ public interface AndesContextStore extends HealthAwareStore{
     /**
      * Update assignment information in slot store.
      * @param nodeId id of node
-     * @param queueName name of queue
-     * @param startMsgId start message id of slot
-     * @param endMsgId end message id of slot
+     * @param queueId Id of queue
+     * @param slotRangesString Slot ranges
      * @throws AndesException
      */
-    void createSlotAssignment(String nodeId, String queueName, long startMsgId, long endMsgId)
+    void createSlotAssignment(long nodeId, long queueId, String slotRangesString)
             throws AndesException;
 
     /**
      * Select unassigned slots for a given queue name.
-     * @param queueName name of queue
+     * @param queueId Id of queue
      * @return unassigned slot object if found
      * @throws AndesException
      */
-    Slot selectUnAssignedSlot(String queueName) throws AndesException;
+    Slot selectUnAssignedSlot(long queueId) throws AndesException;
 
     /**
      * Get last assigned id for a queue.
@@ -458,4 +455,6 @@ public interface AndesContextStore extends HealthAwareStore{
     void updateAssignedMessageId(long uniqueNodeId, long queueId, long lastAssignedMessageId) throws AndesException;
 
     void insertLastAssignedMessageId(long nodeId, long queueId, long lastAssignedMessageId) throws AndesException;
+
+    Slot selectNewSlot(long queueId) throws AndesException;
 }
