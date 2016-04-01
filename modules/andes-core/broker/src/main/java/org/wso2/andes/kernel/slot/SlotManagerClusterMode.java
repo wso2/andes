@@ -107,16 +107,15 @@ public class SlotManagerClusterMode {
 	/**
 	 * Record Slot related data (last message ID, storage queue name) for the queues sends by a publisher node
 	 *
-	 * @param slotsDataByteArray Byte array of unique node ID, queue ID and last message ID.
+	 * @param slotsDataByteBuffer Byte array of unique node ID, queue ID and last message ID.
 	 * @throws AndesException
 	 */
-	public void updateSlotsData(byte[] slotsDataByteArray) throws AndesException {
+	public void communicateQueueWiseSlotData(ByteBuffer slotsDataByteBuffer) throws AndesException {
 
-		ByteBuffer slotDataBuffer = ByteBuffer.wrap(slotsDataByteArray);
-		long uniqueNodeId = slotDataBuffer.getLong();
-		long queueId = slotDataBuffer.getLong();
-		long lastPublishedMessageId = slotDataBuffer.getLong();
-		long messageCount = slotDataBuffer.getLong();
+		long uniqueNodeId = slotsDataByteBuffer.getLong();
+		long queueId = slotsDataByteBuffer.getLong();
+		long lastPublishedMessageId = slotsDataByteBuffer.getLong();
+		long messageCount = slotsDataByteBuffer.getLong();
 		Map<Long, Long> nodeIdToLastPublishedId = new HashMap<>();
 		Map<Long, Long> nodeIdToLastAssignedId = new HashMap<>();
 
@@ -154,7 +153,7 @@ public class SlotManagerClusterMode {
 
 			}
 			Slot slot = new Slot(nodeIdToSlotRangeMap, queueId);
-			slotAgent.createSlot(SlotRangesEncorderDecoder.encode(slot), uniqueNodeId, queueId);
+			slotAgent.createSlot(SlotRangesEncorderDecoder.encode(nodeIdToSlotRangeMap), uniqueNodeId, queueId);
 		}else{
 			/*
 			If aggregated message count is less than slot window size update the queueIdToAggregatedMessageCount with
@@ -734,8 +733,6 @@ public class SlotManagerClusterMode {
 	public Long getLastAssignedSlotMessageIdInClusterMode(String queueName) throws AndesException {
 		return slotAgent.getQueueToLastAssignedId(queueName);
 	}
-
-	public 
 
 	/**
 	 * Clear and reset slot storage

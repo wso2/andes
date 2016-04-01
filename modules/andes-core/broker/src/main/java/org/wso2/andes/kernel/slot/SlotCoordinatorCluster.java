@@ -42,7 +42,7 @@ public class SlotCoordinatorCluster implements SlotCoordinator {
      */
     @Override
     public Slot getSlot(String queueName) throws ConnectionException {
-        return MBThriftClient.getSlot(queueName, nodeId);
+        return MBThriftClient.getSlot(Long.valueOf(queueName), Long.valueOf(nodeId));
     }
 
     /**

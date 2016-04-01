@@ -51,6 +51,8 @@ public class Slot implements Serializable, Comparable<Slot> {
     private long startMessageId;
 
     private Map<Long,SlotRange> nodeIdToRangeMap = new HashMap<>();
+
+    private String slotRangesString;
     /**
      * End message ID of the slot
      */
@@ -107,6 +109,11 @@ public class Slot implements Serializable, Comparable<Slot> {
 
     public Slot(Map<Long, SlotRange> nodeIdToRangeMap, long queueId){
         this.setNodeIdToRangeMap(nodeIdToRangeMap);
+        this.setQueueId(queueId);
+    }
+
+    public Slot(String slotRangesString, long queueId){
+        this.setSlotRangesString(slotRangesString);
         this.setQueueId(queueId);
     }
 
@@ -414,5 +421,13 @@ public class Slot implements Serializable, Comparable<Slot> {
 
     public void setQueueId(long queueId) {
         this.queueId = queueId;
+    }
+
+    public String getSlotRangesString() {
+        return slotRangesString;
+    }
+
+    public void setSlotRangesString(String slotRangesString) {
+        this.slotRangesString = slotRangesString;
     }
 }

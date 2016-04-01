@@ -25,7 +25,6 @@ import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.slot.Slot;
-import org.wso2.andes.kernel.slot.SlotRangesEncorderDecoder;
 import org.wso2.andes.kernel.slot.SlotState;
 import org.wso2.andes.server.cluster.coordination.SlotAgent;
 import org.wso2.andes.store.AndesDataIntegrityViolationException;
@@ -166,13 +165,13 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
     public void updateSlotAssignment(long nodeId, long queueId, Slot allocatedSlot)
             throws AndesException {
 
-        String task = "update slot : " + SlotRangesEncorderDecoder.encode(allocatedSlot)
+        String task = "update slot : " + allocatedSlot.getSlotRangesString()
                       + " for queue: " + queueId + " and node: " + nodeId;
 
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
             waitUntilStoresBecomeAvailable(task);
             try {
-                andesContextStore.createSlotAssignment(nodeId, queueId, SlotRangesEncorderDecoder.encode(allocatedSlot));
+                andesContextStore.createSlotAssignment(nodeId, queueId, allocatedSlot.getSlotRangesString());
                 break;
             } catch (AndesStoreUnavailableException e) {
                 handleFailure(attemptCount, task, e);

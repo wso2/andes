@@ -144,13 +144,16 @@ public class RDBMSConstants {
     protected static final String SLOT_ID = "SLOT_ID";
     protected static final String SLOT_RANGES_STRING = "SLOT_RANGES";
     protected static final String PUBLISHED_NODE_ID = "PUBLISHED_NODE_ID";
-    protected static final String START_MESSAGE_ID = "START_MESSAGE_ID";
-    protected static final String END_MESSAGE_ID = "END_MESSAGE_ID";
-    protected static final String STORAGE_QUEUE_NAME = "STORAGE_QUEUE_NAME";
+    protected static final String STORAGE_QUEUE_ID = "STORAGE_QUEUE_ID";
     protected static final String SLOT_STATE = "SLOT_STATE";
     protected static final String ASSIGNED_NODE_ID = "ASSIGNED_NODE_ID";
     protected static final String ASSIGNED_QUEUE_NAME = "ASSIGNED_QUEUE_NAME";
     protected static final String ASSIGNED_QUEUE_ID = "ASSIGNED_QUEUE_ID";
+
+    //TODO: These needs to be removed from slot table eventually
+    protected static final String START_MESSAGE_ID = "START_MESSAGE_ID";
+    protected static final String END_MESSAGE_ID = "END_MESSAGE_ID";
+    protected static final String STORAGE_QUEUE_NAME = "STORAGE_QUEUE_NAME";
 
     //Storage queue to last published ID table columns
     protected static final String LAST_PUBLISHED_MESSAGE_ID = "LAST_PUBLISHED_MESSAGE_ID";
@@ -616,7 +619,7 @@ public class RDBMSConstants {
      * Prepared statement to get slots assigned to a give node
      */
     protected static final String PS_GET_ASSIGNED_SLOTS_BY_NODE_ID =
-            "SELECT " + START_MESSAGE_ID + "," + END_MESSAGE_ID + "," + STORAGE_QUEUE_NAME
+            "SELECT " + SLOT_RANGES_STRING + "," + STORAGE_QUEUE_NAME
             + " FROM " + SLOT_TABLE
             + " WHERE " + ASSIGNED_NODE_ID + "=?"
             + " AND " + SLOT_STATE + "=" + SlotState.ASSIGNED.getCode()
@@ -662,14 +665,14 @@ public class RDBMSConstants {
     protected static final String PS_SELECT_UNASSIGNED_SLOT =
             "SELECT " + SLOT_RANGES_STRING + "," + QUEUE_ID
             + " FROM " + SLOT_TABLE
-            + " WHERE " + QUEUE_ID + " =?"
+            + " WHERE " + STORAGE_QUEUE_ID + " =?"
             + " AND " + SLOT_STATE + " = " + SlotState.RETURNED.getCode()
             + " ORDER BY " + SLOT_ID;
 
     protected static final String PS_SELECT_NEW_SLOT =
             "SELECT " + SLOT_RANGES_STRING + "," + QUEUE_ID
             + " FROM " + SLOT_TABLE
-            + " WHERE " + QUEUE_ID + " =?"
+            + " WHERE " + STORAGE_QUEUE_ID + " =?"
             + " AND " + SLOT_STATE + " = " + SlotState.CREATED.getCode()
             + " ORDER BY " + SLOT_ID;
 

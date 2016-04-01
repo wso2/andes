@@ -23,9 +23,9 @@ import java.util.Map;
 
 public class SlotRangesEncorderDecoder {
 
-    public static String encode(Slot slot){
+    public static String encode(Map<Long, SlotRange> nodeIdToSlotRangeMap){
         String rangesString = "";
-        for(Map.Entry<Long, SlotRange> entry: slot.getNodeIdToRangeMap().entrySet()){
+        for(Map.Entry<Long, SlotRange> entry: nodeIdToSlotRangeMap.entrySet()){
             rangesString = entry.getKey() + ":" + entry.getValue().getStartMessasgeId() + "-" + entry.getValue()
                     .getEndMessageId() + ",";
         }
@@ -35,10 +35,10 @@ public class SlotRangesEncorderDecoder {
     }
 
 
-    public static Slot decode(String rangesString){
+    public static Map<Long, SlotRange> decode(String rangesString){
         Map<Long, SlotRange>  nodeIdToSlotRangeMap = new HashMap<>();
-        String[] seperateQueues =  rangesString.split(",");
-        for(String entry: seperateQueues){
+        String[] separateQueues =  rangesString.split(",");
+        for(String entry: separateQueues){
              String[] splitWithColonString = entry.split(":");
              String nodeId = splitWithColonString[0];
             String startMessageId = splitWithColonString[1].split("-")[0];
@@ -46,8 +46,7 @@ public class SlotRangesEncorderDecoder {
             SlotRange slotRange = new SlotRange(Long.valueOf(startMessageId), Long.valueOf(endMessageId));
             nodeIdToSlotRangeMap.put(Long.valueOf(nodeId), slotRange);
         }
-        Slot slot = new Slot(nodeIdToSlotRangeMap);
-        return slot;
+        return nodeIdToSlotRangeMap;
     }
 
 }

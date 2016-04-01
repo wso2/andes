@@ -28,7 +28,6 @@ import org.wso2.andes.kernel.AndesQueue;
 import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.slot.Slot;
-import org.wso2.andes.kernel.slot.SlotRangesEncorderDecoder;
 import org.wso2.andes.kernel.slot.SlotState;
 import org.wso2.andes.store.AndesDataIntegrityViolationException;
 
@@ -1238,9 +1237,9 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             resultSet = preparedStatement.executeQuery();
 
             if(resultSet.next()) {
-                newSlot = SlotRangesEncorderDecoder.decode(resultSet.getString(RDBMSConstants.SLOT_RANGES_STRING));
+                newSlot = new Slot(resultSet.getString(RDBMSConstants.SLOT_RANGES_STRING), resultSet.getLong
+                        (RDBMSConstants.STORAGE_QUEUE_ID));
                 newSlot.addState(SlotState.ASSIGNED);
-                newSlot.setQueueId(resultSet.getLong(RDBMSConstants.QUEUE_ID));
             }
 
             return newSlot;
@@ -1599,10 +1598,9 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             resultSet = preparedStatement.executeQuery();
 
             if(resultSet.next()) {
-                unAssignedSlot = SlotRangesEncorderDecoder.decode(resultSet.getString(RDBMSConstants
-                        .SLOT_RANGES_STRING));
+                unAssignedSlot = new Slot(resultSet.getString(RDBMSConstants
+                        .SLOT_RANGES_STRING),resultSet.getLong(RDBMSConstants.STORAGE_QUEUE_ID));
                 unAssignedSlot.addState(SlotState.RETURNED);
-                unAssignedSlot.setQueueId(resultSet.getLong(RDBMSConstants.QUEUE_ID));
             }
 
             return unAssignedSlot;
@@ -1889,11 +1887,9 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             resultSet = preparedStatement.executeQuery();
 
             if(resultSet.next()) {
-                overlappedSlot = SlotRangesEncorderDecoder.decode(resultSet.getString(RDBMSConstants
-                        .SLOT_RANGES_STRING));
+                overlappedSlot = new Slot(resultSet.getString(RDBMSConstants
+                        .SLOT_RANGES_STRING), resultSet.getLong(RDBMSConstants.QUEUE_ID));
                 overlappedSlot.addState(SlotState.OVERLAPPED);
-                overlappedSlot.setStorageQueueName(
-                        resultSet.getString(RDBMSConstants.QUEUE_ID));
                 overlappedSlot.setAnOverlappingSlot(true);
             }
             return overlappedSlot;
@@ -2016,7 +2012,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             while (resultSet.next()) {
                 Slot assignedSlot = new Slot(SlotState.ASSIGNED);
-                assignedSlot.setStartMessageId(resultSet.getLong(RDBMSConstants.START_MESSAGE_ID));
+                assignedSlot.setSlotRangesString(resultSet.getString(RDBMSConstants.SLOT_RANGES_STRING));
                 assignedSlot.setEndMessageId(resultSet.getLong(RDBMSConstants.END_MESSAGE_ID));
                 assignedSlot.setStorageQueueName(
                         resultSet.getString(RDBMSConstants.STORAGE_QUEUE_NAME));
@@ -2054,8 +2050,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             while (resultSet.next()) {
                 Slot slot = new Slot(SlotState.getById(resultSet.getInt(RDBMSConstants.SLOT_STATE)));
-                slot.setStartMessageId(resultSet.getLong(RDBMSConstants.START_MESSAGE_ID));
-                slot.setEndMessageId(resultSet.getLong(RDBMSConstants.END_MESSAGE_ID));
+                slot.setSlotRangesString(resultSet.getString(RDBMSConstants.SLOT_RANGES_STRING));
                 slot.setStorageQueueName(resultSet.getString(RDBMSConstants.STORAGE_QUEUE_NAME));
                 slot.setSlotInActive();
                 slotSet.add(slot);
