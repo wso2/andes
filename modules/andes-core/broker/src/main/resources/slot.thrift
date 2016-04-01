@@ -23,7 +23,7 @@ struct SlotInfo {
 service SlotManagementService {
     /* The getSlot operation. This method is used to get a slotImp from SlotManager
     */
-    SlotInfo getSlotInfo(1: i64 storageQueueId, 2: i64 nodeId),
+    SlotInfo getSlotInfo(1: string storageQueueName, 2: i64 nodeId),
 
     /* The updateMessageId operation is to update the message ID in the coordinator after chunk of messages are published.
     *  In addition, the coordinator will check if the received slot overlaps with any existing,assigned slots, 

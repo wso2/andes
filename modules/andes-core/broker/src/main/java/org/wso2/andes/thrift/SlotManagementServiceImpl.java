@@ -39,17 +39,17 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
     private static SlotManagerClusterMode slotManager = SlotManagerClusterMode.getInstance();
 
     @Override
-    public SlotInfo getSlotInfo(long queueId, long nodeId) throws TException {
+    public SlotInfo getSlotInfo(String queueName, long nodeId) throws TException {
         if (AndesContext.getInstance().getClusterAgent().isCoordinator()) {
             SlotInfo slotInfo = new SlotInfo();
             try {
-                Slot slot = slotManager.getSlot(queueId, nodeId);
+                Slot slot = slotManager.getSlot(queueName, nodeId);
                 if (null != slot) {
                     slotInfo = new SlotInfo(slot.getSlotRangesString(), slot.getQueueId(), nodeId, slot
                             .isAnOverlappingSlot());
                 }
             } catch (AndesException e) {
-                throw new TException("Failed to get slot info for queue: " + queueId + " nodeId: " + nodeId, e);
+                throw new TException("Failed to get slot info for queue: " + queueName + " nodeId: " + nodeId, e);
             }
             return slotInfo;
         } else {

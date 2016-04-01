@@ -184,25 +184,25 @@ public class SlotManagerClusterMode {
 	 * Get a slot by giving the queue name. This method first lookup the free slot pool for slots
 	 * and if there are no slots in the free slot pool then return a newly created slot
 	 *
-	 * @param queueId name of the queue
+	 * @param queueName name of the queue
 	 * @return Slot object
 	 */
-	public Slot getSlot(long queueId, long nodeId) throws AndesException {
+	public Slot getSlot(String queueName, long nodeId) throws AndesException {
 
 		Slot slotToBeAssigned;
 		/**
 		 *First look in the unassigned slots pool for free slots. These slots are previously own by
 		 * other nodes
 		 */
-		String lockKey = String.valueOf(queueId) + SlotManagerClusterMode.class;
+		String lockKey = queueName + SlotManagerClusterMode.class;
 		synchronized (lockKey.intern()) {
-			slotToBeAssigned = getUnassignedSlot(queueId);
+			slotToBeAssigned = getUnassignedSlot(queueName);
 			if (null == slotToBeAssigned) {
-				slotToBeAssigned = getFreshSlot(queueId);
+				slotToBeAssigned = getFreshSlot(queueName);
 			}
 
 			if (null != slotToBeAssigned) {
-				updateSlotAssignmentMap(queueId, slotToBeAssigned, nodeId);
+				updateSlotAssignmentMap(queueName, slotToBeAssigned, nodeId);
 				if (log.isDebugEnabled()) {
 					log.debug("Assigning slot for node : " + nodeId + " | " + slotToBeAssigned);
 				}
@@ -268,12 +268,12 @@ public class SlotManagerClusterMode {
 	/**
 	 * Create a new slot from store
 	 *
-	 * @param queueId name of the queue
+	 * @param queueName name of the queue
 	 * @return slot object
 	 */
-	private Slot getFreshSlot(long queueId) throws AndesException {
+	private Slot getFreshSlot(String queueName) throws AndesException {
 
-		Slot slotToBeAssigned = slotAgent.getSlot(queueId);
+		Slot slotToBeAssigned = slotAgent.getSlot(queueName);
 
 		if (null != slotToBeAssigned) {
 
@@ -292,21 +292,21 @@ public class SlotManagerClusterMode {
 	/**
 	 * Get an unassigned slot (slots dropped by sudden subscription closes)
 	 *
-	 * @param queueId name of the queue slot is required
+	 * @param queueName name of the queue slot is required
 	 * @return slot or null if cannot find
 	 */
-	private Slot getUnassignedSlot(long queueId) throws AndesException {
+	private Slot getUnassignedSlot(String queueName) throws AndesException {
 		Slot slotToBeAssigned;
 		//TODO: Can we remove this log
-		String lockKey = String.valueOf(queueId) + SlotManagerClusterMode.class;
+		String lockKey = queueName + SlotManagerClusterMode.class;
 		synchronized (lockKey.intern()) {
 			//get oldest unassigned slot from database
-			slotToBeAssigned = slotAgent.getUnAssignedSlot(queueId);
+			slotToBeAssigned = slotAgent.getUnAssignedSlot(queueName);
 
 			if (log.isDebugEnabled()) {
 				if (null != slotToBeAssigned) {
 					log.debug("Giving a slot from unassigned slots. Slot: " + slotToBeAssigned +
-							" to queue: " + queueId);
+							" to queue: " + queueName);
 				}
 			}
 		}
@@ -342,17 +342,17 @@ public class SlotManagerClusterMode {
 	/**
 	 * Update the slot assignment when a slot is assigned for a node
 	 *
-	 * @param queueId     Id of the queue
+	 * @param queueName     Name of the queue
 	 * @param allocatedSlot Slot object which is allocated to a particular node
 	 * @param nodeId        ID of the node to which slot is Assigned
 	 */
-	private void updateSlotAssignmentMap(long queueId, Slot allocatedSlot, long nodeId) throws AndesException {
+	private void updateSlotAssignmentMap(String queueName, Slot allocatedSlot, long nodeId) throws AndesException {
 		//Lock is used because this method will be called by multiple nodes at the same time
 		String lockKey = String.valueOf(nodeId) + SlotManagerClusterMode.class;
 		//TODO: Do we need this lock now?
 		synchronized (lockKey.intern()) {
 			//Update assigned node, assigned queue and set state to assigned
-			slotAgent.updateSlotAssignment(nodeId, queueId, allocatedSlot);
+			slotAgent.updateSlotAssignment(nodeId, queueName, allocatedSlot);
 		}
 	}
 

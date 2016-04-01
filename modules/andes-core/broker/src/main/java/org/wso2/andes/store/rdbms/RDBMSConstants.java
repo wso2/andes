@@ -104,6 +104,8 @@ public class RDBMSConstants {
     protected static final String TOPIC_ID = "TOPIC_ID";
     protected static final String PROTOCOL_ID = "PROTOCOL_ID";
     protected static final String NODE_NUMBER = "NODE_NUMBER";
+    protected static final String MESSAGE_ID_TIME_STAMP = "TIME_STAMP";
+    protected static final String MESSAGE_PUBLISHED_NODE_ID = "PUBLISHED_NODE_ID";
 
     // Andes Context Store tables
     protected static final String DURABLE_SUB_TABLE = "MB_DURABLE_SUBSCRIPTION";
@@ -266,13 +268,18 @@ public class RDBMSConstants {
             + " AND " + MESSAGE_ID + " BETWEEN ? AND ?"
             + " ORDER BY " + MESSAGE_ID;
 
-    protected static final String PS_SELECT_METADATA_RANGE_FROM_QUEUE_IN_DLC =
+    protected static final String PS_METADATA_SELECT_CALUSE =
             "SELECT " + MESSAGE_ID + "," + METADATA
-            + " FROM " + METADATA_TABLE
-            + " WHERE " + QUEUE_ID + "=?"
-            + " AND " + DLC_QUEUE_ID + "=?"
-            + " AND " + MESSAGE_ID + " BETWEEN ? AND ?"
-            + " ORDER BY " + MESSAGE_ID;
+            + " FROM " + METADATA_TABLE + " WHERE ";
+
+    protected static final String PS_SELECT_METADATA_WHERE_CONDITION =
+            " (" + QUEUE_ID + "=?"
+            + " AND " + MESSAGE_PUBLISHED_NODE_ID + "=?"
+            + " AND " + DLC_QUEUE_ID + "=-1"
+            + " AND " + MESSAGE_ID + " BETWEEN ? AND ? )";
+
+    protected static final String PS_SELECT_METADATA_ORDER_BY =
+             " ORDER BY " + MESSAGE_ID;
 
     protected static final String PS_SELECT_METADATA_FROM_QUEUE =
             "SELECT " + MESSAGE_ID + "," + METADATA

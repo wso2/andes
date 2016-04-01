@@ -142,14 +142,14 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
      * {@inheritDoc}
      */
     @Override
-    public Slot getUnAssignedSlot(long queueId) throws AndesException {
+    public Slot getUnAssignedSlot(String queueName) throws AndesException {
 
-        String task = "retrieve unassigned slot for queue: " + queueId;
+        String task = "retrieve unassigned slot for queue: " + queueName;
         Slot unassignedSlot = null;
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
             waitUntilStoresBecomeAvailable(task);
             try {
-                unassignedSlot = andesContextStore.selectUnAssignedSlot(queueId);
+                unassignedSlot = andesContextStore.selectUnAssignedSlot(queueName);
                 break;
             } catch (AndesStoreUnavailableException e) {
                 handleFailure(attemptCount, task, e);
@@ -162,16 +162,16 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
      * {@inheritDoc}
      */
     @Override
-    public void updateSlotAssignment(long nodeId, long queueId, Slot allocatedSlot)
+    public void updateSlotAssignment(long nodeId, String queueName, Slot allocatedSlot)
             throws AndesException {
 
         String task = "update slot : " + allocatedSlot.getSlotRangesString()
-                      + " for queue: " + queueId + " and node: " + nodeId;
+                      + " for queue: " + queueName + " and node: " + nodeId;
 
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
             waitUntilStoresBecomeAvailable(task);
             try {
-                andesContextStore.createSlotAssignment(nodeId, queueId, allocatedSlot.getSlotRangesString());
+                andesContextStore.createSlotAssignment(nodeId, queueName, allocatedSlot.getSlotRangesString());
                 break;
             } catch (AndesStoreUnavailableException e) {
                 handleFailure(attemptCount, task, e);
@@ -693,14 +693,14 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
     }
 
     @Override
-    public Slot getSlot(long queueId) throws AndesException {
-        String task = "Get a fresh slot for the queue " + queueId;
+    public Slot getSlot(String queueName) throws AndesException {
+        String task = "Get a fresh slot for the queue " + queueName;
 
         Slot newSlot = null;
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
             waitUntilStoresBecomeAvailable(task);
             try {
-                newSlot = andesContextStore.selectNewSlot(queueId);
+                newSlot = andesContextStore.selectNewSlot(queueName);
                 break;
             } catch (AndesStoreUnavailableException e) {
                 handleFailure(attemptCount, task, e);

@@ -63,23 +63,23 @@ public class MBThriftClient {
      * getSlot method. Returns Slot Object, when the
      * queue name is given
      *
-     * @param queueId Id of the queue
+     * @param queueName Name of the queue
      * @param nodeId    of this node
      * @return slot object
      * @throws ConnectionException
      */
-    public static synchronized Slot getSlot(long queueId,
+    public static synchronized Slot getSlot(String queueName,
                                             long nodeId) throws ConnectionException {
         SlotInfo slotInfo;
         try {
             client = getServiceClient();
-            slotInfo = client.getSlotInfo(queueId, nodeId);
+            slotInfo = client.getSlotInfo(queueName, nodeId);
             return convertSlotInforToSlot(slotInfo);
         } catch (TException e) {
             try {
                 //retry once
                 reConnectToServer();
-                slotInfo = client.getSlotInfo(queueId, nodeId);
+                slotInfo = client.getSlotInfo(queueName, nodeId);
                 return convertSlotInforToSlot(slotInfo);
             } catch (TException e1) {
                 handleCoordinatorChanges();

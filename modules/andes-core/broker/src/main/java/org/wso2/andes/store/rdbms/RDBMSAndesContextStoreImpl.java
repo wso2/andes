@@ -21,6 +21,7 @@ package org.wso2.andes.store.rdbms;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesBinding;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesExchange;
@@ -1222,7 +1223,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     }
 
     @Override
-    public Slot selectNewSlot(long queueId) throws AndesException {
+    public Slot selectNewSlot(String queueName) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
@@ -1233,7 +1234,8 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement =
                     connection.prepareStatement(RDBMSConstants.PS_SELECT_NEW_SLOT);
-            preparedStatement.setLong(1, queueId);
+            preparedStatement.setLong(1, AndesContext.getInstance().getMessageStore().
+                    getCachedQueueID(queueName) );
             resultSet = preparedStatement.executeQuery();
 
             if(resultSet.next()) {
@@ -1245,7 +1247,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             return newSlot;
         } catch (SQLException e) {
             String errMsg =
-                    RDBMSConstants.TASK_SELECT_UNASSIGNED_SLOTS + " queue : " + queueId;
+                    RDBMSConstants.TASK_SELECT_UNASSIGNED_SLOTS + " queue : " + queueName;
             throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
             close(resultSet, RDBMSConstants.TASK_SELECT_UNASSIGNED_SLOTS);
@@ -1484,7 +1486,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     /**
      * {@inheritDoc}
      */
-    @Override public void createSlotAssignment(long nodeId, long queueId, String slotRnagesString)
+    @Override public void createSlotAssignment(long nodeId, String queueName, String slotRnagesString)
             throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
@@ -1498,15 +1500,16 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
 
             preparedStatement.setLong(1, nodeId);
-            preparedStatement.setLong(2, queueId);
+            preparedStatement.setLong(2, AndesContext.getInstance().getMessageStore().
+                    getCachedQueueID(queueName));
             preparedStatement.setString(3, slotRnagesString);
 
             preparedStatement.executeUpdate();
             connection.commit();
         } catch (SQLException e) {
             String errMsg =
-                    RDBMSConstants.TASK_CREATE_SLOT_ASSIGNMENT + " nodeId: " + nodeId + " queueId: " +
-                            queueId + "slotRangesString: " + slotRnagesString;
+                    RDBMSConstants.TASK_CREATE_SLOT_ASSIGNMENT + " nodeId: " + nodeId + " queueName: " +
+                            queueName + "slotRangesString: " + slotRnagesString;
             rollback(connection, RDBMSConstants.TASK_CREATE_SLOT_ASSIGNMENT);
             throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
@@ -1583,7 +1586,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public Slot selectUnAssignedSlot(long queueId) throws AndesException {
+    public Slot selectUnAssignedSlot(String queueName) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
@@ -1594,19 +1597,20 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement =
                     connection.prepareStatement(RDBMSConstants.PS_SELECT_UNASSIGNED_SLOT);
-            preparedStatement.setLong(1, queueId);
+            preparedStatement.setLong(1, AndesContext.getInstance().getMessageStore().
+                    getCachedQueueID(queueName));
             resultSet = preparedStatement.executeQuery();
 
-            if(resultSet.next()) {
+            if (resultSet.next()) {
                 unAssignedSlot = new Slot(resultSet.getString(RDBMSConstants
-                        .SLOT_RANGES_STRING),resultSet.getLong(RDBMSConstants.STORAGE_QUEUE_ID));
+                        .SLOT_RANGES_STRING), resultSet.getLong(RDBMSConstants.STORAGE_QUEUE_ID));
                 unAssignedSlot.addState(SlotState.RETURNED);
             }
 
             return unAssignedSlot;
         } catch (SQLException e) {
             String errMsg =
-                    RDBMSConstants.TASK_SELECT_UNASSIGNED_SLOTS + " queueId: " + queueId;
+                    RDBMSConstants.TASK_SELECT_UNASSIGNED_SLOTS + " queueName: " + queueName;
             throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
             close(resultSet, RDBMSConstants.TASK_SELECT_UNASSIGNED_SLOTS);

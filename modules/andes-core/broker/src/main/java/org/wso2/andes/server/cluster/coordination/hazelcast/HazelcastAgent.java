@@ -33,8 +33,6 @@ import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesRecoveryTask;
-import org.wso2.andes.kernel.AndesSubscriptionManager;
 import org.wso2.andes.kernel.HazelcastLifecycleListener;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
@@ -609,13 +607,9 @@ public class HazelcastAgent implements SlotAgent {
         }
     }
 
-    @Override
-    public Slot getUnAssignedSlot(long queueId) throws AndesException {
-        return null;
-    }
 
     @Override
-    public void updateSlotAssignment(long nodeId, long queueId, Slot allocatedSlot) throws AndesException {
+    public void updateSlotAssignment(long nodeId, String queueName, Slot allocatedSlot) throws AndesException {
 
     }
 
@@ -1077,7 +1071,7 @@ public class HazelcastAgent implements SlotAgent {
     }
 
     @Override
-    public Slot getSlot(long queueId) throws AndesException {
+    public Slot getSlot(String queueName) throws AndesException {
         return null;
     }
 

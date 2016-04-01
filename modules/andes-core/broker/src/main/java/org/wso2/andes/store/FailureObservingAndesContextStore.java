@@ -489,7 +489,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     }
 
     @Override
-    public Slot selectNewSlot(long queueId) throws AndesException {
+    public Slot selectNewSlot(String queueName) throws AndesException {
         return null;
     }
 
@@ -624,10 +624,10 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public void createSlotAssignment(long nodeId, long queueId, String slotRangesString) throws
+    public void createSlotAssignment(long nodeId, String queueName, String slotRangesString) throws
             AndesException {
         try {
-            wrappedAndesContextStoreInstance.createSlotAssignment(nodeId, queueId, slotRangesString);
+            wrappedAndesContextStoreInstance.createSlotAssignment(nodeId, queueName, slotRangesString);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -637,14 +637,14 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     /**
      * Select unassigned slots for a given queue name
      *
-     * @param queueId name of queue
+     * @param queueName name of queue
      * @return unassigned slot object if found
      * @throws AndesException
      */
     @Override
-    public Slot selectUnAssignedSlot(long queueId) throws AndesException {
+    public Slot selectUnAssignedSlot(String queueName) throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.selectUnAssignedSlot(queueId);
+            return wrappedAndesContextStoreInstance.selectUnAssignedSlot(queueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

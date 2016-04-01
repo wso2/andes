@@ -24,16 +24,23 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.cache.Weigher;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesContextStore;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessage;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.AndesMessagePart;
+import org.wso2.andes.kernel.DeliverableAndesMetadata;
+import org.wso2.andes.kernel.DurableStoreConnection;
+import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.kernel.slot.Slot;
-import org.wso2.andes.store.AndesDataIntegrityViolationException;
+import org.wso2.andes.kernel.slot.SlotRange;
+import org.wso2.andes.kernel.slot.SlotRangesEncorderDecoder;
 import org.wso2.andes.server.queue.DLCQueueUtils;
+import org.wso2.andes.store.AndesDataIntegrityViolationException;
 import org.wso2.andes.store.cache.AndesMessageCache;
 import org.wso2.andes.store.cache.MessageCacheFactory;
 import org.wso2.andes.tools.utils.MessageTracer;
-//import org.wso2.carbon.metrics.manager.Level;
-//import org.wso2.carbon.metrics.manager.MetricManager;
-//import org.wso2.carbon.metrics.manager.Timer.Context;
 
 import java.sql.BatchUpdateException;
 import java.sql.Connection;
@@ -53,6 +60,10 @@ import static org.wso2.andes.store.rdbms.RDBMSConstants.MSG_OFFSET;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_MESSAGE_PART;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_METADATA;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.TASK_RETRIEVING_CONTENT_FOR_MESSAGES;
+
+//import org.wso2.carbon.metrics.manager.Level;
+//import org.wso2.carbon.metrics.manager.MetricManager;
+//import org.wso2.carbon.metrics.manager.Timer.Context;
 
 /**
  * ANSI SQL based message store implementation. Message persistence related methods are implemented
@@ -754,29 +765,87 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         return md;
     }
 
+
+//    public List<DeliverableAndesMetadata> getMetadataList(Slot slot, final String storageQueueName, long firstMsgId,
+//                                                      long lastMsgID) throws AndesException {
+//
+//        List<DeliverableAndesMetadata> metadataList = new ArrayList<>();
+//        Connection connection = null;
+//        PreparedStatement preparedStatement = null;
+//        ResultSet resultSet = null;
+//
+////        Context metaListRetrievalContext = MetricManager.timer(Level.INFO, MetricsConstants.GET_META_DATA_LIST).start();
+////        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
+//
+//        try {
+//            connection = getConnection();
+//            preparedStatement = connection
+//                    .prepareStatement(RDBMSConstants.PS_SELECT_METADATA_RANGE_FROM_QUEUE);
+//            preparedStatement.setInt(1, getCachedQueueID(storageQueueName));
+//            preparedStatement.setLong(2, firstMsgId);
+//            preparedStatement.setLong(3, lastMsgID);
+//
+//            resultSet = preparedStatement.executeQuery();
+//            while (resultSet.next()) {
+//                DeliverableAndesMetadata md = new DeliverableAndesMetadata(slot,
+//                        resultSet.getLong(RDBMSConstants.MESSAGE_ID),
+//                        resultSet.getBytes(RDBMSConstants.METADATA),
+//                        true
+//                );
+//                md.setStorageQueueName(storageQueueName);
+//                metadataList.add(md);
+//                //Tracing message
+//                MessageTracer.trace(md, MessageTracer.METADATA_READ_FROM_DB + " slot = " + slot.getId());
+//            }
+//            if (log.isDebugEnabled()) {
+//                log.debug("request: metadata range (" + firstMsgId + " , " + lastMsgID + ") in destination queue "
+//                          + storageQueueName + ", response: metadata count " + metadataList.size());
+//            }
+//        } catch (SQLException e) {
+//            throw rdbmsStoreUtils.convertSQLException("Error occurred while retrieving messages between msg id "
+//                                                      + firstMsgId + " and " + lastMsgID + " from queue "
+//                                                      + storageQueueName, e);
+//        } finally {
+////            metaListRetrievalContext.stop();
+////            contextRead.stop();
+//            close(connection, preparedStatement, resultSet,
+//                  RDBMSConstants.TASK_RETRIEVING_METADATA_RANGE_FROM_QUEUE + storageQueueName);
+//        }
+//        return metadataList;
+//    }
+
+
     /**
      * {@inheritDoc}
      */
     @Override
-    public List<DeliverableAndesMetadata> getMetadataList(Slot slot, final String storageQueueName, long firstMsgId,
-                                                      long lastMsgID) throws AndesException {
+    public List<DeliverableAndesMetadata> getMetadataListForSlot(Slot slot, final String storageQueueName) throws AndesException {
 
         List<DeliverableAndesMetadata> metadataList = new ArrayList<>();
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
+         String prepareStatementString = RDBMSConstants.PS_METADATA_SELECT_CALUSE;
+        Map<Long, SlotRange> nodeIdToSlotRangeMap = SlotRangesEncorderDecoder.decode(slot.getSlotRangesString());
+        for(int i = 0; i < nodeIdToSlotRangeMap.size() ; i++){
+            prepareStatementString = prepareStatementString + RDBMSConstants.PS_SELECT_METADATA_WHERE_CONDITION + "||";
+        }
+        prepareStatementString = prepareStatementString.substring(0, (prepareStatementString.length() - 2));
+        prepareStatementString = prepareStatementString +  RDBMSConstants.PS_SELECT_METADATA_ORDER_BY;
 
-//        Context metaListRetrievalContext = MetricManager.timer(Level.INFO, MetricsConstants.GET_META_DATA_LIST).start();
-//        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
 
         try {
             connection = getConnection();
             preparedStatement = connection
-                    .prepareStatement(RDBMSConstants.PS_SELECT_METADATA_RANGE_FROM_QUEUE);
-            preparedStatement.setInt(1, getCachedQueueID(storageQueueName));
-            preparedStatement.setLong(2, firstMsgId);
-            preparedStatement.setLong(3, lastMsgID);
-
+                    .prepareStatement(prepareStatementString);
+            int i = 1;
+            for(Map.Entry<Long, SlotRange> entry: nodeIdToSlotRangeMap.entrySet()){
+                preparedStatement.setLong(i, getCachedQueueID(storageQueueName));
+                preparedStatement.setLong(i + 1, entry.getKey());
+                preparedStatement.setLong(i+2, entry.getValue().getStartMessasgeId());
+                preparedStatement.setLong(i+3, entry.getValue().getEndMessageId());
+                i++;
+            }
             resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
                 DeliverableAndesMetadata md = new DeliverableAndesMetadata(slot,
@@ -790,21 +859,20 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 MessageTracer.trace(md, MessageTracer.METADATA_READ_FROM_DB + " slot = " + slot.getId());
             }
             if (log.isDebugEnabled()) {
-                log.debug("request: metadata range (" + firstMsgId + " , " + lastMsgID + ") in destination queue "
+                log.debug("request: metadata range (" + slot.getSlotRangesString() + ") in destination queue "
                           + storageQueueName + ", response: metadata count " + metadataList.size());
             }
         } catch (SQLException e) {
-            throw rdbmsStoreUtils.convertSQLException("Error occurred while retrieving messages between msg id "
-                                                      + firstMsgId + " and " + lastMsgID + " from queue "
-                                                      + storageQueueName, e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while retrieving messages for + " + slot
+                    .getSlotRangesString() + " " + "from queue " + storageQueueName, e);
         } finally {
-//            metaListRetrievalContext.stop();
-//            contextRead.stop();
             close(connection, preparedStatement, resultSet,
-                  RDBMSConstants.TASK_RETRIEVING_METADATA_RANGE_FROM_QUEUE + storageQueueName);
+                    RDBMSConstants.TASK_RETRIEVING_METADATA_RANGE_FROM_QUEUE + storageQueueName);
         }
         return metadataList;
     }
+
+
 
     /**
      * Get number of messages in the queue withing the message id range

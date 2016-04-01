@@ -60,19 +60,19 @@ public interface SlotAgent {
 	/**
 	 * Select rows with unassigned slots
 	 *
-	 * @param queueId Id of queue
+	 * @param queueName Id of queue
 	 * @return unassigned slot object
 	 */
 
-	Slot getUnAssignedSlot(long queueId) throws AndesException;
+	Slot getUnAssignedSlot(String queueName) throws AndesException;
 
 	/**
 	 * Update slot assignment in database
 	 *  @param nodeId id of node
-	 * @param queueId name of queue
+	 * @param queueName Name of queue
 	 * @param allocatedSlot allocated slot
 	 */
-	void updateSlotAssignment(long nodeId, long queueId, Slot allocatedSlot)
+	void updateSlotAssignment(long nodeId, String queueName, Slot allocatedSlot)
 			throws AndesException;
 
 	/**
@@ -257,5 +257,5 @@ public interface SlotAgent {
 	void insertLastAssignedMessageId(long uniqueNodeId, long queueId, long lastAssignedMessageId) throws AndesException;
 
 
-	Slot getSlot(long queueId) throws AndesException;
+	Slot getSlot(String queueName) throws AndesException;
 }

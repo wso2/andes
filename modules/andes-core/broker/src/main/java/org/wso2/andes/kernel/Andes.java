@@ -34,13 +34,9 @@ import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.kernel.slot.Slot;
-import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionEngine;
 import org.wso2.andes.tools.utils.MessageTracer;
-//import org.wso2.carbon.metrics.manager.Level;
-//import org.wso2.carbon.metrics.manager.Meter;
-//import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.Collection;
 import java.util.List;
@@ -52,6 +48,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_PURGED_COUNT_TIMEOUT;
+
+//import org.wso2.carbon.metrics.manager.Level;
+//import org.wso2.carbon.metrics.manager.Meter;
+//import org.wso2.carbon.metrics.manager.MetricManager;
 
 /**
  * API for all the tasks done by Andes.
@@ -530,15 +530,12 @@ public class Andes {
      * Get message metadata from queue between two message id values.
      *
      * @param queueName  queue name
-     * @param firstMsgId id of the starting id
-     * @param lastMsgID  id of the last id
      * @return List of message metadata
      * @throws AndesException
      */
-    public List<DeliverableAndesMetadata> getMetaDataList(Slot slot, final String queueName, long firstMsgId, long
-            lastMsgID)
+    public List<DeliverableAndesMetadata> getMetaDataList(Slot slot, final String queueName)
             throws AndesException {
-        return MessagingEngine.getInstance().getMetaDataList(slot, queueName, firstMsgId, lastMsgID);
+        return MessagingEngine.getInstance().getMetaDataList(slot, queueName);
     }
 
     /**

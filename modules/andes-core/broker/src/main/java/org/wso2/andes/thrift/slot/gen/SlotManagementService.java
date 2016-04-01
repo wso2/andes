@@ -38,7 +38,7 @@ public class SlotManagementService {
 
   public interface Iface {
 
-    public SlotInfo getSlotInfo(long storageQueueId, long nodeId) throws org.apache.thrift.TException;
+    public SlotInfo getSlotInfo(String storageQueueName, long nodeId) throws org.apache.thrift.TException;
 
     public void updateMessageId(String queueName, String nodeId, long startMessageId, long endMessageId, long
             localSafeZone) throws org.apache.thrift.TException;
@@ -64,8 +64,8 @@ public class SlotManagementService {
 
   public interface AsyncIface {
 
-    public void getSlotInfo(long storageQueueId, long nodeId, org.apache.thrift.async.AsyncMethodCallback<AsyncClient
-            .getSlotInfo_call> resultHandler) throws org.apache.thrift.TException;
+    public void getSlotInfo(String storageQueueName, long nodeId, org.apache.thrift.async
+            .AsyncMethodCallback<AsyncClient.getSlotInfo_call> resultHandler) throws org.apache.thrift.TException;
 
     public void updateMessageId(String queueName, String nodeId, long startMessageId, long endMessageId, long
             localSafeZone, org.apache.thrift.async.AsyncMethodCallback<AsyncClient.updateMessageId_call> resultHandler) throws org.apache.thrift.TException;
@@ -106,16 +106,16 @@ public class SlotManagementService {
       super(iprot, oprot);
     }
 
-    public SlotInfo getSlotInfo(long storageQueueId, long nodeId) throws org.apache.thrift.TException
+    public SlotInfo getSlotInfo(String storageQueueName, long nodeId) throws org.apache.thrift.TException
     {
-      send_getSlotInfo(storageQueueId, nodeId);
+      send_getSlotInfo(storageQueueName, nodeId);
       return recv_getSlotInfo();
     }
 
-    public void send_getSlotInfo(long storageQueueId, long nodeId) throws org.apache.thrift.TException
+    public void send_getSlotInfo(String storageQueueName, long nodeId) throws org.apache.thrift.TException
     {
       getSlotInfo_args args = new getSlotInfo_args();
-      args.setStorageQueueId(storageQueueId);
+      args.setStorageQueueName(storageQueueName);
       args.setNodeId(nodeId);
       sendBase("getSlotInfo", args);
     }
@@ -282,26 +282,26 @@ public class SlotManagementService {
       super(protocolFactory, clientManager, transport);
     }
 
-    public void getSlotInfo(long storageQueueId, long nodeId, org.apache.thrift.async.AsyncMethodCallback<getSlotInfo_call> resultHandler) throws org.apache.thrift.TException {
+    public void getSlotInfo(String storageQueueName, long nodeId, org.apache.thrift.async.AsyncMethodCallback<getSlotInfo_call> resultHandler) throws org.apache.thrift.TException {
       checkReady();
-      getSlotInfo_call method_call = new getSlotInfo_call(storageQueueId, nodeId, resultHandler, this, ___protocolFactory, ___transport);
+      getSlotInfo_call method_call = new getSlotInfo_call(storageQueueName, nodeId, resultHandler, this, ___protocolFactory, ___transport);
       this.___currentMethod = method_call;
       ___manager.call(method_call);
     }
 
     public static class getSlotInfo_call extends org.apache.thrift.async.TAsyncMethodCall {
-      private long storageQueueId;
+      private String storageQueueName;
       private long nodeId;
-      public getSlotInfo_call(long storageQueueId, long nodeId, org.apache.thrift.async.AsyncMethodCallback<getSlotInfo_call> resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
+      public getSlotInfo_call(String storageQueueName, long nodeId, org.apache.thrift.async.AsyncMethodCallback<getSlotInfo_call> resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
         super(client, protocolFactory, transport, resultHandler, false);
-        this.storageQueueId = storageQueueId;
+        this.storageQueueName = storageQueueName;
         this.nodeId = nodeId;
       }
 
       public void write_args(org.apache.thrift.protocol.TProtocol prot) throws org.apache.thrift.TException {
         prot.writeMessageBegin(new org.apache.thrift.protocol.TMessage("getSlotInfo", org.apache.thrift.protocol.TMessageType.CALL, 0));
         getSlotInfo_args args = new getSlotInfo_args();
-        args.setStorageQueueId(storageQueueId);
+        args.setStorageQueueName(storageQueueName);
         args.setNodeId(nodeId);
         args.write(prot);
         prot.writeMessageEnd();
@@ -572,7 +572,7 @@ public class SlotManagementService {
 
       public getSlotInfo_result getResult(I iface, getSlotInfo_args args) throws org.apache.thrift.TException {
         getSlotInfo_result result = new getSlotInfo_result();
-        result.success = iface.getSlotInfo(args.storageQueueId, args.nodeId);
+        result.success = iface.getSlotInfo(args.storageQueueName, args.nodeId);
         return result;
       }
     }
@@ -710,15 +710,15 @@ public class SlotManagementService {
   public static class getSlotInfo_args implements org.apache.thrift.TBase<getSlotInfo_args, getSlotInfo_args._Fields>, java.io.Serializable, Cloneable   {
     private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("getSlotInfo_args");
 
-    private static final org.apache.thrift.protocol.TField STORAGE_QUEUE_ID_FIELD_DESC = new org.apache.thrift.protocol.TField("storageQueueId", org.apache.thrift.protocol.TType.I64, (short)1);
+    private static final org.apache.thrift.protocol.TField STORAGE_QUEUE_NAME_FIELD_DESC = new org.apache.thrift.protocol.TField("storageQueueName", org.apache.thrift.protocol.TType.STRING, (short)1);
     private static final org.apache.thrift.protocol.TField NODE_ID_FIELD_DESC = new org.apache.thrift.protocol.TField("nodeId", org.apache.thrift.protocol.TType.I64, (short)2);
 
-    public long storageQueueId; // required
+    public String storageQueueName; // required
     public long nodeId; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
     public enum _Fields implements org.apache.thrift.TFieldIdEnum {
-      STORAGE_QUEUE_ID((short)1, "storageQueueId"),
+      STORAGE_QUEUE_NAME((short)1, "storageQueueName"),
       NODE_ID((short)2, "nodeId");
 
       private static final Map<String, _Fields> byName = new HashMap<String, _Fields>();
@@ -734,8 +734,8 @@ public class SlotManagementService {
        */
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
-          case 1: // STORAGE_QUEUE_ID
-            return STORAGE_QUEUE_ID;
+          case 1: // STORAGE_QUEUE_NAME
+            return STORAGE_QUEUE_NAME;
           case 2: // NODE_ID
             return NODE_ID;
           default:
@@ -778,15 +778,14 @@ public class SlotManagementService {
     }
 
     // isset id assignments
-    private static final int __STORAGEQUEUEID_ISSET_ID = 0;
-    private static final int __NODEID_ISSET_ID = 1;
-    private BitSet __isset_bit_vector = new BitSet(2);
+    private static final int __NODEID_ISSET_ID = 0;
+    private BitSet __isset_bit_vector = new BitSet(1);
 
     public static final Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
       Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.STORAGE_QUEUE_ID, new org.apache.thrift.meta_data.FieldMetaData("storageQueueId", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.I64)));
+      tmpMap.put(_Fields.STORAGE_QUEUE_NAME, new org.apache.thrift.meta_data.FieldMetaData("storageQueueName", org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING)));
       tmpMap.put(_Fields.NODE_ID, new org.apache.thrift.meta_data.FieldMetaData("nodeId", org.apache.thrift.TFieldRequirementType.DEFAULT, 
           new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.I64)));
       metaDataMap = Collections.unmodifiableMap(tmpMap);
@@ -797,12 +796,11 @@ public class SlotManagementService {
     }
 
     public getSlotInfo_args(
-      long storageQueueId,
+      String storageQueueName,
       long nodeId)
     {
       this();
-      this.storageQueueId = storageQueueId;
-      setStorageQueueIdIsSet(true);
+      this.storageQueueName = storageQueueName;
       this.nodeId = nodeId;
       setNodeIdIsSet(true);
     }
@@ -813,7 +811,9 @@ public class SlotManagementService {
     public getSlotInfo_args(getSlotInfo_args other) {
       __isset_bit_vector.clear();
       __isset_bit_vector.or(other.__isset_bit_vector);
-      this.storageQueueId = other.storageQueueId;
+      if (other.isSetStorageQueueName()) {
+        this.storageQueueName = other.storageQueueName;
+      }
       this.nodeId = other.nodeId;
     }
 
@@ -823,33 +823,33 @@ public class SlotManagementService {
 
     @Override
     public void clear() {
-      setStorageQueueIdIsSet(false);
-      this.storageQueueId = 0;
+      this.storageQueueName = null;
       setNodeIdIsSet(false);
       this.nodeId = 0;
     }
 
-    public long getStorageQueueId() {
-      return this.storageQueueId;
+    public String getStorageQueueName() {
+      return this.storageQueueName;
     }
 
-    public getSlotInfo_args setStorageQueueId(long storageQueueId) {
-      this.storageQueueId = storageQueueId;
-      setStorageQueueIdIsSet(true);
+    public getSlotInfo_args setStorageQueueName(String storageQueueName) {
+      this.storageQueueName = storageQueueName;
       return this;
     }
 
-    public void unsetStorageQueueId() {
-      __isset_bit_vector.clear(__STORAGEQUEUEID_ISSET_ID);
+    public void unsetStorageQueueName() {
+      this.storageQueueName = null;
     }
 
-    /** Returns true if field storageQueueId is set (has been assigned a value) and false otherwise */
-    public boolean isSetStorageQueueId() {
-      return __isset_bit_vector.get(__STORAGEQUEUEID_ISSET_ID);
+    /** Returns true if field storageQueueName is set (has been assigned a value) and false otherwise */
+    public boolean isSetStorageQueueName() {
+      return this.storageQueueName != null;
     }
 
-    public void setStorageQueueIdIsSet(boolean value) {
-      __isset_bit_vector.set(__STORAGEQUEUEID_ISSET_ID, value);
+    public void setStorageQueueNameIsSet(boolean value) {
+      if (!value) {
+        this.storageQueueName = null;
+      }
     }
 
     public long getNodeId() {
@@ -877,11 +877,11 @@ public class SlotManagementService {
 
     public void setFieldValue(_Fields field, Object value) {
       switch (field) {
-      case STORAGE_QUEUE_ID:
+      case STORAGE_QUEUE_NAME:
         if (value == null) {
-          unsetStorageQueueId();
+          unsetStorageQueueName();
         } else {
-          setStorageQueueId((Long)value);
+          setStorageQueueName((String)value);
         }
         break;
 
@@ -898,8 +898,8 @@ public class SlotManagementService {
 
     public Object getFieldValue(_Fields field) {
       switch (field) {
-      case STORAGE_QUEUE_ID:
-        return Long.valueOf(getStorageQueueId());
+      case STORAGE_QUEUE_NAME:
+        return getStorageQueueName();
 
       case NODE_ID:
         return Long.valueOf(getNodeId());
@@ -915,8 +915,8 @@ public class SlotManagementService {
       }
 
       switch (field) {
-      case STORAGE_QUEUE_ID:
-        return isSetStorageQueueId();
+      case STORAGE_QUEUE_NAME:
+        return isSetStorageQueueName();
       case NODE_ID:
         return isSetNodeId();
       }
@@ -936,12 +936,12 @@ public class SlotManagementService {
       if (that == null)
         return false;
 
-      boolean this_present_storageQueueId = true;
-      boolean that_present_storageQueueId = true;
-      if (this_present_storageQueueId || that_present_storageQueueId) {
-        if (!(this_present_storageQueueId && that_present_storageQueueId))
+      boolean this_present_storageQueueName = true && this.isSetStorageQueueName();
+      boolean that_present_storageQueueName = true && that.isSetStorageQueueName();
+      if (this_present_storageQueueName || that_present_storageQueueName) {
+        if (!(this_present_storageQueueName && that_present_storageQueueName))
           return false;
-        if (this.storageQueueId != that.storageQueueId)
+        if (!this.storageQueueName.equals(that.storageQueueName))
           return false;
       }
 
@@ -970,12 +970,12 @@ public class SlotManagementService {
       int lastComparison = 0;
       getSlotInfo_args typedOther = (getSlotInfo_args)other;
 
-      lastComparison = Boolean.valueOf(isSetStorageQueueId()).compareTo(typedOther.isSetStorageQueueId());
+      lastComparison = Boolean.valueOf(isSetStorageQueueName()).compareTo(typedOther.isSetStorageQueueName());
       if (lastComparison != 0) {
         return lastComparison;
       }
-      if (isSetStorageQueueId()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.storageQueueId, typedOther.storageQueueId);
+      if (isSetStorageQueueName()) {
+        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.storageQueueName, typedOther.storageQueueName);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -1007,10 +1007,9 @@ public class SlotManagementService {
           break;
         }
         switch (field.id) {
-          case 1: // STORAGE_QUEUE_ID
-            if (field.type == org.apache.thrift.protocol.TType.I64) {
-              this.storageQueueId = iprot.readI64();
-              setStorageQueueIdIsSet(true);
+          case 1: // STORAGE_QUEUE_NAME
+            if (field.type == org.apache.thrift.protocol.TType.STRING) {
+              this.storageQueueName = iprot.readString();
             } else { 
               org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
             }
@@ -1038,9 +1037,11 @@ public class SlotManagementService {
       validate();
 
       oprot.writeStructBegin(STRUCT_DESC);
-      oprot.writeFieldBegin(STORAGE_QUEUE_ID_FIELD_DESC);
-      oprot.writeI64(this.storageQueueId);
-      oprot.writeFieldEnd();
+      if (this.storageQueueName != null) {
+        oprot.writeFieldBegin(STORAGE_QUEUE_NAME_FIELD_DESC);
+        oprot.writeString(this.storageQueueName);
+        oprot.writeFieldEnd();
+      }
       oprot.writeFieldBegin(NODE_ID_FIELD_DESC);
       oprot.writeI64(this.nodeId);
       oprot.writeFieldEnd();
@@ -1053,8 +1054,12 @@ public class SlotManagementService {
       StringBuilder sb = new StringBuilder("getSlotInfo_args(");
       boolean first = true;
 
-      sb.append("storageQueueId:");
-      sb.append(this.storageQueueId);
+      sb.append("storageQueueName:");
+      if (this.storageQueueName == null) {
+        sb.append("null");
+      } else {
+        sb.append(this.storageQueueName);
+      }
       first = false;
       if (!first) sb.append(", ");
       sb.append("nodeId:");
