@@ -196,15 +196,35 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Class name of the authenticator to use. class should inherit from {@link org.dna.mqtt.moquette.server.IAuthenticator}
      * <p>Note: default implementation authenticates against carbon user store based on supplied username/password     
      */
-    TRANSPORTS_MQTT_USER_AUTHENTICATOR_CLASS("transports/mqtt/security/authenticator", 
+    TRANSPORTS_MQTT_USER_AUTHENTICATOR_CLASS("transports/mqtt/security/authenticator/@class",
                                              "org.wso2.carbon.andes.authentication.andes.CarbonBasedMQTTAuthenticator", String.class),
-                                              
-    
+
     /**
      * Instructs the MQTT server to sending credential is required or optional. 
      * This behavior is subject to change in mqtt specification v 3.1.1
      */
     TRANSPORTS_MQTT_USER_ATHENTICATION("transports/mqtt/security/authentication", "OPTIONAL", MQTTUserAuthenticationScheme.class),
+
+    /**
+     * List of properties that can define how the server will authenticate the user with the authentication service.
+     */
+    LIST_TRANSPORT_MQTT_PROPERTIES("transports/mqtt/security/authenticator/property/@name", "", List.class),
+
+    /**
+     * This can be used to access a property by giving its key. e.g. hosturl
+     */
+    TRANSPORT_MQTT_PROPERTIES("transports/mqtt/security/authenticator/property[@name = '{key}']", "", String.class),
+    /**
+     * Instructs the MQTT server whether authorization is required or not.
+     */
+    TRANSPORTS_MQTT_USER_AUTHORIZATION("transports/mqtt/security/authorization", "NOT_REQUIRED", MQTTUserAuthorizationScheme.class),
+
+    /**
+     * Class name of the authorizer to use. class should inherit from {@link org.dna.mqtt.moquette.server.IAuthorizer}
+     * <p>Note: default implementation authorize against carbon permission
+     */
+    TRANSPORTS_MQTT_USER_AUTHORIZATION_CLASS("transports/mqtt/security/authorizer/@class",
+                                             "org.wso2.carbon.andes.authorization.andes.CarbonPermissionBasedMQTTAuthorizer", String.class),
 
     /**
      * The class that is used to access an external RDBMS database to operate on messages.
