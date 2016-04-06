@@ -22,7 +22,7 @@ import org.wso2.andes.configuration.enums.MQTTAuthoriztionPermissionLevel;
 import org.wso2.andes.mqtt.MQTTAuthorizationSubject;
 
 /**
- * check whether the user is authorized to either publish or subscribe to the topic
+ * check whether the user is authorized to either to connect to broker or publish/subscribe to the topic
  */
 public interface IAuthorizer {
 
@@ -33,6 +33,14 @@ public interface IAuthorizer {
 	 * @param permissionLevel request permission level. This is either publish or subscribe.
 	 * @return
 	 */
-	boolean isAuthorized(MQTTAuthorizationSubject authorizationSubject, String topic,
+	boolean isAuthorizedForTopic(MQTTAuthorizationSubject authorizationSubject, String topic,
 						 MQTTAuthoriztionPermissionLevel permissionLevel);
+
+	/**
+	 * Check whether the user is authorized to connect to the server.
+	 * @param authorizationSubject passed from authentication.
+	 * @return
+	 */
+	boolean isAuthorizedToConnect(MQTTAuthorizationSubject authorizationSubject);
+
 }

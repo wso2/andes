@@ -55,7 +55,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
 import static org.wso2.andes.configuration.enums.AndesConfiguration.TRANSPORTS_MQTT_DELIVERY_BUFFER_SIZE;
-import static org.wso2.andes.configuration.enums.AndesConfiguration.TRANSPORTS_MQTT_USER_ATHENTICATION;
+import static org.wso2.andes.configuration.enums.AndesConfiguration.TRANSPORTS_MQTT_USER_AUTHENTICATION;
 import static org.wso2.andes.configuration.enums.AndesConfiguration.TRANSPORTS_MQTT_USER_AUTHORIZATION;
 
 public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandler {
@@ -111,7 +111,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
         m_storageService = storageService;
 
         isAuthenticationRequired =
-                    AndesConfigurationManager.readValue(TRANSPORTS_MQTT_USER_ATHENTICATION) == MQTTUserAuthenticationScheme.REQUIRED;
+                    AndesConfigurationManager.readValue(TRANSPORTS_MQTT_USER_AUTHENTICATION) == MQTTUserAuthenticationScheme.REQUIRED;
 
         isAuthorizationRequired =
 					AndesConfigurationManager.readValue(TRANSPORTS_MQTT_USER_AUTHORIZATION) == MQTTUserAuthorizationScheme.REQUIRED;
@@ -125,9 +125,9 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             } catch (ClassNotFoundException e) {
                 throw new MQTTInitializationException("Unable to find the class authorizer: " +  authorizerClassName, e);
             } catch (InstantiationException e) {
-                throw new MQTTInitializationException("Unable to create an instance of :" + authorizerClassName,e);
+                throw new MQTTInitializationException("Unable to create an instance of :" + authorizerClassName, e);
             } catch (IllegalAccessException e) {
-                throw new MQTTInitializationException("Access of the instance in not allowed. :", e);
+                throw new MQTTInitializationException("Access of the instance in not allowed.", e);
             }
         }
 
@@ -268,6 +268,16 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             authSubject.setTenantDomain(authenticationInfo.getTenantDomain());
             authSubject.setProtocolVersion(msg.getProcotolVersion());
             authSubject.setProperties(authenticationInfo.getProperties());
+			//handle user authorization.
+			if (isAuthorizationRequired && m_authorizer != null) {
+				boolean isAuthorized = m_authorizer.isAuthorizedToConnect(authSubject);
+				if (!isAuthorized) {
+					ConnAckMessage okResp = new ConnAckMessage();
+					okResp.setReturnCode(ConnAckMessage.NOT_AUTHORIZED);
+					session.write(okResp);
+					return;
+				}
+			}
         }
 
         authSubjects.put(msg.getClientID(), authSubject);
@@ -385,7 +395,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             authenticated = true;
             if (isAuthorizationRequired && m_authorizer != null) {
                 //authorize client with the topic and the permission level
-                authorized = m_authorizer.isAuthorized(authSubject, topic, MQTTAuthoriztionPermissionLevel.PUBLISH);
+                authorized = m_authorizer.isAuthorizedForTopic(authSubject, topic, MQTTAuthoriztionPermissionLevel.PUBLISH);
             } else {
                 authorized = true;
             }
@@ -852,12 +862,11 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
 
                 authenticatedForOneOrMore = true;
                 if (isAuthorizationRequired && m_authorizer != null) {
-                    authorized = m_authorizer.isAuthorized(authSubject, req.getTopicFilter(),
-                                                           MQTTAuthoriztionPermissionLevel.SUBSCRIBE);
+                    authorized = m_authorizer.isAuthorizedForTopic(authSubject, req.getTopicFilter(),
+																   MQTTAuthoriztionPermissionLevel.SUBSCRIBE);
                     if(!authorized) {
                         //Disconnect the client.
-                        log.error("Client " + clientID +
-                                          " does not have authorization to subscribe to topic : " +
+                        log.error("Client " + clientID + " does not have authorization to subscribe to topic : " +
                                           req.getTopicFilter());
 
                         // As per mqtt spec 3.1.1 sub ack should send to client if broker don't allow client
@@ -876,7 +885,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
                             Thread.currentThread().interrupt();
                             log.error("Failed to disconnect the client " + clientID);
                         }
-
+						break;
                     }
                 } else {
                     authorized = true;
@@ -917,10 +926,9 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
                 log.error(message + e.getMessage(), e);
                 throw new RuntimeException(message, e);
             }
-
         }
 
-        if (authenticatedForOneOrMore) {
+        if (authenticatedForOneOrMore && authorized) {
             SubAckMessage ackMessage = new SubAckMessage();
             ackMessage.setMessageID(msg.getMessageID());
 
