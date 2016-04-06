@@ -806,11 +806,11 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
                 // User flag has to be set at this point, else not authenticated
                 // Log and return since no need to proceed with subscribing due to permissions.
                 log.error("Client " + clientID + " does not have permission to subscribe to topic : " +
-                          req.getTopicFilter());
+                        req.getTopicFilter());
 
                 // As per mqtt spec 3.1.1 sub ack should send to client if broker don't allow client
                 // to subscribe a topic.
-                if(authSubject.getProtocolVersion() == Utils.VERSION_3_1_1) {
+                if (authSubject.getProtocolVersion() == Utils.VERSION_3_1_1) {
                     // 'forbidden subscription' return code has sent to client since client don't have
                     // permission to subscribe the topic.
                     SubAckMessage response = new SubAckMessage();
@@ -827,8 +827,8 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             //Andes Specific
             try {
                 AndesMQTTBridge.getBridgeInstance().onTopicSubscription(req.getTopicFilter(), clientID,
-                                                                        authSubject.getUsername(),
-                                                                        qos, cleanSession);
+                        authSubject.getUsername(),
+                        qos, cleanSession);
             } catch (Exception e) {
                 final String message = "Error when registering the subscriber ";
                 log.error(message + e.getMessage(), e);
