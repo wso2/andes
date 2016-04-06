@@ -100,18 +100,22 @@ public class Job implements ReadWriteRunnable
         // limit the number of events processed in one run
         int i = _maxEvents;
         while (--i != 0) {
-            Runnable e = _eventQueue.poll();
-            if (e == null) {
-                return true;
-            } else {
+            try {
+                Runnable e = _eventQueue.poll();
+                if (e == null) {
+                    return true;
+                } else {
 
-                long start = System.nanoTime();
-                e.run();
-                totTime = totTime + (System.nanoTime() - start) / 1000000;
-                count++;
-                if (_logger.isDebugEnabled() && count % 100 == 0) {
-                    _logger.debug("Runnable took " + totTime / count + " ms " + _eventQueue.size() + " jobs left");
+                    long start = System.nanoTime();
+                    e.run();
+                    totTime = totTime + (System.nanoTime() - start) / 1000000;
+                    count++;
+                    if (_logger.isDebugEnabled() && count % 100 == 0) {
+                        _logger.debug("Runnable took " + totTime / count + " ms " + _eventQueue.size() + " jobs left");
+                    }
                 }
+            } catch (Throwable e) {
+                _logger.error("Error occurred while processing job pool ", e);
             }
         }
         return false;

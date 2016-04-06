@@ -273,7 +273,7 @@ public class MessageFlusher {
             MessageDeliveryInfo messageDeliveryInfo =
                     getMessageDeliveryInfo(destination, protocolType, destinationType);
             for (DeliverableAndesMetadata metadata : messages) {
-                messageDeliveryInfo.bufferMessage(metadata);
+                messageDeliveryInfo.reBufferMessage(metadata);
             }
         } catch (AndesException e) {
             log.fatal("Error scheduling messages for delivery", e);
@@ -391,7 +391,7 @@ public class MessageFlusher {
      */
     public void reQueueMessage(DeliverableAndesMetadata message, DestinationType destinationType) {
         String destination = message.getDestination();
-        subscriptionCursar4QueueMap.get(destinationType).get(destination).bufferMessage(message);
+        subscriptionCursar4QueueMap.get(destinationType).get(destination).reBufferMessage(message);
     }
 
     public static MessageFlusher getInstance() {
