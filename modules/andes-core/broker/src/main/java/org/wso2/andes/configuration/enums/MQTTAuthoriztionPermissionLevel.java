@@ -24,11 +24,11 @@ package org.wso2.andes.configuration.enums;
 
 public enum MQTTAuthoriztionPermissionLevel {
 	/**
-	 * Authoriztion permission level identifier for PUBLISH
+	 * Authorization permission level identifier for PUBLISH.
 	 */
 	PUBLISH,
 	/**
-	 * Authoriztion permission level identifier for SUBSCRIBE
+	 * Authorization permission level identifier for SUBSCRIBE.
 	 */
 	SUBSCRIBE
 }

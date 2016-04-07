@@ -422,15 +422,6 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
         } else {
             // Log and continue since there is no method to inform the client about permission failure
             log.error("Client " + clientID + " does not have permission to publish to topic : " + topic);
-            //Disconnect the client.
-            try {
-                processDisconnect(evt.getSession(), clientID, true);
-            } catch (InterruptedException e) {
-                // Restore the interrupted status
-                Thread.currentThread().interrupt();
-                log.error("Failed to disconnect the client " + clientID);
-            }
-
         }
     }
 
@@ -842,108 +833,69 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             log.debug("processSubscribe invoked from client " + clientID + " with msgID " + msg.getMessageID());
         }
 
-        // Authorize publish
         MQTTAuthorizationSubject authSubject = authSubjects.get(clientID);
-
-        boolean authenticatedForOneOrMore = false;
-        boolean authorized = false;
-
+        SubAckMessage ackMessage = new SubAckMessage();
+        ackMessage.setMessageID(msg.getMessageID());
         for (SubscribeMessage.Couple req : msg.subscriptions()) {
-
             // Authorize subscribe
             String tenant = MQTTUtils.getTenantFromTopic(req.getTopicFilter());
-
-
             // Currently we avoid domain check for super tenant users
             // TODO: Need to implement a proper authentication model for tenant users to work with hierarchical topics
             if ((!isAuthenticationRequired && !authSubject.isUserFlag()) || (authSubject.isUserFlag() && (
                     CARBON_SUPER_TENANT_DOMAIN.equals(authSubject.getTenantDomain())
                     || tenant.equals(authSubject.getTenantDomain())))) {
-
-                authenticatedForOneOrMore = true;
+                boolean authorized;
                 if (isAuthorizationRequired && m_authorizer != null) {
                     authorized = m_authorizer.isAuthorizedForTopic(authSubject, req.getTopicFilter(),
 																   MQTTAuthoriztionPermissionLevel.SUBSCRIBE);
-                    if(!authorized) {
-                        //Disconnect the client.
-                        log.error("Client " + clientID + " does not have authorization to subscribe to topic : " +
-                                          req.getTopicFilter());
-
-                        // As per mqtt spec 3.1.1 sub ack should send to client if broker don't allow client
-                        // to subscribe a topic.
-                        if(authSubject.getProtocolVersion() == Utils.VERSION_3_1_1) {
-                            // 'forbidden subscription' return code has sent to client since client don't have
-                            // permission to subscribe the topic.
-                            SubAckMessage response = new SubAckMessage();
-                            response.setreturnCode(SubAckMessage.FORBIDDEN_SUBSCRIPTION);
-                            session.write(response);
-                        }
+                } else {
+                    authorized = true;
+                }
+                AbstractMessage.QOSType qos = AbstractMessage.QOSType.values()[req.getQos()];
+                ackMessage.addType(authorized ? qos : AbstractMessage.QOSType.FAILURE);
+                if (!authorized) {
+                    if(authSubject.getProtocolVersion() < Utils.VERSION_3_1_1) {
                         try {
+                            session.write(ackMessage);
                             processDisconnect(session, clientID, true);
                         } catch (InterruptedException e) {
                             // Restore the interrupted status
                             Thread.currentThread().interrupt();
                             log.error("Failed to disconnect the client " + clientID);
                         }
-						break;
+                        return;
+                    } else {
+                        continue;
                     }
-                } else {
-                    authorized = true;
                 }
             } else {
                 // User flag has to be set at this point, else not authenticated
                 // Log and return since no need to proceed with subscribing due to permissions.
-                log.error("Client " + clientID +
-                                  " does not have permission to subscribe to topic : " +
+                log.error("Client " + clientID + " does not have permission to subscribe to topic : " +
                                   req.getTopicFilter());
 
                 // As per mqtt spec 3.1.1 sub ack should send to client if broker don't allow client
                 // to subscribe a topic.
-                if(authSubject.getProtocolVersion() == Utils.VERSION_3_1_1) {
-                    // 'forbidden subscription' return code has sent to client since client don't have
-                    // permission to subscribe the topic.
-                    SubAckMessage response = new SubAckMessage();
-                    response.setreturnCode(SubAckMessage.FORBIDDEN_SUBSCRIPTION);
-                    session.write(response);
-                }
+                ackMessage.addType(AbstractMessage.QOSType.FAILURE);
                 continue;
             }
-
             AbstractMessage.QOSType qos = AbstractMessage.QOSType.values()[req.getQos()];
-            Subscription newSubscription = new Subscription(clientID, req.getTopicFilter(), qos,
-                                                            cleanSession);
+            Subscription newSubscription = new Subscription(clientID, req.getTopicFilter(), qos, cleanSession);
             subscribeSingleTopic(newSubscription);
             //Will connect with the bridge to notify on the topic
             //Andes Specific
             try {
-                AndesMQTTBridge.getBridgeInstance().onTopicSubscription(req.getTopicFilter(),
-                                                                        clientID,
-                                                                        authSubject
-                                                                                .getUsername(),
-                                                                        qos, cleanSession);
+                AndesMQTTBridge.getBridgeInstance().onTopicSubscription(req.getTopicFilter(), clientID,
+                        authSubject.getUsername(),
+                        qos, cleanSession);
+
             } catch (Exception e) {
                 final String message = "Error when registering the subscriber ";
                 log.error(message + e.getMessage(), e);
                 throw new RuntimeException(message, e);
             }
         }
-
-        if (authenticatedForOneOrMore && authorized) {
-            SubAckMessage ackMessage = new SubAckMessage();
-            ackMessage.setMessageID(msg.getMessageID());
-
-            //reply with requested qos
-            for (SubscribeMessage.Couple req : msg.subscriptions()) {
-                AbstractMessage.QOSType qos = AbstractMessage.QOSType.values()[req.getQos()];
-                ackMessage.addType(qos);
-            }
-            if (log.isDebugEnabled()) {
-                log.debug("replying with SubAck to MSG ID " + msg.getMessageID());
-            }
-            session.write(ackMessage);
-        } else {
-            log.error("Not sending sub ack message since client " + clientID + " does not have permission to subscribe to all given subscriptions.");
-        }
+        session.write(ackMessage);
     }
 
     private void subscribeSingleTopic(Subscription newSubscription) {
