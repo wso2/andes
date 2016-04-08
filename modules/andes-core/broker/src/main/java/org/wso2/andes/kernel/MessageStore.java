@@ -125,13 +125,11 @@ public interface MessageStore extends HealthAwareStore{
      * read a metadata list from store specifying a message id range
      *
      * @param storageQueueName name of the queue messages are stored
-     * @param firstMsgId first id of the range
-     * @param lastMsgID last id of the range
      * @return list of metadata
      * @throws AndesException
      */
-    List<DeliverableAndesMetadata> getMetadataList(Slot slot, final String storageQueueName, long firstMsgId,
-                                                   long lastMsgID) throws AndesException;
+    List<DeliverableAndesMetadata> getMetadataListForSlot(Slot slot, final String storageQueueName) throws
+            AndesException;
 
     /**
      * Get number of messages in the queue within the message id range
@@ -295,6 +293,16 @@ public interface MessageStore extends HealthAwareStore{
      * @param storageQueueName name of queue
      */
     void addQueue(String storageQueueName) throws AndesException;
+
+    /**
+     * This method caches the queue ids for destination queue names. If queried destination queue is
+     * not in cache, updates the cache and returns the queue id.
+     *
+     * @param destinationQueueName queue name
+     * @return corresponding queue id for the destination queue. On error -1 is returned
+     * @throws AndesException
+     */
+    int getCachedQueueID(String destinationQueueName) throws AndesException;
 
     /**
      * Get a map of queue names and the message count in the database for each queue in the data store

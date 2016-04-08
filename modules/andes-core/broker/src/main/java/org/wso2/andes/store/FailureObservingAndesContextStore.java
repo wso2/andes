@@ -408,12 +408,104 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
         }
     }
 
+    @Override
+    public void createSlot(String slotRanges, long publishedNodeId, long queueId) throws AndesException {
+        try {
+            wrappedAndesContextStoreInstance.createSlot(slotRanges, publishedNodeId, queueId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
     /**
      * {@inheritDoc}
      */
     @Override
     public void close() {
         wrappedAndesContextStoreInstance.close();
+    }
+
+    @Override
+    public void updateLastPublishedMessageId(long nodeId, long queueId, long lastPublishedMessageId) throws
+            AndesException {
+        try {
+            wrappedAndesContextStoreInstance.updateLastPublishedMessageId(nodeId, queueId, lastPublishedMessageId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    @Override
+    public long getLastPublishedMessageId(long nodeId, long queueId) throws AndesException {
+        try {
+            return wrappedAndesContextStoreInstance.getLastPublishedMessageId(nodeId, queueId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    @Override
+    public void insertLastPublishedMessageId(long nodeId, long queueId, long lastPublishedMessageId) throws
+            AndesException {
+        try {
+            wrappedAndesContextStoreInstance.insertLastPublishedMessageId(nodeId, queueId, lastPublishedMessageId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    @Override
+    public Map<Long, Long> getLastPublishedMessageIdsOfAllNodes(long queueId) throws AndesException {
+        try {
+            return wrappedAndesContextStoreInstance.getLastPublishedMessageIdsOfAllNodes(queueId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    @Override
+    public Map<Long, Long> getNodeIdToLastAssignedId(long queueId) throws AndesException {
+        try {
+            return wrappedAndesContextStoreInstance.getNodeIdToLastAssignedId(queueId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    @Override
+    public void updateAssignedMessageId(long uniqueNodeId, long queueId, long lastAssignedMessageId) throws AndesException {
+        try {
+            wrappedAndesContextStoreInstance.updateAssignedMessageId(uniqueNodeId, queueId, lastAssignedMessageId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    @Override
+    public void insertLastAssignedMessageId(long nodeId, long queueId, long lastAssignedMessageId) throws AndesException {
+        try {
+            wrappedAndesContextStoreInstance.insertLastAssignedMessageId(nodeId, queueId, lastAssignedMessageId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    @Override
+    public Slot selectNewSlot(String queueName) throws AndesException {
+        try {
+            return wrappedAndesContextStoreInstance.selectNewSlot(queueName);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
     }
 
     /**
@@ -457,27 +549,6 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
                                                                    wrappedAndesContextStoreInstance);
             storeHealthDetectingFuture = FailureObservingStoreManager.scheduleHealthCheckTask(this);
 
-        }
-    }
-
-
-    /**
-     * Create a new slot in store
-     *
-     * @param startMessageId   start message id of slot
-     * @param endMessageId     end message id of slot
-     * @param storageQueueName name of storage queue name
-     * @param assignedNodeId Node id of assigned node
-     * @throws AndesException
-     */
-    @Override
-    public void createSlot(long startMessageId, long endMessageId, String storageQueueName, String assignedNodeId) throws AndesException {
-        try {
-            wrappedAndesContextStoreInstance.createSlot(startMessageId, endMessageId, storageQueueName,
-                                                        assignedNodeId);
-        } catch (AndesStoreUnavailableException exception) {
-            notifyFailures(exception);
-            throw exception;
         }
     }
 
@@ -565,18 +636,13 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     }
 
     /**
-     * Update assignment information in slot store
-     *
-     * @param nodeId     id of node
-     * @param queueName  name of queue
-     * @param startMsgId start message id of slot
-     * @param endMsgId   end message id of slot
-     * @throws AndesException
+     * {@inheritDoc}
      */
     @Override
-    public void createSlotAssignment(String nodeId, String queueName, long startMsgId, long endMsgId) throws AndesException {
+    public void createSlotAssignment(long nodeId, String queueName, String slotRangesString) throws
+            AndesException {
         try {
-            wrappedAndesContextStoreInstance.createSlotAssignment(nodeId, queueName, startMsgId, endMsgId);
+            wrappedAndesContextStoreInstance.createSlotAssignment(nodeId, queueName, slotRangesString);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

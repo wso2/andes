@@ -37,6 +37,8 @@ import org.wso2.andes.thrift.exception.ThriftClientException;
 import org.wso2.andes.thrift.slot.gen.SlotInfo;
 import org.wso2.andes.thrift.slot.gen.SlotManagementService;
 
+import java.nio.ByteBuffer;
+
 /**
  * A wrapper client for the native thrift client. All the public methods in this class are
  * synchronized in order to avoid out of sequence response exception from thrift server. Only one
@@ -61,13 +63,13 @@ public class MBThriftClient {
      * getSlot method. Returns Slot Object, when the
      * queue name is given
      *
-     * @param queueName name of the queue
+     * @param queueName Name of the queue
      * @param nodeId    of this node
      * @return slot object
      * @throws ConnectionException
      */
     public static synchronized Slot getSlot(String queueName,
-                                            String nodeId) throws ConnectionException {
+                                            long nodeId) throws ConnectionException {
         SlotInfo slotInfo;
         try {
             client = getServiceClient();
@@ -98,9 +100,8 @@ public class MBThriftClient {
      */
     private static Slot convertSlotInforToSlot(SlotInfo slotInfo) {
         Slot slot = new Slot();
-        slot.setStartMessageId(slotInfo.getStartMessageId());
-        slot.setEndMessageId(slotInfo.getEndMessageId());
-        slot.setStorageQueueName(slotInfo.getQueueName());
+        slot.setSlotRangesString(slotInfo.getSlotRangesString());
+        slot.setQueueId(slotInfo.getQueueId());
         return slot;
     }
 
@@ -137,6 +138,26 @@ public class MBThriftClient {
         }
     }
 
+    public static synchronized void communicateQueueWiseSlot(ByteBuffer messageIdentifiers) throws ConnectionException {
+        try {
+            client = getServiceClient();
+            client.communicateQueueWiseSlot(messageIdentifiers);
+        } catch (TException e) {
+            try {
+                //retry once
+                reConnectToServer();
+                client.communicateQueueWiseSlot(messageIdentifiers);
+            } catch (TException e1) {
+                handleCoordinatorChanges();
+                throw new ConnectionException("Coordinator has changed", e);
+            }
+
+        } catch (ThriftClientException e) {
+            log.error("Error occurred while receiving coordinator details from map", e);
+            handleCoordinatorChanges();
+        }
+    }
+
     /**
      * Delete the slot from SlotAssignmentMap when all the messages in the slot has been sent and
      * all the acks are received.
@@ -147,8 +168,8 @@ public class MBThriftClient {
      */
     public static synchronized boolean deleteSlot(String queueName, Slot slot,
                                                String nodeId) throws ConnectionException {
-        SlotInfo slotInfo = new SlotInfo(slot.getStartMessageId(), slot.getEndMessageId(),
-                slot.getStorageQueueName(),nodeId,slot.isAnOverlappingSlot());
+        SlotInfo slotInfo = new SlotInfo(slot.getSlotRangesString(),
+                slot.getQueueId(),Long.valueOf(nodeId),slot.isAnOverlappingSlot());
         boolean deleteSuccess = false;
         try {
             client = getServiceClient();

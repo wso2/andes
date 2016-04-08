@@ -86,6 +86,8 @@ public class InboundEventContainer {
     public AndesMessage retainMessage;
     public boolean preProcessed;
 
+    public AndesMessage lastMessageInEvent;
+
     /**
      * Inbound event type is specified by this enum
      */
@@ -226,6 +228,7 @@ public class InboundEventContainer {
      */
     public void addMessage(AndesMessage message) {
         getMessageList().add(message);
+        lastMessageInEvent = message;
     }
 
     /**
@@ -262,6 +265,10 @@ public class InboundEventContainer {
      */
     public List<AndesMessage> getMessageList() {
         return messageList;
+    }
+
+    public AndesMessage getLastMessage() {
+        return messageList.get(messageList.size() - 1);
     }
 
     /**

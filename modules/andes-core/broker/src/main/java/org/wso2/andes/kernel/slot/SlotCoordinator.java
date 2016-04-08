@@ -18,6 +18,8 @@
 
 package org.wso2.andes.kernel.slot;
 
+import org.wso2.andes.kernel.AndesException;
+
 /**
  * This interface is responsible for coordinating with the SlotManagerClusterMode
  */
@@ -29,7 +31,7 @@ public interface SlotCoordinator {
      * @return New Slot
      * @throws ConnectionException
      */
-    public Slot getSlot(String queueName) throws ConnectionException;
+    public Slot getSlot(String queueName) throws ConnectionException, AndesException;
 
     /**
      * Record Slot's last message ID related to a particular queue

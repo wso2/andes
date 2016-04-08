@@ -137,7 +137,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                         /**
                          * If the slot is empty
                          */
-                        if (0 == currentSlot.getEndMessageId()) {
+                        if (null == currentSlot.getSlotRangesString()) {
 
                                     /*
                                     If the message buffer in MessageFlusher is not empty
@@ -168,6 +168,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                                         " - " + currentSlot.getEndMessageId() +
                                         "Thread Id:" + Thread.currentThread().getId());
                             }
+                            //TODO: we need to implement getMetaDataListBySlot method for new slot implementation
                             List<DeliverableAndesMetadata> messagesRead = getMetaDataListBySlot(storageQueueName,
                                     currentSlot);
 
@@ -334,8 +335,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
             long firstMsgId = slot.getStartMessageId();
             long lastMsgId = slot.getEndMessageId();
             //Read messages in the slot
-            messagesRead = MessagingEngine.getInstance().getMetaDataList(slot,
-                            storageQueueName, firstMsgId, lastMsgId);
+            messagesRead = MessagingEngine.getInstance().getMetaDataList(slot, storageQueueName);
             
             if (log.isDebugEnabled()) {
                 StringBuilder messageIDString = new StringBuilder();
@@ -375,7 +375,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
      * @return a {@link Slot}
      * @throws ConnectionException if connectivity to coordinator is lost.
      */
-    private Slot requestSlot(String storageQueueName) throws ConnectionException {
+    private Slot requestSlot(String storageQueueName) throws ConnectionException, AndesException {
         long startTime = System.currentTimeMillis();
         Slot currentSlot = slotCoordinator.getSlot(storageQueueName);
         long endTime = System.currentTimeMillis();

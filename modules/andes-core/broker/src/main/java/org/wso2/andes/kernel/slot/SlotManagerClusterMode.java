@@ -28,7 +28,10 @@ import org.wso2.andes.server.cluster.coordination.SlotAgent;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.cluster.coordination.rdbms.DatabaseSlotAgent;
 
+import java.nio.ByteBuffer;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
@@ -51,6 +54,10 @@ public class SlotManagerClusterMode {
 	private static final SlotManagerClusterMode slotManager = new SlotManagerClusterMode();
 
 	private static final int SAFE_ZONE_EVALUATION_INTERVAL = 5 * 1000;
+
+	private final int slotWindowSize;
+
+	private ConcurrentHashMap<Long, Long> queueIdToAggregatedMessageCount = new ConcurrentHashMap<>();
 
 	//safe zone calculator
 	private final SlotDeleteSafeZoneCalc slotDeleteSafeZoneCalc;
@@ -91,8 +98,79 @@ public class SlotManagerClusterMode {
         log.info("Using " + slotMgtMode + " based slot management mode");
         firstMessageId = INITIAL_MESSAGE_ID;
         slotRecoveryScheduled = new AtomicBoolean(false);
+		slotWindowSize = AndesConfigurationManager
+				.readValue(AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
 
     }
+
+
+	/**
+	 * Record Slot related data (last message ID, storage queue name) for the queues sends by a publisher node
+	 *
+	 * @param slotsDataByteBuffer Byte array of unique node ID, queue ID and last message ID.
+	 * @throws AndesException
+	 */
+	public void communicateQueueWiseSlotData(ByteBuffer slotsDataByteBuffer) throws AndesException {
+
+		long uniqueNodeId = slotsDataByteBuffer.getLong();
+		long queueId = slotsDataByteBuffer.getLong();
+		long lastPublishedMessageId = slotsDataByteBuffer.getLong();
+		long messageCount = slotsDataByteBuffer.getLong();
+		Map<Long, Long> nodeIdToLastPublishedId = new HashMap<>();
+		Map<Long, Long> nodeIdToLastAssignedId = new HashMap<>();
+
+		 if( queueIdToAggregatedMessageCount.get(queueId) == null){
+			 queueIdToAggregatedMessageCount.put(queueId,0L);
+		 }
+		//Calculate the aggregated message count for this particular queue
+		long aggregatedMessageCount = queueIdToAggregatedMessageCount.get(queueId) + messageCount;
+		if(aggregatedMessageCount >= slotWindowSize){
+			//Reset the aggregated message count for this queue
+			queueIdToAggregatedMessageCount.put(queueId, 0L);
+			//Get last published node IDs in other nodes for this queue
+			nodeIdToLastPublishedId = slotAgent.getLastPublishedIdsOfAllNodes(queueId);
+			//Add this node's last published message ID to the map
+			nodeIdToLastPublishedId.put(uniqueNodeId, lastPublishedMessageId);
+			//Get last assigned node IDs in different nodes for this queue
+			nodeIdToLastAssignedId = slotAgent.getNodeIdToLastAssignedId(queueId);
+
+			Map<Long, SlotRange> nodeIdToSlotRangeMap = new HashMap<>();
+
+			for (Map.Entry<Long, Long> entry : nodeIdToLastPublishedId.entrySet()) {
+				if (entry.getValue() != 0L) {
+					long startMessageId = 0;
+					long endMessageId = entry.getValue();
+					if (nodeIdToLastAssignedId.get(entry.getKey()) != null) {
+                        startMessageId = nodeIdToLastAssignedId.get(entry.getKey()) + 1;
+                        slotAgent.updateNodeIdToLastAssignedId(entry.getKey(), queueId, entry.getValue());
+                    } else {
+                        slotAgent.insertLastAssignedMessageId(entry.getKey(), queueId, lastPublishedMessageId);
+                    }
+					SlotRange slotRange = new SlotRange(startMessageId, endMessageId);
+					nodeIdToSlotRangeMap.put(entry.getKey(), slotRange);
+					slotAgent.updateLastPublishedMessageId(entry.getKey(), queueId, 0L);
+				}
+
+			}
+			Slot slot = new Slot(nodeIdToSlotRangeMap, queueId);
+			slotAgent.createSlot(SlotRangesEncorderDecoder.encode(nodeIdToSlotRangeMap), uniqueNodeId, queueId);
+		}else{
+			/*
+			If aggregated message count is less than slot window size update the queueIdToAggregatedMessageCount with
+			the message count of newly arrived messages
+			 */
+			queueIdToAggregatedMessageCount.put(queueId, aggregatedMessageCount);
+			//Update the last published message ID in the database
+			if(slotAgent.getLastPublishedMessageId(uniqueNodeId, queueId) != 0) {
+				slotAgent.updateLastPublishedMessageId(uniqueNodeId, queueId, lastPublishedMessageId);
+			} else{
+				slotAgent.insertLastPublishedMessageId(uniqueNodeId, queueId, lastPublishedMessageId);
+			}
+		}
+
+
+	}
+
 
 
 	/**
@@ -109,10 +187,9 @@ public class SlotManagerClusterMode {
 	 * @param queueName name of the queue
 	 * @return Slot object
 	 */
-	public Slot getSlot(String queueName, String nodeId) throws AndesException {
+	public Slot getSlot(String queueName, long nodeId) throws AndesException {
 
 		Slot slotToBeAssigned;
-
 		/**
 		 *First look in the unassigned slots pool for free slots. These slots are previously own by
 		 * other nodes
@@ -120,12 +197,8 @@ public class SlotManagerClusterMode {
 		String lockKey = queueName + SlotManagerClusterMode.class;
 		synchronized (lockKey.intern()) {
 			slotToBeAssigned = getUnassignedSlot(queueName);
-
 			if (null == slotToBeAssigned) {
-				slotToBeAssigned = getOverlappedSlot(nodeId, queueName);
-			}
-			if (null == slotToBeAssigned) {
-				slotToBeAssigned = getFreshSlot(queueName, nodeId);
+				slotToBeAssigned = getFreshSlot(queueName);
 			}
 
 			if (null != slotToBeAssigned) {
@@ -140,47 +213,71 @@ public class SlotManagerClusterMode {
 
 	}
 
+//	/**
+//	 * Create a new slot from store
+//	 *
+//	 * @param queueName name of the queue
+//	 * @param nodeId id of the node
+//	 * @return slot object
+//	 */
+//	private Slot getFreshSlot(String queueName, String nodeId) throws AndesException {
+//
+//		Slot slotToBeAssigned = null;
+//		TreeSet<Long> messageIDSet;
+//		// Get message id set from database
+//		messageIDSet = slotAgent.getMessageIds(queueName);
+//
+//		if (null != messageIDSet && !(messageIDSet.isEmpty())) {
+//
+//			slotToBeAssigned = new Slot();
+//			//start msgID will be last assigned ID + 1 so that slots are created with no
+//			// message ID gaps in-between
+//			long lastAssignedId = slotAgent.getQueueToLastAssignedId(queueName);
+//
+//			if (0L != lastAssignedId) {
+//				slotToBeAssigned.setStartMessageId(lastAssignedId + 1);
+//			} else {
+//				slotToBeAssigned.setStartMessageId(0L);
+//			}
+//
+//			//end messageID will be the lowest in published message ID list. Get and remove
+//			slotToBeAssigned.setEndMessageId(messageIDSet.pollFirst());
+//
+//			//remove polled message id from database
+//			slotAgent.deleteMessageId(queueName, slotToBeAssigned.getEndMessageId());
+//
+//			//set storage queue name (db queue to read messages from)
+//			slotToBeAssigned.setStorageQueueName(queueName);
+//
+//			//modify last assigned ID by queue to database
+//			slotAgent.createSlot(slotToBeAssigned.getStartMessageId(), slotToBeAssigned.getEndMessageId(),
+//					slotToBeAssigned.getStorageQueueName(), nodeId);
+//
+//			slotAgent.setQueueToLastAssignedId(queueName, slotToBeAssigned.getEndMessageId());
+//
+//			if (log.isDebugEnabled()) {
+//				log.debug("Giving a slot from fresh pool. Slot: " + slotToBeAssigned.getId());
+//			}
+//		}
+//		return slotToBeAssigned;
+//
+//	}
+
+
+
 	/**
 	 * Create a new slot from store
 	 *
 	 * @param queueName name of the queue
-	 * @param nodeId id of the node
 	 * @return slot object
 	 */
-	private Slot getFreshSlot(String queueName, String nodeId) throws AndesException {
+	private Slot getFreshSlot(String queueName) throws AndesException {
 
-		Slot slotToBeAssigned = null;
-		TreeSet<Long> messageIDSet;
-		// Get message id set from database
-		messageIDSet = slotAgent.getMessageIds(queueName);
+		Slot slotToBeAssigned = slotAgent.getSlot(queueName);
 
-		if (null != messageIDSet && !(messageIDSet.isEmpty())) {
+		if (null != slotToBeAssigned) {
 
-			slotToBeAssigned = new Slot();
-			//start msgID will be last assigned ID + 1 so that slots are created with no
-			// message ID gaps in-between
-			long lastAssignedId = slotAgent.getQueueToLastAssignedId(queueName);
-
-			if (0L != lastAssignedId) {
-				slotToBeAssigned.setStartMessageId(lastAssignedId + 1);
-			} else {
-				slotToBeAssigned.setStartMessageId(0L);
-			}
-
-			//end messageID will be the lowest in published message ID list. Get and remove
-			slotToBeAssigned.setEndMessageId(messageIDSet.pollFirst());
-
-			//remove polled message id from database
-			slotAgent.deleteMessageId(queueName, slotToBeAssigned.getEndMessageId());
-
-			//set storage queue name (db queue to read messages from)
-			slotToBeAssigned.setStorageQueueName(queueName);
-
-			//modify last assigned ID by queue to database
-			slotAgent.createSlot(slotToBeAssigned.getStartMessageId(), slotToBeAssigned.getEndMessageId(),
-					slotToBeAssigned.getStorageQueueName(), nodeId);
-
-			slotAgent.setQueueToLastAssignedId(queueName, slotToBeAssigned.getEndMessageId());
+   			//modify the state of the slot to ASSIGN and assign node ID
 
 			if (log.isDebugEnabled()) {
 				log.debug("Giving a slot from fresh pool. Slot: " + slotToBeAssigned.getId());
@@ -190,6 +287,8 @@ public class SlotManagerClusterMode {
 
 	}
 
+
+
 	/**
 	 * Get an unassigned slot (slots dropped by sudden subscription closes)
 	 *
@@ -198,6 +297,7 @@ public class SlotManagerClusterMode {
 	 */
 	private Slot getUnassignedSlot(String queueName) throws AndesException {
 		Slot slotToBeAssigned;
+		//TODO: Can we remove this log
 		String lockKey = queueName + SlotManagerClusterMode.class;
 		synchronized (lockKey.intern()) {
 			//get oldest unassigned slot from database
@@ -213,28 +313,31 @@ public class SlotManagerClusterMode {
 		return slotToBeAssigned;
 	}
 
-	/**
-	 * Get an overlapped slot by nodeId and the queue name. These are slots
-	 * which are overlapped with some slots that were acquired by given node
-	 *
-	 * @param nodeId    id of the node
-	 * @param queueName name of the queue slot is required
-	 * @return slot or null if not found
-	 */
-	private Slot getOverlappedSlot(String nodeId, String queueName) throws AndesException {
-		Slot slotToBeAssigned;
-		String lockKey = queueName + SlotManagerClusterMode.class;
-		synchronized (lockKey.intern()) {
-			//get oldest overlapped slot from database
-			slotToBeAssigned = slotAgent.getOverlappedSlot(nodeId, queueName);
-			if (log.isDebugEnabled()) {
-				if (null != slotToBeAssigned) {
-					log.debug(" Giving overlapped slot id=" + slotToBeAssigned.getId() + " queue name= " + queueName);
-				}
-			}
-		}
-		return slotToBeAssigned;
-	}
+//	/**
+//	 * Get an overlapped slot by nodeId and the queue name. These are slots
+//	 * which are overlapped with some slots that were acquired by given node
+//	 *
+
+
+
+//	 * @param nodeId    id of the node
+//	 * @param queueId Id of the queue slot is required
+//	 * @return slot or null if not found
+//	 */
+//	private Slot getOverlappedSlot(long nodeId, long queueId) throws AndesException {
+//		Slot slotToBeAssigned;
+//		String lockKey = String.valueOf(queueId)+ SlotManagerClusterMode.class;
+//		synchronized (lockKey.intern()) {
+//			//get oldest overlapped slot from database
+//			slotToBeAssigned = slotAgent.getOverlappedSlot(nodeId, queueId);
+//			if (log.isDebugEnabled()) {
+//				if (null != slotToBeAssigned) {
+//					log.debug(" Giving overlapped slot id=" + slotToBeAssigned.getId() + " queue id= " + queueId);
+//				}
+//			}
+//		}
+//		return slotToBeAssigned;
+//	}
 
 	/**
 	 * Update the slot assignment when a slot is assigned for a node
@@ -243,9 +346,10 @@ public class SlotManagerClusterMode {
 	 * @param allocatedSlot Slot object which is allocated to a particular node
 	 * @param nodeId        ID of the node to which slot is Assigned
 	 */
-	private void updateSlotAssignmentMap(String queueName, Slot allocatedSlot, String nodeId) throws AndesException {
+	private void updateSlotAssignmentMap(String queueName, Slot allocatedSlot, long nodeId) throws AndesException {
 		//Lock is used because this method will be called by multiple nodes at the same time
-		String lockKey = nodeId + SlotManagerClusterMode.class;
+		String lockKey = String.valueOf(nodeId) + SlotManagerClusterMode.class;
+		//TODO: Do we need this lock now?
 		synchronized (lockKey.intern()) {
 			//Update assigned node, assigned queue and set state to assigned
 			slotAgent.updateSlotAssignment(nodeId, queueName, allocatedSlot);
@@ -589,7 +693,7 @@ public class SlotManagerClusterMode {
             public void run() {
 
                 try {
-                    long lastId = SlotMessageCounter.getInstance().getCurrentNodeSafeZoneId();
+                    long lastId = 0; //TODO SlotMessageCounter.getInstance().getCurrentNodeSafeZoneId();
                     //TODO: Delete if the queue has not progressed
                     for (String queueName : queuesToRecover) {
                         // Trigger a submit slot for each queue so that new slots are created
@@ -614,7 +718,7 @@ public class SlotManagerClusterMode {
                     log.error("Error occurred while trying to run recover slot scheduler", e);
                 }
             }
-        }, SlotMessageCounter.getInstance().SLOT_SUBMIT_TIMEOUT, TimeUnit.MILLISECONDS);
+        }, 10000/*TODO, SlotMessageCounter.getInstance().SLOT_SUBMIT_TIMEOUT*/, TimeUnit.MILLISECONDS);
 
         slotRecoveryScheduled.set(true);
 

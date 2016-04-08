@@ -26,6 +26,8 @@ import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.thrift.slot.gen.SlotInfo;
 import org.wso2.andes.thrift.slot.gen.SlotManagementService;
 
+import java.nio.ByteBuffer;
+
 /**
  * This is the implementation of SlotManagementService interface. This class contains operations
  * does on slots through slot manager.When thrift client calls the services on
@@ -37,14 +39,14 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
     private static SlotManagerClusterMode slotManager = SlotManagerClusterMode.getInstance();
 
     @Override
-    public SlotInfo getSlotInfo(String queueName, String nodeId) throws TException {
+    public SlotInfo getSlotInfo(String queueName, long nodeId) throws TException {
         if (AndesContext.getInstance().getClusterAgent().isCoordinator()) {
             SlotInfo slotInfo = new SlotInfo();
             try {
                 Slot slot = slotManager.getSlot(queueName, nodeId);
                 if (null != slot) {
-                    slotInfo = new SlotInfo(slot.getStartMessageId(), slot.getEndMessageId(),
-                            slot.getStorageQueueName(), nodeId, slot.isAnOverlappingSlot());
+                    slotInfo = new SlotInfo(slot.getSlotRangesString(), slot.getQueueId(), nodeId, slot
+                            .isAnOverlappingSlot());
                 }
             } catch (AndesException e) {
                 throw new TException("Failed to get slot info for queue: " + queueName + " nodeId: " + nodeId, e);
@@ -69,13 +71,28 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
     }
 
     @Override
+    public void communicateQueueWiseSlot(ByteBuffer messageIdentifiers) throws TException {
+        if (AndesContext.getInstance().getClusterAgent().isCoordinator()) {
+            try {
+                slotManager.communicateQueueWiseSlotData(messageIdentifiers);
+            } catch (AndesException e) {
+                long uniqueNodeId = messageIdentifiers.getLong();
+                long storageQueueId = messageIdentifiers.getLong();
+                throw new TException("Failed to update slot related data for queue Id: " + storageQueueId + " for "
+                                     + "node : " + uniqueNodeId, e);
+            }
+        } else {
+            throw new TException("This node is not the slot coordinator right now");
+        }
+    }
+
+    @Override
     public boolean deleteSlot(String queueName, SlotInfo slotInfo, String nodeId) throws TException {
         if (AndesContext.getInstance().getClusterAgent().isCoordinator()) {
             Slot slot = new Slot();
             boolean result = false;
-            slot.setStartMessageId(slotInfo.getStartMessageId());
-            slot.setEndMessageId(slotInfo.getEndMessageId());
-            slot.setStorageQueueName(slotInfo.getQueueName());
+            slot.setSlotRangesString(slotInfo.getSlotRangesString());
+            slot.setQueueId(slotInfo.getQueueId());
             try {
                 result = slotManager.deleteSlot(queueName, slot, nodeId);
             } catch (AndesException e) {

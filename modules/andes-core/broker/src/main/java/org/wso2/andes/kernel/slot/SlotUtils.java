@@ -44,9 +44,7 @@ public class SlotUtils {
     public static boolean checkSlotEmptyFromMessageStore(Slot slot) {
         try {
             List<DeliverableAndesMetadata> messagesReturnedFromCassandra =
-                    MessagingEngine.getInstance().getMetaDataList(slot, slot.getStorageQueueName(), slot
-                                    .getStartMessageId(),
-                            slot.getEndMessageId());
+                    MessagingEngine.getInstance().getMetaDataList(slot, slot.getStorageQueueName());
             return messagesReturnedFromCassandra == null || messagesReturnedFromCassandra.isEmpty();
         } catch (AndesException e) {
             log.error("Error occurred while querying metadata from message store", e);

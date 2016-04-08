@@ -102,6 +102,10 @@ public class RDBMSConstants {
     protected static final String DESTINATION_QUEUE = "MESSAGE_DESTINATION";
     protected static final String TOPIC_NAME = "TOPIC_NAME";
     protected static final String TOPIC_ID = "TOPIC_ID";
+    protected static final String PROTOCOL_ID = "PROTOCOL_ID";
+    protected static final String NODE_NUMBER = "NODE_NUMBER";
+    protected static final String MESSAGE_ID_TIME_STAMP = "TIME_STAMP";
+    protected static final String MESSAGE_PUBLISHED_NODE_ID = "PUBLISHED_NODE_ID";
 
     // Andes Context Store tables
     protected static final String DURABLE_SUB_TABLE = "MB_DURABLE_SUBSCRIPTION";
@@ -112,6 +116,9 @@ public class RDBMSConstants {
     protected static final String QUEUE_COUNTER_TABLE = "MB_QUEUE_COUNTER";
     // Slot related tables
     protected static final String SLOT_TABLE = "MB_SLOT";
+    protected static final String SLOT_RANGE_TABLE = "MB_SLOT_RANGE";
+    protected static final String STORAGE_QUEUE_TO_LAST_PUBLISHED_ID = "MB_STORAGE_QUEUE_TO_LAST_PUBLISHED_ID";
+    protected static final String STORAGE_QUEUE_TO_LAST_ASSIGNED_ID = "MB_STORAGE_QUEUE_TO_LAST_ASSIGNED_ID";
     protected static final String SLOT_MESSAGE_ID_TABLE = "MB_SLOT_MESSAGE_ID";
     protected static final String QUEUE_TO_LAST_ASSIGNED_ID = "MB_QUEUE_TO_LAST_ASSIGNED_ID";
 
@@ -137,20 +144,34 @@ public class RDBMSConstants {
 
     //Slot table columns
     protected static final String SLOT_ID = "SLOT_ID";
-    protected static final String START_MESSAGE_ID = "START_MESSAGE_ID";
-    protected static final String END_MESSAGE_ID = "END_MESSAGE_ID";
-    protected static final String STORAGE_QUEUE_NAME = "STORAGE_QUEUE_NAME";
+    protected static final String SLOT_RANGES_STRING = "SLOT_RANGES";
+    protected static final String PUBLISHED_NODE_ID = "PUBLISHED_NODE_ID";
+    protected static final String STORAGE_QUEUE_ID = "STORAGE_QUEUE_ID";
     protected static final String SLOT_STATE = "SLOT_STATE";
     protected static final String ASSIGNED_NODE_ID = "ASSIGNED_NODE_ID";
     protected static final String ASSIGNED_QUEUE_NAME = "ASSIGNED_QUEUE_NAME";
+    protected static final String ASSIGNED_QUEUE_ID = "ASSIGNED_QUEUE_ID";
+
+    //TODO: These needs to be removed from slot table eventually
+    protected static final String START_MESSAGE_ID = "START_MESSAGE_ID";
+    protected static final String END_MESSAGE_ID = "END_MESSAGE_ID";
+    protected static final String STORAGE_QUEUE_NAME = "STORAGE_QUEUE_NAME";
+
+    //Storage queue to last published ID table columns
+    protected static final String LAST_PUBLISHED_MESSAGE_ID = "LAST_PUBLISHED_MESSAGE_ID";
+
+    //Storage queue to last assigned Id table columns
+    protected static final String LAST_ASSIGNED_MESSAGE_ID = "LAST_ASSIGNED_MESSAGE_ID";
 
 
     // prepared statements for Message Store
     protected static final String PS_INSERT_MESSAGE_PART =
             "INSERT INTO " + CONTENT_TABLE + "("
             + MESSAGE_ID + ","
+            + QUEUE_ID + ","
+            + NODE_NUMBER + ","
             + MSG_OFFSET + ","
-            + MESSAGE_CONTENT + ") VALUES (?, ?, ?)";
+            + MESSAGE_CONTENT + ") VALUES (?, ?, ?, ?, ?)";
 
     protected static final String PS_RETRIEVE_MESSAGE_PART =
             "SELECT " + MESSAGE_CONTENT
@@ -166,9 +187,11 @@ public class RDBMSConstants {
             "INSERT INTO " + METADATA_TABLE + " ("
             + MESSAGE_ID + ","
             + QUEUE_ID + ","
+            + NODE_NUMBER + ","
+            + PROTOCOL_ID + ","
             + DLC_QUEUE_ID + ","
             + METADATA + ")"
-            + " VALUES ( ?,?,-1,? )";
+            + " VALUES ( ?, ?, ?, -1, ?)";
 
     protected static final String PS_INSERT_EXPIRY_DATA =
             "INSERT INTO " + EXPIRATION_TABLE + " ("
@@ -245,13 +268,18 @@ public class RDBMSConstants {
             + " AND " + MESSAGE_ID + " BETWEEN ? AND ?"
             + " ORDER BY " + MESSAGE_ID;
 
-    protected static final String PS_SELECT_METADATA_RANGE_FROM_QUEUE_IN_DLC =
+    protected static final String PS_METADATA_SELECT_CALUSE =
             "SELECT " + MESSAGE_ID + "," + METADATA
-            + " FROM " + METADATA_TABLE
-            + " WHERE " + QUEUE_ID + "=?"
-            + " AND " + DLC_QUEUE_ID + "=?"
-            + " AND " + MESSAGE_ID + " BETWEEN ? AND ?"
-            + " ORDER BY " + MESSAGE_ID;
+            + " FROM " + METADATA_TABLE + " WHERE ";
+
+    protected static final String PS_SELECT_METADATA_WHERE_CONDITION =
+            " (" + QUEUE_ID + "=?"
+            + " AND " + MESSAGE_PUBLISHED_NODE_ID + "=?"
+            + " AND " + DLC_QUEUE_ID + "=-1"
+            + " AND " + MESSAGE_ID + " BETWEEN ? AND ? )";
+
+    protected static final String PS_SELECT_METADATA_ORDER_BY =
+             " ORDER BY " + MESSAGE_ID;
 
     protected static final String PS_SELECT_METADATA_FROM_QUEUE =
             "SELECT " + MESSAGE_ID + "," + METADATA
@@ -340,6 +368,32 @@ public class RDBMSConstants {
             + " SET " + DURABLE_SUB_DATA + "=?"
             + " WHERE " + DESTINATION_IDENTIFIER + "=?"
             + " AND " + DURABLE_SUB_ID + "=?";
+
+    protected static final String PS_UPDATE_LAST_PUBLISHED_MESSAGE_ID =
+            "UPDATE " + STORAGE_QUEUE_TO_LAST_PUBLISHED_ID
+            + " SET " + LAST_PUBLISHED_MESSAGE_ID + "=?"
+            + " WHERE " + NODE_ID + "=?"
+            + " AND " + QUEUE_ID + "=?";
+
+    protected static final String PS_UPDATE_LAST_ASSIGNED_MESSAGE_ID =
+            "UPDATE " + STORAGE_QUEUE_TO_LAST_ASSIGNED_ID
+            + " SET " + LAST_ASSIGNED_MESSAGE_ID + "=?"
+            + " WHERE " + NODE_ID + "=?"
+            + " AND " + QUEUE_ID + "=?";
+
+    protected static final String PS_INSERT_LAST_PUBLISHED_MESSAGE_ID =
+            "INSERT INTO " + STORAGE_QUEUE_TO_LAST_PUBLISHED_ID + " ("
+            + NODE_ID + ", "
+            + QUEUE_ID + ", "
+            + LAST_PUBLISHED_MESSAGE_ID + ")"
+            + "  VALUES (?,?,?)";
+
+    protected static final String PS_INSERT_LAST_ASSIGNED_MESSAGE_ID =
+            "INSERT INTO " + STORAGE_QUEUE_TO_LAST_ASSIGNED_ID + " ("
+            + NODE_ID + ", "
+            + QUEUE_ID + ", "
+            + LAST_ASSIGNED_MESSAGE_ID + ")"
+            + "  VALUES (?,?,?)";
 
     protected static final String PS_UPDATE_DURABLE_SUBSCRIPTION_BY_ID =
             "UPDATE " + DURABLE_SUB_TABLE
@@ -514,12 +568,11 @@ public class RDBMSConstants {
      */
     protected static final String PS_INSERT_SLOT =
             "INSERT INTO " + SLOT_TABLE + " ("
-            + START_MESSAGE_ID + ","
-            + END_MESSAGE_ID + ","
-            + STORAGE_QUEUE_NAME + ","
-            + SLOT_STATE + ","
-            + ASSIGNED_NODE_ID + ")"
-            + " VALUES (?,?,?," + SlotState.ASSIGNED.getCode() + ",?)";
+            + SLOT_RANGES_STRING + ","
+            + PUBLISHED_NODE_ID + ","
+            + QUEUE_ID + ","
+            + SLOT_STATE + ")"
+            + " VALUES (?,?,?," + SlotState.CREATED.getCode() + ")";
 
     /**
      * Prepared statement to delete a slot from database
@@ -543,10 +596,9 @@ public class RDBMSConstants {
     protected static final String PS_INSERT_SLOT_ASSIGNMENT =
             "UPDATE " + SLOT_TABLE
             + " SET " + ASSIGNED_NODE_ID + "=?, "
-            + ASSIGNED_QUEUE_NAME + "=?,"
+            + ASSIGNED_QUEUE_ID + "=?,"
             + SLOT_STATE + "=" + SlotState.ASSIGNED.getCode()
-            + " WHERE " + START_MESSAGE_ID + "=?"
-            + " AND " + END_MESSAGE_ID + "=?";
+            + " WHERE " + SLOT_RANGES_STRING + "=?";
 
     /**
      * Prepared statement to un-assign a slot from node
@@ -574,7 +626,7 @@ public class RDBMSConstants {
      * Prepared statement to get slots assigned to a give node
      */
     protected static final String PS_GET_ASSIGNED_SLOTS_BY_NODE_ID =
-            "SELECT " + START_MESSAGE_ID + "," + END_MESSAGE_ID + "," + STORAGE_QUEUE_NAME
+            "SELECT " + SLOT_RANGES_STRING + "," + STORAGE_QUEUE_NAME
             + " FROM " + SLOT_TABLE
             + " WHERE " + ASSIGNED_NODE_ID + "=?"
             + " AND " + SLOT_STATE + "=" + SlotState.ASSIGNED.getCode()
@@ -589,14 +641,23 @@ public class RDBMSConstants {
             + " WHERE " + START_MESSAGE_ID + "=?"
             + " AND " + END_MESSAGE_ID + "=?";
 
+//    /**
+//     * Prepared statements for setting slot states
+//     */
+//    protected static final String PS_SET_SLOT_STATE =
+//            "UPDATE " + SLOT_TABLE
+//            + " SET " + SLOT_STATE + " = ?"
+//            + " WHERE " + START_MESSAGE_ID + " = ?"
+//            + " AND " + END_MESSAGE_ID + " = ?";
+
     /**
      * Prepared statements for setting slot states
      */
     protected static final String PS_SET_SLOT_STATE =
             "UPDATE " + SLOT_TABLE
             + " SET " + SLOT_STATE + " = ?"
-            + " WHERE " + START_MESSAGE_ID + " = ?"
-            + " AND " + END_MESSAGE_ID + " = ?";
+            + " WHERE " + SLOT_RANGES_STRING + " = ?";
+
 
     /**
      * Prepared statement for selecting unassigned slot
@@ -609,19 +670,26 @@ public class RDBMSConstants {
             + " ORDER BY " + SLOT_ID;
 
     protected static final String PS_SELECT_UNASSIGNED_SLOT =
-            "SELECT " + START_MESSAGE_ID + "," + END_MESSAGE_ID + "," + STORAGE_QUEUE_NAME
+            "SELECT " + SLOT_RANGES_STRING + "," + QUEUE_ID
             + " FROM " + SLOT_TABLE
-            + " WHERE " + STORAGE_QUEUE_NAME + " =?"
+            + " WHERE " + STORAGE_QUEUE_ID + " =?"
             + " AND " + SLOT_STATE + " = " + SlotState.RETURNED.getCode()
+            + " ORDER BY " + SLOT_ID;
+
+    protected static final String PS_SELECT_NEW_SLOT =
+            "SELECT " + SLOT_RANGES_STRING + "," + QUEUE_ID
+            + " FROM " + SLOT_TABLE
+            + " WHERE " + STORAGE_QUEUE_ID + " =?"
+            + " AND " + SLOT_STATE + " = " + SlotState.CREATED.getCode()
             + " ORDER BY " + SLOT_ID;
 
     /**
      * Prepared statement for selecting oldest overlapped slot
      */
     protected static final String PS_SELECT_OVERLAPPED_SLOT =
-            "SELECT " + START_MESSAGE_ID + "," + END_MESSAGE_ID + "," + STORAGE_QUEUE_NAME
+            "SELECT " + SLOT_RANGES_STRING + "," + QUEUE_ID
             + " FROM " + SLOT_TABLE
-            + " WHERE " + STORAGE_QUEUE_NAME + "=?"
+            + " WHERE " + QUEUE_ID + "=?"
             + " AND " + ASSIGNED_NODE_ID + "=?"
             + " AND " + SLOT_STATE + "=" + SlotState.OVERLAPPED.getCode()
             + " ORDER BY " + SLOT_ID;
@@ -725,6 +793,33 @@ public class RDBMSConstants {
     protected static final String PS_GET_ALL_QUEUES =
             "SELECT DISTINCT " + STORAGE_QUEUE_NAME
             + " FROM " + SLOT_TABLE;
+
+
+    /**
+     * Prepared statement to last published Message Id
+     */
+    protected static final String PS_GET_LAST_PUBLISHED_MESSAGE_ID =
+            "SELECT " + LAST_PUBLISHED_MESSAGE_ID
+            + " FROM " + STORAGE_QUEUE_TO_LAST_PUBLISHED_ID
+            + " WHERE " + NODE_ID + "=?"
+            + " AND " + QUEUE_ID + "=?";
+
+    /**
+     * Prepared statement to get last published Message Ids of all the nodes
+     */
+    protected static final String PS_GET_ALL_LAST_PUBLISHED_MESSAGE_IDS =
+            "SELECT " + NODE_ID + "," + LAST_PUBLISHED_MESSAGE_ID
+            + " FROM " + STORAGE_QUEUE_TO_LAST_PUBLISHED_ID
+            + " WHERE " + QUEUE_ID + "=?";
+
+    /**
+     * Prepared statement to get last published Message Ids of all the nodes
+     */
+    protected static final String PS_GET_NODE_ID_TO_LAST_ASSIGNED_MESSAGE_ID =
+            "SELECT " + NODE_ID + "," + LAST_ASSIGNED_MESSAGE_ID
+            + " FROM " + STORAGE_QUEUE_TO_LAST_ASSIGNED_ID
+            + " WHERE " + QUEUE_ID + "=?";
+
 
     /**
      * Prepared Statement to test deletes are working for message store
@@ -877,6 +972,10 @@ public class RDBMSConstants {
     // Andes Context Store related jdbc tasks executed
     protected static final String TASK_STORING_DURABLE_SUBSCRIPTION = "storing durable subscription";
     protected static final String TASK_UPDATING_DURABLE_SUBSCRIPTION = "updating durable subscription";
+    protected static final String TASK_UPDATING_LAST_ASSIGNED_MESSAGE_ID = "updating last assigned message Id";
+    protected static final String TASK_UPDATING_LAST_PUBLISHED_MESSAGE_ID = "updating last published message Id";
+    protected static final String TASK_INSERTING_LAST_PUBLISHED_MESSAGE_ID = "inserting last published message Id";
+    protected static final String TASK_INSERTING_LAST_ASSIGNED_MESSAGE_ID = "inserting last assigned message Id";
     protected static final String TASK_UPDATING_DURABLE_SUBSCRIPTIONS = "updating durable subscriptions";
     protected static final String TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTIONS = "retrieving all durable subscriptions. ";
 
@@ -927,6 +1026,11 @@ public class RDBMSConstants {
     protected static final String TASK_GET_ALL_SLOTS_BY_QUEUE_NAME = "getting all slots by queue name";
     protected static final String TASK_GET_OVERLAPPED_SLOT = "getting overlapped slot";
     protected static final String TASK_GET_ALL_QUEUES = "getting all queues";
+    protected static final String TASK_GET_LAST_PUBLISHED_MESSAGE_ID = "getting last published message Id for a queue"
+                                                                       + " in a particular node";
+    protected static final String TASK_GET_ALL_LAST_PUBLISHED_MESSAGE_IDS = "getting last published message Ids for "
+                                                                           + "all "
+                                                                       + "the queue";
     protected static final String TASK_CLEAR_SLOT_TABLES = "clearing slot tables";
 
     /**

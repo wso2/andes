@@ -246,7 +246,7 @@ public interface AndesContextStore extends HealthAwareStore{
     void deleteBindingInformation(String exchangeName, String boundQueueName) throws AndesException;
 
     /**
-     * Create a new slot in store.
+     *
 
      * @param startMessageId start message id of slot
      * @param endMessageId end message id of slot
@@ -254,8 +254,14 @@ public interface AndesContextStore extends HealthAwareStore{
      * @param assignedNodeId id of assigned node
      * @throws AndesException
      */
-    void createSlot(long startMessageId, long endMessageId, String storageQueueName, String assignedNodeId)
-		    throws AndesException;
+    /**
+     *  Create a new slot in store.
+     * @param slotRanges
+     * @param publishedNodeId
+     * @param queueId  ID of the storage queue
+     * @throws AndesException
+     */
+    void createSlot(String slotRanges, long publishedNodeId, long queueId)throws AndesException;
 
     /**
      * Delete a slot from store.
@@ -300,17 +306,16 @@ public interface AndesContextStore extends HealthAwareStore{
     /**
      * Update assignment information in slot store.
      * @param nodeId id of node
-     * @param queueName name of queue
-     * @param startMsgId start message id of slot
-     * @param endMsgId end message id of slot
+     * @param queueName Name of queue
+     * @param slotRangesString Slot ranges
      * @throws AndesException
      */
-    void createSlotAssignment(String nodeId, String queueName, long startMsgId, long endMsgId)
+    void createSlotAssignment(long nodeId, String queueName, String slotRangesString)
             throws AndesException;
 
     /**
      * Select unassigned slots for a given queue name.
-     * @param queueName name of queue
+     * @param queueName Id of queue
      * @return unassigned slot object if found
      * @throws AndesException
      */
@@ -437,4 +442,19 @@ public interface AndesContextStore extends HealthAwareStore{
      */
     void close();
 
+    void updateLastPublishedMessageId(long nodeId, long queueId, long lastPublishedMessageId) throws AndesException;
+
+    long getLastPublishedMessageId(long nodeId, long queueId) throws AndesException;
+
+    void insertLastPublishedMessageId(long nodeId, long queueId, long lastPublishedMessageId) throws AndesException;
+
+    Map<Long, Long> getLastPublishedMessageIdsOfAllNodes(long queueId) throws AndesException;
+
+    Map<Long, Long> getNodeIdToLastAssignedId(long queueId) throws AndesException;
+
+    void updateAssignedMessageId(long uniqueNodeId, long queueId, long lastAssignedMessageId) throws AndesException;
+
+    void insertLastAssignedMessageId(long nodeId, long queueId, long lastAssignedMessageId) throws AndesException;
+
+    Slot selectNewSlot(String queueName) throws AndesException;
 }

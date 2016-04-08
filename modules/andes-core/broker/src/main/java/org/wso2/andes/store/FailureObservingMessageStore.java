@@ -18,10 +18,6 @@
 
 package org.wso2.andes.store;
 
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ScheduledFuture;
-
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
@@ -33,6 +29,10 @@ import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.tools.utils.MessageTracer;
+
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ScheduledFuture;
 
 /**
  * Implementation of {@link MessageStore} which observes failures such is
@@ -198,10 +198,9 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public List<DeliverableAndesMetadata> getMetadataList(Slot slot, String storageQueueName, long firstMsgId, long
-            lastMsgID) throws AndesException {
+    public List<DeliverableAndesMetadata> getMetadataListForSlot(Slot slot, String storageQueueName) throws AndesException {
         try {
-            return wrappedInstance.getMetadataList(slot, storageQueueName, firstMsgId, lastMsgID);
+            return wrappedInstance.getMetadataListForSlot(slot, storageQueueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -416,6 +415,16 @@ public class FailureObservingMessageStore implements MessageStore {
     public void addQueue(String storageQueueName) throws AndesException {
         try {
             wrappedInstance.addQueue(storageQueueName);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    @Override
+    public int getCachedQueueID(String destinationQueueName) throws AndesException {
+        try {
+            return wrappedInstance.getCachedQueueID(destinationQueueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

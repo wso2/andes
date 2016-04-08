@@ -37,6 +37,12 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
     private static Log log = LogFactory.getLog(AndesMessageMetadata.class);
 
     /**
+     * Message ID coming from the JMS Header/MQTT Header or any other protocol.
+     * This is different from the internal ID used within MB.
+     */
+    private String protocolMessageID;
+
+    /**
      * Unique identifier of the message
      */
     long messageID;
@@ -69,6 +75,12 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
     private String storageQueueName;
 
     /**
+     * Unique numeric ID of the storage queue as per the message store. This is required to infer the globally
+     * unique message ID.
+     */
+    private int storageQueueID;
+
+    /**
      * True if the message is sent with JMS persistent mode.
      */
     private boolean isPersistent;
@@ -95,20 +107,20 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
     /**
      * MQTT Retain
      * Topic message should retained if true.
-     *
+     * <p>
      * By setting the retain flag, the message is held onto by the broker, so when the late arrivals
      * connect to the broker or clients create a new subscription they get all the relevant retained
      * messages based on subscribed topic.
-     *
+     * <p>
      * When MQTT message received it's header will be converted to AndesMessageMetadata header. This
      * boolean state holds retain state of given andes message.
+     *
      * @see org.wso2.carbon.andes.mqtt.utils.MQTTUtils#convertToAndesHeader(long, String, int, int, boolean,
      * org.wso2.carbon.andes.mqtt.MQTTPublisherChannel, boolean)
-     *
+     * <p>
      * This boolean state will be checked each time andes message received in MessagePreProcessor.
      * @see org.wso2.andes.kernel.disruptor.inbound.MessagePreProcessor#handleTopicRoutine(
-     * org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer, AndesMessage, AndesChannel)
-     *
+     *org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer, AndesMessage, AndesChannel)
      */
     private boolean retain;
 
@@ -120,8 +132,8 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
     /**
      * Set retain flag for current message
      *
-     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
      * @param retain boolean retain flag
+     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
      */
     public void setRetain(boolean retain) {
         this.retain = retain;
@@ -145,8 +157,8 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
     /**
      * Return retained status of the current message.
      *
-     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
      * @return boolean retain flag for the current message
+     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
      */
     public boolean isRetain() {
         return retain;
@@ -210,6 +222,14 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         return storageQueueName;
     }
 
+    public int getStorageQueueID() {
+        return storageQueueID;
+    }
+
+    public void setStorageQueueID(int storageQueueID) {
+        this.storageQueueID = storageQueueID;
+    }
+
     public void setStorageQueueName(String storageQueueName) {
         this.storageQueueName = storageQueueName;
     }
@@ -228,6 +248,14 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
 
     public void setArrivalTime(long arrivalTime) {
         this.arrivalTime = arrivalTime;
+    }
+
+    public String getProtocolMessageID() {
+        return protocolMessageID;
+    }
+
+    public void setProtocolMessageID(String protocolMessageID) {
+        this.protocolMessageID = protocolMessageID;
     }
 
     /**
@@ -355,8 +383,8 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
     /**
      * Create a copy of metadata
      *
-     * @param originalMetadata          source metadata that needs to be copied
-     * @param isCompressed Value to indicate if the message is compressed or not
+     * @param originalMetadata source metadata that needs to be copied
+     * @param isCompressed     Value to indicate if the message is compressed or not
      * @return copy of the metadata as a byte array
      */
     private byte[] createNewMetadata(byte[] originalMetadata, boolean isCompressed) {
@@ -382,7 +410,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         return messageContentLength;
     }
 
-    public void setMessageContentLength(int messageContentLength){
+    public void setMessageContentLength(int messageContentLength) {
         this.messageContentLength = messageContentLength;
     }
 
@@ -414,7 +442,8 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
     /**
      * Add a property that is not directly relevant to Andes. The properties are not persistent. Lost when the object is
      * deleted
-     * @param key String Key
+     *
+     * @param key   String Key
      * @param value Object. Value of the property
      */
     public void addProperty(String key, Object value) {
@@ -423,6 +452,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
 
     /**
      * Returns the property for the given
+     *
      * @param key String
      * @return value of the property. Null if not found
      */

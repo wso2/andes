@@ -33,8 +33,6 @@ import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesRecoveryTask;
-import org.wso2.andes.kernel.AndesSubscriptionManager;
 import org.wso2.andes.kernel.HazelcastLifecycleListener;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
@@ -491,13 +489,9 @@ public class HazelcastAgent implements SlotAgent {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public void createSlot(long startMessageId, long endMessageId, String storageQueueName, String assignedNodeId)
-            throws AndesException {
-        //createSlot() method in Hazelcast agent does not need to perform anything
+    public void createSlot(String slotRanges, long publishedNodeId, long queueId) throws AndesException {
+
     }
 
     /**
@@ -613,10 +607,12 @@ public class HazelcastAgent implements SlotAgent {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+
     @Override
+    public void updateSlotAssignment(long nodeId, String queueName, Slot allocatedSlot) throws AndesException {
+
+    }
+
     public Slot getUnAssignedSlot(String queueName) throws AndesException {
         Slot slotToBeAssigned = null;
         try {
@@ -637,10 +633,6 @@ public class HazelcastAgent implements SlotAgent {
         return slotToBeAssigned;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public void updateSlotAssignment(String nodeId, String queueName, Slot allocatedSlot) throws AndesException {
         TreeSet<Slot> currentSlotList;
         HashMap<String, TreeSet<Slot>> queueToSlotMap;
@@ -735,6 +727,7 @@ public class HazelcastAgent implements SlotAgent {
         // In hazelcast slot state is already stored in slot object. This method is used only in
         // database slot management.
     }
+
 
     /**
      * {@inheritDoc}
@@ -1040,6 +1033,46 @@ public class HazelcastAgent implements SlotAgent {
     @Override
     public void clearSlotStorage() throws AndesException {
         // Maps will be automatically cleared.
+    }
+
+    @Override
+    public void updateLastPublishedMessageId(long uniqueNodeId, long queueId, long lastPublishedMessageId) {
+
+    }
+
+    @Override
+    public long getLastPublishedMessageId(long uniqueNodeId, long queueId) throws AndesException {
+        return 0;
+    }
+
+    @Override
+    public Map<Long, Long> getLastPublishedIdsOfAllNodes(long queueId) throws AndesException {
+        return null;
+    }
+
+    @Override
+    public void insertLastPublishedMessageId(long uniqueNodeId, long queueId, long lastPublishedMessageId) throws AndesException {
+
+    }
+
+    @Override
+    public Map<Long, Long> getNodeIdToLastAssignedId(long queueId) throws AndesException {
+        return null;
+    }
+
+    @Override
+    public void updateNodeIdToLastAssignedId(long uniqueNodeId, long queueId, long lastAssignedMessageId) throws AndesException {
+
+    }
+
+    @Override
+    public void insertLastAssignedMessageId(long uniqueNodeId, long queueId, long lastAssignedMessageId) throws AndesException {
+
+    }
+
+    @Override
+    public Slot getSlot(String queueName) throws AndesException {
+        return null;
     }
 
     /**

@@ -30,7 +30,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class QueueSubscriptionStore implements AndesSubscriptionStore {
+public class QueueSubscriptionStore implements AndesSubscriptionStore  {
 
     /**
      * All local queue subscriptions will be stored in this.

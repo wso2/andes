@@ -21,6 +21,7 @@ package org.wso2.andes.kernel.slot;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.thrift.MBThriftClient;
 
 /**
@@ -41,8 +42,8 @@ public class SlotCoordinatorCluster implements SlotCoordinator {
      * {@inheritDoc}
      */
     @Override
-    public Slot getSlot(String queueName) throws ConnectionException {
-        return MBThriftClient.getSlot(queueName, nodeId);
+    public Slot getSlot(String queueName) throws ConnectionException, AndesException {
+        return MBThriftClient.getSlot(queueName, Long.valueOf(nodeId));
     }
 
     /**

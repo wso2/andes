@@ -24,6 +24,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -31,14 +32,11 @@ public interface SlotAgent {
 
 	/**
 	 * Create a slot in database
-	 * @param startMessageId start message id
-	 * @param endMessageId end message id end message id
-	 * @param storageQueueName name of storage queue
-	 * @param assignedNodeId Assigned node id of slot
+	 * @param slotRanges Ranges of slots for different nodes
+	 * @param publishedNodeId From where messages in this slot is published
+	 * @param queueId Id of the queue
 	 */
-	void createSlot(long startMessageId, long endMessageId,
-						   String storageQueueName, String assignedNodeId)
-							throws AndesException;
+	void createSlot(String slotRanges, long publishedNodeId, long queueId)throws AndesException;
 
 	/**
 	 * Delete a slot from database
@@ -62,7 +60,7 @@ public interface SlotAgent {
 	/**
 	 * Select rows with unassigned slots
 	 *
-	 * @param queueName name of queue
+	 * @param queueName Id of queue
 	 * @return unassigned slot object
 	 */
 
@@ -71,10 +69,10 @@ public interface SlotAgent {
 	/**
 	 * Update slot assignment in database
 	 *  @param nodeId id of node
-	 * @param queueName name of queue
+	 * @param queueName Name of queue
 	 * @param allocatedSlot allocated slot
 	 */
-	void updateSlotAssignment(String nodeId, String queueName, Slot allocatedSlot)
+	void updateSlotAssignment(long nodeId, String queueName, Slot allocatedSlot)
 			throws AndesException;
 
 	/**
@@ -236,5 +234,28 @@ public interface SlotAgent {
 	 */
 	void clearSlotStorage() throws AndesException;
 
+	/**
+	 * Update data related to create a slot in future when slot window size is filled
+	 * @param uniqueNodeId Id of the node
+	 * @param queueId Id of the storage queue
+	 * @param lastPublishedMessageId Last Published message Id
+	 */
+	void updateLastPublishedMessageId(long uniqueNodeId, long queueId, long lastPublishedMessageId) throws AndesException;
 
+	long getLastPublishedMessageId(long uniqueNodeId, long queueId) throws AndesException;
+
+	Map<Long, Long> getLastPublishedIdsOfAllNodes(long queueId) throws AndesException;
+
+	void insertLastPublishedMessageId(long uniqueNodeId, long queueId, long lastPublishedMessageId) throws AndesException;
+
+
+	Map<Long, Long> getNodeIdToLastAssignedId(long queueId) throws AndesException;
+
+	void updateNodeIdToLastAssignedId(long uniqueNodeId, long queueId, long lastAssignedMessageId) throws AndesException;
+
+
+	void insertLastAssignedMessageId(long uniqueNodeId, long queueId, long lastAssignedMessageId) throws AndesException;
+
+
+	Slot getSlot(String queueName) throws AndesException;
 }

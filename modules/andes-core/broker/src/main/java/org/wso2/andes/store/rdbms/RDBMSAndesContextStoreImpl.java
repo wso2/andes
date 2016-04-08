@@ -21,6 +21,7 @@ package org.wso2.andes.store.rdbms;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesBinding;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesExchange;
@@ -29,11 +30,7 @@ import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
-import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.store.AndesDataIntegrityViolationException;
-//import org.wso2.carbon.metrics.manager.Level;
-//import org.wso2.carbon.metrics.manager.MetricManager;
-//import org.wso2.carbon.metrics.manager.Timer.Context;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -1006,6 +1003,259 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         // nothing to do here.
     }
 
+    @Override
+    public void updateLastPublishedMessageId(long nodeId, long queueId, long lastPublishedMessageId) throws
+            AndesException{
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+
+        try {
+
+            connection = getConnection();
+
+            preparedStatement = connection.prepareStatement(
+                    RDBMSConstants.PS_UPDATE_LAST_PUBLISHED_MESSAGE_ID);
+
+            preparedStatement.setLong(1, lastPublishedMessageId);
+            preparedStatement.setLong(2, nodeId);
+            preparedStatement.setLong(3, queueId);
+            preparedStatement.executeUpdate();
+
+            connection.commit();
+
+        } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_UPDATING_LAST_PUBLISHED_MESSAGE_ID);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while updating last published Id: "
+                                                      + lastPublishedMessageId + " belongs to  " +
+                                                      nodeId + ":" + queueId, e);
+        } finally {
+            close(preparedStatement, RDBMSConstants.TASK_UPDATING_LAST_PUBLISHED_MESSAGE_ID);
+            close(connection, RDBMSConstants.TASK_UPDATING_LAST_PUBLISHED_MESSAGE_ID);
+        }
+    }
+
+    @Override
+    public long getLastPublishedMessageId(long nodeId, long queueId) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        long lastPublishedMessageId = 0;
+
+        try {
+            connection = getConnection();
+
+            preparedStatement =
+                    connection.prepareStatement(RDBMSConstants.PS_GET_LAST_PUBLISHED_MESSAGE_ID);
+            preparedStatement.setLong(1, nodeId);
+            preparedStatement.setLong(2, queueId);
+            resultSet = preparedStatement.executeQuery();
+
+            while (resultSet.next()) {
+                lastPublishedMessageId = resultSet.getLong(RDBMSConstants.LAST_PUBLISHED_MESSAGE_ID);
+            }
+            return lastPublishedMessageId;
+
+        } catch (SQLException e) {
+            String errMsg =
+                    RDBMSConstants.TASK_GET_LAST_PUBLISHED_MESSAGE_ID;
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
+        } finally {
+            close(resultSet, RDBMSConstants.TASK_GET_LAST_PUBLISHED_MESSAGE_ID);
+            close(preparedStatement, RDBMSConstants.TASK_GET_LAST_PUBLISHED_MESSAGE_ID);
+            close(connection, RDBMSConstants.TASK_GET_LAST_PUBLISHED_MESSAGE_ID);
+        }
+    }
+
+    @Override
+    public void insertLastPublishedMessageId(long nodeId, long queueId, long lastPublishedMessageId) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+
+        try {
+
+            connection = getConnection();
+
+            preparedStatement = connection.prepareStatement(
+                    RDBMSConstants.PS_INSERT_LAST_PUBLISHED_MESSAGE_ID);
+
+            preparedStatement.setLong(1, nodeId);
+            preparedStatement.setLong(2, queueId);
+            preparedStatement.setLong(3, lastPublishedMessageId);
+            preparedStatement.executeUpdate();
+
+            connection.commit();
+
+        } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_INSERTING_LAST_PUBLISHED_MESSAGE_ID);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while inserting last published Id: "
+                                                      + lastPublishedMessageId + " belongs to  " +
+                                                      nodeId + ":" + queueId, e);
+        } finally {
+            close(preparedStatement, RDBMSConstants.TASK_INSERTING_LAST_PUBLISHED_MESSAGE_ID);
+            close(connection, RDBMSConstants.TASK_INSERTING_LAST_PUBLISHED_MESSAGE_ID);
+        }
+    }
+
+    @Override
+    public Map<Long, Long> getLastPublishedMessageIdsOfAllNodes(long queueId) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        Map<Long, Long> nodeIdToLastPublishedId = new HashMap<>();
+
+        try {
+            connection = getConnection();
+
+            preparedStatement =
+                    connection.prepareStatement(RDBMSConstants.PS_GET_ALL_LAST_PUBLISHED_MESSAGE_IDS);
+            preparedStatement.setLong(1, queueId);
+            resultSet = preparedStatement.executeQuery();
+
+            while (resultSet.next()) {
+                long nodeId = resultSet.getLong(RDBMSConstants.NODE_ID);
+                long lastPublishedMessageId = resultSet.getLong(RDBMSConstants.LAST_PUBLISHED_MESSAGE_ID);
+                nodeIdToLastPublishedId.put(nodeId, lastPublishedMessageId);
+            }
+            return nodeIdToLastPublishedId;
+
+        } catch (SQLException e) {
+            String errMsg =
+                    RDBMSConstants.TASK_GET_ALL_LAST_PUBLISHED_MESSAGE_IDS;
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
+        } finally {
+            close(resultSet, RDBMSConstants.TASK_GET_ALL_LAST_PUBLISHED_MESSAGE_IDS);
+            close(preparedStatement, RDBMSConstants.TASK_GET_ALL_LAST_PUBLISHED_MESSAGE_IDS);
+            close(connection, RDBMSConstants.TASK_GET_ALL_LAST_PUBLISHED_MESSAGE_IDS);
+        }
+    }
+
+    @Override
+    public Map<Long, Long> getNodeIdToLastAssignedId(long queueId) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        Map<Long, Long> nodeIdToLastAssignedId = new HashMap<>();
+
+        try {
+            connection = getConnection();
+
+            preparedStatement =
+                    connection.prepareStatement(RDBMSConstants.PS_GET_NODE_ID_TO_LAST_ASSIGNED_MESSAGE_ID);
+            preparedStatement.setLong(1, queueId);
+            resultSet = preparedStatement.executeQuery();
+
+            while (resultSet.next()) {
+                long nodeId = resultSet.getLong(RDBMSConstants.NODE_ID);
+                long lastPublishedMessageId = resultSet.getLong(RDBMSConstants.LAST_ASSIGNED_MESSAGE_ID);
+                nodeIdToLastAssignedId.put(nodeId, lastPublishedMessageId);
+            }
+            return nodeIdToLastAssignedId;
+
+        } catch (SQLException e) {
+            String errMsg =
+                    RDBMSConstants.TASK_GET_ALL_LAST_PUBLISHED_MESSAGE_IDS;
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
+        } finally {
+            close(resultSet, RDBMSConstants.TASK_GET_ALL_LAST_PUBLISHED_MESSAGE_IDS);
+            close(preparedStatement, RDBMSConstants.TASK_GET_ALL_LAST_PUBLISHED_MESSAGE_IDS);
+            close(connection, RDBMSConstants.TASK_GET_ALL_LAST_PUBLISHED_MESSAGE_IDS);
+        }
+    }
+
+    @Override
+    public void updateAssignedMessageId(long nodeId, long queueId, long lastAssignedMessageId) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+
+        try {
+
+            connection = getConnection();
+
+            preparedStatement = connection.prepareStatement(
+                    RDBMSConstants.PS_UPDATE_LAST_ASSIGNED_MESSAGE_ID);
+
+            preparedStatement.setLong(1, lastAssignedMessageId);
+            preparedStatement.setLong(2, nodeId);
+            preparedStatement.setLong(3, queueId);
+            preparedStatement.executeUpdate();
+
+            connection.commit();
+
+        } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_UPDATING_LAST_ASSIGNED_MESSAGE_ID);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while updating last assigned Id: "
+                                                      + lastAssignedMessageId + " belongs to  " +
+                                                      nodeId + ":" + queueId, e);
+        } finally {
+            close(preparedStatement, RDBMSConstants.TASK_UPDATING_LAST_ASSIGNED_MESSAGE_ID);
+            close(connection, RDBMSConstants.TASK_UPDATING_LAST_ASSIGNED_MESSAGE_ID);
+        }
+    }
+
+    @Override
+    public void insertLastAssignedMessageId(long nodeId, long queueId, long lastAssignedMessageId) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+
+        try {
+
+            connection = getConnection();
+
+            preparedStatement = connection.prepareStatement(
+                    RDBMSConstants.PS_INSERT_LAST_ASSIGNED_MESSAGE_ID);
+
+            preparedStatement.setLong(1, nodeId);
+            preparedStatement.setLong(2, queueId);
+            preparedStatement.setLong(3, lastAssignedMessageId);
+            preparedStatement.executeUpdate();
+
+            connection.commit();
+
+        } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_INSERTING_LAST_ASSIGNED_MESSAGE_ID);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while inserting last published Id: "
+                                                      + lastAssignedMessageId + " belongs to  " +
+                                                      nodeId + ":" + queueId, e);
+        } finally {
+            close(preparedStatement, RDBMSConstants.TASK_INSERTING_LAST_ASSIGNED_MESSAGE_ID);
+            close(connection, RDBMSConstants.TASK_INSERTING_LAST_ASSIGNED_MESSAGE_ID);
+        }
+    }
+
+    @Override
+    public Slot selectNewSlot(String queueName) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        Slot newSlot = null;
+
+        try {
+            connection = getConnection();
+
+            preparedStatement =
+                    connection.prepareStatement(RDBMSConstants.PS_SELECT_NEW_SLOT);
+            preparedStatement.setLong(1, AndesContext.getInstance().getMessageStore().
+                    getCachedQueueID(queueName) );
+            resultSet = preparedStatement.executeQuery();
+
+            if(resultSet.next()) {
+                newSlot = new Slot(resultSet.getString(RDBMSConstants.SLOT_RANGES_STRING), resultSet.getLong
+                        (RDBMSConstants.STORAGE_QUEUE_ID));
+                newSlot.addState(SlotState.ASSIGNED);
+            }
+
+            return newSlot;
+        } catch (SQLException e) {
+            String errMsg =
+                    RDBMSConstants.TASK_SELECT_UNASSIGNED_SLOTS + " queue : " + queueName;
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
+        } finally {
+            close(resultSet, RDBMSConstants.TASK_SELECT_UNASSIGNED_SLOTS);
+            close(preparedStatement, RDBMSConstants.TASK_SELECT_UNASSIGNED_SLOTS);
+            close(connection, RDBMSConstants.TASK_SELECT_UNASSIGNED_SLOTS);
+        }
+    }
+
     /**
      * Creates a connection using a thread pooled data source object and returns the connection
      *
@@ -1084,9 +1334,8 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public void createSlot(long startMessageId, long endMessageId, String storageQueueName,
-                           String assignedNodeId) throws AndesException {
-
+    public void createSlot(String slotRanges, long publishedNodeId, long queueId) throws
+            AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
 
@@ -1096,17 +1345,18 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement =
                     connection.prepareStatement(RDBMSConstants.PS_INSERT_SLOT);
-            preparedStatement.setLong(1, startMessageId);
-            preparedStatement.setLong(2, endMessageId);
-            preparedStatement.setString(3, storageQueueName);
-            preparedStatement.setString(4, assignedNodeId);
+
+
+            preparedStatement.setString(1, slotRanges);
+            preparedStatement.setLong(2, publishedNodeId);
+            preparedStatement.setLong(3, queueId);
 
             preparedStatement.executeUpdate();
             connection.commit();
         } catch (SQLException e) {
             String errMsg =
-                    RDBMSConstants.TASK_CREATE_SLOT + " startMessageId: " + startMessageId + " endMessageId: " +
-                            endMessageId + " storageQueueName:" + storageQueueName + " assignedNodeId:" + assignedNodeId;
+                    RDBMSConstants.TASK_CREATE_SLOT + " slotRanges: " + slotRanges + " publishedNodeId: " +
+                    publishedNodeId + " queueId:" + queueId;
             rollback(connection, RDBMSConstants.TASK_CREATE_SLOT);
             throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
@@ -1114,6 +1364,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             close(connection, RDBMSConstants.TASK_CREATE_SLOT);
         }
     }
+
 
     /**
      * {@inheritDoc}
@@ -1235,8 +1486,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     /**
      * {@inheritDoc}
      */
-    @Override public void createSlotAssignment(String nodeId, String queueName, long startMsgId,
-                                               long endMsgId)
+    @Override public void createSlotAssignment(long nodeId, String queueName, String slotRnagesString)
             throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
@@ -1247,17 +1497,19 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement =
                     connection.prepareStatement(RDBMSConstants.PS_INSERT_SLOT_ASSIGNMENT);
-            preparedStatement.setString(1, nodeId);
-            preparedStatement.setString(2, queueName);
-            preparedStatement.setLong(3, startMsgId);
-            preparedStatement.setLong(4, endMsgId);
+
+
+            preparedStatement.setLong(1, nodeId);
+            preparedStatement.setLong(2, AndesContext.getInstance().getMessageStore().
+                    getCachedQueueID(queueName));
+            preparedStatement.setString(3, slotRnagesString);
 
             preparedStatement.executeUpdate();
             connection.commit();
         } catch (SQLException e) {
             String errMsg =
                     RDBMSConstants.TASK_CREATE_SLOT_ASSIGNMENT + " nodeId: " + nodeId + " queueName: " +
-                            queueName + "startMsgId: " + startMsgId + "endMsgId: " + endMsgId;
+                            queueName + "slotRangesString: " + slotRnagesString;
             rollback(connection, RDBMSConstants.TASK_CREATE_SLOT_ASSIGNMENT);
             throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
@@ -1345,15 +1597,14 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement =
                     connection.prepareStatement(RDBMSConstants.PS_SELECT_UNASSIGNED_SLOT);
-
-            preparedStatement.setString(1, queueName);
+            preparedStatement.setLong(1, AndesContext.getInstance().getMessageStore().
+                    getCachedQueueID(queueName));
             resultSet = preparedStatement.executeQuery();
 
-            if(resultSet.next()) {
-                unAssignedSlot = new Slot(SlotState.RETURNED);
-                unAssignedSlot.setStartMessageId(resultSet.getLong(RDBMSConstants.START_MESSAGE_ID));
-                unAssignedSlot.setEndMessageId(resultSet.getLong(RDBMSConstants.END_MESSAGE_ID));
-                unAssignedSlot.setStorageQueueName(resultSet.getString(RDBMSConstants.STORAGE_QUEUE_NAME));
+            if (resultSet.next()) {
+                unAssignedSlot = new Slot(resultSet.getString(RDBMSConstants
+                        .SLOT_RANGES_STRING), resultSet.getLong(RDBMSConstants.STORAGE_QUEUE_ID));
+                unAssignedSlot.addState(SlotState.RETURNED);
             }
 
             return unAssignedSlot;
@@ -1619,10 +1870,12 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    @Override
     public Slot getOverlappedSlot(String nodeId, String queueName) throws AndesException {
+        return null;
+    }
+
+    public Slot getOverlappedSlot(long nodeId, long queueId) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
@@ -1633,21 +1886,19 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement =
                     connection.prepareStatement(RDBMSConstants.PS_SELECT_OVERLAPPED_SLOT);
-            preparedStatement.setString(1, queueName);
-            preparedStatement.setString(2, nodeId);
+            preparedStatement.setLong(1, queueId);
+            preparedStatement.setLong(2, nodeId);
             resultSet = preparedStatement.executeQuery();
 
             if(resultSet.next()) {
-                overlappedSlot = new Slot(SlotState.OVERLAPPED);
-                overlappedSlot.setStartMessageId(resultSet.getLong(RDBMSConstants.START_MESSAGE_ID));
-                overlappedSlot.setEndMessageId(resultSet.getLong(RDBMSConstants.END_MESSAGE_ID));
-                overlappedSlot.setStorageQueueName(
-                        resultSet.getString(RDBMSConstants.STORAGE_QUEUE_NAME));
+                overlappedSlot = new Slot(resultSet.getString(RDBMSConstants
+                        .SLOT_RANGES_STRING), resultSet.getLong(RDBMSConstants.QUEUE_ID));
+                overlappedSlot.addState(SlotState.OVERLAPPED);
                 overlappedSlot.setAnOverlappingSlot(true);
             }
             return overlappedSlot;
         } catch (SQLException e) {
-            String errMsg = RDBMSConstants.TASK_GET_OVERLAPPED_SLOT + " queueName: " + queueName;
+            String errMsg = RDBMSConstants.TASK_GET_OVERLAPPED_SLOT + " queueId: " + queueId;
             logger.error("Error occurred while " + errMsg, e);
             throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
@@ -1765,7 +2016,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             while (resultSet.next()) {
                 Slot assignedSlot = new Slot(SlotState.ASSIGNED);
-                assignedSlot.setStartMessageId(resultSet.getLong(RDBMSConstants.START_MESSAGE_ID));
+                assignedSlot.setSlotRangesString(resultSet.getString(RDBMSConstants.SLOT_RANGES_STRING));
                 assignedSlot.setEndMessageId(resultSet.getLong(RDBMSConstants.END_MESSAGE_ID));
                 assignedSlot.setStorageQueueName(
                         resultSet.getString(RDBMSConstants.STORAGE_QUEUE_NAME));
@@ -1803,8 +2054,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             while (resultSet.next()) {
                 Slot slot = new Slot(SlotState.getById(resultSet.getInt(RDBMSConstants.SLOT_STATE)));
-                slot.setStartMessageId(resultSet.getLong(RDBMSConstants.START_MESSAGE_ID));
-                slot.setEndMessageId(resultSet.getLong(RDBMSConstants.END_MESSAGE_ID));
+                slot.setSlotRangesString(resultSet.getString(RDBMSConstants.SLOT_RANGES_STRING));
                 slot.setStorageQueueName(resultSet.getString(RDBMSConstants.STORAGE_QUEUE_NAME));
                 slot.setSlotInActive();
                 slotSet.add(slot);

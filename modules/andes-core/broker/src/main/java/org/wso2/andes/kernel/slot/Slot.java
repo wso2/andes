@@ -23,9 +23,12 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
+
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -35,6 +38,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Slot implements Serializable, Comparable<Slot> {
 
     private static Log log = LogFactory.getLog(Slot.class);
+    private long queueId;
 
     /**
      * Number of messages in the slot
@@ -46,6 +50,9 @@ public class Slot implements Serializable, Comparable<Slot> {
      */
     private long startMessageId;
 
+    private Map<Long,SlotRange> nodeIdToRangeMap = new HashMap<>();
+
+    private String slotRangesString;
     /**
      * End message ID of the slot
      */
@@ -99,6 +106,21 @@ public class Slot implements Serializable, Comparable<Slot> {
         pendingMessageCount = new AtomicInteger();
         messagesOfSlot = new ConcurrentHashMap<>();
     }
+
+    public Slot(Map<Long, SlotRange> nodeIdToRangeMap, long queueId){
+        this.setNodeIdToRangeMap(nodeIdToRangeMap);
+        this.setQueueId(queueId);
+    }
+
+    public Slot(String slotRangesString, long queueId){
+        this.setSlotRangesString(slotRangesString);
+        this.setQueueId(queueId);
+    }
+
+    public Slot(Map<Long, SlotRange> nodeIdToRangeMap){
+        this.setNodeIdToRangeMap(nodeIdToRangeMap);
+    }
+
 
     public Slot(long start, long end, String destinationOfMessagesInSlot) {
         this();
@@ -383,5 +405,29 @@ public class Slot implements Serializable, Comparable<Slot> {
      */
     public void incrementPendingMessageCount(int amount) {
         pendingMessageCount.addAndGet(amount);
+    }
+
+    public Map<Long, SlotRange> getNodeIdToRangeMap() {
+        return nodeIdToRangeMap;
+    }
+
+    public void setNodeIdToRangeMap(Map<Long, SlotRange> nodeIdToRangeMap) {
+        this.nodeIdToRangeMap = nodeIdToRangeMap;
+    }
+
+    public long getQueueId() {
+        return queueId;
+    }
+
+    public void setQueueId(long queueId) {
+        this.queueId = queueId;
+    }
+
+    public String getSlotRangesString() {
+        return slotRangesString;
+    }
+
+    public void setSlotRangesString(String slotRangesString) {
+        this.slotRangesString = slotRangesString;
     }
 }
