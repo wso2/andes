@@ -104,6 +104,15 @@ public class SlotDeliveryWorkerManager {
                 SlotDeliveryWorker slotDeliveryWorker = getSlotDeliveryWorkerMap()
                         .get(slotDeliveryWorkerId);
                 slotDeliveryWorker.startDeliveryForQueue(storageQueueName, destination, protocolType, destinationType);
+                // In case the SlotDeliveryWorker has been stopped due to 0 active subscribers, we must re-start it.
+                if (!slotDeliveryWorker.isRunning()) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("SlotDeliveryWorker : " + slotDeliveryWorker.getId()
+                                + "has been stopped. Therefore restarting.");
+                    }
+                    slotDeliveryWorker.setRunning(true);
+                    slotDeliveryWorkerExecutor.execute(slotDeliveryWorker);
+                }
                 if(log.isDebugEnabled()) {
                     log.debug("Assigned Already Running Slot Delivery Worker. Reading messages storageQ= " + storageQueueName + " MsgDest= " + destination);
                 }
@@ -142,6 +151,10 @@ public class SlotDeliveryWorkerManager {
 
         // Check if there is a slot delivery worker for the storageQueueName
         if (null != slotWorker) {
+            if (log.isDebugEnabled()) {
+                log.debug("Stopping delivery for storage queue " + storageQueueName +
+                        " with SlotDeliveryWorker : " + slotWorker.getId());
+            }
             slotWorker.stopDeliveryForQueue(storageQueueName);
         }
     }
