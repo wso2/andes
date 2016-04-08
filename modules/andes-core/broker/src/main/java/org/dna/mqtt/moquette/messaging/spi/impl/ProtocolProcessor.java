@@ -110,20 +110,19 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
         m_authenticator = authenticator;
         m_storageService = storageService;
 
-        isAuthenticationRequired =
-                    AndesConfigurationManager.readValue(TRANSPORTS_MQTT_USER_AUTHENTICATION) == MQTTUserAuthenticationScheme.REQUIRED;
-
-        isAuthorizationRequired =
-					AndesConfigurationManager.readValue(TRANSPORTS_MQTT_USER_AUTHORIZATION) == MQTTUserAuthorizationScheme.REQUIRED;
-
+        isAuthenticationRequired = AndesConfigurationManager.readValue(TRANSPORTS_MQTT_USER_AUTHENTICATION) ==
+                MQTTUserAuthenticationScheme.REQUIRED;
+        isAuthorizationRequired = AndesConfigurationManager.readValue(TRANSPORTS_MQTT_USER_AUTHORIZATION) ==
+                MQTTUserAuthorizationScheme.REQUIRED;
         //Initialize Authorization
-        if(isAuthorizationRequired){
-            String authorizerClassName = AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_MQTT_USER_AUTHORIZATION_CLASS);
+        if (isAuthorizationRequired) {
+            String authorizerClassName = AndesConfigurationManager.readValue(
+                    AndesConfiguration.TRANSPORTS_MQTT_USER_AUTHORIZATION_CLASS);
             try {
                 Class<? extends IAuthorizer> authorizerClass = Class.forName(authorizerClassName).asSubclass(IAuthorizer.class);
                 m_authorizer = authorizerClass.newInstance();
             } catch (ClassNotFoundException e) {
-                throw new MQTTInitializationException("Unable to find the class authorizer: " +  authorizerClassName, e);
+                throw new MQTTInitializationException("Unable to find the class authorizer: " + authorizerClassName, e);
             } catch (InstantiationException e) {
                 throw new MQTTInitializationException("Unable to create an instance of :" + authorizerClassName, e);
             } catch (IllegalAccessException e) {
@@ -268,16 +267,16 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             authSubject.setTenantDomain(authenticationInfo.getTenantDomain());
             authSubject.setProtocolVersion(msg.getProcotolVersion());
             authSubject.setProperties(authenticationInfo.getProperties());
-			//handle user authorization.
-			if (isAuthorizationRequired && m_authorizer != null) {
-				boolean isAuthorized = m_authorizer.isAuthorizedToConnect(authSubject);
-				if (!isAuthorized) {
-					ConnAckMessage okResp = new ConnAckMessage();
-					okResp.setReturnCode(ConnAckMessage.NOT_AUTHORIZED);
-					session.write(okResp);
-					return;
-				}
-			}
+            //handle user authorization.
+            if (isAuthorizationRequired && m_authorizer != null) {
+                boolean isAuthorized = m_authorizer.isAuthorizedToConnect(authSubject);
+                if (!isAuthorized) {
+                    ConnAckMessage okResp = new ConnAckMessage();
+                    okResp.setReturnCode(ConnAckMessage.NOT_AUTHORIZED);
+                    session.write(okResp);
+                    return;
+                }
+            }
         }
 
         authSubjects.put(msg.getClientID(), authSubject);
