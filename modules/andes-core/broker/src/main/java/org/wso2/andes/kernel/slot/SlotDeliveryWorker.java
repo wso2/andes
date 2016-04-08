@@ -227,6 +227,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
             }
         }
 
+        log.info("SlotDeliveryWorker stopped. Thread name " + Thread.currentThread().getName() + " with Thread Id : " + this.getId());
     }
 
     /**
@@ -276,6 +277,14 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                 }
             }
         }
+
+        if (0 == storageQueueDataMap.size()) {
+            if (log.isDebugEnabled()) {
+                log.debug("Stopping SlotDeliveryWorker : " + this.getId() + " due to 0 subscribers on its queues. ");
+            }
+            this.setRunning(false);
+        }
+
     }
 
     /**
