@@ -27,19 +27,21 @@ import org.wso2.andes.mqtt.MQTTAuthorizationSubject;
 public interface IAuthorizer {
 
 	/**
-	 *
+	 * This method will be triggered when an authenticated client tries publish/subscribe to topic.
+	 * Through this interface custom authorization implementation can be implemented.
 	 * @param authorizationSubject passed from authentication.
 	 * @param topic that the client is requesting for access.
 	 * @param permissionLevel request permission level. This is either publish or subscribe.
-	 * @return
+	 * @return boolean return true when the client is authorized for the particular action or else return false.
 	 */
 	boolean isAuthorizedForTopic(MQTTAuthorizationSubject authorizationSubject, String topic,
 						 MQTTAuthoriztionPermissionLevel permissionLevel);
 
 	/**
+	 * This method will be triggered when a authenticated client tries to connect to the broker.
 	 * Check whether the user is authorized to connect to the server.
 	 * @param authorizationSubject passed from authentication.
-	 * @return
+	 * @return boolean return true when the client is authorized for the particular action or else return false.
 	 */
 	boolean isAuthorizedToConnect(MQTTAuthorizationSubject authorizationSubject);
 
