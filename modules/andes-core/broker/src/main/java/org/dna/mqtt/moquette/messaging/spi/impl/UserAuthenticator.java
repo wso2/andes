@@ -51,7 +51,6 @@ public class UserAuthenticator implements IAuthenticator {
     }
     
     public AuthenticationInfo checkValid(String username, String password) {
-        //TODO CHECK THE PURPOSE OF THIS CLASS
         String foundPwq = users.get(username);
         String carbonUsername = username.replace(DOMAIN_NAME_SEPARATOR, "@");
         AuthenticationInfo authenticationInfo = new AuthenticationInfo();
