@@ -119,6 +119,7 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
      * @throws AndesException
      */
     public void forcefullyDisconnect() throws AndesException {
+        log.info("forcefully disconnecting subscription: " + this.toString());
         subscription.forcefullyDisconnect();
     }
 
@@ -318,4 +319,6 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
     public OutboundSubscription getOutboundSubscription() {
         return subscription;
     }
+    
+   
 }

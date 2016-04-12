@@ -106,8 +106,14 @@ public class PersistenceStoreConnector implements MQTTConnector {
                 if (null != messageContext.getChannel()) {
                     andesChannelId = messageContext.getChannel().remoteAddress().toString().substring(1);
                 }
-
-                AndesChannel publisherChannel = Andes.getInstance().createChannel(andesChannelId, publisher);
+                
+                AndesChannel publisherChannel = null;
+                try {
+                    publisherChannel = Andes.getInstance().createChannel(andesChannelId, publisher);
+                } catch (AndesException ex) {
+                    throw new MQTTException("unable to create a new channel " , ex);
+                }
+ 
                 //Set channel details
                 //Substring to remove leading slash character from remote address
                 publisherChannel.setDestination(messageContext.getTopic());

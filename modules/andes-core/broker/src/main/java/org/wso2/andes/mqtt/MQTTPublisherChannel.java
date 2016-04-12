@@ -63,6 +63,12 @@ public class MQTTPublisherChannel implements FlowControlListener {
         socket.config().setAutoRead(true);
     }
 
+    @Override
+    public void disconnect(){
+        socket.close();
+    }
+    
+    
     public void setChannel(AndesChannel channel) {
         this.channel = channel;
     }
