@@ -21,6 +21,7 @@ package org.wso2.andes.kernel.slot;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
@@ -29,6 +30,7 @@ import org.wso2.andes.kernel.MessageFlusher;
 import org.wso2.andes.kernel.MessageDeliveryInfo;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolType;
+import org.wso2.andes.server.cluster.error.detection.NetworkPartitionListener;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
@@ -50,7 +52,8 @@ import java.util.concurrent.ExecutionException;
  * SlotDelivery worker is responsible of distributing messages to subscribers. Messages will be
  * taken from a slot.
  */
-public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
+public class SlotDeliveryWorker extends Thread implements StoreHealthListener, NetworkPartitionListener {
+
 
     /**
      * Keeps data related to storage queues for reference
@@ -82,6 +85,14 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
     private volatile SettableFuture<Boolean> messageStoresUnavailable;
 
     /**
+     * Indicates and provides a barrier if network is partitions become offline.
+     * marked as volatile since this value could be set from a different thread
+     * (from hazelcast related threads.)
+     */
+    private volatile SettableFuture<Boolean> networkOutageDetected;
+    
+    
+    /**
      * Maximum number to retries retrieve metadata list for a given storage
      * queue ( in the errors occur in message stores)
      */
@@ -93,6 +104,11 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
         slotCoordinator = MessagingEngine.getInstance().getSlotCoordinator();
         messageStoresUnavailable = null;
         FailureObservingStoreManager.registerStoreHealthListener(this);
+        
+        if ( AndesContext.getInstance().isClusteringEnabled()){ 
+            // network partition detection works only when clustered.
+            AndesContext.getInstance().getClusterAgent().addNetworkPartitionListener(this);
+        }
     }
 
     public void rescheduleMessagesForDelivery(String storageQueueName, List<DeliverableAndesMetadata> messages) {
@@ -216,14 +232,13 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                         }
                         messageFlusher.sendMessagesInBuffer(messageDeliveryInfo, storageQueueName);
                     }
-
-                } catch (AndesException e) {
-                    log.error("Error running Message Store Reader " + e.getMessage(), e);
                 } catch (ConnectionException e) {
                     log.error("Error occurred while connecting to the thrift coordinator " + e.getMessage(), e);
                     setRunning(false);
                     //Any exception should be caught here. Otherwise SDW thread will stop
                     //and MB node will become useless
+                } catch (AndesException e) {
+                    log.error("Error running Message Store Reader " + e.getMessage(), e);
                 } catch (Throwable e) {
                     log.error("Error while running Slot Delivery Worker. ", e);
                 }
@@ -381,6 +396,23 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
      * @throws ConnectionException if connectivity to coordinator is lost.
      */
     private Slot requestSlot(String storageQueueName) throws ConnectionException {
+    	
+    	 if ( networkOutageDetected != null){
+             try {
+                 
+                 log.warn("Network outage detected therefore "+ 
+                           "waiting until network restores. thread id: " + this.getId());
+                 networkOutageDetected.get();
+                 networkOutageDetected = null; // we are passing the blockade (therefore clear it).
+                 log.info("Network outage resolved. resuming work. thread id: " + this.getId());
+                 
+             } catch (InterruptedException e) {
+                 throw new ConnectionException("Thread interrupted while waiting for message stores to come online", e);
+             } catch (ExecutionException e){
+                 throw new ConnectionException("Error occurred while waiting for message stores to come online", e);
+             }
+         }
+    	
         long startTime = System.currentTimeMillis();
         Slot currentSlot = slotCoordinator.getSlot(storageQueueName);
         long endTime = System.currentTimeMillis();
@@ -519,8 +551,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
      */
     @Override
     public void storeNonOperational(HealthAwareStore store, Exception ex) {
-
-        log.info("Message stores became not operational therefore waiting");
+        log.warn(this.getId() + " Message stores became not operational therefore waiting");
         messageStoresUnavailable = SettableFuture.create();
 
     }
@@ -531,10 +562,40 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
      */
     @Override
     public void storeOperational(HealthAwareStore store) {
-        log.info("Message stores became operational therefore resuming work");
+        log.info(this.getId() + "Message stores became operational therefore resuming work");
         messageStoresUnavailable.set(false);
+    }
+
+    /**
+     * {@inheritDoc}
+     * When the minimum node count is not met slot delivery worker thread should
+     * stop working. therefore a barrier (/ settable future is created)
+     */
+    @Override
+    public void minimumNodeCountNotFulfilled(int currentNodeCount) {
+        log.info(this.getId() +
+                 " network outage detected therefore stopping work, current cluster size: " +
+                 currentNodeCount);
+
+        if (networkOutageDetected != null) {
+            networkOutageDetected.setException(
+                      new AndesException("possible race condition detected. duplicate network-outage notification received"));
+        }
+
+        networkOutageDetected = SettableFuture.create();
 
     }
+ 
+	
+	/**
+	 * network partition is healed. therefore removing the barrier (- allows the this thread to work) 
+	 */
+	@Override
+	public void minimumNodeCountFulfilled(int currentNodeCount) {
+		log.info(this.getId() + " network outage resolved therefore resuming work, current cluster size: " + currentNodeCount);
+		networkOutageDetected.set(false);
+
+	}
 
     /**
      * Check if the given storage queue is already added in the current worker.

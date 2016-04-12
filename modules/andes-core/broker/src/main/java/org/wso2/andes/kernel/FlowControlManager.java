@@ -24,6 +24,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.metrics.MetricsConstants;
+import org.wso2.andes.server.cluster.error.detection.NetworkPartitionListener;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
@@ -43,7 +44,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Flow control is typically employed in controlling fast producers from overloading slow consumers in
  * producer-consumer scenarios. Flow control manager handles flow controlling by blocking and unblocking channels.
  */
-public class FlowControlManager  implements StoreHealthListener {
+public class FlowControlManager  implements StoreHealthListener, NetworkPartitionListener {
     /**
      * Class logger
      */
@@ -130,6 +131,9 @@ public class FlowControlManager  implements StoreHealthListener {
         channels = new ArrayList<AndesChannel>();
 
         FailureObservingStoreManager.registerStoreHealthListener(this);
+        if ( AndesContext.getInstance().isClusteringEnabled()){ // network partition detection works only when clustered.
+            AndesContext.getInstance().getClusterAgent().addNetworkPartitionListener(this);
+        }
         // Initialize executor service for state validity checking
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("AndesScheduledTaskManager-FlowControl")
                                                                      .build();
@@ -142,11 +146,20 @@ public class FlowControlManager  implements StoreHealthListener {
     /**
      * Create a new Andes channel for a new local channel.
      *
-     * @param listener Local flow control listener
-     * @param channelId the identifier of the channel
+     * @param listener
+     *            Local flow control listener
+     * @param channelId
+     *            the identifier of the channel
      * @return AndesChannel
      */
-    public synchronized AndesChannel createChannel(String channelId, FlowControlListener listener) {
+    public synchronized AndesChannel createChannel(String channelId,
+                                                   FlowControlListener listener) throws AndesException {
+
+        if (globalErrorBasedFlowControlEnabled) {
+            throw new AndesException("Global error based flow control is enabled. new connections are not allowed");
+        }
+        
+
         AndesChannel channel = new AndesChannel(this, channelId, listener, globalBufferBasedFlowControlEnabled,
                                                       globalErrorBasedFlowControlEnabled);
         channels.add(channel);
@@ -160,9 +173,14 @@ public class FlowControlManager  implements StoreHealthListener {
      *         Local flow control listener
      * @return AndesChannel
      */
-    public synchronized AndesChannel createChannel(FlowControlListener listener) {
-        AndesChannel channel = new AndesChannel(this, listener, globalBufferBasedFlowControlEnabled,
-                globalErrorBasedFlowControlEnabled);
+    public synchronized AndesChannel createChannel(FlowControlListener listener) throws AndesException {
+        
+        if ( globalErrorBasedFlowControlEnabled ){
+            throw new AndesException("Global error based flow control is enabled. new connections are not allowed");
+        }
+        
+        AndesChannel channel = new AndesChannel(this, listener, globalBufferBasedFlowControlEnabled, 
+                                                      globalErrorBasedFlowControlEnabled);
         channels.add(channel);
         return channel;
     }
@@ -260,7 +278,7 @@ public class FlowControlManager  implements StoreHealthListener {
     /**
      * Notify all the channels to enable error based flow control
      */
-    private synchronized void blockListenersOnErrorBasedFlowControl(HealthAwareStore store) {
+    private synchronized void blockListenersOnErrorBasedFlowControl(boolean forcefullyDisconnect) {
         if (!globalErrorBasedFlowControlEnabled) {
             globalErrorBasedFlowControlEnabled = true;
 
@@ -268,6 +286,19 @@ public class FlowControlManager  implements StoreHealthListener {
                 channel.notifyGlobalErrorBasedFlowControlActivation();
             }
             
+            
+            if (forcefullyDisconnect){
+                // before the iteration its important to have a constant view on available channels.
+                // if we send 'disconnect' to channels using the original collection that will result in a 
+                // concurrent modification ( since underlying socket/client is asked to disconnect,
+                // client disconnects, and this collection is modified while we iterating.
+                ArrayList<AndesChannel> constantView = new ArrayList<>(channels);
+                
+                for (AndesChannel channel : constantView){
+                    channel.disconnect();
+                }
+                
+            }
             
             log.info("Global error based flow control enabled.");
         }
@@ -343,7 +374,9 @@ public class FlowControlManager  implements StoreHealthListener {
      */
     @Override
     public void storeNonOperational(HealthAwareStore store, Exception ex) {
-        blockListenersOnErrorBasedFlowControl(store);
+        blockListenersOnErrorBasedFlowControl(false);// sending false to be
+                                                     // consistent with previous
+                                                     // behavior.
     }
 
     /**
@@ -359,6 +392,50 @@ public class FlowControlManager  implements StoreHealthListener {
     }
 
     /**
+     * {@inheritDoc}
+     * <p>
+     * When the cluster size become less minimum node count required flow
+     * control will be enabled.
+     * This will effectively let any-partition(s) which has more then minimum
+     * node count to accept traffic, while other partitions will not.
+     */
+    @Override
+    public void minimumNodeCountNotFulfilled(int currentNodeCount) {
+        log.info("Network partition detected, activating error based flow control");
+        blockListenersOnErrorBasedFlowControl(true);
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * When the cluster size becomes larger than minimum node count required
+     * flow
+     * control will be disabled.
+     * This will effectively let any-partition(s) which has more then minimum
+     * node count to accept traffic, while other partitions will not.
+     * Note:
+     * One side effect is; consider a scenario where:
+     * <ol>
+     * <li>Data store goes offline and error based flow control in enabled.</li>
+     * <li>Network becomes partitioned and error based flow control is invoked (
+     * even if flow control is in effect)</li>
+     * <li>at a later point in time, datastore become online or Network
+     * partition is resolved.</li>
+     * </ol>
+     * but this method will not wait for other problem to resolve ( network
+     * being
+     * Partitioned or message store become online) to disable error based flow
+     * control.
+     * 
+     */
+    @Override
+    public void minimumNodeCountFulfilled(int currentNodeCount) {
+        log.info("Network partition resolved, deactivating error based flow control");
+        unblockListenersOnErrorBasedFlowControl();
+
+    }
+    
+    /**
      * This will get current number of channels.
      */
     private class ChannelGauge implements Gauge<Integer> {
@@ -367,4 +444,5 @@ public class FlowControlManager  implements StoreHealthListener {
             return channels.size();
         }
     }
+
 }
