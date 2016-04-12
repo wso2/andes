@@ -18,15 +18,18 @@
 package org.wso2.andes.server.cluster;
 
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
+import org.wso2.andes.kernel.slot.SlotMessageCounter;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.store.FailureObservingStoreManager;
@@ -37,6 +40,10 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Cluster Manager is responsible for Handling the Broker Cluster Management Tasks like
@@ -69,6 +76,10 @@ public class ClusterManager implements StoreHealthListener{
      */
     private boolean storeOperational;
 
+    private ScheduledExecutorService slotRecoveryTaskService;
+
+    public static final int SLOT_SUBMIT_TASK_POOL_SIZE = 1;
+
     /**
      * Create a ClusterManager instance
      */
@@ -85,6 +96,9 @@ public class ClusterManager implements StoreHealthListener{
 
         if (AndesContext.getInstance().isClusteringEnabled()) {
             initClusterMode();
+            ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
+                    .setNameFormat("SlotRecoveryOneTimeTask-%d").build();
+            slotRecoveryTaskService = Executors.newScheduledThreadPool(SLOT_SUBMIT_TASK_POOL_SIZE, namedThreadFactory);
         } else {
             initStandaloneMode();
         }
@@ -121,6 +135,15 @@ public class ClusterManager implements StoreHealthListener{
 
             //Reassign the slot to free slots pool
             SlotManagerClusterMode.getInstance().reassignSlotsWhenMemberLeaves(deletedNodeId);
+
+            // Schedule a slot recovery task for lost submit slot event from left member node
+            log.info("Scheduling slot recovery task.");
+            slotRecoveryTaskService.schedule(new Runnable() {
+                @Override
+                public void run() {
+                    Andes.getInstance().triggerRecoveryEvent();
+                }
+            }, SlotMessageCounter.getInstance().SLOT_SUBMIT_TIMEOUT, TimeUnit.MILLISECONDS);
         }
 
         // Deactivate durable subscriptions belonging to the node
