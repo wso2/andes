@@ -75,6 +75,14 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
             case SAFE_ZONE_DECLARE_EVENT:
                 setSafeZoneLimit(inboundEvent, sequence);
                 break;
+            case PUBLISHER_RECOVERY_EVENT:
+                inboundEvent.setRecoveryEventMessageId(idGenerator.getNextId());
+                break;
+            default:
+                if (log.isDebugEnabled()) {
+                    log.debug("[ sequence " + sequence + "] Unhandled event " + inboundEvent.eventInfo());
+                }
+                break;
         }
         inboundEvent.preProcessed = true;
     }

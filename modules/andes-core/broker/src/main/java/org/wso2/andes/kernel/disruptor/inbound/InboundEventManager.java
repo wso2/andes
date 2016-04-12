@@ -56,6 +56,7 @@ import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_
 import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_PUBLISHING_BUFFER_SIZE;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.ACKNOWLEDGEMENT_EVENT;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.MESSAGE_EVENT;
+import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.PUBLISHER_RECOVERY_EVENT;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.SAFE_ZONE_DECLARE_EVENT;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.STATE_CHANGE_EVENT;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.TRANSACTION_CLOSE_EVENT;
@@ -253,6 +254,24 @@ public class InboundEventManager {
         InboundEventContainer event = ringBuffer.get(sequence);
         try {
             event.setEventType(SAFE_ZONE_DECLARE_EVENT);
+        } finally {
+            // make the event available to EventProcessors
+            ringBuffer.publish(sequence);
+            if (log.isDebugEnabled()) {
+                log.debug("[ Sequence: " + sequence + " ] " + event.getEventType() + "' published to Disruptor");
+            }
+        }
+    }
+
+    /**
+     * Publish an event to recover from a member left without a submit slot event for messages written to DB
+     */
+    public void publishRecoveryEvent() {
+        // Publishers claim events in sequence
+        long sequence = ringBuffer.next();
+        InboundEventContainer event = ringBuffer.get(sequence);
+        try {
+            event.setEventType(PUBLISHER_RECOVERY_EVENT);
         } finally {
             // make the event available to EventProcessors
             ringBuffer.publish(sequence);
