@@ -60,11 +60,6 @@ public class SlotManagerClusterMode {
 	private long firstMessageId;
 
 	/**
-	 * Denotes whether a slot recovery task is scheduled
-	 */
-	private AtomicBoolean slotRecoveryScheduled;
-
-	/**
 	 * Queues that need to be recovered  While a slot recovery is scheduled a submit
 	 * slot comes to the given queue that queue will be removed from the scheduled task.
 	 */
@@ -90,8 +85,6 @@ public class SlotManagerClusterMode {
         }
         log.info("Using " + slotMgtMode + " based slot management mode");
         firstMessageId = INITIAL_MESSAGE_ID;
-        slotRecoveryScheduled = new AtomicBoolean(false);
-
     }
 
 
@@ -268,10 +261,6 @@ public class SlotManagerClusterMode {
 		//setting up first message id of the slot
 		if (firstMessageId > startMessageIdInTheSlot || firstMessageId == -1) {
 			firstMessageId = startMessageIdInTheSlot;
-		}
-
-		if (slotRecoveryScheduled.get()) {
-			queuesToRecover.remove(queueName);
 		}
 
 		// Read message Id set for slots from store
@@ -565,60 +554,12 @@ public class SlotManagerClusterMode {
      * @param deletedNodeId node id of delete node
      */
     public void deletePublisherNode(final String deletedNodeId) {
-
-        int threadPoolCount = 1; // Single thread is suffice for this task
-        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("RecoverSlotsThreadPool").build();
-        ScheduledExecutorService recoverSlotScheduler =
-                Executors.newScheduledThreadPool(threadPoolCount, namedThreadFactory);
-
-        // this is accessed from another thread therefore using a set that supports concurrency
-
-        Set<String> concurrentSet;
-
-        try {
-            concurrentSet =
-                    Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>(slotAgent.getAllQueues().size()));
-            concurrentSet.addAll(slotAgent.getAllQueues());
-            queuesToRecover = concurrentSet;
-        } catch (AndesException ex) {
-            log.error("Failed to get all queue names", ex);
-        }
-
-        recoverSlotScheduler.schedule(new Runnable() {
-            @Override
-            public void run() {
-
-                try {
-                    long lastId = SlotMessageCounter.getInstance().getCurrentNodeSafeZoneId();
-                    //TODO: Delete if the queue has not progressed
-                    for (String queueName : queuesToRecover) {
-                        // Trigger a submit slot for each queue so that new slots are created
-                        // for queues that have not published any messages after a node crash
-                        try {
-                            updateMessageID(queueName, deletedNodeId, lastId - 1, lastId, lastId);
-                        } catch (AndesException ex) {
-                            log.error("Failed to update message id", ex);
-                        }
-                    }
-                    slotRecoveryScheduled.set(false);
-                    try {
-                        if (log.isDebugEnabled()) {
-                            log.debug("Removing " + deletedNodeId + " from safe zone calculation.");
-                        }
-                        slotAgent.removePublisherNode(deletedNodeId);
-                    } catch (AndesException e) {
-                        log.error("Failed to remove publisher node ID from safe zone calculation", e);
-                    }
-
-                } catch (Throwable e) {
-                    log.error("Error occurred while trying to run recover slot scheduler", e);
-                }
-            }
-        }, SlotMessageCounter.getInstance().SLOT_SUBMIT_TIMEOUT, TimeUnit.MILLISECONDS);
-
-        slotRecoveryScheduled.set(true);
-
-    }
+		try {
+			slotAgent.removePublisherNode(deletedNodeId);
+		} catch (AndesException e) {
+			log.error("Error occurred while removing publisher node ", e);
+		}
+	}
 
 	/**
 	 * Return last assign message id of slot for given queue when MB cluster mode
