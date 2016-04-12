@@ -23,12 +23,16 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.AndesQueue;
 import org.wso2.andes.kernel.MessagingEngine;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -271,6 +275,32 @@ public class SlotMessageCounter {
     }
 
     /**
+     * Iterate through all the queues/topics and do a update message id event to the coordinator node with a offset
+     * to the provided message id.
+     * @param recoveryMessageId message id that is taken as the seed for the update message id event
+     */
+    public void sendRecoverySlotSubmit(long recoveryMessageId) {
+        try {
+            log.info("Starting publisher slot recovery event with recovery message id " + recoveryMessageId);
+            AndesContextStore contextStore = AndesContext.getInstance().getAndesContextStore();
+            List<AndesQueue> queueList = contextStore.getAllQueuesStored();
+            for(AndesQueue queue: queueList) {
+                slotCoordinator.updateMessageId(queue.queueName, recoveryMessageId,
+                        recoveryMessageId, currentSlotDeleteSafeZone);
+                // NOTE: Two queues can't have the same message id at the MB_SLOT_MESSAGE_ID table hence incrementing.
+                // Get fresh slot logic deletes the current 'last-queue-to-message-id' mapping with only the message id
+                recoveryMessageId++;
+                log.info("Moving last published message id of queue " + queue.queueName + " to " + recoveryMessageId);
+            }
+            log.info("Publisher slot recovery event completed for " + queueList.size() + " queue(s). Recovery message id " + recoveryMessageId);
+        } catch (AndesException e) {
+            log.error("Error occurred while executing scheduled submit slot", e);
+        } catch (ConnectionException e) {
+            log.error("Error occurred while connecting to Thrift server", e);
+        }
+    }
+
+    /**
      * Message counter periodic task used to update the coordinator with timed-out slots and new safezone values
      */
     private class SlotTimeoutTask implements Runnable {
@@ -347,4 +377,5 @@ public class SlotMessageCounter {
             }
         }
     }
+
 }
