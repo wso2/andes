@@ -39,6 +39,7 @@ import org.wso2.andes.client.state.listener.SpecificMethodFrameListener;
 import org.wso2.andes.codec.AMQCodecFactory;
 import org.wso2.andes.framing.*;
 import org.wso2.andes.pool.Job;
+import org.wso2.andes.pool.ReferenceCountingExecutorService;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.protocol.AMQMethodEvent;
 import org.wso2.andes.protocol.AMQMethodListener;
@@ -47,7 +48,6 @@ import org.wso2.andes.thread.Threading;
 import org.wso2.andes.transport.Sender;
 import org.wso2.andes.transport.network.NetworkConnection;
 import org.wso2.andes.transport.network.NetworkTransport;
-import org.wso2.andes.client.pool.ReferenceCountingClientExecutorService;
 
 import java.io.IOException;
 import java.net.SocketAddress;
@@ -164,7 +164,7 @@ public class AMQProtocolHandler implements ProtocolEngine
     private AMQCodecFactory _codecFactory;
     private Job _readJob;
     private Job _writeJob;
-    private ReferenceCountingClientExecutorService _poolReference = ReferenceCountingClientExecutorService.getInstance();
+    private ReferenceCountingExecutorService _poolReference = ReferenceCountingExecutorService.getInstance();
     private ProtocolVersion _suggestedProtocolVersion;
 
     private long _writtenBytes;
