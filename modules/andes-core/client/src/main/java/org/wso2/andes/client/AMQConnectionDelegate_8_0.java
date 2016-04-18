@@ -133,14 +133,7 @@ public class AMQConnectionDelegate_8_0 implements AMQConnectionDelegate
         // this blocks until the connection has been set up or when an error
         // has prevented the connection being set up
 
-        AMQState state = null;
-        try {
-            state = waiter.await();
-        } catch (AMQException e) {
-            //We need to close the network connection to shut down the IOProcessor created by Mina
-            network.close();
-            throw new AMQException("Error occurred while establishing a connection ", e);
-        }
+        AMQState state = waiter.await();
 
         if(state == AMQState.CONNECTION_OPEN)
         {

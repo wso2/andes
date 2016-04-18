@@ -22,7 +22,6 @@ package org.wso2.andes.pool;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.wso2.andes.pool.ReferenceCountingService;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
@@ -71,11 +70,11 @@ public class Job implements ReadWriteRunnable
 
     private final boolean _readJob;
 
-    private ReferenceCountingService _poolReference;
+    private ReferenceCountingExecutorService _poolReference;
 
     private final static Logger _logger = LoggerFactory.getLogger(Job.class);
     
-    public Job(ReferenceCountingService poolReference, int maxEvents, boolean readJob)
+    public Job(ReferenceCountingExecutorService poolReference, int maxEvents, boolean readJob)
     {
         _poolReference = poolReference;
         _maxEvents = maxEvents;
