@@ -20,8 +20,6 @@
  */
 package org.wso2.andes.pool;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -93,10 +91,10 @@ public class ReferenceCountingExecutorService
     /** Holds the number of executor threads to create. */
     private int _poolSize = Integer.getInteger("amqj.read_write_pool_size", DEFAULT_POOL_SIZE);
 
-    /**
-     * Thread Factory used to create Job thread pool.
+    /** Thread Factory used to create thread of the pool.   Uses the default implementation provided by
+     *  {@link java.util.concurrent.Executors#defaultThreadFactory()} unless reset by the caller.
      */
-    private ThreadFactory _threadFactory = new ThreadFactoryBuilder().setNameFormat("JobPoolThread-%d").build();
+    private ThreadFactory _threadFactory = Executors.defaultThreadFactory();
 
     private final boolean _useBiasedPool = Boolean.getBoolean("org.apache.qpid.use_write_biased_pool");
 
