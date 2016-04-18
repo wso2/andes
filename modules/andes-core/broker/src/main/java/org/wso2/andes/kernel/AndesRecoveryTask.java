@@ -1,19 +1,17 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2016, WSO2 Inc. (http://wso2.com) All Rights Reserved.
  *
- * WSO2 Inc. licenses this file to you under the Apache License,
- * Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package org.wso2.andes.kernel;
@@ -37,6 +35,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * to the current state of cluster in case some hazlecast notifications are missed
  */
 public class AndesRecoveryTask implements Runnable, StoreHealthListener {
+	/**
+	 * Wildcard character to include all.
+	 */
+	private static final String ALL_WILDCARD = "*";
 
 	private List<QueueListener> queueListeners = new ArrayList<>();
 	private List<ExchangeListener> exchangeListeners = new ArrayList<>();
@@ -143,7 +145,7 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 	private void reloadQueuesFromDB() throws AndesException {
 		if (isContextStoreOperational.get()) {
 			List<AndesQueue> queuesStored = andesContextStore.getAllQueuesStored();
-			List<AndesQueue> queueList = amqpConstructStore.getQueues();
+			List<AndesQueue> queueList = amqpConstructStore.getQueues(ALL_WILDCARD);
 			List<AndesQueue> duplicatedQueues = new ArrayList<>(queuesStored);
 
 			queuesStored.removeAll(queueList);

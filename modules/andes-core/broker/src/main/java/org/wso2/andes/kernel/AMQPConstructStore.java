@@ -1,19 +1,17 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2016, WSO2 Inc. (http://wso2.com) All Rights Reserved.
  *
- * WSO2 Inc. licenses this file to you under the Apache License,
- * Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package org.wso2.andes.kernel;
@@ -22,6 +20,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * This class keep track of exchanges/queues/bindings
@@ -30,6 +29,10 @@ import java.util.Map;
  * only in-memory maps will be synced
  */
 public class AMQPConstructStore {
+    /**
+     * Wildcard character to include all.
+     */
+    private static final String ALL_WILDCARD = "*";
 
     /**
      * Reference to AndesContextStore to manage exchanges/bindings and queues in persistence storage 
@@ -41,11 +44,11 @@ public class AMQPConstructStore {
      */
     private MessageStore messageStore;
 
-    private Map<String, AndesQueue> andesQueues = new HashMap<String, AndesQueue>();
-    private Map<String, AndesExchange> andesExchanges = new HashMap<String, AndesExchange>();
+    private Map<String, AndesQueue> andesQueues = new HashMap<>();
+    private Map<String, AndesExchange> andesExchanges = new HashMap<>();
 
     //keeps bindings <exchange>,<queue,binding>
-    private Map<String, Map<String, AndesBinding>> andesBindings = new HashMap<String, Map<String, AndesBinding>>();
+    private Map<String, Map<String, AndesBinding>> andesBindings = new HashMap<>();
 
 
     public AMQPConstructStore(AndesContextStore contextStore, MessageStore messageStore) throws AndesException {
@@ -89,7 +92,7 @@ public class AMQPConstructStore {
      * @throws AndesException
      */
     public List<AndesExchange> getExchanges() throws AndesException {
-        return new ArrayList<AndesExchange>(andesExchanges.values());
+        return new ArrayList<>(andesExchanges.values());
     }
 
     /**
@@ -99,7 +102,7 @@ public class AMQPConstructStore {
      * @throws AndesException
      */
     public List<String> getExchangeNames() throws AndesException {
-        return new ArrayList<String>(andesExchanges.keySet());
+        return new ArrayList<>(andesExchanges.keySet());
     }
 
     /**
@@ -146,13 +149,44 @@ public class AMQPConstructStore {
     }
 
     /**
-     * get all queues
+     * Search for a specific queue.
      *
-     * @return a list of queues
+     * @param searchKeyword Search keyword for queue name. If "*", all queues are returned. Else, queues name that
+     *                      <strong>contains</strong> the value are returned.
+     * @return A list of queues
      * @throws AndesException
      */
-    public List<AndesQueue> getQueues() throws AndesException {
-        return new ArrayList<AndesQueue>(andesQueues.values());
+    public List<AndesQueue> getQueues(String searchKeyword) throws AndesException {
+        List<AndesQueue> searchedAndesQueues;
+        if (null == searchKeyword) {
+            searchedAndesQueues = new ArrayList<>();
+        } else if (ALL_WILDCARD.equals(searchKeyword)) {
+            searchedAndesQueues = new ArrayList<>(andesQueues.values());
+        } else {
+            searchedAndesQueues = andesQueues.values()
+                    .stream()
+                    .filter(andesQueue -> andesQueue.queueName.contains(searchKeyword))
+                    .collect(Collectors.toList());
+        }
+
+        return searchedAndesQueues;
+    }
+
+	/**
+	 * Gets a specific queue as {@link AndesQueue}.
+	 *
+	 * @param queueName The name of the queue.
+	 * @return A queue if exists, else null is returned.
+	 * @throws AndesException
+	 */
+	public AndesQueue getQueue(String queueName) throws AndesException {
+	    AndesQueue searchedAndesQueue = null;
+        for (AndesQueue andesQueue : andesQueues.values()) {
+            if (andesQueue.queueName.equals(queueName)) {
+	            searchedAndesQueue = andesQueue;
+            }
+        }
+        return searchedAndesQueue;
     }
 
     /**
@@ -162,7 +196,7 @@ public class AMQPConstructStore {
      * @throws AndesException
      */
     public List<String> getQueueNames() throws AndesException {
-        return new ArrayList<String>(andesQueues.keySet());
+        return new ArrayList<>(andesQueues.keySet());
     }
 
     /**
@@ -179,7 +213,7 @@ public class AMQPConstructStore {
         if (andesBindings.get(binding.boundExchangeName) != null) {
             (andesBindings.get(binding.boundExchangeName)).put(binding.boundQueue.queueName, binding);
         } else {
-            Map<String, AndesBinding> tempBindingMap = new HashMap<String, AndesBinding>();
+            Map<String, AndesBinding> tempBindingMap = new HashMap<>();
             tempBindingMap.put(binding.boundQueue.queueName, binding);
             andesBindings.put(binding.boundExchangeName, tempBindingMap);
         }
@@ -213,7 +247,7 @@ public class AMQPConstructStore {
      * @throws AndesException
      */
     public List<AndesBinding> getBindingsForExchange(String exchange) throws AndesException {
-        List<AndesBinding> bindings = new ArrayList<AndesBinding>();
+        List<AndesBinding> bindings = new ArrayList<>();
         if (andesBindings.get(exchange) != null) {
             bindings.addAll((andesBindings.get(exchange)).values());
         }
@@ -228,11 +262,12 @@ public class AMQPConstructStore {
      * @throws AndesException
      */
     public List<String> getRoutingKeys(String exchange) throws AndesException {
-        List<String> routingKeys = new ArrayList<String>();
+        List<String> routingKeys = new ArrayList<>();
         List<AndesBinding> bindings = getBindingsForExchange(exchange);
-        for (AndesBinding b : bindings) {
-            routingKeys.add(b.routingKey);
-        }
+	    routingKeys.addAll(bindings
+			    .stream()
+			    .map(b -> b.routingKey)
+			    .collect(Collectors.toList()));
         return routingKeys;
     }
 

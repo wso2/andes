@@ -1,19 +1,17 @@
 /*
- * Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2016, WSO2 Inc. (http://wso2.com) All Rights Reserved.
  *
- * WSO2 Inc. licenses this file to you under the Apache License,
- * Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package org.wso2.andes.kernel;
@@ -34,13 +32,9 @@ import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.kernel.slot.Slot;
-import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionEngine;
 import org.wso2.andes.tools.utils.MessageTracer;
-//import org.wso2.carbon.metrics.manager.Level;
-//import org.wso2.carbon.metrics.manager.Meter;
-//import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.Collection;
 import java.util.List;
@@ -52,6 +46,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_PURGED_COUNT_TIMEOUT;
+
+//import org.wso2.carbon.metrics.manager.Level;
+//import org.wso2.carbon.metrics.manager.Meter;
+//import org.wso2.carbon.metrics.manager.MetricManager;
 
 /**
  * API for all the tasks done by Andes.
@@ -554,6 +552,20 @@ public class Andes {
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName, long firstMsgId, int count)
             throws AndesException {
         return MessagingEngine.getInstance().getNextNMessageMetadataFromQueue(queueName, firstMsgId, count);
+    }
+
+    /**
+     * Get message metadata from queue starting from given index up a given message count.
+     *
+     * @param queueName Name of the queue
+     * @param offset    Starting index
+     * @param count     Maximum num of messages to return
+     * @return List of {@link AndesMessageMetadata}
+     * @throws AndesException
+     */
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName, int offset, int count)
+            throws AndesException {
+        return MessagingEngine.getInstance().getNextNMessageMetadataFromQueue(queueName, offset, count);
     }
 
     /**
