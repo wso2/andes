@@ -21,6 +21,7 @@
 package org.wso2.andes.pool;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import org.wso2.andes.pool.ReferenceCountingService;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -62,7 +63,7 @@ import java.util.concurrent.LinkedBlockingQueue;
  *       here. Could think about adding more state to the lifecycle, to mark ref counted objects as invalid, and have an
  *       isValid method, or could make calling code deal with RejectedExecutionException raised by shutdown executors.
  */
-public class ReferenceCountingExecutorService
+public class ReferenceCountingExecutorService implements ReferenceCountingService
 {
 
 
