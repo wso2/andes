@@ -274,6 +274,14 @@ public class AndesChannel {
     }
 
     /**
+     * Disconnects this channel (via a transport specific mechanism)
+     */
+    public void disconnect(){
+        listener.disconnect();
+    }
+    
+    
+    /**
      * Channel of the current channel
      */
     public long getId() {

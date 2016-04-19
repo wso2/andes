@@ -26,6 +26,7 @@ import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
+import org.wso2.andes.server.cluster.error.detection.NetworkPartitionListener;
 import org.wso2.andes.subscription.BasicSubscription;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionEngine;
@@ -34,7 +35,7 @@ import java.util.*;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class AndesSubscriptionManager {
+public class AndesSubscriptionManager implements NetworkPartitionListener {
 
     private static Log log = LogFactory.getLog(AndesSubscriptionManager.class);
 
@@ -225,6 +226,41 @@ public class AndesSubscriptionManager {
             clusterSubscriptionModifyLock.writeLock().unlock();
         }
     }
+
+    /**
+     * Forcefully disconnect all message consumers (/ subscribers) connected to
+     * this node. Typically broker node should do take such a action when a
+     * network partition happens ( since coordinator in other partition will
+     * also start distributing slots (hence messages) which will lead to
+     * inconsistent
+     * state in both partitions. Even if there is a exception trying to
+     * disconnect any of the connection this method will continue with other
+     * connections.
+     *
+     */
+    public void forcefullyDisconnectAllLocalSubscriptionsOfNode() {
+
+        Set<AndesSubscription> activeSubscriptions = subscriptionEngine.getActiveLocalSubscribersForNode();
+       
+
+        if (!activeSubscriptions.isEmpty()) {
+            for (AndesSubscription sub : activeSubscriptions) {
+                try {
+                    if ( sub instanceof LocalSubscription ){
+                        ((LocalSubscription) sub).forcefullyDisconnect();
+                    }
+                    
+                } catch (AndesException disconnectError) {
+                    log.error("error occurred while forcefullly disconnecting subscription: " +
+                              sub.toString(), disconnectError);
+                }
+            }
+        }
+
+    }
+    
+ 
+
 
     /**
      * check if any local active non durable subscription exists for a given topic consider
@@ -506,5 +542,29 @@ public class AndesSubscriptionManager {
 
         return localSubscription;
 
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * In a event of a network partition (or nodes being offline, stopped,
+     * crashed) if minimum node count becomes less than required
+     * subscription manager will disconnect all consumers connected to this
+     * node.
+     * </p>
+     */
+    @Override
+    public void minimumNodeCountNotFulfilled(int currentNodeCount) {
+        log.warn("Minimum node count is below required, forcefully disconnecting all subscribers");
+        forcefullyDisconnectAllLocalSubscriptionsOfNode();
+    }
+
+    /**
+     * {@inheritDoc}
+     * No action required.
+     */
+    @Override
+    public void minimumNodeCountFulfilled(int currentNodeCount) {
+        // No action required.
     }
 }

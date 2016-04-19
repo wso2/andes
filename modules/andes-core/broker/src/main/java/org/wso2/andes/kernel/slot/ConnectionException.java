@@ -19,14 +19,14 @@
 package org.wso2.andes.kernel.slot;
 
 import org.apache.thrift.TException;
+import org.wso2.andes.kernel.AndesException;
 
-import java.lang.Exception;
 import java.lang.String;
 
 /**
  * Connection exception will be thrown when unable to connect to the slot coordinator
  */
-public class ConnectionException extends Exception {
+public class ConnectionException extends AndesException {
 
     public ConnectionException() {
     }
