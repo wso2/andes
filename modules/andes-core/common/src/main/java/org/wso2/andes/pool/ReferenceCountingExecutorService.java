@@ -20,6 +20,9 @@
  */
 package org.wso2.andes.pool;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import org.wso2.andes.pool.ReferenceCountingService;
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -60,7 +63,7 @@ import java.util.concurrent.LinkedBlockingQueue;
  *       here. Could think about adding more state to the lifecycle, to mark ref counted objects as invalid, and have an
  *       isValid method, or could make calling code deal with RejectedExecutionException raised by shutdown executors.
  */
-public class ReferenceCountingExecutorService
+public class ReferenceCountingExecutorService implements ReferenceCountingService
 {
 
 
@@ -91,10 +94,10 @@ public class ReferenceCountingExecutorService
     /** Holds the number of executor threads to create. */
     private int _poolSize = Integer.getInteger("amqj.read_write_pool_size", DEFAULT_POOL_SIZE);
 
-    /** Thread Factory used to create thread of the pool.   Uses the default implementation provided by
-     *  {@link java.util.concurrent.Executors#defaultThreadFactory()} unless reset by the caller.
+    /**
+     * Thread Factory used to create Job thread pool.
      */
-    private ThreadFactory _threadFactory = Executors.defaultThreadFactory();
+    private ThreadFactory _threadFactory = new ThreadFactoryBuilder().setNameFormat("JobPoolThread-%d").build();
 
     private final boolean _useBiasedPool = Boolean.getBoolean("org.apache.qpid.use_write_biased_pool");
 
