@@ -18,12 +18,12 @@
 
 package org.wso2.andes.kernel.slot;
 
+import com.gs.collections.impl.map.mutable.ConcurrentHashMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.util.Iterator;
 import java.util.TreeSet;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * This class is  responsible of slot allocating, slot creating, slot re-assigning and slot
@@ -56,7 +56,6 @@ public class SlotManagerStandalone {
     private static SlotManagerStandalone slotManagerStandalone = new SlotManagerStandalone();
 
     private static Log log = LogFactory.getLog(SlotManagerStandalone.class);
-
 
     private SlotManagerStandalone() {
 
@@ -107,8 +106,8 @@ public class SlotManagerStandalone {
     private Slot getUnassignedSlot(String queueName) {
         Slot slotToBeAssigned = null;
         TreeSet<Slot> unAssignedSlotSet = unAssignedSlotMap.get(queueName);
-        if(null != unAssignedSlotSet){
-           slotToBeAssigned = unAssignedSlotSet.pollFirst();
+        if (null != unAssignedSlotSet) {
+            slotToBeAssigned = unAssignedSlotSet.pollFirst();
         }
         return slotToBeAssigned;
     }
@@ -147,7 +146,8 @@ public class SlotManagerStandalone {
 
     /**
      * Put an entry to slotAssignmentMap when a slot is assigned to slot delivery worker
-     * @param queueName Name of the queue
+     *
+     * @param queueName    Name of the queue
      * @param assignedSlot Slot which is assigned to slot delivery worker
      */
     private void updateSlotAssignmentMap(String queueName, Slot assignedSlot) {
@@ -167,7 +167,6 @@ public class SlotManagerStandalone {
      * @param lastMessageIdInTheSlot Last message ID of the slot
      */
     public void updateMessageID(String queueName, Long lastMessageIdInTheSlot) {
-
 
         TreeSet<Long> messageIdSet = slotIDMap.get(queueName);
         if (messageIdSet == null) {
@@ -193,8 +192,9 @@ public class SlotManagerStandalone {
     /**
      * Delete slot details when slot is empty. (All the messages are delivered and acknowledgments are
      * returned )
-     * @param queueName Name of the queue
-     * @param slotToBeDeleted  Slot to be deleted
+     *
+     * @param queueName       Name of the queue
+     * @param slotToBeDeleted Slot to be deleted
      * @return Whether deleted or not
      */
     public boolean deleteSlot(String queueName, Slot slotToBeDeleted) {
@@ -217,7 +217,8 @@ public class SlotManagerStandalone {
     }
 
     /**
-     *  Re-assign the slot when there are no local subscribers in the node
+     * Re-assign the slot when there are no local subscribers in the node
+     *
      * @param queueName Name of the queue
      */
     public void reAssignSlotWhenNoSubscribers(String queueName) {
@@ -257,11 +258,10 @@ public class SlotManagerStandalone {
     }
 
     /**
-     *
-     * @return  SlotManagerStandalone instance
+     * @return SlotManagerStandalone instance
      */
-    public static SlotManagerStandalone getInstance(){
-      return slotManagerStandalone;
+    public static SlotManagerStandalone getInstance() {
+        return slotManagerStandalone;
     }
 
     /**

@@ -18,6 +18,8 @@
 
 package org.wso2.andes.kernel;
 
+import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
+import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.store.HealthAwareStore;
@@ -29,16 +31,17 @@ import java.util.Map;
  * Message meta data and content storing related data base types specific logic is abstracted out
  * using this interface.
  */
-public interface MessageStore extends HealthAwareStore{
+public interface MessageStore extends HealthAwareStore {
 
     /**
      * Initialise the MessageStore and returns the DurableStoreConnection used by store
+     *
      * @param connectionProperties ConfigurationProperties to be used to create the connection
      * @return DurableStoreConnection object created to make the connection to store
      * @throws AndesException
      */
     DurableStoreConnection initializeMessageStore(AndesContextStore contextStore,
-                                                  ConfigurationProperties connectionProperties) throws AndesException;
+            ConfigurationProperties connectionProperties) throws AndesException;
 
     /**
      * store a message content chunk set
@@ -51,7 +54,7 @@ public interface MessageStore extends HealthAwareStore{
     /**
      * read content chunk from store
      *
-     * @param messageId id of the message chunk belongs
+     * @param messageId   id of the message chunk belongs
      * @param offsetValue chunk offset
      * @return message content part
      * @throws AndesException
@@ -60,15 +63,16 @@ public interface MessageStore extends HealthAwareStore{
 
     /**
      * Read content for given message metadata list
-     *  
+     *
      * @param messageIDList message id list for the content to be retrieved
      * @return <code>Map<Long, List<AndesMessagePart>></code> Message id and its corresponding message part list
      * @throws AndesException
      */
-    Map<Long, List<AndesMessagePart>> getContent(List<Long> messageIDList) throws AndesException;
+    LongObjectHashMap<List<AndesMessagePart>> getContent(LongArrayList messageIDList) throws AndesException;
 
     /**
      * Store messages into database.
+     *
      * @param messageList messages to be stored
      */
     void storeMessages(List<AndesMessage> messageList) throws AndesException;
@@ -95,7 +99,7 @@ public interface MessageStore extends HealthAwareStore{
     /**
      * Method to move a list of messages to a specified dead letter channel
      *
-     * @param messages   the list of messages to move
+     * @param messages     the list of messages to move
      * @param dlcQueueName the dead letter channel queue name for the message to be moved
      * @throws AndesException
      */
@@ -109,8 +113,8 @@ public interface MessageStore extends HealthAwareStore{
      * @param metadataList     The updated meta data list.
      * @throws AndesException
      */
-    void updateMetadataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList) throws
-            AndesException;
+    void updateMetadataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList)
+            throws AndesException;
 
     /**
      * read metadata from store
@@ -125,20 +129,20 @@ public interface MessageStore extends HealthAwareStore{
      * read a metadata list from store specifying a message id range
      *
      * @param storageQueueName name of the queue messages are stored
-     * @param firstMsgId first id of the range
-     * @param lastMsgID last id of the range
+     * @param firstMsgId       first id of the range
+     * @param lastMsgID        last id of the range
      * @return list of metadata
      * @throws AndesException
      */
     List<DeliverableAndesMetadata> getMetadataList(Slot slot, final String storageQueueName, long firstMsgId,
-                                                   long lastMsgID) throws AndesException;
+            long lastMsgID) throws AndesException;
 
     /**
      * Get number of messages in the queue within the message id range
      *
      * @param storageQueueName name of the queue
-     * @param firstMessageId starting message id of the range
-     * @param lastMessageId end message id of the range
+     * @param firstMessageId   starting message id of the range
+     * @param lastMessageId    end message id of the range
      * @return number of messages for the queue within the provided message id range
      * @throws AndesException
      */
@@ -149,32 +153,27 @@ public interface MessageStore extends HealthAwareStore{
      * read  a metadata list from store specifying a starting message id and a count
      *
      * @param storageQueueName name of the queue
-     * @param firstMsgId first id
-     * @param count how many messages to read
+     * @param firstMsgId       first id
+     * @param count            how many messages to read
      * @return list of metadata
      * @throws AndesException
      */
-    List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String storageQueueName,
-                                                                long firstMsgId, int count) throws AndesException;
+    List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String storageQueueName, long firstMsgId,
+            int count) throws AndesException;
 
     /**
      * Read a list of message ids from store specifying a starting message id
      * and a count
      *
-     * @param storageQueueName
-     *            name of the queue
-     * @param firstMsgId
-     *            first id
-     * @param count
-     *            how many messages to read
+     * @param storageQueueName name of the queue
+     * @param firstMsgId       first id
+     * @param count            how many messages to read
      * @return list of messageIds
      * @throws AndesException
      */
-    public List<Long> getNextNMessageIdsFromQueue(final String storageQueueName,
-                                                  long firstMsgId, int count)
-                                                                              throws AndesException;
-    
-    
+    public LongArrayList getNextNMessageIdsFromQueue(final String storageQueueName, long firstMsgId, int count)
+            throws AndesException;
+
     /**
      * Retrieve a metadata list from dead letter channel for a specific queue specifying a starting message id and a
      * count
@@ -186,8 +185,8 @@ public interface MessageStore extends HealthAwareStore{
      * @return list of metadata
      * @throws AndesException
      */
-    List<AndesMessageMetadata> getNextNMessageMetadataForQueueFromDLC(final String storageQueueName, String
-            dlcQueueName, long firstMsgId, int count) throws AndesException;
+    List<AndesMessageMetadata> getNextNMessageMetadataForQueueFromDLC(final String storageQueueName,
+            String dlcQueueName, long firstMsgId, int count) throws AndesException;
 
     /**
      * Retrieve a metadata list from dead letter channel specifying a starting message id and a count
@@ -218,8 +217,8 @@ public interface MessageStore extends HealthAwareStore{
      * table
      * Else, the messages in the list 'messagesToRemove' will be deleted
      *
-     * @param storageQueueName  name of the queue
-     * @param messagesToRemove  the list of messages to remove
+     * @param storageQueueName name of the queue
+     * @param messagesToRemove the list of messages to remove
      * @throws AndesException
      */
     void deleteMessages(final String storageQueueName, List<AndesMessageMetadata> messagesToRemove)
@@ -248,15 +247,15 @@ public interface MessageStore extends HealthAwareStore{
      * @param messagesToRemove message IDs to remove
      * @throws AndesException
      */
-    void deleteMessagesFromExpiryQueue(List<Long> messagesToRemove) throws AndesException;
+    void deleteMessagesFromExpiryQueue(LongArrayList messagesToRemove) throws AndesException;
 
     /**
      * add messages to expiry queue
      *
-     * @param messageId id of the message to add
-     * @param expirationTime expiration time
+     * @param messageId         id of the message to add
+     * @param expirationTime    expiration time
      * @param isMessageForTopic is message addressed to topic
-     * @param destination destination message is addressed to
+     * @param destination       destination message is addressed to
      * @throws AndesException
      */
     void addMessageToExpiryQueue(Long messageId, Long expirationTime, boolean isMessageForTopic, String destination)
@@ -281,18 +280,19 @@ public interface MessageStore extends HealthAwareStore{
 
     /***
      * Get Message ID list addressed to a specific queue.
+     *
      * @param storageQueueName name of the queue being purged.
      * @throws AndesException
      */
-    List<Long> getMessageIDsAddressedToQueue(String storageQueueName, Long startMessageID) throws AndesException;
+    LongArrayList getMessageIDsAddressedToQueue(String storageQueueName, Long startMessageID) throws AndesException;
 
     /**
      * Add message counting entry for queue. queue count is initialised to zero. The counter for
      * created queue can then be incremented and decremented.
-     * @see this.removeMessageCounterForQueue this.incrementMessageCountForQueue,
-     * this.decrementMessageCountForQueue
      *
      * @param storageQueueName name of queue
+     * @see this.removeMessageCounterForQueue this.incrementMessageCountForQueue,
+     * this.decrementMessageCountForQueue
      */
     void addQueue(String storageQueueName) throws AndesException;
 
@@ -333,6 +333,7 @@ public interface MessageStore extends HealthAwareStore{
 
     /**
      * Store level method to reset the message counter of a given queue to 0.
+     *
      * @param storageQueueName name of the queue being purged
      * @throws AndesException
      */
@@ -354,8 +355,9 @@ public interface MessageStore extends HealthAwareStore{
 
     /**
      * Increment message counter for a queue by a given incrementBy value
-     * @param storageQueueName      name of the queue actually stored in DB
-     * @param incrementBy           increment counter by
+     *
+     * @param storageQueueName name of the queue actually stored in DB
+     * @param incrementBy      increment counter by
      * @throws AndesException
      */
     void incrementMessageCountForQueue(String storageQueueName, long incrementBy) throws AndesException;
@@ -363,48 +365,48 @@ public interface MessageStore extends HealthAwareStore{
     /**
      * Decrement message counter for a queue
      *
-     * @param storageQueueName      name of the queue actually stored in DB
-     * @param decrementBy           decrement counter by
+     * @param storageQueueName name of the queue actually stored in DB
+     * @param decrementBy      decrement counter by
      * @throws AndesException
      */
     void decrementMessageCountForQueue(String storageQueueName, long decrementBy) throws AndesException;
 
     /**
      * Store retained message list in the message store.
-     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
      *
      * @param retainMap Retained messages map
+     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
      */
     void storeRetainedMessages(Map<String, AndesMessage> retainMap) throws AndesException;
 
     /**
      * Return all topic names with retained messages in the database
-     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
      *
      * @return Topic list with retained messages
      * @throws AndesException
+     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
      */
     List<String> getAllRetainedTopics() throws AndesException;
 
     /**
      * Get all content parts for the given message ID. The message ID should belong to a
      * existing retained message.
-     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
      *
      * @param messageID Message ID of the message
      * @return List of content parts
      * @throws AndesException
+     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
      */
     Map<Integer, AndesMessagePart> getRetainedContentParts(long messageID) throws AndesException;
 
     /**
      * Return retained message metadata for the given destination. Null is returned if
      * no retained message is available for a destination.
-     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
      *
      * @param destination Destination/Topic name
      * @return AndesMessageMetadata
      * @throws AndesException
+     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
      */
     DeliverableAndesMetadata getRetainedMetadata(String destination) throws AndesException;
 

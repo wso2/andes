@@ -18,17 +18,16 @@
 
 package org.wso2.andes.subscription;
 
+import com.gs.collections.impl.map.mutable.ConcurrentHashMap;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.DestinationType;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Store all durable topic local subscriptions.

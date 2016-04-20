@@ -18,45 +18,45 @@
 
 package org.wso2.andes.store.cache;
 
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.Weigher;
+import com.gs.collections.api.iterator.MutableLongIterator;
+import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
+import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessagePart;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.Weigher;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Message cache implementation based on Guava {@link Cache}
  */
 public class GuavaBasedMessageCacheImpl implements AndesMessageCache {
-    
+
     private static final Logger log = Logger.getLogger(GuavaBasedMessageCacheImpl.class);
-    
-    
+
     /**
      * By default cache values will be kept using strong/ordinary references.
      */
     private static final String CACHE_VALUE_REF_TYPE_STRONG = "strong";
-    
+
     /**
      * Cache values can be kept using weak references.
      */
     private static final String CACHE_VALUE_REF_TYPE_WEAK = "weak";
-    
-    
+
     /**
      * Size of the cache is determined via configuration. For example cache can
      * keep 1GB 'worth of' message payloads (and its meta data) in the memory.
-     * 
      */
     private final Cache<Long, AndesMessage> cache;
 
@@ -64,7 +64,7 @@ public class GuavaBasedMessageCacheImpl implements AndesMessageCache {
      * Used to schedule a cache clean up task and print cache statistics ( used for debugging perposes)
      */
     private ScheduledExecutorService maintenanceExecutor;
-    
+
     /**
      * Flag indicating guava cache statistics should be printed on logs
      */
@@ -73,39 +73,35 @@ public class GuavaBasedMessageCacheImpl implements AndesMessageCache {
     /**
      * Max chunk size of the stored content in Andes. This is needed to count the index
      * of a particular chunk in the chunk list when the offset is given.
-     *
      */
     private static int DEFAULT_CONTENT_CHUNK_SIZE;
-    
-    
-    
-    public GuavaBasedMessageCacheImpl(){
 
-        DEFAULT_CONTENT_CHUNK_SIZE = AndesConfigurationManager.readValue(AndesConfiguration
-                                                                         .PERFORMANCE_TUNING_MAX_CONTENT_CHUNK_SIZE);
+    public GuavaBasedMessageCacheImpl() {
 
-        long cacheSizeInBytes = 1024L * 1024L * ( (int) AndesConfigurationManager.readValue(AndesConfiguration
-                                                                                            .PERSISTENCE_CACHE_SIZE));
+        DEFAULT_CONTENT_CHUNK_SIZE = AndesConfigurationManager
+                .readValue(AndesConfiguration.PERFORMANCE_TUNING_MAX_CONTENT_CHUNK_SIZE);
 
-        int cacheConcurrency =
-                AndesConfigurationManager.readValue(AndesConfiguration.PERSISTENCE_CACHE_CONCURRENCY_LEVEL);
+        long cacheSizeInBytes =
+                1024L * 1024L * ((int) AndesConfigurationManager.readValue(AndesConfiguration.PERSISTENCE_CACHE_SIZE));
 
-        int cacheExpirySeconds =
-                AndesConfigurationManager.readValue(AndesConfiguration.PERSISTENCE_CACHE_EXPIRY_SECONDS);
+        int cacheConcurrency = AndesConfigurationManager
+                .readValue(AndesConfiguration.PERSISTENCE_CACHE_CONCURRENCY_LEVEL);
 
-        String valueRefType = AndesConfigurationManager.readValue(AndesConfiguration
-                                                                  .PERSISTENCE_CACHE_VALUE_REFERENCE_TYPE);
+        int cacheExpirySeconds = AndesConfigurationManager
+                .readValue(AndesConfiguration.PERSISTENCE_CACHE_EXPIRY_SECONDS);
+
+        String valueRefType = AndesConfigurationManager
+                .readValue(AndesConfiguration.PERSISTENCE_CACHE_VALUE_REFERENCE_TYPE);
         printStats = AndesConfigurationManager.readValue(AndesConfiguration.PERSISTENCE_CACHE_PRINT_STATS);
 
         CacheBuilder<Long, AndesMessage> builder = CacheBuilder.newBuilder().concurrencyLevel(cacheConcurrency)
-                                                               .expireAfterAccess(cacheExpirySeconds, TimeUnit.SECONDS)
-                                                               .maximumWeight(cacheSizeInBytes)
-                                                               .weigher(new Weigher<Long, AndesMessage>() {
-                                                                   @Override
-                                                                   public int weigh(Long l, AndesMessage m) {
-                                                                       return m.getMetadata().getMessageContentLength();
-                                                                   }
-                                                               });
+                .expireAfterAccess(cacheExpirySeconds, TimeUnit.SECONDS).maximumWeight(cacheSizeInBytes)
+                .weigher(new Weigher<Long, AndesMessage>() {
+                    @Override
+                    public int weigh(Long l, AndesMessage m) {
+                        return m.getMetadata().getMessageContentLength();
+                    }
+                });
 
         if (printStats) {
             builder = builder.recordStats();
@@ -116,29 +112,27 @@ public class GuavaBasedMessageCacheImpl implements AndesMessageCache {
         }
 
         this.cache = builder.build();
-        
+
         maintenanceExecutor = Executors.newSingleThreadScheduledExecutor();
-       
+
         maintenanceExecutor.scheduleAtFixedRate(new Runnable() {
-            
+
             @Override
             public void run() {
                 cache.cleanUp();
-                
-                if ( printStats){
+
+                if (printStats) {
                     log.info("cache stats:" + cache.stats().toString());
                 }
-                
-                
+
             }
         }, 2, 2, TimeUnit.MINUTES);
-        
+
     }
 
     /**
      * {@inheritDoc}
-     * 
-     * */
+     */
     @Override
     public void addToCache(AndesMessage message) {
 
@@ -148,16 +142,19 @@ public class GuavaBasedMessageCacheImpl implements AndesMessageCache {
 
     /**
      * {@inheritDoc}
-     *
      */
     @Override
-    public void removeFromCache(List<Long> messagesToRemove) {
-        cache.invalidateAll(messagesToRemove);
+    public void removeFromCache(LongArrayList messagesToRemove) {
+        ArrayList<Long> arrayList = new ArrayList<>();
+        MutableLongIterator iterator = messagesToRemove.longIterator();
+        while (iterator.hasNext()) {
+            arrayList.add(iterator.next());
+        }
+        cache.invalidateAll(arrayList);
     }
 
     /**
      * {@inheritDoc}
-     *
      */
     @Override
     public void removeFromCache(long messageToRemove) {
@@ -166,7 +163,6 @@ public class GuavaBasedMessageCacheImpl implements AndesMessageCache {
 
     /**
      * {@inheritDoc}
-     *
      */
     @Override
     public AndesMessage getMessageFromCache(long messageId) {
@@ -177,14 +173,19 @@ public class GuavaBasedMessageCacheImpl implements AndesMessageCache {
 
     /**
      * {@inheritDoc}
-     *
      */
     @Override
-    public void fillContentFromCache(List<Long> messageIDList, Map<Long, List<AndesMessagePart>> contentList) {
+    public void fillContentFromCache(LongArrayList messageIDList,
+            LongObjectHashMap<List<AndesMessagePart>> contentList) {
 
-        Map<Long, AndesMessage> fromCache = cache.getAllPresent(messageIDList);
+        MutableLongIterator iterator = messageIDList.longIterator();
+        ArrayList<Long> messageIDList2 = new ArrayList<>();
+        while (iterator.hasNext()) {
+            messageIDList2.add(iterator.next());
+            iterator.remove();
+        }
 
-        messageIDList.removeAll(fromCache.keySet());
+        Map<Long, AndesMessage> fromCache = cache.getAllPresent(messageIDList2);
 
         for (Map.Entry<Long, AndesMessage> cachedMessage : fromCache.entrySet()) {
             contentList.put(cachedMessage.getKey(), cachedMessage.getValue().getContentChunkList());
@@ -194,7 +195,6 @@ public class GuavaBasedMessageCacheImpl implements AndesMessageCache {
 
     /**
      * {@inheritDoc}
-     *
      */
     @Override
     public AndesMessagePart getContentFromCache(long messageId, int offsetValue) {
