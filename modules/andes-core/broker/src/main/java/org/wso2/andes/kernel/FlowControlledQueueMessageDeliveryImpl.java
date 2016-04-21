@@ -20,13 +20,13 @@ package org.wso2.andes.kernel;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionEngine;
 
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
-import java.util.Set;
 
 /**
  * Strategy definition for queue message delivery
@@ -44,7 +44,8 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
      * {@inheritDoc}
      */
     @Override
-    public int deliverMessageToSubscriptions(MessageDeliveryInfo messageDeliveryInfo) throws AndesException {
+    public int deliverMessageToSubscriptions(MessageDeliveryInfo messageDeliveryInfo, String storageQueue) throws
+            AndesException {
 
         Collection<DeliverableAndesMetadata> messages = messageDeliveryInfo.getReadButUndeliveredMessages();
         int sentMessageCount = 0;
@@ -71,6 +72,7 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
             // Handle orphaned slot created with this no subscription scenario for queue
             // clear all tracking when orphan slot situation
             messages.clear();
+            SlotDeliveryWorkerManager.getInstance().stopDeliveryForDestination(storageQueue);
         } else {
             while (iterator.hasNext()) {
 
