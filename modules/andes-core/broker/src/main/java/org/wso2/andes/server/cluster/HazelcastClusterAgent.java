@@ -18,10 +18,13 @@
 
 package org.wso2.andes.server.cluster;
 
-import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.IMap;
-import com.hazelcast.core.IdGenerator;
-import com.hazelcast.core.Member;
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -29,16 +32,19 @@ import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.HazelcastLifecycleListener;
 import org.wso2.andes.kernel.slot.SlotCoordinationConstants;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.server.cluster.coordination.hazelcast.AndesMembershipListener;
+import org.wso2.andes.server.cluster.error.detection.DisabledNetworkPartitionDetector;
+import org.wso2.andes.server.cluster.error.detection.HazelcastBasedNetworkPartitionDetector;
+import org.wso2.andes.server.cluster.error.detection.NetworkPartitionDetector;
+import org.wso2.andes.server.cluster.error.detection.NetworkPartitionListener;
 
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.IMap;
+import com.hazelcast.core.IdGenerator;
+import com.hazelcast.core.Member;
 
 /**
  * Hazelcast based cluster agent implementation
@@ -94,14 +100,33 @@ public class HazelcastClusterAgent implements ClusterAgent {
     private IMap<Object, Object> thriftServerDetailsMap;
 
     /**
-     * Maximum number of attempts to read node id of a cluster member
+     * Implementation of scheme used to detect network partitions
      */
+    private NetworkPartitionDetector networkPartitionDetector;
+    
+    /*
+    * Maximum number of attempts to read node id of a cluster member
+    */
     public static final int MAX_NODE_ID_READ_ATTEMPTS = 4;
-
+    
     public HazelcastClusterAgent(HazelcastInstance hazelcastInstance) {
+
         this.hazelcastInstance = hazelcastInstance;
         this.isCoordinator = new AtomicBoolean(false);
         nodeIdMap = hazelcastInstance.getMap(CoordinationConstants.NODE_ID_MAP_NAME);
+
+        boolean isNetworkPartitionDectectionEnabled = AndesConfigurationManager.readValue(
+                                                         AndesConfiguration.RECOVERY_NETWORK_PARTITIONS_DETECTION);
+
+        if (isNetworkPartitionDectectionEnabled) {
+            networkPartitionDetector = new HazelcastBasedNetworkPartitionDetector(hazelcastInstance);
+        } else {
+            networkPartitionDetector = new DisabledNetworkPartitionDetector();
+        }
+
+        HazelcastLifecycleListener lifecycleListener = new HazelcastLifecycleListener(networkPartitionDetector);
+        hazelcastInstance.getLifecycleService().addLifecycleListener(lifecycleListener);
+
     }
 
     /**
@@ -118,9 +143,10 @@ public class HazelcastClusterAgent implements ClusterAgent {
      * Membership listener calls this method when a new node joins the cluster
      *
      * @param member
-     *         New member
+     *            New member
      */
     public void memberAdded(Member member) {
+        networkPartitionDetector.memberAdded(member);
         checkAndNotifyCoordinatorChange();
         manager.memberAdded(CoordinationConstants.NODE_NAME_PREFIX + member.getSocketAddress());
     }
@@ -129,14 +155,20 @@ public class HazelcastClusterAgent implements ClusterAgent {
      * Membership listener calls this method when a node leaves the cluster
      *
      * @param member
-     *         member who left
+     *            member who left
      * @throws AndesException
      */
     public void memberRemoved(Member member) throws AndesException {
+        networkPartitionDetector.memberRemoved(member);
         checkAndNotifyCoordinatorChange();
         manager.memberRemoved(getIdOfNode(member));
     }
 
+    
+    public void networkPatitionMerged(){
+    	networkPartitionDetector.networkPatitionMerged();
+    }
+    
     /**
      * Get id of the give node
      *
@@ -197,6 +229,7 @@ public class HazelcastClusterAgent implements ClusterAgent {
             log.debug("Unique ID generation for message ID generation:" + uniqueIdOfLocalMember);
         }
 
+        networkPartitionDetector.start();
         memberAdded(hazelcastInstance.getCluster().getLocalMember());
     }
 
@@ -353,5 +386,10 @@ public class HazelcastClusterAgent implements ClusterAgent {
             }
         }
         return addresses;
+    }
+
+    @Override
+    public void addNetworkPartitionListener(NetworkPartitionListener listner) {
+        networkPartitionDetector.addNetworkPartitionListener(listner);
     }
 }

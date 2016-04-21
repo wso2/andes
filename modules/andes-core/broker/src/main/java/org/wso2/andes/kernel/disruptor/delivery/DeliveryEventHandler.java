@@ -88,7 +88,8 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
             try {
                 if (deliveryEventData.isErrorOccurred()) {
                     onSendError(message, subscription);
-                    routeMessageToDLC(message, subscription);
+                    
+                    routeMessageToDLC(message, subscription, deliveryEventData.isErrorOccurred());
                     return;
                 }
                 if (!message.isStale()) {
@@ -119,7 +120,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                 }
             } catch (ProtocolDeliveryRulesFailureException e) {
                 onSendError(message, subscription);
-                routeMessageToDLC(message, subscription);
+                routeMessageToDLC(message, subscription, false);
 
             } catch (SubscriptionAlreadyClosedException ex) {
                 //we do not log the error as subscriber is closing this is an expected exception.
@@ -221,12 +222,12 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
      *
      * @param message Meta data for the message
      */
-    private void routeMessageToDLC(DeliverableAndesMetadata message, LocalSubscription subscription)
+    private void routeMessageToDLC(DeliverableAndesMetadata message, LocalSubscription subscription, boolean internalErrorOccured)
             throws AndesException {
 
         // If message is a queue message we move the message to the Dead Letter Channel
         // since topics doesn't have a Dead Letter Channel
-        if (subscription.isDurable()) {
+        if ((!internalErrorOccured) && subscription.isDurable()) {
             log.warn("Moving message to Dead Letter Channel Due to Send Error. Message ID " + message.getMessageID());
             try {
                 Andes.getInstance().moveMessageToDeadLetterChannel(message, message.getDestination());

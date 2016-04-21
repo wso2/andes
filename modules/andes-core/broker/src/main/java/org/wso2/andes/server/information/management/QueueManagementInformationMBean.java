@@ -172,27 +172,36 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
     /**
      * AndesChannel for this dead letter channel restore which implements flow control.
       */
-    AndesChannel andesChannel = Andes.getInstance().createChannel(new FlowControlListener() {
-        @Override
-        public void block() {
-            restoreBlockedByFlowControl = true;
-        }
-
-        @Override
-        public void unblock() {
-            restoreBlockedByFlowControl = false;
-        }
-    });
-
+    AndesChannel andesChannel;
     /***
      * Virtual host information are needed in the constructor to evaluate user permissions for
      * queue management actions.(e.g. purge)
      * @param vHostMBean Used to access the virtual host information
      * @throws NotCompliantMBeanException
      */
-    public QueueManagementInformationMBean(VirtualHostImpl.VirtualHostMBean vHostMBean) throws NotCompliantMBeanException, OpenDataException {
+    public QueueManagementInformationMBean(VirtualHostImpl.VirtualHostMBean vHostMBean) throws NotCompliantMBeanException, OpenDataException, AndesException {
         super(QueueManagementInformation.class, QueueManagementInformation.TYPE);
 
+        
+        andesChannel = Andes.getInstance().createChannel(new FlowControlListener() {
+            @Override
+            public void block() {
+                restoreBlockedByFlowControl = true;
+            }
+
+            @Override
+            public void unblock() {
+                restoreBlockedByFlowControl = false;
+            }
+            
+            @Override
+            public void disconnect(){
+                // Do nothing. since its not applicable.
+            }
+        });
+
+        
+        
         VirtualHost virtualHost = vHostMBean.getVirtualHost();
 
         queueRegistry = virtualHost.getQueueRegistry();

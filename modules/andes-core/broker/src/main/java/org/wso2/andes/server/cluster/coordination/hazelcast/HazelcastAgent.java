@@ -217,8 +217,6 @@ public class HazelcastAgent implements SlotAgent {
         // Set cluster agent in Andes Context
         clusterAgent = new HazelcastClusterAgent(hazelcastInstance);
         AndesContext.getInstance().setClusterAgent(clusterAgent);
-        HazelcastLifecycleListener lifecycleListener = new HazelcastLifecycleListener();
-        hazelcastInstance.getLifecycleService().addLifecycleListener(lifecycleListener);
         addTopicListeners();
 
         /**

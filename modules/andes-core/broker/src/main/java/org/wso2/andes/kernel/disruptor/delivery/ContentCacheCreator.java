@@ -49,6 +49,12 @@ public class ContentCacheCreator {
     private final int maxChunkSize;
 
     /**
+     * Keeps track of ids of messages which this handler couldn't load payload
+     * content (from message store)
+     */
+    private final List<Long> failedContentRetrivals;
+    
+    /**
      * Guava based cache used to avoid fetching content for same message id in non-durable topics
      */
     private final Cache<Long, DisruptorCachedContent> contentCache;
@@ -67,6 +73,9 @@ public class ContentCacheCreator {
 
         contentCache = CacheBuilder.newBuilder().expireAfterWrite(expiryTime, TimeUnit.SECONDS).maximumSize(maximumSize)
                 .concurrencyLevel(1).build();
+    
+        failedContentRetrivals = new ArrayList<Long>();
+        
     }
 
     /**
@@ -78,35 +87,44 @@ public class ContentCacheCreator {
     public void onEvent(List<DeliveryEventData> eventDataList) throws AndesException {
 
         Set<Long> messagesToFetch = new HashSet<>();
-        List<DeliveryEventData> messagesWithoutContent = new ArrayList<>();
+        List<DeliveryEventData> messagesWithoutCachedContent = new ArrayList<>();
 
-        for (DeliveryEventData deliveryEventData : eventDataList) {
+        for (DeliveryEventData deliveryEventData: eventDataList) {
             ProtocolMessage metadata = deliveryEventData.getMetadata();
-            long messageID = metadata.getMessageID();
+            long messageID =  metadata.getMessageID();
+            int contentLength = metadata.getMessage().getMessageContentLength();
+            
+            if ( contentLength > 0 ){
+                
+                DisruptorCachedContent content = contentCache.getIfPresent(messageID);
 
-            DisruptorCachedContent content = contentCache.getIfPresent(messageID);
+                if (null != content) {
+                    deliveryEventData.setAndesContent(content);
 
-            if (null != content) {
-                deliveryEventData.setAndesContent(content);
+                    if (log.isTraceEnabled()) {
+                        log.trace("Content read from cache for message " + messageID);
+                    }
 
-                if (log.isTraceEnabled()) {
-                    log.trace("Content read from cache for message " + messageID);
+                } else {
+                    // Add to the list to fetch later
+                    messagesToFetch.add(messageID);
+                    messagesWithoutCachedContent.add(deliveryEventData);
                 }
-
+                
             } else {
-                // Add to the list to fetch later
-                messagesToFetch.add(messageID);
-                messagesWithoutContent.add(deliveryEventData);
+                // user has sent a message with out content. trying to read from
+                // the message storage is not required.
+                continue;
             }
+            
         }
 
         Map<Long, List<AndesMessagePart>> contentListMap = MessagingEngine.getInstance().getContent(new ArrayList<>(messagesToFetch));
 
-        for (DeliveryEventData deliveryEventData : messagesWithoutContent) {
+        for (DeliveryEventData deliveryEventData : messagesWithoutCachedContent) {
 
             ProtocolMessage metadata = deliveryEventData.getMetadata();
-            long messageID = metadata.getMessageID();
-
+            long messageID =  metadata.getMessageID();
             // We check again for content put in cache in the previous iteration
             DisruptorCachedContent content = contentCache.getIfPresent(messageID);
 
@@ -137,13 +155,55 @@ public class ContentCacheCreator {
                 if (log.isTraceEnabled()) {
                     log.trace("All content read for message " + messageID);
                 }
-            } else if (log.isDebugEnabled()) {
-                throw new AndesException(
-                        "Empty message parts received while retrieving message content for message id " + messageID);
+            } else {
+                // potential scenario this could happen is when there is a split
+                // brain scenario (with two coodinator working with same set of
+                // messages
+                // in parallel. e.g. when this node tries to send messages,
+                // another node (in other network partition) sends these
+                // messages and then deletes content and metadata from message
+                // store
+                recordFailedMessageContentRetrievalError(deliveryEventData);
             }
-
+            
             //Tracing message
             MessageTracer.trace(metadata.getMessage(), MessageTracer.CONTENT_READ);
+            logFailedMessageContentRetreivalErrors();
         }
     }
+
+    /**
+     * Keeps track of message for which this handle couldn't get message contents.
+     * @param deliveryEventData information about the message.
+     */
+    private void recordFailedMessageContentRetrievalError(DeliveryEventData deliveryEventData) {
+        deliveryEventData.reportExceptionOccurred();
+        failedContentRetrivals.add(deliveryEventData.getMetadata().getMessageID());
+    }
+    
+    
+
+    /**
+     * Print a error log message which this handler couldn't find payloads in
+     * database.
+     * This will not throw an error since disruptor batch event handler will not
+     * give deliveryEventData (in the list being processed to next handler)
+     */
+    private void logFailedMessageContentRetreivalErrors(){
+        
+        if (! failedContentRetrivals.isEmpty()) {
+            
+            StringBuilder errorMsg = new StringBuilder("message content not found for message ids : ");
+                    
+            for (long messageId: failedContentRetrivals){
+                errorMsg.append(messageId).append(',');
+            }
+            
+            failedContentRetrivals.clear();
+            log.error(errorMsg.toString());
+       }
+        
+    }
+    
+    
 }

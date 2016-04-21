@@ -24,6 +24,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
+import org.wso2.andes.server.cluster.error.detection.NetworkPartitionDetector;
+
+import com.hazelcast.core.LifecycleEvent;
+import com.hazelcast.core.LifecycleListener;
 
 /**
  * Hazelcast Lifecycle events are monitored through this listener. MB state and Hazelcast data structures are updated
@@ -33,6 +37,23 @@ public class HazelcastLifecycleListener implements LifecycleListener {
 
     private static Log log = LogFactory.getLog(HazelcastLifecycleListener.class);
 
+    /**
+     * {@link NetworkPartitionDetector} is required to know about clusters being merged.
+     */
+    private NetworkPartitionDetector networkPartitionDetector;
+    
+    /**
+     * the constructor
+     * 
+     * @param networkPartitionDetector
+     *            an implementation of how the network partition hare being
+     *            detected.
+     */
+    public HazelcastLifecycleListener(NetworkPartitionDetector networkPartitionDetector) {
+		this.networkPartitionDetector = networkPartitionDetector;
+	}
+    
+    
     /**
      * On {@link com.hazelcast.core.LifecycleEvent.LifecycleState} MERGED event all the topic listeners for the local node is added back. Since the data structures except for
      * IMaps are not merged after a split brain scenario within Hazelcast (data structures from MERGED nodes are
@@ -54,6 +75,9 @@ public class HazelcastLifecycleListener implements LifecycleListener {
                     log.error("Andes Subscription Manager is not set. Local subscriptions are not synced with the " +
                             "main cluster");
                 }
+                
+                // Notify that network partition has occurred.
+                networkPartitionDetector.networkPatitionMerged();
             }
         } catch (Throwable e) {
             log.error("Error occurred while handling Hazelcast state change event " + lifecycleEvent.getState(), e);
