@@ -18,7 +18,9 @@
 
 package org.wso2.andes.server.information.management;
 
-import org.apache.commons.lang.ArrayUtils;
+import com.gs.collections.api.iterator.MutableLongIterator;
+import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
+import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
@@ -38,12 +40,12 @@ import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.AndesUtils;
-import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.kernel.disruptor.compression.LZ4CompressionHelper;
 import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.DisablePubAckImpl;
 import org.wso2.andes.kernel.FlowControlListener;
+import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolType;
+import org.wso2.andes.kernel.disruptor.compression.LZ4CompressionHelper;
 import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.management.common.mbeans.QueueManagementInformation;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
@@ -73,10 +75,7 @@ import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
-import java.util.Set;
-import java.util.HashSet;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -122,8 +121,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
     /**
      * Maximum size a message will be displayed on UI
      */
-    public static final Integer MESSAGE_DISPLAY_LENGTH_MAX =
-            AndesConfigurationManager.readValue(AndesConfiguration.MANAGEMENT_CONSOLE_MAX_DISPLAY_LENGTH_FOR_MESSAGE_CONTENT);
+    public static final Integer MESSAGE_DISPLAY_LENGTH_MAX = AndesConfigurationManager
+            .readValue(AndesConfiguration.MANAGEMENT_CONSOLE_MAX_DISPLAY_LENGTH_FOR_MESSAGE_CONTENT);
 
     /**
      * Shown to user has a indication that the particular message has more content than shown in UI
@@ -207,8 +206,10 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
         _msgContentAttributeTypes[6] = SimpleType.STRING; // For dlc message destination
         _msgContentAttributeTypes[7] = SimpleType.LONG; // For andes message metadata id
         _msgContentType = new CompositeType("Message Content", "Message content for queue browse",
-                VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.toArray(new String[VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.size()]),
-                VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.toArray(new String[VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.size()]),
+                VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC
+                        .toArray(new String[VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.size()]),
+                VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC
+                        .toArray(new String[VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.size()]),
                 _msgContentAttributeTypes);
         lz4CompressionHelper = new LZ4CompressionHelper();
     }
@@ -219,19 +220,20 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
     /***
      * {@inheritDoc}
+     *
      * @return
      */
     public synchronized String[] getAllQueueNames() {
 
         try {
-            List<String> queuesList = AndesUtils.filterQueueDestinations(AndesContext.getInstance()
-                    .getAMQPConstructStore().getQueueNames());
-            String[] queues= new String[queuesList.size()];
+            List<String> queuesList = AndesUtils
+                    .filterQueueDestinations(AndesContext.getInstance().getAMQPConstructStore().getQueueNames());
+            String[] queues = new String[queuesList.size()];
             queuesList.toArray(queues);
             return queues;
 
         } catch (Exception e) {
-          throw new RuntimeException("Error in accessing destination queues",e);
+            throw new RuntimeException("Error in accessing destination queues", e);
         }
 
     }
@@ -242,14 +244,13 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
     @Override
     public Map<String, Integer> getAllQueueCounts() {
         try {
-            List<String> queuesList = AndesUtils.filterQueueDestinations(AndesContext.getInstance()
-                    .getAMQPConstructStore().getQueueNames());
+            List<String> queuesList = AndesUtils
+                    .filterQueueDestinations(AndesContext.getInstance().getAMQPConstructStore().getQueueNames());
             return Andes.getInstance().getMessageCountForAllQueues(queuesList);
         } catch (AndesException exception) {
             throw new RuntimeException("Error retrieving message count for all queues", exception);
         }
     }
-
 
     /**
      * {@inheritDoc}
@@ -259,7 +260,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             List<String> queuesList = AndesContext.getInstance().getAMQPConstructStore().getQueueNames();
             return queuesList.contains(queueName);
         } catch (Exception e) {
-          throw new RuntimeException("Error in accessing destination queues",e);
+            throw new RuntimeException("Error in accessing destination queues", e);
         }
     }
 
@@ -268,11 +269,10 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      */
     @Override
     public void deleteAllMessagesInQueue(@MBeanOperationParameter(name = "queueName",
-            description = "Name of the queue to delete messages from") String queueName,
-                                         @MBeanOperationParameter(name = "ownerName",
-                                                 description = "Username of user that calls for " +
-                                                         "purge") String ownerName) throws
-            MBeanException {
+                                                                  description = "Name of the queue to delete messages from") String queueName,
+            @MBeanOperationParameter(name = "ownerName",
+                                     description = "Username of user that calls for " + "purge") String ownerName)
+            throws MBeanException {
 
         AMQQueue queue = queueRegistry.getQueue(new AMQShortString(queueName));
 
@@ -311,9 +311,9 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      */
     @Override
     public void deleteMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "andesMetadataIDs",
-            description = "ID of the Messages to Be DELETED") long[] andesMetadataIDs,
-                                                  @MBeanOperationParameter(name = "destinationQueueName",
-            description = "The Dead Letter Queue Name for the selected tenant") String destinationQueueName) {
+                                                                           description = "ID of the Messages to Be DELETED") long[] andesMetadataIDs,
+            @MBeanOperationParameter(name = "destinationQueueName",
+                                     description = "The Dead Letter Queue Name for the selected tenant") String destinationQueueName) {
 
         List<AndesMessageMetadata> messageMetadataList = new ArrayList<>(andesMetadataIDs.length);
 
@@ -336,25 +336,31 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      * Restore a given browser message Id list from the Dead Letter Queue to the same queue it was previous in before
      * moving to the Dead Letter Queue
      * and remove them from the Dead Letter Queue.
-     * @param andesMetadataIDs    The browser message Ids
-     * @param destinationQueueName The Dead Letter Queue Name for the tenant*/
+     *
+     * @param andesMetadataIDs     The browser message Ids
+     * @param destinationQueueName The Dead Letter Queue Name for the tenant
+     */
     @Override
     public void restoreMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "andesMetadataIDs",
-            description = "IDs of the Messages to Be Restored") long[] andesMetadataIDs,
-                                                   @MBeanOperationParameter(name = "destinationQueueName",
-            description = "The Dead Letter Queue Name for the selected tenant") String destinationQueueName) {
+                                                                            description = "IDs of the Messages to Be Restored") long[] andesMetadataIDs,
+            @MBeanOperationParameter(name = "destinationQueueName",
+                                     description = "The Dead Letter Queue Name for the selected tenant") String destinationQueueName) {
 
         if (null != andesMetadataIDs) {
-            List<Long> andesMessageIdList = new ArrayList<>(andesMetadataIDs.length);
-            Collections.addAll(andesMessageIdList, ArrayUtils.toObject(andesMetadataIDs));
+            LongArrayList andesMessageIdList = new LongArrayList(andesMetadataIDs.length);
+            andesMessageIdList.addAll(andesMetadataIDs);
             List<AndesMessageMetadata> messagesToRemove = new ArrayList<>(andesMessageIdList.size());
 
             try {
-                Map<Long, List<AndesMessagePart>> messageContent = Andes.getInstance().getContent(andesMessageIdList);
+                LongObjectHashMap<List<AndesMessagePart>> messageContent = Andes.getInstance()
+                        .getContent(andesMessageIdList);
 
                 boolean interruptedByFlowControl = false;
 
-                for (Long messageId : andesMessageIdList) {
+                MutableLongIterator iterator = andesMessageIdList.longIterator();
+
+                while (iterator.hasNext()) {
+                    long messageId = iterator.next();
                     if (restoreBlockedByFlowControl) {
                         interruptedByFlowControl = true;
                         break;
@@ -407,23 +413,27 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      */
     @Override
     public void restoreMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "andesMetadataIDs",
-            description = "IDs of the Messages to Be Restored") long[] andesMetadataIDs,
-                                                   @MBeanOperationParameter(name = "destination",
-            description = "Destination of the message to be restored") String newDestinationQueueName,
-                                                   @MBeanOperationParameter(name = "destinationQueueName",
-            description = "The Dead Letter Queue Name for the selected tenant") String destinationQueueName) {
+                                                                            description = "IDs of the Messages to Be Restored") long[] andesMetadataIDs,
+            @MBeanOperationParameter(name = "destination",
+                                     description = "Destination of the message to be restored") String newDestinationQueueName,
+            @MBeanOperationParameter(name = "destinationQueueName",
+                                     description = "The Dead Letter Queue Name for the selected tenant") String destinationQueueName) {
         if (null != andesMetadataIDs) {
 
-            List<Long> andesMessageIdList = new ArrayList<>(andesMetadataIDs.length);
-            Collections.addAll(andesMessageIdList, ArrayUtils.toObject(andesMetadataIDs));
+            LongArrayList andesMessageIdList = new LongArrayList(andesMetadataIDs.length);
+            andesMessageIdList.addAll(andesMetadataIDs);
             List<AndesMessageMetadata> messagesToRemove = new ArrayList<>(andesMessageIdList.size());
 
             try {
-                Map<Long, List<AndesMessagePart>> messageContent = Andes.getInstance().getContent(andesMessageIdList);
+                LongObjectHashMap<List<AndesMessagePart>> messageContent = Andes.getInstance()
+                        .getContent(andesMessageIdList);
 
                 boolean interruptedByFlowControl = false;
 
-                for (Long messageId : andesMessageIdList) {
+                MutableLongIterator iterator = andesMessageIdList.longIterator();
+                while (iterator.hasNext()) {
+
+                    long messageId = iterator.next();
                     if (restoreBlockedByFlowControl) {
                         interruptedByFlowControl = true;
                         break;
@@ -458,8 +468,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
                 if (interruptedByFlowControl) {
                     // Throw this out so UI will show this to the user as an error message.
-                    throw new RuntimeException("Message restore from dead letter queue has been interrupted by flow " +
-                                               "control. Please try again later.");
+                    throw new RuntimeException("Message restore from dead letter queue has been interrupted by flow "
+                            + "control. Please try again later.");
                 }
 
             } catch (AndesException e) {
@@ -472,13 +482,13 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      * {@inheritDoc}
      */
     @Override
-    public CompositeData[] browseQueue(
-            @MBeanOperationParameter(name = "queueName", description = "Name of queue to browse "
-                    + "messages") String queueName,
-            @MBeanOperationParameter(name = "lastMsgId", description = "Browse message this message id "
-                    + "onwards") long nextMsgId,
-            @MBeanOperationParameter(name = "maxMsgCount", description = "Maximum message count per "
-                    + "request") int maxMsgCount)
+    public CompositeData[] browseQueue(@MBeanOperationParameter(name = "queueName",
+                                                                description = "Name of queue to browse "
+                                                                        + "messages") String queueName,
+            @MBeanOperationParameter(name = "lastMsgId",
+                                     description = "Browse message this message id " + "onwards") long nextMsgId,
+            @MBeanOperationParameter(name = "maxMsgCount",
+                                     description = "Maximum message count per " + "request") int maxMsgCount)
             throws MBeanException {
         List<CompositeData> compositeDataList = new ArrayList<>();
         try {
@@ -503,7 +513,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      * {@inheritDoc}
      */
     @Override
-    public long getNumberOfMessagesInDLCForQueue(String queueName) throws MBeanException{
+    public long getNumberOfMessagesInDLCForQueue(String queueName) throws MBeanException {
         try {
             return Andes.getInstance().getMessageCountInDLCForQueue(queueName,
                     DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(queueName));
@@ -516,27 +526,26 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      * {@inheritDoc}
      */
     @Override
-    public CompositeData[] getMessageInDLCForQueue(
-            @MBeanOperationParameter(name = "queueName", description = "Name of queue to browse "
-                    + "messages") String queueName,
-            @MBeanOperationParameter(name = "lastMsgId", description = "Browse message this "
-                    + "onwards") long nextMsgId,
-            @MBeanOperationParameter(name = "maxMsgCount", description = "Maximum message count "
-                    + "per request") int maxMessageCount)
+    public CompositeData[] getMessageInDLCForQueue(@MBeanOperationParameter(name = "queueName",
+                                                                            description = "Name of queue to browse "
+                                                                                    + "messages") String queueName,
+            @MBeanOperationParameter(name = "lastMsgId",
+                                     description = "Browse message this " + "onwards") long nextMsgId,
+            @MBeanOperationParameter(name = "maxMsgCount",
+                                     description = "Maximum message count " + "per request") int maxMessageCount)
             throws MBeanException {
 
         try {
 
             List<AndesMessageMetadata> nextNMessageMetadataFromQueue;
             if (!DLCQueueUtils.isDeadLetterQueue(queueName)) {
-                nextNMessageMetadataFromQueue = Andes.getInstance()
-                        .getNextNMessageMetadataInDLCForQueue(queueName,
-                                DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(queueName), nextMsgId,
-                                maxMessageCount);
+                nextNMessageMetadataFromQueue = Andes.getInstance().getNextNMessageMetadataInDLCForQueue(queueName,
+                        DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(queueName), nextMsgId,
+                        maxMessageCount);
             } else {
-                nextNMessageMetadataFromQueue = Andes.getInstance()
-                        .getNextNMessageMetadataFromDLC(DLCQueueUtils.identifyTenantInformationAndGenerateDLCString
-                                (queueName), nextMsgId, maxMessageCount);
+                nextNMessageMetadataFromQueue = Andes.getInstance().getNextNMessageMetadataFromDLC(
+                        DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(queueName), nextMsgId,
+                        maxMessageCount);
             }
             return getDisplayableMetaData(nextNMessageMetadataFromQueue);
         } catch (AndesException e) {
@@ -561,8 +570,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             String mapName = entry.getKey();
             String mapVal = entry.getValue().toString();
             StringBuilder messageContentBuilder = new StringBuilder();
-            wholeMsg = StringEscapeUtils.escapeHtml(messageContentBuilder.append(mapName).append(": ")
-                    .append(mapVal).append(", ").toString()).trim();
+            wholeMsg = StringEscapeUtils.escapeHtml(
+                    messageContentBuilder.append(mapName).append(": ").append(mapVal).append(", ").toString()).trim();
         }
         return wholeMsg;
     }
@@ -571,11 +580,12 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      * Extract StreamMessage from ByteBuffer
      *
      * @param wrapMsgContent ByteBuffer which contains data
-     * @param encoding message encoding
+     * @param encoding       message encoding
      * @return extracted content as text
      * @throws CharacterCodingException
      */
-    private String extractStreamMessageContent(ByteBuffer wrapMsgContent, String encoding) throws CharacterCodingException {
+    private String extractStreamMessageContent(ByteBuffer wrapMsgContent, String encoding)
+            throws CharacterCodingException {
         String wholeMsg;
         boolean eofReached = false;
         StringBuilder messageContentBuilder = new StringBuilder();
@@ -616,7 +626,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             throw new IllegalArgumentException("byte array must not be null");
         }
         int count = (wrapMsgContent.remaining() >= byteMsgContent.length ?
-                byteMsgContent.length : wrapMsgContent.remaining());
+                byteMsgContent.length :
+                wrapMsgContent.remaining());
         if (count == 0) {
             wholeMsg = String.valueOf(-1);
         } else {
@@ -630,11 +641,12 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      * Extract TextMessage from ByteBuffer
      *
      * @param wrapMsgContent ByteBuffer which contains data
-     * @param encoding message encoding
+     * @param encoding       message encoding
      * @return extracted content as text
      * @throws CharacterCodingException
      */
-    private String extractTextMessageContent(ByteBuffer wrapMsgContent, String encoding) throws CharacterCodingException {
+    private String extractTextMessageContent(ByteBuffer wrapMsgContent, String encoding)
+            throws CharacterCodingException {
         String wholeMsg;
         wholeMsg = wrapMsgContent.getString(Charset.forName(encoding).newDecoder());
         return wholeMsg;
@@ -644,69 +656,70 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      * Read object from StreamMessage ByteBuffer content
      *
      * @param wrapMsgContent ByteBuffer which contains data
-     * @param encoding message encoding
+     * @param encoding       message encoding
      * @return Object extracted from ByteBuffer
      * @throws JMSException
      * @throws CharacterCodingException
      */
-    private Object readObject(ByteBuffer wrapMsgContent, String encoding) throws JMSException, CharacterCodingException {
+    private Object readObject(ByteBuffer wrapMsgContent, String encoding)
+            throws JMSException, CharacterCodingException {
         int position = wrapMsgContent.position();
         checkAvailable(1, wrapMsgContent);
         byte wireType = wrapMsgContent.get();
         Object result = null;
         try {
             switch (wireType) {
-                case BOOLEAN_TYPE:
-                    checkAvailable(1, wrapMsgContent);
-                    result = wrapMsgContent.get() != 0;
-                    break;
-                case BYTE_TYPE:
-                    checkAvailable(1, wrapMsgContent);
-                    result = wrapMsgContent.get();
-                    break;
-                case BYTEARRAY_TYPE:
-                    checkAvailable(4, wrapMsgContent);
-                    int size = wrapMsgContent.getInt();
-                    if (size == -1) {
-                        result = null;
-                    } else {
-                        byteArrayRemaining = size;
-                        byte[] bytesResult = new byte[size];
-                        readBytesImpl(wrapMsgContent, bytesResult);
-                        result = bytesResult;
-                    }
-                    break;
-                case SHORT_TYPE:
-                    checkAvailable(2, wrapMsgContent);
-                    result = wrapMsgContent.getShort();
-                    break;
-                case CHAR_TYPE:
-                    checkAvailable(2, wrapMsgContent);
-                    result = wrapMsgContent.getChar();
-                    break;
-                case INT_TYPE:
-                    checkAvailable(4, wrapMsgContent);
-                    result = wrapMsgContent.getInt();
-                    break;
-                case LONG_TYPE:
-                    checkAvailable(8, wrapMsgContent);
-                    result = wrapMsgContent.getLong();
-                    break;
-                case FLOAT_TYPE:
-                    checkAvailable(4, wrapMsgContent);
-                    result = wrapMsgContent.getFloat();
-                    break;
-                case DOUBLE_TYPE:
-                    checkAvailable(8, wrapMsgContent);
-                    result = wrapMsgContent.getDouble();
-                    break;
-                case NULL_STRING_TYPE:
+            case BOOLEAN_TYPE:
+                checkAvailable(1, wrapMsgContent);
+                result = wrapMsgContent.get() != 0;
+                break;
+            case BYTE_TYPE:
+                checkAvailable(1, wrapMsgContent);
+                result = wrapMsgContent.get();
+                break;
+            case BYTEARRAY_TYPE:
+                checkAvailable(4, wrapMsgContent);
+                int size = wrapMsgContent.getInt();
+                if (size == -1) {
                     result = null;
-                    break;
-                case STRING_TYPE:
-                    checkAvailable(1, wrapMsgContent);
-                    result = wrapMsgContent.getString(Charset.forName(encoding).newDecoder());
-                    break;
+                } else {
+                    byteArrayRemaining = size;
+                    byte[] bytesResult = new byte[size];
+                    readBytesImpl(wrapMsgContent, bytesResult);
+                    result = bytesResult;
+                }
+                break;
+            case SHORT_TYPE:
+                checkAvailable(2, wrapMsgContent);
+                result = wrapMsgContent.getShort();
+                break;
+            case CHAR_TYPE:
+                checkAvailable(2, wrapMsgContent);
+                result = wrapMsgContent.getChar();
+                break;
+            case INT_TYPE:
+                checkAvailable(4, wrapMsgContent);
+                result = wrapMsgContent.getInt();
+                break;
+            case LONG_TYPE:
+                checkAvailable(8, wrapMsgContent);
+                result = wrapMsgContent.getLong();
+                break;
+            case FLOAT_TYPE:
+                checkAvailable(4, wrapMsgContent);
+                result = wrapMsgContent.getFloat();
+                break;
+            case DOUBLE_TYPE:
+                checkAvailable(8, wrapMsgContent);
+                result = wrapMsgContent.getDouble();
+                break;
+            case NULL_STRING_TYPE:
+                result = null;
+                break;
+            case STRING_TYPE:
+                checkAvailable(1, wrapMsgContent);
+                result = wrapMsgContent.getString(Charset.forName(encoding).newDecoder());
+                break;
             }
             return result;
         } catch (RuntimeException e) {
@@ -719,7 +732,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      * Read byte[] array object and return length
      *
      * @param wrapMsgContent ByteBuffer which contains data
-     * @param bytes byte[] object
+     * @param bytes          byte[] object
      * @return length of byte[] array
      */
     private int readBytesImpl(ByteBuffer wrapMsgContent, byte[] bytes) {
@@ -774,8 +787,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      * @param browserMessageIdList List of browser messageIds.
      * @return Valid Andes MessageId list
      */
-    private List<Long> getValidAndesMessageIdList(String[] browserMessageIdList) {
-        List<Long> andesMessageIdList = new ArrayList<Long>(browserMessageIdList.length);
+    private LongArrayList getValidAndesMessageIdList(String[] browserMessageIdList) {
+        LongArrayList andesMessageIdList = new LongArrayList(browserMessageIdList.length);
 
         for (String browserMessageId : browserMessageIdList) {
             Long andesMessageId = AndesUtils.getAndesMessageId(browserMessageId);
@@ -796,11 +809,10 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      * message in the  queue,( This can happen when a copy of a message get
      * delivered to the consumer while the ACK for the previouse message was
      * on the way back to server), Message count is becoming minus.
-     *
+     * <p>
      * So from now on , we ll not provide minus values to the front end since
      * it is not acceptable
-     *
-     * */
+     */
     public long getMessageCount(String queueName, String msgPattern) throws MBeanException {
 
         if (log.isDebugEnabled()) {
@@ -828,12 +840,12 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
     /***
      * {@inheritDoc}
      */
-    public int getSubscriptionCount( String queueName){
+    public int getSubscriptionCount(String queueName) {
         try {
-            return AndesContext.getInstance().getSubscriptionEngine().numberOfSubscriptionsInCluster(
-                    queueName, ProtocolType.AMQP, DestinationType.QUEUE);
+            return AndesContext.getInstance().getSubscriptionEngine()
+                    .numberOfSubscriptionsInCluster(queueName, ProtocolType.AMQP, DestinationType.QUEUE);
         } catch (Exception e) {
-            throw new RuntimeException("Error in getting subscriber count",e);
+            throw new RuntimeException("Error in getting subscriber count", e);
         }
     }
 
@@ -851,8 +863,9 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                 Object[] itemValues = getItemValues(andesMessageMetadata);
                 if (null != itemValues) {
                     CompositeDataSupport support = new CompositeDataSupport(_msgContentType,
-                            VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.toArray(
-                                    new String[VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.size()]), itemValues);
+                            VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC
+                                    .toArray(new String[VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.size()]),
+                            itemValues);
                     compositeDataList.add(support);
                 }
             }
@@ -876,8 +889,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             //get AMQMessage from AndesMessageMetadata
             AMQMessage amqMessage = AMQPUtils.getAMQMessageFromAndesMetaData(andesMessageMetadata);
             //header properties from AMQMessage
-            BasicContentHeaderProperties properties = (BasicContentHeaderProperties) amqMessage
-                    .getContentHeaderBody().getProperties();
+            BasicContentHeaderProperties properties = (BasicContentHeaderProperties) amqMessage.getContentHeaderBody()
+                    .getProperties();
             //get custom header properties of AMQMessage
             StringBuilder stringBuilder = new StringBuilder();
             for (String headerKey : properties.getHeaders().keys()) {
@@ -914,12 +927,16 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                 contentType = getReadableNameForMessageContentType(contentType);
 
                 //set CompositeData of message
-                itemValues = new Object[]{msgProperties, contentType, content, messageId, redelivered,
-                        timeStamp, destination, andesMessageMetadataId};
+                itemValues = new Object[] {
+                        msgProperties, contentType, content, messageId, redelivered, timeStamp, destination,
+                        andesMessageMetadataId
+                };
 
             } else if (bodySize == 0) { //empty message
-                itemValues = new Object[]{msgProperties, contentType, "", messageId, redelivered,
-                        timeStamp, destination, andesMessageMetadataId};
+                itemValues = new Object[] {
+                        msgProperties, contentType, "", messageId, redelivered, timeStamp, destination,
+                        andesMessageMetadataId
+                };
 
             }
             return itemValues;
@@ -944,20 +961,20 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             /* If the current message was compressed by the server, decompress the message content and, get it as an
              * AndesMessagePart
              */
-            Set<Long> messageToFetch = new HashSet<>();
-            Long messageID = amqMessage.getMessageId();
-            messageToFetch.add(messageID);
+            long messageID = amqMessage.getMessageId();
+            LongArrayList messList = new LongArrayList();
+            messList.add(messageID);
 
             try {
-                Map<Long, List<AndesMessagePart>> contentListMap = MessagingEngine.getInstance()
-                        .getContent(new ArrayList<>(messageToFetch));
+                LongObjectHashMap<List<AndesMessagePart>> contentListMap = MessagingEngine.getInstance()
+                        .getContent(messList);
                 List<AndesMessagePart> contentList = contentListMap.get(messageID);
 
                 andesMessagePart = lz4CompressionHelper.getDecompressedMessage(contentList, bodySize);
 
             } catch (AndesException e) {
-                throw new MBeanException(e, "Error occurred while construct the message content. Message ID:"
-                        + amqMessage.getMessageId());
+                throw new MBeanException(e,
+                        "Error occurred while construct the message content. Message ID:" + amqMessage.getMessageId());
             }
         } else {
             byte[] messageContent = new byte[bodySize];
@@ -1042,7 +1059,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             }
             if (wholeMsg.length() > MESSAGE_DISPLAY_LENGTH_MAX) {
                 wholeMsg = wholeMsg.substring(0, MESSAGE_DISPLAY_LENGTH_MAX - 3) +
-                           DISPLAY_CONTINUATION + DISPLAY_LENGTH_EXCEEDED;
+                        DISPLAY_CONTINUATION + DISPLAY_LENGTH_EXCEEDED;
             }
             content[0] = summaryMsg;
             content[1] = wholeMsg;
