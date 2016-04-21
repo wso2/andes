@@ -301,6 +301,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
             this.setRunning(false);
         }
 
+        log.info("SlotDeliveryWorker stopped. Thread name " + Thread.currentThread().getName());
     }
 
     /**
