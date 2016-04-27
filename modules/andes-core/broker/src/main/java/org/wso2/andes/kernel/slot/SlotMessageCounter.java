@@ -292,11 +292,13 @@ public class SlotMessageCounter {
                 recoveryMessageId++;
                 log.info("Moving last published message id of queue " + queue.queueName + " to " + recoveryMessageId);
             }
-            log.info("Publisher slot recovery event completed for " + queueList.size() + " queue(s). Recovery message id " + recoveryMessageId);
-        } catch (AndesException e) {
-            log.error("Error occurred while executing scheduled submit slot", e);
+            log.info("Publisher slot recovery event completed for " + queueList.size() +
+                     " queue(s). Recovery message id " + recoveryMessageId);
+
         } catch (ConnectionException e) {
             log.error("Error occurred while connecting to Thrift server", e);
+        } catch (AndesException e) {
+            log.error("Error occurred while executing scheduled submit slot", e);
         }
     }
 

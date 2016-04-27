@@ -133,6 +133,7 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
             }
 
         }
+        log.info("Slot delete safe zone calculator stopped. Global safe zone value " + slotDeleteSafeZone.get());
     }
 
     /**

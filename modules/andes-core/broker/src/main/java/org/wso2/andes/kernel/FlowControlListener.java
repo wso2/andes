@@ -32,4 +32,9 @@ public interface FlowControlListener {
      *  Unblock channel for message sending
      */
     public void unblock();
+    
+    /**
+     * Disconnects the underlying channel
+     */
+    public void disconnect();
 }

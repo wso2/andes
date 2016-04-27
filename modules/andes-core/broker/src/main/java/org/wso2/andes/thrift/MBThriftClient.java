@@ -235,6 +235,9 @@ public class MBThriftClient {
                     SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_IP);
             String thriftCoordinatorServerPortString = hazelcastAgent.getThriftServerDetailsMap().
                     get(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_PORT);
+            
+            Integer soTimeout = AndesConfigurationManager.readValue(AndesConfiguration.COORDINATION_THRIFT_SO_TIMEOUT);
+            
             if((null == thriftCoordinatorServerIP) || (null == thriftCoordinatorServerPortString)){
                 throw new ThriftClientException(
                         "Thrift coordinator details are not updated in the map yet");
@@ -242,7 +245,7 @@ public class MBThriftClient {
 
                 int thriftCoordinatorServerPort = Integer.parseInt(thriftCoordinatorServerPortString);
                 transport = new TSocket(thriftCoordinatorServerIP,
-                        thriftCoordinatorServerPort);
+                        thriftCoordinatorServerPort, soTimeout);
                 try {
                     transport.open();
                     TProtocol protocol = new TBinaryProtocol(transport);
