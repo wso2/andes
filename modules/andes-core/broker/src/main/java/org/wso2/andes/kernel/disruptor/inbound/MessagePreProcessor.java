@@ -212,6 +212,14 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                         clonedMessage.getMetadata().updateMetadata(subscription.getTargetQueue(),
                                 AMQPUtils.DIRECT_EXCHANGE_NAME);
                     }
+
+                    /**
+                     * Update cloned topic message metadata if isCompressed set true.
+                     */
+                    if(clonedMessage.getMetadata().isCompressed()) {
+                        clonedMessage.getMetadata().updateMetadata(true);
+                    }
+
                     if (log.isDebugEnabled()) {
                         log.debug("Storing metadata queue " + subscription.getStorageQueueName() + " messageID "
                                 + clonedMessage.getMetadata().getMessageID() + " isTopic");
