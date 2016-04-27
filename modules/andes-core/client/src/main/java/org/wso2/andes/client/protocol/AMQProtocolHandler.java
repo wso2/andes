@@ -705,16 +705,21 @@ public class AMQProtocolHandler implements ProtocolEngine
             try
             {
                 syncWrite(frame, ConnectionCloseOkBody.class, timeout);
-                _network.close();
-                closed();
             }
             catch (AMQTimeoutException e)
             {
-                closed();
+                String error = "AMQP timed out when attempting to close the connection ";
+                _logger.error(error,e);
+                throw new AMQException(error,e);
             }
             catch (FailoverException e)
             {
                 _logger.debug("FailoverException interrupted connection close, ignoring as connection   close anyway.");
+            } finally {
+                if(null != _network){
+                    _network.close();
+                }
+                closed();
             }
         }
 
