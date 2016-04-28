@@ -18,8 +18,8 @@
 
 package org.wso2.andes.kernel.slot;
 
-
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.gs.collections.impl.map.mutable.ConcurrentHashMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
@@ -33,7 +33,6 @@ import org.wso2.andes.subscription.SubscriptionEngine;
 
 import java.util.Collection;
 import java.util.TimerTask;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -62,8 +61,8 @@ public class OrphanedSlotHandler implements SubscriptionListener {
     private SlotDeliveryWorkerManager slotDeliveryWorkerManager;
 
     public OrphanedSlotHandler() {
-        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
-                .setNameFormat("AndesReassignSlotTaskExecutor").build();
+        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("AndesReassignSlotTaskExecutor")
+                .build();
         executor = Executors.newSingleThreadExecutor(namedThreadFactory);
         slotDeliveryWorkerManager = SlotDeliveryWorkerManager.getInstance();
         trackedSubscriptions = new ConcurrentHashMap<>();
@@ -79,44 +78,45 @@ public class OrphanedSlotHandler implements SubscriptionListener {
     public void handleLocalSubscriptionsChanged(LocalSubscription subscription, SubscriptionChange changeType)
             throws AndesException {
         switch (changeType) {
-            case ADDED:
-                trackedSubscriptions.put(subscription.getSubscriptionID(), subscription);
-                break;
-            case DELETED:
-                LocalSubscription matchingDeletedSubscription = trackedSubscriptions.remove(subscription.getSubscriptionID());
-                if (null != matchingDeletedSubscription) {
-                    reAssignSlotsIfNeeded(matchingDeletedSubscription);
-                } else {
-                    log.warn("Deleting a subscription which was not added previously");
-                }
+        case ADDED:
+            trackedSubscriptions.put(subscription.getSubscriptionID(), subscription);
+            break;
+        case DELETED:
+            LocalSubscription matchingDeletedSubscription = trackedSubscriptions
+                    .remove(subscription.getSubscriptionID());
+            if (null != matchingDeletedSubscription) {
+                reAssignSlotsIfNeeded(matchingDeletedSubscription);
+            } else {
+                log.warn("Deleting a subscription which was not added previously");
+            }
 
-                break;
-            case DISCONNECTED:
-                LocalSubscription matchingDisconnectedSubscription = trackedSubscriptions.get(subscription.getSubscriptionID());
-                if (null != matchingDisconnectedSubscription) {
-                    reAssignSlotsIfNeeded(matchingDisconnectedSubscription);
-                } else {
-                    log.warn("Disconnection a subscription which was not added previously");
-                }
+            break;
+        case DISCONNECTED:
+            LocalSubscription matchingDisconnectedSubscription = trackedSubscriptions
+                    .get(subscription.getSubscriptionID());
+            if (null != matchingDisconnectedSubscription) {
+                reAssignSlotsIfNeeded(matchingDisconnectedSubscription);
+            } else {
+                log.warn("Disconnection a subscription which was not added previously");
+            }
 
-                break;
+            break;
         }
     }
 
     /**
      * Re-assign slots back to the slot manager if this is the last subscriber of this node.
      *
-     * @param subscription
-     *         current subscription fo the leaving node
+     * @param subscription current subscription fo the leaving node
      * @throws AndesException
      */
     private void reAssignSlotsIfNeeded(LocalSubscription subscription) throws AndesException {
         if (subscription.isDurable()) {
             // Problem happens only with Queues and durable topic subscriptions and shared durable topic subscriptions
-            
+
             String destination = null;
-            
-            if (DestinationType.QUEUE == subscription.getDestinationType()){
+
+            if (DestinationType.QUEUE == subscription.getDestinationType()) {
                 //Queues and Topics
                 destination = subscription.getSubscribedDestination();
             } else {
@@ -125,7 +125,7 @@ public class OrphanedSlotHandler implements SubscriptionListener {
                 // refer to : https://github.com/wso2/andes/wiki/Subscription-Types-and-Attributes
                 destination = subscription.getTargetQueue();
             }
-            
+
             SubscriptionEngine subscriptionEngine = AndesContext.getInstance().getSubscriptionEngine();
 
             // for queues, durable topic subscriptions, shared durable topic subscriptions scenarios
@@ -136,7 +136,7 @@ public class OrphanedSlotHandler implements SubscriptionListener {
                 scheduleSlotToReassign(subscription.getStorageQueueName());
             } else {
                 slotDeliveryWorkerManager.rescheduleMessagesForDelivery(subscription.getStorageQueueName(),
-                                                                        subscription.getUnackedMessages());
+                        subscription.getUnackedMessages());
             }
         }
     }
@@ -144,8 +144,7 @@ public class OrphanedSlotHandler implements SubscriptionListener {
     /**
      * Schedule to re-assign slots of the node related to a particular queue when last subscriber leaves
      *
-     * @param storageQueue
-     *         Name of the storageQueue
+     * @param storageQueue Name of the storageQueue
      */
     public void scheduleSlotToReassign(String storageQueue) {
         slotDeliveryWorkerManager.stopDeliveryForDestination(storageQueue);

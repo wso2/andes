@@ -19,6 +19,7 @@
 package org.wso2.andes.kernel.slot;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.gs.collections.impl.map.mutable.ConcurrentHashMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -31,7 +32,6 @@ import org.wso2.andes.kernel.ProtocolType;
 import java.io.File;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -50,12 +50,11 @@ public class SlotDeliveryWorkerManager {
     /**
      * Number of slot delivery worker threads running inn one MB node
      */
-    private static ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat
-            ("SlotDeliveryWorkerExecutor-%d").build();
-
+    private static ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
+            .setNameFormat("SlotDeliveryWorkerExecutor-%d").build();
 
     /**
-    Number of slot delivery worker threads running in one MB node
+     * Number of slot delivery worker threads running in one MB node
      */
     private Integer numberOfThreads;
 
@@ -64,10 +63,9 @@ public class SlotDeliveryWorkerManager {
      */
     private static SlotDeliveryWorkerManager slotDeliveryWorkerManagerManager = new SlotDeliveryWorkerManager();
 
-
     private SlotDeliveryWorkerManager() {
-        numberOfThreads = AndesConfigurationManager.readValue
-                (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_WORKER_THREAD_COUNT);
+        numberOfThreads = AndesConfigurationManager
+                .readValue(AndesConfiguration.PERFORMANCE_TUNING_SLOTS_WORKER_THREAD_COUNT);
         this.slotDeliveryWorkerExecutor = Executors.newFixedThreadPool(numberOfThreads, namedThreadFactory);
     }
 
@@ -91,18 +89,18 @@ public class SlotDeliveryWorkerManager {
      * SlotDeliveryWorker thread is assigned to which queue. If a worker is already running on
      * the queue, it will not start a new one.
      *
-     * @param storageQueueName  name of the queue to start slot delivery worker for
-     * @param destination The destination name
-     * @param protocolType The protocol which the messages in this storage queue belongs to
-     * @param destinationType The destination type which the messages in this storage queue belongs to
+     * @param storageQueueName name of the queue to start slot delivery worker for
+     * @param destination      The destination name
+     * @param protocolType     The protocol which the messages in this storage queue belongs to
+     * @param destinationType  The destination type which the messages in this storage queue belongs to
      */
-    public synchronized void startSlotDeliveryWorker(String storageQueueName, String destination, ProtocolType protocolType, DestinationType destinationType) throws AndesException {
+    public synchronized void startSlotDeliveryWorker(String storageQueueName, String destination,
+            ProtocolType protocolType, DestinationType destinationType) throws AndesException {
         int slotDeliveryWorkerId = getIdForSlotDeliveryWorker(storageQueueName);
         if (getSlotDeliveryWorkerMap().containsKey(slotDeliveryWorkerId)) {
             //if this queue is not already in the queue
             if (!getSlotDeliveryWorkerMap().get(slotDeliveryWorkerId).isStorageQueueAdded(storageQueueName)) {
-                SlotDeliveryWorker slotDeliveryWorker = getSlotDeliveryWorkerMap()
-                        .get(slotDeliveryWorkerId);
+                SlotDeliveryWorker slotDeliveryWorker = getSlotDeliveryWorkerMap().get(slotDeliveryWorkerId);
                 slotDeliveryWorker.startDeliveryForQueue(storageQueueName, destination, protocolType, destinationType);
                 // In case the SlotDeliveryWorker has been stopped due to 0 active subscribers, we must re-start it.
                 if (!slotDeliveryWorker.isRunning()) {
@@ -119,8 +117,9 @@ public class SlotDeliveryWorkerManager {
             }
         } else {
             SlotDeliveryWorker slotDeliveryWorker = new SlotDeliveryWorker();
-            if(log.isDebugEnabled()) {
-                log.debug("Slot Delivery Worker Started. Reading messages storageQ= " + storageQueueName + " MsgDest= " + destination);
+            if (log.isDebugEnabled()) {
+                log.debug("Slot Delivery Worker Started. Reading messages storageQ= " + storageQueueName + " MsgDest= "
+                        + destination);
             }
             slotDeliveryWorker.startDeliveryForQueue(storageQueueName, destination, protocolType, destinationType);
             getSlotDeliveryWorkerMap().put(slotDeliveryWorkerId, slotDeliveryWorker);
@@ -143,8 +142,7 @@ public class SlotDeliveryWorkerManager {
      * Stop delivery task for the given storage queue locally. This is normally called when all the subscribers for a
      * destination leave the local node.
      *
-     * @param storageQueueName
-     *         Name of the Storage queue
+     * @param storageQueueName Name of the Storage queue
      */
     public void stopDeliveryForDestination(String storageQueueName) {
         SlotDeliveryWorker slotWorker = getSlotWorker(storageQueueName);
@@ -165,14 +163,11 @@ public class SlotDeliveryWorkerManager {
         }
     }
 
-
     /**
      * Stop all stop delivery workers in the thread pool
      */
     public void stopSlotDeliveryWorkers() {
-        for (Map.Entry<Integer, SlotDeliveryWorker> slotDeliveryWorkerEntry :
-                getSlotDeliveryWorkerMap()
-                        .entrySet()) {
+        for (Map.Entry<Integer, SlotDeliveryWorker> slotDeliveryWorkerEntry : getSlotDeliveryWorkerMap().entrySet()) {
             slotDeliveryWorkerEntry.getValue().setRunning(false);
         }
     }
@@ -211,10 +206,11 @@ public class SlotDeliveryWorkerManager {
 
     /**
      * Dump all message status of the slots owned by this slot delivery worker
+     *
      * @param fileToWrite file to dump
      * @throws AndesException
      */
-    public void dumpAllSlotInformationToFile(File fileToWrite) throws AndesException{
+    public void dumpAllSlotInformationToFile(File fileToWrite) throws AndesException {
         for (SlotDeliveryWorker slotDeliveryWorker : slotDeliveryWorkerMap.values()) {
             slotDeliveryWorker.dumpAllSlotInformationToFile(fileToWrite);
         }

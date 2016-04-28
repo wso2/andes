@@ -346,6 +346,30 @@
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.goldmansachs</groupId>
+            <artifactId>gs-collections-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.goldmansachs</groupId>
+            <artifactId>gs-collections</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.wso2.andes</groupId>
+            <artifactId>andes-common</artifactId>
+            <version>3.0.5</version>
+        </dependency>
+        <dependency>
+            <groupId>org.wso2.andes</groupId>
+            <artifactId>andes-common</artifactId>
+            <version>3.0.5</version>
+        </dependency>
+        <dependency>
+            <groupId>org.wso2.andes.wso2</groupId>
+            <artifactId>andes</artifactId>
+            <version>3.1.0-SNAPSHOT</version>
+        </dependency>
+
     </dependencies>
 
     <build>

@@ -18,6 +18,7 @@
 
 package org.wso2.andes.subscription;
 
+import com.gs.collections.impl.map.mutable.ConcurrentHashMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
@@ -41,7 +42,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class SubscriptionEngine {
 
@@ -72,16 +72,14 @@ public class SubscriptionEngine {
      * get all (ACTIVE/INACTIVE) CLUSTER subscription entries subscribed for a queue/topic
      * hierarchical topic subscription mapping also happens here
      *
-     * @param destination queue/topic name
-     * @param protocolType Type of the subscriptions
+     * @param destination     queue/topic name
+     * @param protocolType    Type of the subscriptions
      * @param destinationType The destination type to retrieve subscribers for
      * @return Set of andes subscriptions
      * @throws AndesException
      */
-    public Set<AndesSubscription> getClusterSubscribersForDestination(String destination,
-                                                                      ProtocolType protocolType,
-                                                                      DestinationType destinationType) throws
-            AndesException {
+    public Set<AndesSubscription> getClusterSubscribersForDestination(String destination, ProtocolType protocolType,
+            DestinationType destinationType) throws AndesException {
 
         return clusterSubscriptionProcessor.getMatchingSubscriptions(destination, protocolType, destinationType);
     }
@@ -90,29 +88,29 @@ public class SubscriptionEngine {
      * get all ACTIVE LOCAL subscription entries subscribed for a destination/topic
      * Hierarchical topic mapping is NOT considered here
      *
-     * @param destination queue/topic name
-     * @param protocolType The subscription type to retrieve subscribers for
+     * @param destination     queue/topic name
+     * @param protocolType    The subscription type to retrieve subscribers for
      * @param destinationType The destination type to retrieve subscribers for
      * @return list of matching subscriptions
      */
     public Set<LocalSubscription> getActiveLocalSubscribers(String destination, ProtocolType protocolType,
-                                                            DestinationType destinationType) throws AndesException {
+            DestinationType destinationType) throws AndesException {
 
-        Set<AndesSubscription> localSubscriptions = localSubscriptionProcessor.getMatchingSubscriptions(destination,
-                protocolType, destinationType);
-        
+        Set<AndesSubscription> localSubscriptions = localSubscriptionProcessor
+                .getMatchingSubscriptions(destination, protocolType, destinationType);
+
         Set<LocalSubscription> activeLocalSubscriptionList = new HashSet<>();
-        
-        if (null != localSubscriptions ) {
-            
+
+        if (null != localSubscriptions) {
+
             for (AndesSubscription localSubscription : localSubscriptions) {
                 if (localSubscription.hasExternalSubscriptions()) {
                     activeLocalSubscriptionList.add((LocalSubscription) localSubscription);
                 }
             }
-            
+
         }
-        
+
         return activeLocalSubscriptionList;
     }
 
@@ -130,7 +128,7 @@ public class SubscriptionEngine {
     /**
      * get all ACTIVE CLUSTER subscription entries subscribed on a given node
      *
-     * @param nodeID  id of the broker node
+     * @param nodeID id of the broker node
      * @return list of subscriptions
      */
     public Set<AndesSubscription> getActiveClusterSubscribersForNode(String nodeID) {
@@ -161,14 +159,14 @@ public class SubscriptionEngine {
      * UI ONLY.
      * get number of active subscribers for queue/topic in CLUSTER
      *
-     * @param destination queue/topic name
-     * @param protocolType Type of the subscriptions
+     * @param destination     queue/topic name
+     * @param protocolType    Type of the subscriptions
      * @param destinationType The type of the destination to get subscription count for
      * @return number of subscriptions in cluster
      * @throws AndesException
      */
-    public int numberOfSubscriptionsInCluster(String destination,ProtocolType protocolType,
-                                              DestinationType destinationType) throws AndesException {
+    public int numberOfSubscriptionsInCluster(String destination, ProtocolType protocolType,
+            DestinationType destinationType) throws AndesException {
         return getClusterSubscribersForDestination(destination, protocolType, destinationType).size();
     }
 
@@ -192,18 +190,18 @@ public class SubscriptionEngine {
      * @throws AndesException
      */
     public Set<LocalSubscription> getListOfLocalSubscriptionsBoundToQueue(String queueName, ProtocolType protocolType,
-                                                                          DestinationType destinationType)
-            throws AndesException {
+            DestinationType destinationType) throws AndesException {
 
         Set<LocalSubscription> subscriptionsOfQueue = new HashSet<>();
-        Set<AndesSubscription> andesSubscriptions = localSubscriptionProcessor.getMatchingSubscriptions(queueName,
-                protocolType, destinationType);
+        Set<AndesSubscription> andesSubscriptions = localSubscriptionProcessor
+                .getMatchingSubscriptions(queueName, protocolType, destinationType);
 
         for (AndesSubscription andesSubscription : andesSubscriptions) {
-           if (andesSubscription instanceof LocalSubscription && andesSubscription.getTargetQueue().equals(queueName)) {
-               LocalSubscription localSubscription = (LocalSubscription) andesSubscription;
-               subscriptionsOfQueue.add(localSubscription);
-           }
+            if (andesSubscription instanceof LocalSubscription && andesSubscription.getTargetQueue()
+                    .equals(queueName)) {
+                LocalSubscription localSubscription = (LocalSubscription) andesSubscription;
+                subscriptionsOfQueue.add(localSubscription);
+            }
         }
 
         return subscriptionsOfQueue;
@@ -219,12 +217,11 @@ public class SubscriptionEngine {
      * @throws AndesException
      */
     public Set<AndesSubscription> getListOfClusterSubscriptionsBoundToQueue(String queueName, ProtocolType protocolType,
-                                                                            DestinationType destinationType)
-            throws AndesException {
+            DestinationType destinationType) throws AndesException {
 
         Set<AndesSubscription> subscriptionsOfQueue = new HashSet<>();
-        Set<AndesSubscription> queueSubscriptions =
-                clusterSubscriptionProcessor.getAllSubscriptionsForDestinationType(protocolType, destinationType);
+        Set<AndesSubscription> queueSubscriptions = clusterSubscriptionProcessor
+                .getAllSubscriptionsForDestinationType(protocolType, destinationType);
 
         // Add queue subscriptions
         if (null != queueSubscriptions) {
@@ -246,8 +243,7 @@ public class SubscriptionEngine {
      * @throws AndesException
      */
     public synchronized void createDisconnectOrRemoveClusterSubscription(AndesSubscription subscription,
-                                                                         SubscriptionChange type)
-            throws AndesException {
+            SubscriptionChange type) throws AndesException {
 
         if (SubscriptionChange.ADDED == type) {
             clusterSubscriptionProcessor.addSubscription(subscription);
@@ -278,8 +274,7 @@ public class SubscriptionEngine {
      * @throws AndesException
      */
     public synchronized void createDisconnectOrRemoveLocalSubscription(LocalSubscription subscription,
-                                                                       SubscriptionChange type)
-            throws AndesException {
+            SubscriptionChange type) throws AndesException {
 
         if (SubscriptionChange.ADDED == type) {
             localSubscriptionProcessor.addSubscription(subscription);
@@ -305,7 +300,7 @@ public class SubscriptionEngine {
         } else { //@DISCONNECT or REMOVE
             UUID channelIDOfSubscription = subscription.getChannelID();
             //when we delete the mock durable topic subscription it has no underlying channel
-            if(null != channelIDOfSubscription) {
+            if (null != channelIDOfSubscription) {
                 channelIdMap.remove(channelIDOfSubscription);
             }
         }
@@ -315,7 +310,7 @@ public class SubscriptionEngine {
     /**
      * Update local subscription in database
      *
-     * @param subscription  updated subscription
+     * @param subscription updated subscription
      * @throws AndesException
      */
     public void updateLocalSubscription(LocalSubscription subscription) throws AndesException {
@@ -334,20 +329,21 @@ public class SubscriptionEngine {
 
     /**
      * Directly remove a subscription from store
+     *
      * @param subscriptionToRemove subscription to remove
      * @throws AndesException on an exception dealing with store
      */
     public void removeSubscriptionDirectly(AndesSubscription subscriptionToRemove) throws AndesException {
         String destination = subscriptionToRemove.getSubscribedDestination();
         andesContextStore.removeDurableSubscription(subscriptionToRemove);
-        if(log.isDebugEnabled()) {
-            log.debug("Directly removed cluster subscription for "
-                    + "destination = " + destination);
+        if (log.isDebugEnabled()) {
+            log.debug("Directly removed cluster subscription for " + "destination = " + destination);
         }
     }
 
     /**
      * To remove the local subscription
+     *
      * @param subscription Subscription to be removed
      * @throws AndesException
      */
@@ -370,12 +366,12 @@ public class SubscriptionEngine {
 
                 andesContextStore.removeDurableSubscription(subscription);
                 if (log.isDebugEnabled()) {
-                    log.debug("Subscription Removed for  " + destination + "@"
-                              + subscription.getSubscriptionID() + " " + subscriptionToRemove);
+                    log.debug("Subscription Removed for  " + destination + "@" + subscription.getSubscriptionID() + " "
+                            + subscriptionToRemove);
                 }
             } else {
                 log.warn("Could not find a cluster subscription ID " + subscription.getSubscriptionID()
-                         + " under destination " + destination);
+                        + " under destination " + destination);
             }
         }
     }
@@ -410,18 +406,17 @@ public class SubscriptionEngine {
      * is active or not.
      *
      * @param isCoordinator True if current node is the coordinator, false otherwise.
-     * @param nodeID The current node ID.
+     * @param nodeID        The current node ID.
      * @throws AndesException Throw when updating the context store.
      */
     public void deactivateClusterDurableSubscriptionsForNodeID(boolean isCoordinator, String nodeID)
             throws AndesException {
 
-        Set<AndesSubscription> subscriptionsForNode =
-                clusterSubscriptionProcessor.getActiveSubscribersForNode(nodeID);
+        Set<AndesSubscription> subscriptionsForNode = clusterSubscriptionProcessor.getActiveSubscribersForNode(nodeID);
 
         for (AndesSubscription subscription : subscriptionsForNode) {
-            if (DestinationType.DURABLE_TOPIC == subscription.getDestinationType()
-                    && subscription.hasExternalSubscriptions()) {
+            if (DestinationType.DURABLE_TOPIC == subscription.getDestinationType() && subscription
+                    .hasExternalSubscriptions()) {
 
                 // Marking the subscription as false
                 subscription.setHasExternalSubscriptions(false);
@@ -435,8 +430,8 @@ public class SubscriptionEngine {
                 if (isCoordinator) {
                     andesContextStore.updateDurableSubscription(subscription);
                     if (log.isDebugEnabled()) {
-                        log.debug("Updating context store with subscription ID : " + subscription
-                                .getSubscriptionID() + " with has external as false.");
+                        log.debug("Updating context store with subscription ID : " + subscription.getSubscriptionID()
+                                + " with has external as false.");
                     }
                 }
             }
@@ -476,16 +471,16 @@ public class SubscriptionEngine {
      * collections of subscriptions
      *
      * @param subscriptions4Queue collection of subscriptions
-     * @param message message to evaluate selectors against
+     * @param message             message to evaluate selectors against
      */
     public void filterInterestedSubscriptions(Collection<LocalSubscription> subscriptions4Queue,
-                                              AndesMessageMetadata message) throws AndesException{
+            AndesMessageMetadata message) throws AndesException {
 
         Iterator<LocalSubscription> subscriptionIterator = subscriptions4Queue.iterator();
 
         while (subscriptionIterator.hasNext()) {
             LocalSubscription subscription = subscriptionIterator.next();
-            if(!subscription.isMessageAcceptedBySelector(message)) {
+            if (!subscription.isMessageAcceptedBySelector(message)) {
                 subscriptionIterator.remove();
             }
         }
@@ -496,7 +491,7 @@ public class SubscriptionEngine {
     }
 
     public Set<AndesSubscription> getAllClusterSubscriptionsForDestinationType(ProtocolType protocolType,
-                                                                               DestinationType destinationType) {
+            DestinationType destinationType) {
         return clusterSubscriptionProcessor.getAllSubscriptionsForDestinationType(protocolType, destinationType);
     }
 
@@ -506,8 +501,8 @@ public class SubscriptionEngine {
     private class QueueSubscriberGauge implements Gauge<Integer> {
         @Override
         public Integer getValue() {
-            return localSubscriptionProcessor.getAllSubscriptionsForDestinationType(ProtocolType.AMQP,
-                    DestinationType.QUEUE).size();
+            return localSubscriptionProcessor
+                    .getAllSubscriptionsForDestinationType(ProtocolType.AMQP, DestinationType.QUEUE).size();
 
         }
     }
@@ -518,8 +513,8 @@ public class SubscriptionEngine {
     private class TopicSubscriberGauge implements Gauge {
         @Override
         public Integer getValue() {
-            return localSubscriptionProcessor.getAllSubscriptionsForDestinationType(ProtocolType.AMQP,
-                    DestinationType.TOPIC).size();
+            return localSubscriptionProcessor
+                    .getAllSubscriptionsForDestinationType(ProtocolType.AMQP, DestinationType.TOPIC).size();
         }
     }
 

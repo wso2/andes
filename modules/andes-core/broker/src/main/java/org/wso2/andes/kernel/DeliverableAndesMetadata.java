@@ -18,20 +18,26 @@
 
 package org.wso2.andes.kernel;
 
+import com.gs.collections.impl.map.mutable.ConcurrentHashMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.tools.utils.MessageTracer;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * This class represents the message metadata and all the delivery aspects of it to the subscribers (outbound path).
  * The lifecycle of the message is maintained here itself.
  */
-public class DeliverableAndesMetadata extends AndesMessageMetadata{
+public class DeliverableAndesMetadata extends AndesMessageMetadata {
 
     /**
      * Map to keep message status and delivery information of this message to vivid channels
@@ -78,6 +84,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
     /**
      * Generate a new protocol deliverable message. This will include a reference of this message
      * plus snapshot of channel information message is delivered to
+     *
      * @param channelID ID of the channel message is to be delivered
      * @return new ProtocolMessage object
      */
@@ -89,8 +96,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
      * Change the belonging slot to a new one. Used when the current slot is overlapping with a slot tracked in the
      * SlotDeliveryWorker.
      *
-     * @param slot
-     *         New Slot
+     * @param slot New Slot
      */
     public void changeSlot(Slot slot) {
         this.slot = slot;
@@ -98,12 +104,13 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
 
     /**
      * Check if message is expired
+     *
      * @return check expire result
      */
     public boolean isExpired() {
         if (expirationTime != 0L) {
             long now = System.currentTimeMillis();
-            if(now > expirationTime) {
+            if (now > expirationTime) {
                 addMessageStatus(MessageStatus.EXPIRED);
                 return true;
             } else {
@@ -120,6 +127,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
 
     /**
      * Get Message Status this message passed as a string
+     *
      * @return encoded status history
      */
     public String getStatusHistoryAsString() {
@@ -132,6 +140,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
 
     /**
      * Get complete message status history together with all channel status
+     *
      * @return above information as a string
      */
     public String getMessageStatusWithAllChannelStatus() {
@@ -158,6 +167,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
 
     /**
      * Get current status of the message
+     *
      * @return message status
      */
     public MessageStatus getLatestState() {
@@ -171,6 +181,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
     /**
      * Check if this message is to be redelivered. This method should be evaluated before calling
      * markAsDeliveredToChannel method.
+     *
      * @param channelID ID of the channel to deliver
      * @return if message is a redelivery
      */
@@ -220,6 +231,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
     /**
      * Mark the message as dispatched to given channel (subscriber). This is the
      * First status of a message recorded channel-wise
+     *
      * @param channelID ID of the channel
      */
     public void markAsDispatchedToDeliver(UUID channelID) {
@@ -230,13 +242,13 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
             channelInformation.incrementDeliveryCount();
         } else {
             // No need to increase deliveryCount if this message is beyond the last rollback.
-            MessageTracer.trace(getMessageID(), getDestination(),MessageTracer.MESSAGE_BEYOND_LAST_ROLLBACK);
+            MessageTracer.trace(getMessageID(), getDestination(), MessageTracer.MESSAGE_BEYOND_LAST_ROLLBACK);
         }
     }
 
-
     /**
      * Record acknowledge by channel
+     *
      * @param channelID Id of the channel
      * @return if acknowledges by all the channels are received
      */
@@ -246,7 +258,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
         channelInformation.addChannelStatus(ChannelMessageStatus.ACKED);
         channelDeliveryInfo.put(channelID, channelInformation);
 
-        if(isMarkAsAcked()) {
+        if (isMarkAsAcked()) {
             addMessageStatus(MessageStatus.ACKED_BY_ALL);
             isAcknowledgedByAll = true;
         }
@@ -281,7 +293,6 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
         addMessageStatus(MessageStatus.DLC_MESSAGE);
     }
 
-
     /**
      * Check if message is sent to DLC
      *
@@ -302,17 +313,18 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
 
     /**
      * Check if message is deleted or purged
+     *
      * @return true if conditions met
      */
     public boolean isPurgedOrDeletedOrExpired() {
         MessageStatus currentStatus = getLatestState();
-        return currentStatus.equals(MessageStatus.PURGED)
-                || currentStatus.equals(MessageStatus.DELETED)
+        return currentStatus.equals(MessageStatus.PURGED) || currentStatus.equals(MessageStatus.DELETED)
                 || currentStatus.equals(MessageStatus.EXPIRED);
     }
 
     /**
      * Check if the message is OK to clear from memory
+     *
      * @return true if conditions are met
      */
     public boolean isOKToDispose() {
@@ -366,6 +378,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
      * Cancel message delivery for channel. This is called when a
      * message delivery is failed from broker side. By the time message MUST be maked
      * as SENT (we assume and mark SENT before actual send) to this channel
+     *
      * @param channelID id of the channel
      * @return current number of times this message is delivered to the given channel
      */
@@ -393,10 +406,9 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
      * Evaluate message acknowledgement. Whenever relevant message status are updated
      * this evaluation should be performed and subsequently try to delete the message
      * if ACKED_BY_ALL evaluation returned success
-     *
      */
     public void evaluateMessageAcknowledgement() {
-        if(isMarkAsAcked()) {
+        if (isMarkAsAcked()) {
             addMessageStatus(MessageStatus.ACKED_BY_ALL);
         }
     }
@@ -404,6 +416,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
     /**
      * Mark the scheduled channel as closed. When the subscriber closes, if the message
      * is already scheduled mark it as closed.
+     *
      * @param channelID ID of the channel
      */
     public void markDeliveredChannelAsClosed(UUID channelID) {
@@ -411,9 +424,9 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
                 addChannelStatus(ChannelMessageStatus.CLOSED);
     }
 
-
     /**
      * Get the channels this message is delivered to
+     *
      * @return Set of channel IDs
      */
     public Set<UUID> getAllDeliveredChannels() {
@@ -422,6 +435,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
 
     /**
      * Check if this message is acknowledged by all the channels it is delivered to
+     *
      * @return true if message is acknowledged by all the channels
      */
     private boolean isMarkAsAcked() {
@@ -430,19 +444,19 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
             ChannelMessageStatus messageStatus = channelInfoEntry.getValue().getLatestMessageStatus();
 
             //if channel is closed ignore it from considering
-            if(null != messageStatus && messageStatus.equals(ChannelMessageStatus.CLOSED)) {
+            if (null != messageStatus && messageStatus.equals(ChannelMessageStatus.CLOSED)) {
                 continue;
             }
             //if message is rejected by client repeatedly ignore it from considering
-            if(null != messageStatus && messageStatus.equals(ChannelMessageStatus.CLIENT_REJECTED)) {
+            if (null != messageStatus && messageStatus.equals(ChannelMessageStatus.CLIENT_REJECTED)) {
                 continue;
             }
-            if(null == messageStatus || !messageStatus.equals(ChannelMessageStatus.ACKED)) {
+            if (null == messageStatus || !messageStatus.equals(ChannelMessageStatus.ACKED)) {
                 isAcked = false;
                 break;
             }
         }
-        if(channelDeliveryInfo.isEmpty()) {
+        if (channelDeliveryInfo.isEmpty()) {
             isAcked = false;
         }
         return isAcked;
@@ -450,6 +464,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
 
     /**
      * Get the number of times this message is delivered to the given channel
+     *
      * @param channelID Id of the channel
      * @return number of deliveries
      */
@@ -468,28 +483,30 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
     /**
      * Check if state going to be added is valid considering it as the next
      * transition compared to current latest state.
+     *
      * @param state state to be transferred
      */
     public boolean addMessageStatus(MessageStatus state) {
 
         boolean isValidTransition = false;
 
-        if(messageStatus.isEmpty()) {
-            if(MessageStatus.READ.equals(state)) {
+        if (messageStatus.isEmpty()) {
+            if (MessageStatus.READ.equals(state)) {
                 isValidTransition = true;
                 messageStatus.add(state);
             } else {
-                log.warn("Invalid message state transition suggested: " + state  + " Message ID: " + messageID
-                        + "slot = " + slot.getId());
+                log.warn(
+                        "Invalid message state transition suggested: " + state + " Message ID: " + messageID + "slot = "
+                                + slot.getId());
             }
         } else {
             isValidTransition = messageStatus.get(messageStatus.size() - 1).isValidNextTransition(state);
-            if(isValidTransition) {
+            if (isValidTransition) {
                 messageStatus.add(state);
             } else {
-                log.warn("Invalid message state transition from " + messageStatus.get
-                        (messageStatus.size() - 1) + " suggested: " + state + " Message ID: " + messageID
-                        + " slot = "+ slot.getId() + " Message Status History >> " + messageStatus);
+                log.warn("Invalid message state transition from " + messageStatus.get(messageStatus.size() - 1)
+                        + " suggested: " + state + " Message ID: " + messageID + " slot = " + slot.getId()
+                        + " Message Status History >> " + messageStatus);
             }
         }
 
@@ -505,7 +522,6 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
 /*    public boolean addMessageStatusForChannel(UUID channelID, MessageStatus status) {
          return channelDeliveryInfo.get(channelID).addChannelStatus(status);
     }*/
-
 
     /**
      * Get message status history as a string.
@@ -574,31 +590,33 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
         /**
          * Check if state going to be added is valid considering it as the next transition compared
          * to current latest state. This status is for individual delivery channels
+         *
          * @param state state to be transferred
          */
         private boolean addChannelStatus(ChannelMessageStatus state) {
 
             boolean isValidTransition = false;
 
-            if(messageStatusesForChannel.isEmpty()) {
-                if(ChannelMessageStatus.DISPATCHED.equals(state)) {
+            if (messageStatusesForChannel.isEmpty()) {
+                if (ChannelMessageStatus.DISPATCHED.equals(state)) {
                     isValidTransition = true;
                     messageStatusesForChannel.add(state);
                 } else {
-                    log.warn("Invalid channel message state transition suggested: " + state  + " Message ID: "
-							+ messageID + " Slot = " + slot.getId() + " Message Status History >> " + messageStatus);
+                    log.warn(
+                            "Invalid channel message state transition suggested: " + state + " Message ID: " + messageID
+                                    + " Slot = " + slot.getId() + " Message Status History >> " + messageStatus);
                 }
             } else {
                 isValidTransition = messageStatusesForChannel.
                         get(messageStatusesForChannel.size() - 1).isValidNextTransition(state);
 
-                if(isValidTransition) {
+                if (isValidTransition) {
                     messageStatusesForChannel.add(state);
                 } else {
-                    log.warn("Invalid channel message state transition from " + messageStatusesForChannel.get
-                            (messageStatusesForChannel.size() - 1) + " suggested: " + state + " Message ID: "
-							+ messageID + " Slot = " + slot.getId() +" Channel Status History >> "
-							+ messageStatusesForChannel);
+                    log.warn("Invalid channel message state transition from " + messageStatusesForChannel
+                            .get(messageStatusesForChannel.size() - 1) + " suggested: " + state + " Message ID: "
+                            + messageID + " Slot = " + slot.getId() + " Channel Status History >> "
+                            + messageStatusesForChannel);
                 }
             }
 
@@ -606,7 +624,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
         }
 
         private ChannelMessageStatus getLatestMessageStatus() {
-            if(!messageStatusesForChannel.isEmpty()) {
+            if (!messageStatusesForChannel.isEmpty()) {
                 return messageStatusesForChannel.get(messageStatusesForChannel.size() - 1);
             } else {
                 return null;
@@ -616,8 +634,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
         private String getMessageStatusHistoryForChannelAsString() {
             StringBuilder channelInfo = new StringBuilder();
             for (ChannelMessageStatus channelMessageStatus : messageStatusesForChannel) {
-                channelInfo.append(channelMessageStatus)
-                        .append(">>");
+                channelInfo.append(channelMessageStatus).append(">>");
             }
             return channelInfo.toString();
         }
@@ -626,6 +643,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
 
     /**
      * Set beyondLastRollbackedMessage
+     *
      * @param beyondLastRollbackedMessage true if this message is beyond the last rollbacked message.
      */
     public void setIsBeyondLastRollbackedMessage(boolean beyondLastRollbackedMessage) {

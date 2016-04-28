@@ -17,6 +17,7 @@
  */
 package org.wso2.andes.subscription;
 
+import com.gs.collections.impl.map.mutable.ConcurrentHashMap;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -37,7 +38,6 @@ import org.wso2.andes.mqtt.MQTTLocalSubscription;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * This is the class that represents a subscription in andes kernel. It is responsible
@@ -45,7 +45,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * events. For handling outbound events it keeps a OutboundSubscription object and forward
  * requests
  */
-public class LocalSubscription  extends BasicSubscription implements InboundSubscription{
+public class LocalSubscription extends BasicSubscription implements InboundSubscription {
 
     private static Log log = LogFactory.getLog(LocalSubscription.class);
 
@@ -59,38 +59,37 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
      * Map to track messages being sent <message id, MsgData reference>. This map bares message
      * reference at kernel side
      */
-    private final ConcurrentHashMap<Long, DeliverableAndesMetadata> messageSendingTracker
-            = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, DeliverableAndesMetadata> messageSendingTracker = new ConcurrentHashMap<>();
 
     private Integer maxNumberOfUnAcknowledgedMessages = 100000;
 
     /**
      * Create a new local subscription object in andes kernel
-     * @param subscription protocol subscription to send messages
-     * @param subscriptionID ID of the subscription (unique)
-     * @param destination subscription bound destination
-     * @param isExclusive true is the subscription is exclusive
-     * @param isDurable true if subscription is durable (should preserve messages in absence)
-     * @param subscribedNode identifier of the node actual subscription exists
-     * @param subscribeTime timestamp of the subscription made
-     * @param targetQueue name of underlying queue subscription is bound to
-     * @param targetQueueOwner name of the owner of underlying queue subscription is bound to
-     * @param targetQueueBoundExchange name of exchange of underlying queue subscription is bound to
-     * @param targetQueueBoundExchangeType type of exchange of underlying queue subscription is bound to
+     *
+     * @param subscription                            protocol subscription to send messages
+     * @param subscriptionID                          ID of the subscription (unique)
+     * @param destination                             subscription bound destination
+     * @param isExclusive                             true is the subscription is exclusive
+     * @param isDurable                               true if subscription is durable (should preserve messages in absence)
+     * @param subscribedNode                          identifier of the node actual subscription exists
+     * @param subscribeTime                           timestamp of the subscription made
+     * @param targetQueue                             name of underlying queue subscription is bound to
+     * @param targetQueueOwner                        name of the owner of underlying queue subscription is bound to
+     * @param targetQueueBoundExchange                name of exchange of underlying queue subscription is bound to
+     * @param targetQueueBoundExchangeType            type of exchange of underlying queue subscription is bound to
      * @param isTargetQueueBoundExchangeAutoDeletable is queue subscription is bound to is auto deletable (this can
      *                                                be true if subscription is non durable)
-     * @param hasExternalSubscriptions true if subscription is active (has a live TCP connection)
-     * @param destinationType The type of the destination
+     * @param hasExternalSubscriptions                true if subscription is active (has a live TCP connection)
+     * @param destinationType                         The type of the destination
      */
     public LocalSubscription(OutboundSubscription subscription, String subscriptionID, String destination,
-                             boolean isExclusive, boolean isDurable,
-                             String subscribedNode, long subscribeTime, String targetQueue, String targetQueueOwner,
-                             String targetQueueBoundExchange,
-                             String targetQueueBoundExchangeType, Short isTargetQueueBoundExchangeAutoDeletable,
-                             boolean hasExternalSubscriptions, DestinationType destinationType) {
+            boolean isExclusive, boolean isDurable, String subscribedNode, long subscribeTime, String targetQueue,
+            String targetQueueOwner, String targetQueueBoundExchange, String targetQueueBoundExchangeType,
+            Short isTargetQueueBoundExchangeAutoDeletable, boolean hasExternalSubscriptions,
+            DestinationType destinationType) {
 
-        super(subscriptionID, destination, isExclusive, isDurable, subscribedNode, subscribeTime,
-                targetQueue, targetQueueOwner, targetQueueBoundExchange, targetQueueBoundExchangeType,
+        super(subscriptionID, destination, isExclusive, isDurable, subscribedNode, subscribeTime, targetQueue,
+                targetQueueOwner, targetQueueBoundExchange, targetQueueBoundExchangeType,
                 isTargetQueueBoundExchangeAutoDeletable, hasExternalSubscriptions, destinationType);
 
         this.subscription = subscription;
@@ -98,17 +97,17 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
         // In case of mock subscriptions, this becomes null
         if (null != subscription) {
             //We need to keep the protocolType in basic subscription for notification
-            if(subscription instanceof AMQPLocalSubscription) {
+            if (subscription instanceof AMQPLocalSubscription) {
                 setProtocolType(ProtocolType.AMQP);
-            } else if(subscription instanceof MQTTLocalSubscription) {
+            } else if (subscription instanceof MQTTLocalSubscription) {
                 setProtocolType(ProtocolType.MQTT);
             }
 
             setStorageQueueName(subscription.getStorageQueueName(destination, subscribedNode));
         }
 
-        this.maxNumberOfUnAcknowledgedMessages = AndesConfigurationManager.readValue
-                (AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLING_MAX_UNACKED_MESSAGES);
+        this.maxNumberOfUnAcknowledgedMessages = AndesConfigurationManager
+                .readValue(AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLING_MAX_UNACKED_MESSAGES);
 
     }
 
@@ -125,13 +124,14 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
 
     /**
      * Send message to the underlying protocol subscriber
+     *
      * @param messageMetadata metadata of the message
-     * @param content content of the message
+     * @param content         content of the message
      * @return true if the send is a success
      * @throws AndesException
      */
-    public boolean sendMessageToSubscriber(ProtocolMessage messageMetadata, AndesContent content) throws
-            AndesException {
+    public boolean sendMessageToSubscriber(ProtocolMessage messageMetadata, AndesContent content)
+            throws AndesException {
 
         //It is needed to add the message reference to the tracker and increase un-ack message count BEFORE
         // actual message send because if it is not done ack can come BEFORE executing those lines in parallel world
@@ -150,20 +150,20 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
         return subscription.isMessageAcceptedBySelector(messageMetadata);
     }
 
-
     /**
      * Get all sent but not acknowledged messages for the subscriber
      *
      * @return list of messages
      */
     public List<DeliverableAndesMetadata> getUnackedMessages() {
-       return new ArrayList<>(messageSendingTracker.values());
+        return new ArrayList<>(messageSendingTracker.values());
     }
 
     /**
      * Remove message from sending tracker. This is called when a send
      * error happens at the Outbound subscriber protocol level. ACK or
      * REJECT can never be received for that message
+     *
      * @param messageID Id of the message
      */
     public void removeSentMessageFromTracker(long messageID) {
@@ -173,14 +173,15 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
     /**
      * Get message metadata reference by message ID. Returns null if the reference
      * is not found
+     *
      * @param messageID ID of the message
      * @return message metadata reference
      */
     public DeliverableAndesMetadata getMessageByMessageID(long messageID) {
-        DeliverableAndesMetadata metadata =  messageSendingTracker.get(messageID);
-        if(null == metadata) {
-            log.error("Message reference has been already cleared for message id "
-                    + messageID + ". Acknowledge or Nak is already received");
+        DeliverableAndesMetadata metadata = messageSendingTracker.get(messageID);
+        if (null == metadata) {
+            log.error("Message reference has been already cleared for message id " + messageID
+                    + ". Acknowledge or Nak is already received");
         }
         return metadata;
     }
@@ -188,15 +189,16 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
     /**
      * Is the underlying protocol subscription active and can accept
      * messages
+     *
      * @return true if subscription is active
      */
     public boolean isActive() {
         return subscription.isActive();
     }
 
-
     /**
      * ID of the protocol channel this subscription holds
+     *
      * @return unique id if the subscription channel
      */
     public UUID getChannelID() {
@@ -206,6 +208,7 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
     /**
      * Check if this subscription has ability to accept messages
      * If pending ack count is high it does not have ability to accept new messages
+     *
      * @return true if able to accept messages
      */
     public boolean hasRoomToAcceptMessages() {
@@ -215,9 +218,8 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
         } else {
 
             if (log.isDebugEnabled()) {
-                log.debug(
-                        "Not selected. Too much pending acks, subscription = " + this + " pending count =" +
-                                (notAcknowledgedMsgCount));
+                log.debug("Not selected. Too much pending acks, subscription = " + this + " pending count =" +
+                        (notAcknowledgedMsgCount));
             }
 
             return false;
@@ -227,21 +229,21 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
     /**
      * {@inheritDoc}
      */
-    public void ackReceived(long messageID) throws AndesException{
+    public void ackReceived(long messageID) throws AndesException {
         messageSendingTracker.remove(messageID);
-        if(log.isDebugEnabled()) {
-            log.debug("Ack. Removed message reference. Message Id = "
-                    + messageID + " subscriptionID= " + subscriptionID);
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "Ack. Removed message reference. Message Id = " + messageID + " subscriptionID= " + subscriptionID);
         }
     }
 
     /**
      * {@inheritDoc}
      */
-    public void msgRejectReceived(long messageID) throws AndesException{
-        if(log.isDebugEnabled()) {
-            log.debug("Reject. Removed message reference. Message Id = "
-                    + messageID + " subscriptionID= " + subscriptionID);
+    public void msgRejectReceived(long messageID) throws AndesException {
+        if (log.isDebugEnabled()) {
+            log.debug("Reject. Removed message reference. Message Id = " + messageID + " subscriptionID= "
+                    + subscriptionID);
         }
     }
 
@@ -267,16 +269,17 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
         }
     }
 
-
     /**
      * Add message to sending tracker which keeps messages delivered to this channel
+     *
      * @param messageData message to add
      */
     private void addMessageToSendingTracker(ProtocolMessage messageData) {
 
         if (log.isDebugEnabled()) {
-            log.debug("Adding message to sending tracker channel id = " + getChannelID() + " message id = "
-                    + messageData.getMessageID());
+            log.debug(
+                    "Adding message to sending tracker channel id = " + getChannelID() + " message id = " + messageData
+                            .getMessageID());
         }
 
         DeliverableAndesMetadata messageDataToAdd = messageSendingTracker.get(messageData.getMessageID());
@@ -284,9 +287,9 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
         if (null == messageDataToAdd) {
             //we need to put message reference to the sending tracker
             messageSendingTracker.put(messageData.getMessageID(), messageData.getMessage());
-            if(log.isDebugEnabled()) {
-                log.debug("Added message reference. Message Id = "
-                        + messageData.getMessageID() + " subscriptionID= " + subscriptionID);
+            if (log.isDebugEnabled()) {
+                log.debug("Added message reference. Message Id = " + messageData.getMessageID() + " subscriptionID= "
+                        + subscriptionID);
             }
         }
     }
