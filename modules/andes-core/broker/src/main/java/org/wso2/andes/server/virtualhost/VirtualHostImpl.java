@@ -33,6 +33,8 @@ import org.wso2.andes.server.connection.ConnectionRegistry;
 import org.wso2.andes.server.connection.IConnectionRegistry;
 import org.wso2.andes.server.exchange.*;
 import org.wso2.andes.server.federation.BrokerLink;
+import org.wso2.andes.server.information.management.DestinationManagementInformationMBean;
+import org.wso2.andes.server.information.management.MessageManagementInformationMBean;
 import org.wso2.andes.server.information.management.QueueManagementInformationMBean;
 import org.wso2.andes.server.logging.LogSubject;
 import org.wso2.andes.server.logging.actors.CurrentActor;
@@ -83,6 +85,10 @@ public class VirtualHostImpl implements VirtualHost {
     private AMQBrokerManagerMBean brokerMBean;
 
     private QueueManagementInformationMBean queueManagementInformationMBean;
+
+    private DestinationManagementInformationMBean destinationManagementInformationMBean;
+
+    private MessageManagementInformationMBean messageManagementInformationMBean;
 
     private final AuthenticationManager authenticationManager;
 
@@ -220,6 +226,12 @@ public class VirtualHostImpl implements VirtualHost {
 
         queueManagementInformationMBean = new QueueManagementInformationMBean(virtualHostMBean);
         queueManagementInformationMBean.register();
+
+        destinationManagementInformationMBean = new DestinationManagementInformationMBean(virtualHostMBean);
+        destinationManagementInformationMBean.register();
+
+        messageManagementInformationMBean = new MessageManagementInformationMBean(virtualHostMBean);
+        messageManagementInformationMBean.register();
 
         initialiseHouseKeeping(hostConfig.getHousekeepingExpiredMessageCheckPeriod());
 
@@ -657,6 +669,18 @@ public class VirtualHostImpl implements VirtualHost {
 
     public ConfigStore getConfigStore() {
         return getApplicationRegistry().getConfigStore();
+    }
+
+    public QueueManagementInformationMBean getQueueManagementInformationMBean() {
+        return queueManagementInformationMBean;
+    }
+
+    public DestinationManagementInformationMBean getDestinationManagementInformationMBean() {
+        return destinationManagementInformationMBean;
+    }
+
+    public MessageManagementInformationMBean getMessageManagementInformationMBean() {
+        return messageManagementInformationMBean;
     }
 
     /**

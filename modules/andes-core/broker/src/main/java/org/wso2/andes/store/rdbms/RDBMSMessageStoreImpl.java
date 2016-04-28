@@ -33,15 +33,11 @@ import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.kernel.slot.Slot;
-import org.wso2.andes.metrics.MetricsConstants;
-import org.wso2.andes.store.AndesDataIntegrityViolationException;
 import org.wso2.andes.server.queue.DLCQueueUtils;
+import org.wso2.andes.store.AndesDataIntegrityViolationException;
 import org.wso2.andes.store.cache.AndesMessageCache;
 import org.wso2.andes.store.cache.MessageCacheFactory;
 import org.wso2.andes.tools.utils.MessageTracer;
-//import org.wso2.carbon.metrics.manager.Level;
-//import org.wso2.carbon.metrics.manager.MetricManager;
-//import org.wso2.carbon.metrics.manager.Timer.Context;
 
 import java.sql.BatchUpdateException;
 import java.sql.Connection;
@@ -61,6 +57,10 @@ import static org.wso2.andes.store.rdbms.RDBMSConstants.MSG_OFFSET;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_MESSAGE_PART;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_METADATA;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.TASK_RETRIEVING_CONTENT_FOR_MESSAGES;
+
+//import org.wso2.carbon.metrics.manager.Level;
+//import org.wso2.carbon.metrics.manager.MetricManager;
+//import org.wso2.carbon.metrics.manager.Timer.Context;
 
 /**
  * ANSI SQL based message store implementation. Message persistence related methods are implemented
@@ -937,6 +937,59 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         } finally {
 //            nextMetaRetrievalContext.stop();
 //            contextRead.stop();
+            close(connection, preparedStatement, results, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_FROM_QUEUE);
+        }
+        return mdList;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(String storageQueueName, int offset, int
+            count) throws AndesException {
+        List<AndesMessageMetadata> mdList = new ArrayList<>(count);
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet results = null;
+
+
+        //        Context nextMetaRetrievalContext = MetricManager.timer(Level.INFO, MetricsConstants.GET_NEXT_MESSAGE_METADATA_FROM_QUEUE).start();
+        //        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
+
+        try {
+            connection = getConnection();
+            preparedStatement = connection
+                    .prepareStatement(RDBMSConstants.PS_SELECT_METADATA_FROM_QUEUE);
+            preparedStatement.setLong(1, 0);
+            preparedStatement.setInt(2, getCachedQueueID(storageQueueName));
+
+            results = preparedStatement.executeQuery();
+
+            int resultCount = 0;
+            while (results.next()) {
+                if (resultCount < offset) {
+                    continue;
+                }
+
+                if (resultCount == offset + count) {
+                    break;
+                }
+
+                AndesMessageMetadata md = new AndesMessageMetadata(
+                        results.getLong(RDBMSConstants.MESSAGE_ID),
+                        results.getBytes(RDBMSConstants.METADATA),
+                        true
+                );
+                md.setStorageQueueName(storageQueueName);
+                mdList.add(md);
+                resultCount++;
+            }
+        } catch (SQLException e) {
+            throw rdbmsStoreUtils.convertSQLException("error occurred while retrieving message metadata from queue ", e);
+        } finally {
+            //            nextMetaRetrievalContext.stop();
+            //            contextRead.stop();
             close(connection, preparedStatement, results, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_FROM_QUEUE);
         }
         return mdList;

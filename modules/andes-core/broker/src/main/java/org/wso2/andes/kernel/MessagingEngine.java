@@ -1,19 +1,17 @@
 /*
- * Copyright (c) 2014-2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2016, WSO2 Inc. (http://wso2.com) All Rights Reserved.
  *
- * WSO2 Inc. licenses this file to you under the Apache License,
- * Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package org.wso2.andes.kernel;
@@ -432,10 +430,8 @@ public class MessagingEngine {
                 .entrySet()) {
             messageStore.deleteMessages(entry.getKey(), entry.getValue());
         }
-        for (DeliverableAndesMetadata message : messagesToRemove) {
-            //mark messages as deleted
-            message.markAsDeletedMessage();
-        }
+        //mark messages as deleted
+        messagesToRemove.forEach(DeliverableAndesMetadata::markAsDeletedMessage);
 
     }
 
@@ -586,6 +582,20 @@ public class MessagingEngine {
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName, long firstMsgId, int count) throws
             AndesException {
         return messageStore.getNextNMessageMetadataFromQueue(queueName, firstMsgId, count);
+    }
+
+    /**
+     * Get message metadata from queue starting from given index up a given message count.
+     *
+     * @param queueName Name of the queue
+     * @param offset    Starting index
+     * @param count     Maximum num of messages to return
+     * @return List of {@link AndesMessageMetadata}
+     * @throws AndesException
+     */
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName, int offset, int count) throws
+            AndesException {
+        return messageStore.getNextNMessageMetadataFromQueue(queueName, offset, count);
     }
 
     /**
