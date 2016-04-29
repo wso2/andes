@@ -16,6 +16,8 @@
 
 package org.wso2.andes.server.util;
 
+import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
+import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
@@ -449,13 +451,13 @@ public class CompositeDataHelper {
             /* If the current message was compressed by the server, decompress the message content and, get it as an
              * AndesMessagePart
              */
-                Set<Long> messageToFetch = new HashSet<>();
+                LongArrayList messageToFetch = new LongArrayList();
                 Long messageID = amqMessage.getMessageId();
                 messageToFetch.add(messageID);
 
                 try {
-                    Map<Long, List<AndesMessagePart>> contentListMap = MessagingEngine.getInstance()
-                            .getContent(new ArrayList<>(messageToFetch));
+                    LongObjectHashMap<List<AndesMessagePart>> contentListMap = MessagingEngine.getInstance()
+                            .getContent(messageToFetch);
                     List<AndesMessagePart> contentList = contentListMap.get(messageID);
 
                     andesMessagePart = lz4CompressionHelper.getDecompressedMessage(contentList, bodySize);

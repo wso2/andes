@@ -18,6 +18,7 @@
 
 package org.wso2.andes.kernel.slot;
 
+import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -25,8 +26,6 @@ import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.MessageStore;
-
-import java.util.List;
 
 /**
  * SlotCreator is used to recover slots belonging to a storage queue when the cluster is restarted.
@@ -87,8 +86,7 @@ public class SlotCreator implements Runnable {
         int restoreMessagesCounter = 0;
         long messageCountOfQueue = messageStore.getMessageCountForQueue(queueName);
 
-
-        List<Long> messageIdList = messageStore.getNextNMessageIdsFromQueue(queueName, 0, slotSize);
+        LongArrayList messageIdList = messageStore.getNextNMessageIdsFromQueue(queueName, 0, slotSize);
         int numberOfMessages = messageIdList.size();
 
         databaseReadsCounter++;
@@ -109,9 +107,8 @@ public class SlotCreator implements Runnable {
 
             if (AndesContext.getInstance().isClusteringEnabled()) {
                 SlotManagerClusterMode.getInstance().updateMessageID(queueName,
-                                                                     AndesContext.getInstance().getClusterAgent()
-                                                                                 .getLocalNodeIdentifier(),
-                                                                     firstMessageID, lastMessageID, lastMessageID);
+                        AndesContext.getInstance().getClusterAgent().getLocalNodeIdentifier(), firstMessageID,
+                        lastMessageID, lastMessageID);
             } else {
                 SlotManagerStandalone.getInstance().updateMessageID(queueName, lastMessageID);
             }
@@ -121,7 +118,7 @@ public class SlotCreator implements Runnable {
                 // messageCountOfQueue is multiplied by 1.0 to convert it to double
                 double recoveredPercentage = (restoreMessagesCounter / (messageCountOfQueue * 1.0)) * 100.0;
                 log.info(restoreMessagesCounter + "/" + messageCountOfQueue + " (" + Math.round(recoveredPercentage)
-                         + "%) messages recovered for queue \"" + queueName + "\"");
+                        + "%) messages recovered for queue \"" + queueName + "\"");
                 lastStatPublishTime = currentTimeInMillis;
             }
 
@@ -135,6 +132,6 @@ public class SlotCreator implements Runnable {
         }
 
         log.info("Recovered " + restoreMessagesCounter + " messages for queue \"" + queueName + "\" using "
-                 + databaseReadsCounter + " database calls");
+                + databaseReadsCounter + " database calls");
     }
 }
