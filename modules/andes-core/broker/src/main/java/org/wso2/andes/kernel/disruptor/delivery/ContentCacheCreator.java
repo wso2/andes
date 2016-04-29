@@ -20,18 +20,24 @@ package org.wso2.andes.kernel.disruptor.delivery;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import com.gs.collections.api.iterator.MutableLongIterator;
+import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
+import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
+import com.gs.collections.impl.set.mutable.primitive.LongHashSet;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessagePart;
+import org.wso2.andes.kernel.DisruptorCachedContent;
+import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -52,8 +58,8 @@ public class ContentCacheCreator {
      * Keeps track of ids of messages which this handler couldn't load payload
      * content (from message store)
      */
-    private final List<Long> failedContentRetrivals;
-    
+    private final LongArrayList failedContentRetrivals;
+
     /**
      * Guava based cache used to avoid fetching content for same message id in non-durable topics
      */
@@ -61,21 +67,22 @@ public class ContentCacheCreator {
 
     /**
      * Creates a {@link org.wso2.andes.kernel.disruptor.delivery.ContentCacheCreator} object
+     *
      * @param maxContentChunkSize maximum content chunk size stored in DB
      */
     public ContentCacheCreator(int maxContentChunkSize) {
         this.maxChunkSize = maxContentChunkSize;
 
-        Integer maximumSize = AndesConfigurationManager.readValue(
-                AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_CONTENT_CACHE_MAXIMUM_SIZE);
-        Integer expiryTime = AndesConfigurationManager.readValue(
-                AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_CONTENT_CACHE_EXPIRY_TIME);
+        Integer maximumSize = AndesConfigurationManager
+                .readValue(AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_CONTENT_CACHE_MAXIMUM_SIZE);
+        Integer expiryTime = AndesConfigurationManager
+                .readValue(AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_CONTENT_CACHE_EXPIRY_TIME);
 
         contentCache = CacheBuilder.newBuilder().expireAfterWrite(expiryTime, TimeUnit.SECONDS).maximumSize(maximumSize)
                 .concurrencyLevel(1).build();
-    
-        failedContentRetrivals = new ArrayList<Long>();
-        
+
+        failedContentRetrivals = new LongArrayList();
+
     }
 
     /**
@@ -86,16 +93,16 @@ public class ContentCacheCreator {
      */
     public void onEvent(List<DeliveryEventData> eventDataList) throws AndesException {
 
-        Set<Long> messagesToFetch = new HashSet<>();
+        LongHashSet messagesToFetch = new LongHashSet();
         List<DeliveryEventData> messagesWithoutCachedContent = new ArrayList<>();
 
-        for (DeliveryEventData deliveryEventData: eventDataList) {
+        for (DeliveryEventData deliveryEventData : eventDataList) {
             ProtocolMessage metadata = deliveryEventData.getMetadata();
-            long messageID =  metadata.getMessageID();
+            long messageID = metadata.getMessageID();
             int contentLength = metadata.getMessage().getMessageContentLength();
-            
-            if ( contentLength > 0 ){
-                
+
+            if (contentLength > 0) {
+
                 DisruptorCachedContent content = contentCache.getIfPresent(messageID);
 
                 if (null != content) {
@@ -110,21 +117,25 @@ public class ContentCacheCreator {
                     messagesToFetch.add(messageID);
                     messagesWithoutCachedContent.add(deliveryEventData);
                 }
-                
+
             } else {
                 // user has sent a message with out content. trying to read from
                 // the message storage is not required.
                 continue;
             }
-            
+
         }
 
-        Map<Long, List<AndesMessagePart>> contentListMap = MessagingEngine.getInstance().getContent(new ArrayList<>(messagesToFetch));
+        LongArrayList containMessegesToFetch = new LongArrayList();
+        containMessegesToFetch.addAll(messagesToFetch);
+
+        LongObjectHashMap<List<AndesMessagePart>> contentListMap = MessagingEngine.getInstance()
+                .getContent(containMessegesToFetch);
 
         for (DeliveryEventData deliveryEventData : messagesWithoutCachedContent) {
 
             ProtocolMessage metadata = deliveryEventData.getMetadata();
-            long messageID =  metadata.getMessageID();
+            long messageID = metadata.getMessageID();
             // We check again for content put in cache in the previous iteration
             DisruptorCachedContent content = contentCache.getIfPresent(messageID);
 
@@ -165,7 +176,7 @@ public class ContentCacheCreator {
                 // store
                 recordFailedMessageContentRetrievalError(deliveryEventData);
             }
-            
+
             //Tracing message
             MessageTracer.trace(metadata.getMessage(), MessageTracer.CONTENT_READ);
             logFailedMessageContentRetreivalErrors();
@@ -174,14 +185,13 @@ public class ContentCacheCreator {
 
     /**
      * Keeps track of message for which this handle couldn't get message contents.
+     *
      * @param deliveryEventData information about the message.
      */
     private void recordFailedMessageContentRetrievalError(DeliveryEventData deliveryEventData) {
         deliveryEventData.reportExceptionOccurred();
         failedContentRetrivals.add(deliveryEventData.getMetadata().getMessageID());
     }
-    
-    
 
     /**
      * Print a error log message which this handler couldn't find payloads in
@@ -189,21 +199,22 @@ public class ContentCacheCreator {
      * This will not throw an error since disruptor batch event handler will not
      * give deliveryEventData (in the list being processed to next handler)
      */
-    private void logFailedMessageContentRetreivalErrors(){
-        
-        if (! failedContentRetrivals.isEmpty()) {
-            
+    private void logFailedMessageContentRetreivalErrors() {
+
+        if (!failedContentRetrivals.isEmpty()) {
+
             StringBuilder errorMsg = new StringBuilder("message content not found for message ids : ");
-                    
-            for (long messageId: failedContentRetrivals){
+
+            MutableLongIterator iterator = failedContentRetrivals.longIterator();
+            while (iterator.hasNext()) {
+                long messageId = iterator.next();
                 errorMsg.append(messageId).append(',');
             }
-            
+
             failedContentRetrivals.clear();
             log.error(errorMsg.toString());
-       }
-        
+        }
+
     }
-    
-    
+
 }

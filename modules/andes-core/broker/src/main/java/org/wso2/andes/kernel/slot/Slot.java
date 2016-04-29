@@ -18,15 +18,16 @@
 
 package org.wso2.andes.kernel.slot;
 
+import com.gs.collections.impl.map.mutable.ConcurrentHashMap;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -153,13 +154,14 @@ public class Slot implements Serializable, Comparable<Slot> {
 
     public void setAnOverlappingSlot(boolean isAnOverlappingSlot) {
         this.isAnOverlappingSlot = isAnOverlappingSlot;
-        if(isAnOverlappingSlot) {
+        if (isAnOverlappingSlot) {
             addState(SlotState.OVERLAPPED);
         }
     }
 
     /**
      * Add a message to messages read by slot if it is not already there
+     *
      * @param metadata metadata of the message to add
      */
     public void addMessageToSlotIfAbsent(DeliverableAndesMetadata metadata) {
@@ -168,6 +170,7 @@ public class Slot implements Serializable, Comparable<Slot> {
 
     /**
      * Get all messages read from the slot
+     *
      * @return list of metadata of messages
      */
     public List<DeliverableAndesMetadata> getAllMessagesOfSlot() {
@@ -177,6 +180,7 @@ public class Slot implements Serializable, Comparable<Slot> {
     /**
      * Remove a message read from slot. Deprecated as we remove all tracking
      * at once when slot is deleted
+     *
      * @param messageID ID of the message to remove from slot
      */
     @Deprecated
@@ -208,8 +212,7 @@ public class Slot implements Serializable, Comparable<Slot> {
                     log.debug("removing tracking object from memory id " + messageId);
                 }
             } else {
-                log.error("Tracking data for message id " + messageId
-                        + " removed while in an invalid state. ("
+                log.error("Tracking data for message id " + messageId + " removed while in an invalid state. ("
                         + messageMetadata.getStatusHistory() + ")");
             }
         }
@@ -218,12 +221,13 @@ public class Slot implements Serializable, Comparable<Slot> {
 
     /**
      * Check if message is already added to messages read by slot.
+     *
      * @param messageID ID of the new message to add
      * @return true if message is already added
      */
     public boolean checkIfMessageIsAlreadyAdded(long messageID) {
         boolean messageExists = false;
-        if(null != messagesOfSlot.get(messageID)) {
+        if (null != messagesOfSlot.get(messageID)) {
             messageExists = true;
         }
         return messageExists;
@@ -248,8 +252,8 @@ public class Slot implements Serializable, Comparable<Slot> {
 
         boolean isValidTransition = false;
 
-        if(slotStates.isEmpty()) {
-            if(SlotState.CREATED.equals(state)) {
+        if (slotStates.isEmpty()) {
+            if (SlotState.CREATED.equals(state)) {
                 isValidTransition = true;
                 slotStates.add(state);
             } else {
@@ -257,12 +261,11 @@ public class Slot implements Serializable, Comparable<Slot> {
             }
         } else {
             isValidTransition = slotStates.get(slotStates.size() - 1).isValidNextTransition(state);
-            if(isValidTransition) {
+            if (isValidTransition) {
                 slotStates.add(state);
             } else {
-                log.warn("Invalid State transition from " + slotStates.get
-                        (slotStates.size() - 1) + " suggested: " + state + " Slot ID: " + this
-                        .getId());
+                log.warn("Invalid State transition from " + slotStates.get(slotStates.size() - 1) + " suggested: "
+                        + state + " Slot ID: " + this.getId());
             }
         }
 
@@ -280,6 +283,7 @@ public class Slot implements Serializable, Comparable<Slot> {
 
     /**
      * Convert Slot state list to a string
+     *
      * @return Encoded string
      */
     public String encodeSlotStates() {
@@ -294,6 +298,7 @@ public class Slot implements Serializable, Comparable<Slot> {
 
     /**
      * Decode slot states from a string
+     *
      * @param stateInfo encoded string
      */
     public void decodeAndSetSlotStates(String stateInfo) {
@@ -311,8 +316,10 @@ public class Slot implements Serializable, Comparable<Slot> {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
 
         Slot slot = (Slot) o;
 
@@ -332,13 +339,8 @@ public class Slot implements Serializable, Comparable<Slot> {
     @Override
     public String toString() {
         StringBuilder slotInfo = new StringBuilder();
-        slotInfo.append(" Id : ")
-                .append(this.getId())
-                .append(" States : ")
-                .append(this.slotStates)
-                .append(" Is overlapping : ")
-                .append(isAnOverlappingSlot)
-                .append(" Destination : ")
+        slotInfo.append(" Id : ").append(this.getId()).append(" States : ").append(this.slotStates)
+                .append(" Is overlapping : ").append(isAnOverlappingSlot).append(" Destination : ")
                 .append(destinationOfMessagesInSlot);
         return slotInfo.toString();
     }
