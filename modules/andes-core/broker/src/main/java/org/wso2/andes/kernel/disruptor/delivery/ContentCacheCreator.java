@@ -92,7 +92,7 @@ public class ContentCacheCreator {
     public void onEvent(List<DeliveryEventData> eventDataList) throws AndesException {
 
         LongHashSet messagesToFetch = new LongHashSet();
-        List<DeliveryEventData> messagesWithoutContent = new ArrayList<>();
+        List<DeliveryEventData> messagesWithoutCachedContent = new ArrayList<>();
 
         for (DeliveryEventData deliveryEventData: eventDataList) {
             ProtocolMessage metadata = deliveryEventData.getMetadata();
