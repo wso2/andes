@@ -179,16 +179,17 @@ public class GuavaBasedMessageCacheImpl implements AndesMessageCache {
             LongObjectHashMap<List<AndesMessagePart>> contentList) {
 
         MutableLongIterator iterator = messageIDList.longIterator();
-        ArrayList<Long> messageIDList2 = new ArrayList<>();
+
         while (iterator.hasNext()) {
-            messageIDList2.add(iterator.next());
-            iterator.remove();
-        }
 
-        Map<Long, AndesMessage> fromCache = cache.getAllPresent(messageIDList2);
+            Long messageID = iterator.next();
 
-        for (Map.Entry<Long, AndesMessage> cachedMessage : fromCache.entrySet()) {
-            contentList.put(cachedMessage.getKey(), cachedMessage.getValue().getContentChunkList());
+            AndesMessage andesMessage = cache.getIfPresent(messageID);
+
+            if (null != andesMessage) {
+                contentList.put(messageID, andesMessage.getContentChunkList());
+                iterator.remove();
+            }
         }
 
     }
