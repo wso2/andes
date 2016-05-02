@@ -20,10 +20,8 @@ package org.wso2.andes.server;
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.server.ack.UnacknowledgedMessageMap;
-import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.store.TransactionLog;
-import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.txn.AutoCommitTransaction;
 import org.wso2.andes.server.txn.ServerTransaction;
 
@@ -56,43 +54,7 @@ public class ExtractResendAndRequeue implements UnacknowledgedMessageMap.Visitor
     {
 
         message.setRedelivered();
-        final Subscription subscription = message.getDeliveredSubscription();
-        if (subscription != null)
-        {
-            // Consumer exists
-            if (!subscription.isClosed())
-            {
-                _msgToResend.put(deliveryTag, message);
-            }
-            else // consumer has gone
-            {
-                _msgToRequeue.put(deliveryTag, message);
-            }
-        }
-        else
-        {
-            // Message has no consumer tag, so was "delivered" to a GET
-            // or consumer no longer registered
-            // cannot resend, so re-queue.
-            if (!message.isQueueDeleted())
-            {
-                if (_requeueIfUnabletoResend)
-                {
-                    _msgToRequeue.put(deliveryTag, message);
-                }
-                else
-                {
-
-                    dequeueEntry(message);
-                    DLCQueueUtils.addToDeadLetterChannel(message);
-                }
-            }
-            else
-            {
-                dequeueEntry(message);
-                _log.warn("Message.queue is null and no DeadLetter Queue so dropping message:" + message);
-            }
-        }
+        _msgToRequeue.put(deliveryTag, message);
 
         // false means continue processing
         return false;
