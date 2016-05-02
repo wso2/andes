@@ -95,6 +95,21 @@ public class MessagingEngine {
     private MessagingEngine() {
     }
 
+    /**
+     * Recover message
+     *
+     * @param andesMetadataList
+     *         message to be recovered
+     * @param subToResend
+     *         Subscription to send
+     * @throws AndesException
+     */
+    public void recoverMessage(List<DeliverableAndesMetadata> andesMetadataList, LocalSubscription subToResend) throws AndesException {
+        for (DeliverableAndesMetadata andesMetadata : andesMetadataList) {
+            reQueueMessageToSubscriber(andesMetadata, subToResend);
+        }
+    }
+
     static {
         log = Logger.getLogger(MessagingEngine.class);
         messagingEngine = new MessagingEngine();

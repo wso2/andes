@@ -51,8 +51,10 @@ import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.message.AMQMessage;
+import org.wso2.andes.server.message.ServerMessage;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.IncomingMessage;
+import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.store.StorableMessageMetaData;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionImpl;
@@ -60,6 +62,7 @@ import org.wso2.andes.subscription.LocalSubscription;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -84,6 +87,67 @@ public class QpidAndesBridge {
      * Ignore pub acknowledgements in AMQP. AMQP doesn't have pub acks
      */
     private static PubAckHandler pubAckHandler;
+
+    /**
+     * Recover messages
+     *
+     * @param messages
+     *         messages subjected to recover
+     * @param channel
+     * @throws AMQException
+     */
+    public static void recover(Collection<QueueEntry> messages, AMQChannel channel) throws AMQException {
+        try {
+            UUID channelID = channel.getId();
+            LocalSubscription localSubscription = AndesContext.getInstance().
+                    getSubscriptionEngine().getLocalSubscriptionForChannelId(channel.getId());
+
+            if (null == localSubscription) {
+                log.warn("Cannot handle recover. Subscription not found for channel " + channelID);
+                return;
+            }
+
+            ArrayList<DeliverableAndesMetadata> recoveredMetadataList = new ArrayList<>(messages.size());
+
+            for (QueueEntry message : messages) {
+                ServerMessage serverMessage = message.getMessage();
+                if (serverMessage instanceof AMQMessage) {
+                    DeliverableAndesMetadata messageMetadata = getDeliverableAndesMetadata(localSubscription,
+                                                                                           (AMQMessage) serverMessage);
+
+                    messageMetadata.markAsNackedByClient(channel.getId());
+                    recoveredMetadataList.add(messageMetadata);
+
+                    if (log.isDebugEnabled()) {
+                        log.debug("AMQP BRIDGE: recovered message id= " + messageMetadata.getMessageID() + " channel = "
+                                  + channelID);
+                    }
+
+                } else {
+                    log.warn("Cannot recover message since server message is not AMQMessage type. Message ID: "
+                             + serverMessage.getMessageNumber());
+                }
+            }
+
+            Andes.getInstance().recoverMessage(recoveredMetadataList, localSubscription);
+        } catch (AndesException e) {
+            throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while handling recovered message", e);
+        }
+    }
+
+    /**
+     * Get matching DeliverableAndesMetadata for the serverMessage
+     *
+     * @param localSubscription
+     *         subscription used to send the message
+     * @param message
+     *         message
+     * @return DeliverableAndesMetadata
+     */
+    private static DeliverableAndesMetadata getDeliverableAndesMetadata(LocalSubscription localSubscription,
+                                                                        AMQMessage message) {
+        return localSubscription.getMessageByMessageID(message.getMessageId());
+    }
 
     static {
         pubAckHandler = new DisablePubAckImpl();
