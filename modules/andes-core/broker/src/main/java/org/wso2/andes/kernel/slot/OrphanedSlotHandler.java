@@ -79,25 +79,42 @@ public class OrphanedSlotHandler implements SubscriptionListener {
             throws AndesException {
         switch (changeType) {
         case ADDED:
-            trackedSubscriptions.put(subscription.getSubscriptionID(), subscription);
+            if (log.isDebugEnabled()) {
+                log.debug("Adding a subscription " + subscription + " trackedSubscription.size = "
+                          + trackedSubscriptions.size());
+            }
+            trackedSubscriptions.put(subscription.getSubscribedNode() + subscription.getSubscriptionID(), subscription);
             break;
         case DELETED:
-            LocalSubscription matchingDeletedSubscription = trackedSubscriptions
-                    .remove(subscription.getSubscriptionID());
+            if (log.isDebugEnabled()) {
+                log.debug("Deleting subscription : " + subscription + " trackedSubscription.size = "
+                          + trackedSubscriptions.size());
+            }
+            LocalSubscription matchingDeletedSubscription = trackedSubscriptions.remove(
+                    subscription.getSubscribedNode() + subscription.getSubscriptionID());
+
             if (null != matchingDeletedSubscription) {
                 reAssignSlotsIfNeeded(matchingDeletedSubscription);
             } else {
-                log.warn("Deleting a subscription which was not added previously");
+                log.warn("Deleting a subscription which was not added previously " + subscription);
+                reAssignSlotsIfNeeded(subscription);
             }
 
             break;
         case DISCONNECTED:
-            LocalSubscription matchingDisconnectedSubscription = trackedSubscriptions
-                    .get(subscription.getSubscriptionID());
+            if (log.isDebugEnabled()) {
+                log.debug("Disconnecting subscription : " + subscription + " trackedSubscription.size = "
+                          + trackedSubscriptions.size());
+            }
+            LocalSubscription matchingDisconnectedSubscription = trackedSubscriptions.get(
+                    subscription.getSubscribedNode() + subscription.getSubscriptionID());
+
             if (null != matchingDisconnectedSubscription) {
+                // if matching subscription is found, use that so that unacked Messages can also be processed.
                 reAssignSlotsIfNeeded(matchingDisconnectedSubscription);
             } else {
-                log.warn("Disconnection a subscription which was not added previously");
+                log.warn("Disconnection a subscription which was not added previously " + subscription);
+                reAssignSlotsIfNeeded(subscription);
             }
 
             break;
@@ -114,7 +131,7 @@ public class OrphanedSlotHandler implements SubscriptionListener {
         if (subscription.isDurable()) {
             // Problem happens only with Queues and durable topic subscriptions and shared durable topic subscriptions
 
-            String destination = null;
+            String destination;
 
             if (DestinationType.QUEUE == subscription.getDestinationType()) {
                 //Queues and Topics
@@ -126,17 +143,24 @@ public class OrphanedSlotHandler implements SubscriptionListener {
                 destination = subscription.getTargetQueue();
             }
 
-            SubscriptionEngine subscriptionEngine = AndesContext.getInstance().getSubscriptionEngine();
+            if (null != subscription.getStorageQueueName()) {
+                SubscriptionEngine subscriptionEngine = AndesContext.getInstance().getSubscriptionEngine();
 
-            // for queues, durable topic subscriptions, shared durable topic subscriptions scenarios
-            Collection<LocalSubscription> localSubscribersForQueue = subscriptionEngine
-                    .getActiveLocalSubscribers(destination, subscription.getProtocolType(),
-                            subscription.getDestinationType());
-            if (localSubscribersForQueue.size() == 0) {
-                scheduleSlotToReassign(subscription.getStorageQueueName());
+                // (!isDurable && isBoundToTopic) is a tautology for ( !  isDurable() )
+                // for queues, durable topic subscriptions, shared durable topic subscriptions scenarios
+                Collection<LocalSubscription> localSubscribersForQueue = subscriptionEngine
+                        .getActiveLocalSubscribers(destination, subscription.getProtocolType(),
+                                                   subscription.getDestinationType());
+                if (localSubscribersForQueue.size() == 0) {
+                    scheduleSlotToReassign(subscription.getStorageQueueName());
+                } else {
+                    slotDeliveryWorkerManager.rescheduleMessagesForDelivery(subscription.getStorageQueueName(),
+                                                                            subscription.getUnackedMessages());
+                }
             } else {
-                slotDeliveryWorkerManager.rescheduleMessagesForDelivery(subscription.getStorageQueueName(),
-                        subscription.getUnackedMessages());
+                if (log.isDebugEnabled()) {
+                    log.debug("subscription.storageQueueName is null for subscription object : " + subscription);
+                }
             }
         }
     }
