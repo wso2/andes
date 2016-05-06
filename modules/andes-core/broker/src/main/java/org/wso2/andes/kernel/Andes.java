@@ -38,6 +38,7 @@ import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionEngine;
 import org.wso2.andes.tools.utils.MessageTracer;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -134,6 +135,19 @@ public class Andes {
         MAX_TX_BATCH_SIZE = AndesConfigurationManager.
                 readValue(AndesConfiguration.MAX_TRANSACTION_BATCH_SIZE);
         TX_EVENT_TIMEOUT = AndesConfigurationManager.readValue(AndesConfiguration.MAX_TRANSACTION_WAIT_TIMEOUT);
+    }
+
+    /**
+     * Recover message
+     *
+     * @param recoverMsg
+     *         message to be recovered
+     * @param subscription
+     *         channel id
+     * @throws AndesException
+     */
+    public void recoverMessage(List<DeliverableAndesMetadata> recoverMsg, LocalSubscription subscription) throws AndesException {
+        MessagingEngine.getInstance().recoverMessage(recoverMsg, subscription);
     }
 
     /**
