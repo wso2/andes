@@ -19,16 +19,17 @@ package org.wso2.andes.server.handler;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
-import org.wso2.andes.framing.BasicRecoverBody;
-import org.wso2.andes.framing.BasicRecoverOkBody;
-import org.wso2.andes.framing.ProtocolVersion;
 import org.wso2.andes.framing.AMQMethodBody;
+import org.wso2.andes.framing.BasicRecoverBody;
+import org.wso2.andes.framing.ProtocolVersion;
 import org.wso2.andes.framing.amqp_8_0.MethodRegistry_8_0;
-import org.wso2.andes.protocol.AMQMethodEvent;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
+import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.state.AMQStateManager;
 import org.wso2.andes.server.state.StateAwareMethodListener;
+
+import java.util.Map;
 
 public class BasicRecoverMethodHandler implements StateAwareMethodListener<BasicRecoverBody>
 {
@@ -54,7 +55,7 @@ public class BasicRecoverMethodHandler implements StateAwareMethodListener<Basic
             throw body.getChannelNotFoundException(channelId);
         }
 
-        channel.resend(body.getRequeue());
+        Map<Long, QueueEntry> recoveredMsgs = channel.recoverMessages(body.getRequeue());
 
         // Qpid 0-8 hacks a synchronous -ok onto recover.
         // In Qpid 0-9 we create a separate sync-recover, sync-recover-ok pair to be "more" compliant
@@ -66,5 +67,6 @@ public class BasicRecoverMethodHandler implements StateAwareMethodListener<Basic
 
         }
 
+        channel.resendRecoveredMessages(recoveredMsgs);
     }
 }

@@ -17,23 +17,6 @@
  */
 package org.wso2.andes.server;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.SortedSet;
-import java.util.TreeSet;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-
-import javax.management.JMException;
-
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQInternalException;
@@ -296,6 +279,19 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     public ConfigStore getConfigStore()
     {
         return getVirtualHost().getConfigStore();
+    }
+
+    /**
+     * Reschedule recovered messages to be resent
+     *
+     * @param recovererMsgs Map of recovered messages
+     */
+    public void resendRecoveredMessages(Map<Long, QueueEntry> recovererMsgs) {
+        try {
+            QpidAndesBridge.recover(recovererMsgs.values(), this);
+        } catch (AMQException e ) {
+            _logger.error("Error while resending recovered messages.", e);
+        }
     }
 
     /** Sets this channel to be part of a local transaction */
@@ -870,13 +866,13 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     }
 
     /**
-     * Called to resend all outstanding unacknowledged messages to this same channel.
+     * Called to recover all outstanding unacknowledged messages to this same channel.
      *
      * @param requeue Are the messages to be requeued or dropped.
      *
      * @throws AMQException When something goes wrong.
      */
-    public void resend(final boolean requeue) throws AMQException
+    public Map<Long, QueueEntry> recoverMessages(final boolean requeue) throws AMQException
     {
 
 
@@ -982,6 +978,8 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             message.release();
 
         }
+
+        return msgToRequeue;
     }
 
     public boolean isMessagesAcksProcessing = false;
