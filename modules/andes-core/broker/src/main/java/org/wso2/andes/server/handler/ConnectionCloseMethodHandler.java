@@ -19,11 +19,9 @@ package org.wso2.andes.server.handler;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
-import org.wso2.andes.framing.AMQFrame;
 import org.wso2.andes.framing.ConnectionCloseBody;
 import org.wso2.andes.framing.ConnectionCloseOkBody;
 import org.wso2.andes.framing.MethodRegistry;
-import org.wso2.andes.protocol.AMQMethodEvent;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.state.AMQStateManager;
 import org.wso2.andes.server.state.StateAwareMethodListener;
@@ -63,7 +61,7 @@ public class ConnectionCloseMethodHandler implements StateAwareMethodListener<Co
 
         MethodRegistry methodRegistry = session.getMethodRegistry();
         ConnectionCloseOkBody responseBody = methodRegistry.createConnectionCloseOkBody();
-        session.writeFrame(responseBody.generateFrame(channelId));
+        session.writeFrameSynchronously(responseBody.generateFrame(channelId));
 
     }
 }

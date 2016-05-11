@@ -35,9 +35,17 @@ import org.wso2.andes.framing.AMQDataBlock;
 public interface AMQProtocolWriter
 {
     /**
-     * Writes a frame to the wire, encoding it as necessary, for example, into a sequence of bytes.
+     * Writes a frame to the wire asynchronously, encoding it as necessary, for example, into a sequence of bytes.
      *
      * @param frame The frame to be encoded and written.
      */
     public void writeFrame(AMQDataBlock frame);
+
+    /**
+     * Writes a frame to the wire synchronously, encoding it as necessary, for example, into a sequence of bytes.
+     *
+     * @param frame The frame to be encoded and written.
+     */
+    public void writeFrameSynchronously(AMQDataBlock frame);
+
 }
