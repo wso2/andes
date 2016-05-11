@@ -33,7 +33,7 @@ import java.util.List;
 /**
  * This listener class is triggered when queue change happened in cluster via HazelCast.
  */
-public class ClusterQueueChangedListener implements MessageListener {
+public class ClusterQueueChangedListener implements MessageListener<ClusterNotification> {
     private static Log log = LogFactory.getLog(ClusterQueueChangedListener.class);
     private List<QueueListener> queueListeners = new ArrayList<QueueListener>();
 
@@ -47,8 +47,8 @@ public class ClusterQueueChangedListener implements MessageListener {
     }
 
     @Override
-    public void onMessage(Message message) {
-        ClusterNotification clusterNotification = (ClusterNotification) message.getMessageObject();
+    public void onMessage(Message<ClusterNotification> message) {
+        ClusterNotification clusterNotification = message.getMessageObject();
         log.debug("Handling cluster gossip: received a queue change notification " + clusterNotification.getDescription());
         AndesQueue andesQueue = new AndesQueue(clusterNotification.getEncodedObjectAsString());
         QueueListener.QueueEvent change = QueueListener.QueueEvent

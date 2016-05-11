@@ -35,7 +35,7 @@ import java.util.List;
  * This listener class is triggered when any subscription change (Subscriber added, subscriber deleted
  * or subscriber disconnected) is happened in cluster via Hazelcast.
  */
-public class ClusterSubscriptionChangedListener implements MessageListener {
+public class ClusterSubscriptionChangedListener implements MessageListener<ClusterNotification> {
 
     private static Log log = LogFactory.getLog(ClusterSubscriptionChangedListener.class);
     private List<SubscriptionListener> subscriptionListeners = new ArrayList<SubscriptionListener>();
@@ -55,8 +55,8 @@ public class ClusterSubscriptionChangedListener implements MessageListener {
      * @param message contains the ClusterNotification
      */
     @Override
-    public void onMessage(Message message) {
-        ClusterNotification clusterNotification = (ClusterNotification) message.getMessageObject();
+    public void onMessage(Message<ClusterNotification> message) {
+        ClusterNotification clusterNotification = message.getMessageObject();
         log.debug("Handling cluster gossip: received a subscription change notification " + clusterNotification.getDescription());
         AndesSubscription andesSubscription = new BasicSubscription(clusterNotification.getEncodedObjectAsString());
         SubscriptionListener.SubscriptionChange change = SubscriptionListener.SubscriptionChange.valueOf(clusterNotification.getChangeType());
