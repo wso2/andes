@@ -506,6 +506,20 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
         });
     }
 
+    /**
+     * Method that writes a frame to the protocol session synchronously.
+     *
+     * @param frame the frame to write
+     */
+    public void writeFrameSynchronously(AMQDataBlock frame)
+    {
+        _lastSent = frame;
+        final ByteBuffer buf = frame.toNioByteBuffer();
+        _lastIoTime = System.currentTimeMillis();
+        _writtenBytes += buf.remaining();
+        _sender.send(buf);
+    }
+
     public AMQShortString getContextKey()
     {
         return _contextKey;

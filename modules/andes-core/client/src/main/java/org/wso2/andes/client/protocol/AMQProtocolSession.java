@@ -311,6 +311,16 @@ public class AMQProtocolSession implements AMQVersionAwareProtocolSession
         _protocolHandler.writeFrame(frame);
     }
 
+    /**
+     * Method that writes a frame to the protocol session synchronously.
+     *
+     * @param frame the frame to write
+     */
+    public void writeFrameSynchronously(AMQDataBlock frame)
+    {
+        _protocolHandler.writeFrame(frame, true);
+    }
+
     public void writeFrame(AMQDataBlock frame, boolean wait)
     {
         _protocolHandler.writeFrame(frame, wait);
