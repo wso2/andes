@@ -33,7 +33,7 @@ import java.util.List;
 /**
  * This listener class is triggered when binding change happened in cluster via HazelCast.
  */
-public class ClusterBindingChangedListener implements MessageListener {
+public class ClusterBindingChangedListener implements MessageListener<ClusterNotification> {
 
     private static Log log = LogFactory.getLog(ClusterBindingChangedListener.class);
     private List<BindingListener> bindingListeners = new ArrayList<BindingListener>();
@@ -48,8 +48,8 @@ public class ClusterBindingChangedListener implements MessageListener {
     }
 
     @Override
-    public void onMessage(Message message) {
-        ClusterNotification clusterNotification = (ClusterNotification) message.getMessageObject();
+    public void onMessage(Message<ClusterNotification> message) {
+        ClusterNotification clusterNotification = message.getMessageObject();
         log.debug("Handling cluster gossip: received a binding change notification " + clusterNotification.getDescription());
         AndesBinding andesBinding = new AndesBinding(clusterNotification.getEncodedObjectAsString());
         BindingListener.BindingEvent change = BindingListener.BindingEvent

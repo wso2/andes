@@ -31,7 +31,7 @@ import java.util.List;
 /**
  * This listener class is triggered when exchange change happened in cluster via HazelCast.
  */
-public class ClusterExchangeChangedListener implements MessageListener {
+public class ClusterExchangeChangedListener implements MessageListener<ClusterNotification> {
 
     private static Log log = LogFactory.getLog(ClusterExchangeChangedListener.class);
     private List<ExchangeListener> exchangeListeners = new ArrayList<ExchangeListener>();
@@ -46,8 +46,8 @@ public class ClusterExchangeChangedListener implements MessageListener {
     }
 
     @Override
-    public void onMessage(Message message) {
-        ClusterNotification clusterNotification = (ClusterNotification) message.getMessageObject();
+    public void onMessage(Message<ClusterNotification> message) {
+        ClusterNotification clusterNotification = message.getMessageObject();
         log.debug("Handling cluster gossip: received a exchange change notification " + clusterNotification.getDescription());
         AndesExchange andesExchange = new AndesExchange(clusterNotification.getEncodedObjectAsString());
         ExchangeListener.ExchangeChange change = ExchangeListener.ExchangeChange.valueOf(clusterNotification.getChangeType());
