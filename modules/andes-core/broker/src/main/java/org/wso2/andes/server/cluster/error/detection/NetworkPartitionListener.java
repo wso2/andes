@@ -22,4 +22,9 @@ public interface NetworkPartitionListener {
      */
     public void minimumNodeCountFulfilled(int currentNodeCount);
 
+    /**
+     * Invoked when a clustering framework failed and can't be recovered.
+     * 
+     */    
+    public void clusteringOutage();
 }

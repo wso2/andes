@@ -21,6 +21,7 @@ package org.wso2.andes.server.cluster.error.detection;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -87,10 +88,18 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
      */
     private synchronized void detectNetworkPartitions(PartitionEventType eventType) {
 
-        int currentClusterSize = hazelcastInstance.getCluster().getMembers().size();
-        log.info("Network partition event recieved: " + eventType +  " current cluster size: " +
-                 currentClusterSize);
-
+        int currentClusterSize = -1;
+                
+                
+        if (eventType != PartitionEventType.CLUSTERING_OUTAGE) {
+            currentClusterSize = hazelcastInstance.getCluster().getMembers().size();
+      
+        }
+      
+        log.info("Network partition event recieved: " + eventType + " current cluster size: " +
+                currentClusterSize);
+        
+        
         if (eventType == PartitionEventType.START_UP) {
             
            if (currentClusterSize < minimumClusterSize) {
@@ -101,6 +110,12 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
                minimumNodeCountFulfilled(currentClusterSize);
             }
 
+        } else if (eventType == PartitionEventType.CLUSTERING_OUTAGE){ 
+            // If the network is not partitioned before 
+            log.fatal("Cluster outage detected.");
+            clusteringOutage();
+            
+            
         } else if ((isNetworkPartitioned == false) && (currentClusterSize < minimumClusterSize)) {
 
             log.info("Current cluster size has reduced below minimum cluster size, current cluster size: " + currentClusterSize);
@@ -141,35 +156,82 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
 
     }
 
-    
+    /**
+     *A Convenient method meant to be invoked during server startup.
+     */
     public void start() {
         detectNetworkPartitions(PartitionEventType.START_UP);
     }
 
+    /**
+     * A Convenient method meant to be invoked when clustering framework detects
+     * that a new broker node joined the cluster.
+     */
     public void memberAdded(Object member) {
         detectNetworkPartitions(PartitionEventType.MEMBER_ADDED);
     }
 
+    /**
+     * A Convenient method meant to be invoked when clustering framework detects
+     * that a broker node left the cluster.
+     */
     public void memberRemoved(Object member) {
         detectNetworkPartitions(PartitionEventType.MEMBER_REMOVED);
     }
 
+    /**
+     * A Convenient method meant to be invoked when clustering framework detects
+     * that a network partition merged.
+     */
     public void networkPatitionMerged() {
         detectNetworkPartitions(PartitionEventType.CLUSTER_MERGED);
     }
 
+    /**
+     * A Convenient method meant to be invoked broker detects clustering
+     * framework failed/shutdown
+     */
+    public void clusterOutageOccured() {
+        detectNetworkPartitions(PartitionEventType.CLUSTERING_OUTAGE);
+        
+    }
+
+    /**
+     * Broadcasts size of the cluster reduced below the minimum node count
+     * 
+     * @param currentClusterSize
+     *            current size of the cluster
+     */
     private void minimumNodeCountNotFulfilled(int currentClusterSize) {
         for (NetworkPartitionListener listener : networkPartitionListeners) {
             listener.minimumNodeCountNotFulfilled(currentClusterSize);
         }
     }
 
+    /**
+     * Broadcasts size of the cluster become equal to minimum node count
+     * configured
+     * 
+     * @param currentClusterSize
+     *            current size of the cluster
+     */
     private void minimumNodeCountFulfilled(int currentClusterSize) {
         for (NetworkPartitionListener listener : networkPartitionListeners) {
             listener.minimumNodeCountFulfilled(currentClusterSize);
         }
     }
 
+    /**
+     * Broadcasts that clustering framework failed/shutdown
+     * 
+     */
+    private void clusteringOutage() {
+        for (NetworkPartitionListener listener : networkPartitionListeners) {
+            listener.clusteringOutage();
+        }
+    }
+
+    
     /**
      * Convenient enum indicating possible network event types that occurs. 
      */
@@ -190,7 +252,12 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
         /**
          * Indicates a cluster merged network partitions and recovered from a split brain.
          */
-        CLUSTER_MERGED
-    }
-    
+        CLUSTER_MERGED,
+        
+        /**
+         * Indicates outage in clustering framework (may be due to an error 
+         * that can't be recovered). Node restart is required.
+         */
+        CLUSTERING_OUTAGE;
+    }    
 }

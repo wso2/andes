@@ -535,6 +535,17 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
 
     }
 
+    
+    /**
+     * Check if the given storage queue is already added in the current worker.
+     *
+     * @param storageQueueName The storage queue name to check for
+     * @return True if storage queue is already added to this worker
+     */
+    public boolean isStorageQueueAdded(String storageQueueName) {
+        return storageQueueDataMap.containsKey(storageQueueName);
+    }
+    
     /**
      * {@inheritDoc}
      * <p> Creates a {@link SettableFuture} indicating message store became offline.
@@ -564,37 +575,48 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
     @Override
     public void minimumNodeCountNotFulfilled(int currentNodeCount) {
         log.info(this.getId() +
-                " network outage detected therefore stopping work, current cluster size: " +
-                currentNodeCount);
+                 " : network outage detected therefore stopping work, current cluster size: " +
+                 currentNodeCount);
 
+        flagNetworkoutage();
+
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * If the clustering mechanism failed and can't be recovered. node needs to
+     * reject all incoming traffic
+     * </p>
+     */
+    public void clusteringOutage(){
+        log.warn(this.getId() + ": Clustering outage, stopping work");
+        flagNetworkoutage();
+    }
+    
+    /**
+     * Convenient utility method to indicate network/clustering is not working/healthy.
+     */
+    private void flagNetworkoutage() {
         if (networkOutageDetected != null) {
-            networkOutageDetected.setException(new AndesException(
-                    "possible race condition detected. duplicate network-outage notification received"));
+            networkOutageDetected.setException(
+                      new AndesException("possible race condition detected. duplicate network-outage notification received"));
         }
 
         networkOutageDetected = SettableFuture.create();
-
     }
+ 
 
-    /**
-     * network partition is healed. therefore removing the barrier (- allows the this thread to work)
-     */
-    @Override
-    public void minimumNodeCountFulfilled(int currentNodeCount) {
-        log.info(this.getId() + " network outage resolved therefore resuming work, current cluster size: "
-                + currentNodeCount);
-        networkOutageDetected.set(false);
+    
+	
+	/**
+	 * network partition is healed. therefore removing the barrier (- allows the this thread to work) 
+	 */
+	@Override
+	public void minimumNodeCountFulfilled(int currentNodeCount) {
+		log.info(this.getId() + " network outage resolved therefore resuming work, current cluster size: " + currentNodeCount);
+		networkOutageDetected.set(false);
 
-    }
-
-    /**
-     * Check if the given storage queue is already added in the current worker.
-     *
-     * @param storageQueueName The storage queue name to check for
-     * @return True if storage queue is already added to this worker
-     */
-    public boolean isStorageQueueAdded(String storageQueueName) {
-        return storageQueueDataMap.containsKey(storageQueueName);
-    }
+	}
 }
 

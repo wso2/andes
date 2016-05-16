@@ -27,6 +27,7 @@ import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.cluster.error.detection.NetworkPartitionDetector;
 
 import com.hazelcast.core.LifecycleEvent;
+import com.hazelcast.core.LifecycleEvent.LifecycleState;
 import com.hazelcast.core.LifecycleListener;
 
 /**
@@ -78,7 +79,12 @@ public class HazelcastLifecycleListener implements LifecycleListener {
                 
                 // Notify that network partition has occurred.
                 networkPartitionDetector.networkPatitionMerged();
+                
+            } else if (lifecycleEvent.getState() == LifecycleState.SHUTDOWN){
+                networkPartitionDetector.clusterOutageOccured();
             }
+            
+            
         } catch (Throwable e) {
             log.error("Error occurred while handling Hazelcast state change event " + lifecycleEvent.getState(), e);
         }

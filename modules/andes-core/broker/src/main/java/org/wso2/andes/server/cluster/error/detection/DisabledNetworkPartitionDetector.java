@@ -65,4 +65,12 @@ public class DisabledNetworkPartitionDetector implements NetworkPartitionDetecto
 
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void clusterOutageOccured() {
+     // Do nothing
+    }
+
 }
