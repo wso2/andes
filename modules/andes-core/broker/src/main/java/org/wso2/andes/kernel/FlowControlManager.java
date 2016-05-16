@@ -133,7 +133,7 @@ public class FlowControlManager  implements StoreHealthListener, NetworkPartitio
 
         FailureObservingStoreManager.registerStoreHealthListener(this);
         if ( AndesContext.getInstance().isClusteringEnabled()){ // network partition detection works only when clustered.
-            AndesContext.getInstance().getClusterAgent().addNetworkPartitionListener(this);
+            AndesContext.getInstance().getClusterAgent().addNetworkPartitionListener(20,this);
         }
         // Initialize executor service for state validity checking
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("AndesScheduledTaskManager-FlowControl")

@@ -36,11 +36,25 @@ import java.util.*;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 public class AndesSubscriptionManager implements NetworkPartitionListener {
 
     private static Log log = LogFactory.getLog(AndesSubscriptionManager.class);
 
     private SubscriptionEngine subscriptionEngine;
+
+    /**
+     * True when the minimum node count is not fulfilled, False otherwise
+     */
+    private volatile boolean isNetworkPartitioned;
 
     /**
      * listeners who are interested in local subscription changes
@@ -56,7 +70,14 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
     private final ReadWriteLock clusterSubscriptionModifyLock = new ReentrantReadWriteLock();
 
     public void init() {
+        isNetworkPartitioned = false;
         subscriptionEngine = AndesContext.getInstance().getSubscriptionEngine();
+        
+        //register subscription manager to listen to network partition events.
+        if (AndesContext.getInstance().isClusteringEnabled()){
+            // network partition detection works only when clustered.
+            AndesContext.getInstance().getClusterAgent().addNetworkPartitionListener(10, this);
+        }
         //adding subscription listeners
         addSubscriptionListener(new OrphanedMessageHandler());
         addSubscriptionListener(new ClusterCoordinationHandler(HazelcastAgent.getInstance()));
@@ -83,6 +104,11 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
      * @throws AndesException
      */
     public void addSubscription(LocalSubscription localSubscription) throws AndesException, SubscriptionAlreadyExistsException {
+        // We don't add Subscriptions when the minimum node count is not fulfilled
+        if (isNetworkPartitioned) {
+            throw new AndesException("Cannot add new subscription due to network partition");
+        }
+
         boolean durableTopicSubFoundAndUpdated = false;
         boolean hasActiveSubscriptions= false;
         List<LocalSubscription> mockSubscriptionList = new ArrayList<>();
@@ -596,6 +622,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
      */
     @Override
     public void minimumNodeCountNotFulfilled(int currentNodeCount) {
+        isNetworkPartitioned = true;
         log.warn("Minimum node count is below required, forcefully disconnecting all subscribers");
         forcefullyDisconnectAllLocalSubscriptionsOfNode();
     }
@@ -606,6 +633,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
      */
     @Override
     public void minimumNodeCountFulfilled(int currentNodeCount) {
+        isNetworkPartitioned = false;
         // No action required.
     }
 }

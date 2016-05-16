@@ -55,8 +55,9 @@ public interface NetworkPartitionDetector {
 
     /**
      * Registers a {@link NetworkPartitionListener} with the scheme.
-     * 
-     * @param listner
+     *
+     * @param listener
+     * @param priority
      */
-    void addNetworkPartitionListener(NetworkPartitionListener listner);
+    void addNetworkPartitionListener(int priority, NetworkPartitionListener listener);
 }
