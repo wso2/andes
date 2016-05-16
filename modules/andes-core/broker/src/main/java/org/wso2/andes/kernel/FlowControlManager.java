@@ -93,7 +93,8 @@ public class FlowControlManager  implements StoreHealthListener, NetworkPartitio
     /**
      * Set to true if there are global level error(s) occurred 
      */
-    private boolean globalErrorBasedFlowControlEnabled;
+    private volatile boolean globalErrorBasedFlowControlEnabled;
+
     /**
      * Global flow control time out task
      */
