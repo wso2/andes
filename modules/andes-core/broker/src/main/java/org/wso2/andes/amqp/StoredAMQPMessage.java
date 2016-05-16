@@ -16,12 +16,11 @@
  * under the License.
  */
 
-package org.wso2.andes.store;
+package org.wso2.andes.amqp;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
-import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.server.store.StorableMessageMetaData;

@@ -347,7 +347,7 @@ public class RDBMSConstants {
             + " WHERE " + DURABLE_SUB_ID + "=?";
 
     protected static final String PS_SELECT_ALL_DURABLE_SUBSCRIPTIONS =
-            "SELECT " + DESTINATION_IDENTIFIER + "," + DURABLE_SUB_DATA
+            "SELECT " + DURABLE_SUB_DATA
             + " FROM " + DURABLE_SUB_TABLE;
 
     protected static final String PS_SELECT_ALL_DURABLE_SUBSCRIPTIONS_WITH_SUB_ID =

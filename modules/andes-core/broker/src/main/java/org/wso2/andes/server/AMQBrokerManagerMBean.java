@@ -30,6 +30,7 @@ import javax.management.ObjectName;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.framing.AMQShortString;
+import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.server.logging.LogMessage;
 import org.wso2.andes.management.common.mbeans.ManagedBroker;
 import org.wso2.andes.management.common.mbeans.ManagedQueue;
@@ -242,9 +243,10 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
      * @param queueName The name of the queue to create.
      * @param owner The owner's username.
      * @param durable Whether the queue is durable or not.
+     * @param protocolType The protocol type as a string
      * @throws JMException
      */
-    public void createNewQueue(String queueName, String owner, boolean durable) throws JMException
+    public void createNewQueue(String queueName, String owner, boolean durable, String protocolType) throws JMException
     {
         AMQQueue queue = _queueRegistry.getQueue(new AMQShortString(queueName));
         try
@@ -262,8 +264,9 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
                 ownerShortString = new AMQShortString(owner);
             }
 
+            ProtocolType protocolTypeObject = new ProtocolType(protocolType);
             queue = AMQQueueFactory.createAMQQueueImpl(new AMQShortString(queueName), durable, ownerShortString,
-                                                                                false, false, getVirtualHost(), null);
+                    false, false, protocolTypeObject, getVirtualHost(), null);
             if (queue.isDurable() && !queue.isAutoDelete())
             {
                 _durableConfig.createQueue(queue);

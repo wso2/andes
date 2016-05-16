@@ -20,7 +20,6 @@ package org.wso2.andes.kernel;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.subscription.LocalSubscription;
 
@@ -65,7 +64,7 @@ public class OrphanedMessageHandler implements SubscriptionListener {
              */
             case DISCONNECTED:
                 if (localSubscription.getTargetQueueBoundExchangeName()
-                                     .equals(AMQPUtils.TOPIC_EXCHANGE_NAME) && !localSubscription
+                                     .equals(AndesUtils.TOPIC_EXCHANGE_NAME) && !localSubscription
                                       .isDurable()) {
                     String subscribedDestination = localSubscription.getSubscribedDestination();
                     if(!subscriptionManager.checkIfActiveNonDurableLocalSubscriptionExistsForTopic

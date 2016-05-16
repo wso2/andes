@@ -71,7 +71,7 @@ public class AndesQueue {
      *
      * @param queueAsStr queue information as encoded string
      */
-    public AndesQueue(String queueAsStr) {
+    public AndesQueue(String queueAsStr) throws AndesException {
         String[] propertyToken = queueAsStr.split(",");
         for (String pt : propertyToken) {
             String[] tokens = pt.split("=");
@@ -86,7 +86,7 @@ public class AndesQueue {
             } else if ("lastPurgedTimestamp".equals(tokens[0])) {
                 this.lastPurgedTimestamp = Long.parseLong(tokens[1]);
             } else if ("protocolType".equals(tokens[0])) {
-                this.protocolType = ProtocolType.valueOf(tokens[1]);
+                this.protocolType = new ProtocolType(tokens[1]);
             } else if ("destinationType".equals(tokens[0])) {
                 this.destinationType = DestinationType.valueOf(tokens[1]);
             }
@@ -107,7 +107,7 @@ public class AndesQueue {
                 ",isExclusive=" + isExclusive +
                 ",isDurable=" + isDurable +
                 ",lastPurgedTimestamp=" + lastPurgedTimestamp +
-                ",protocolType=" + protocolType.name() +
+                ",protocolType=" + protocolType +
                 ",destinationType=" + destinationType.name();
     }
 

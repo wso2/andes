@@ -27,6 +27,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.DestinationType;
+import org.wso2.andes.kernel.ProtocolInfo;
 import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.SubscriptionListener.SubscriptionChange;
 //import org.wso2.andes.metrics.MetricsConstants;
@@ -486,10 +487,23 @@ public class SubscriptionEngine {
         }
     }
 
+    /**
+     * Retrieve all the cluster subscriptions.
+     *
+     * @return Set of all the cluster subscriptions
+     */
     public Set<AndesSubscription> getAllClusterSubscriptions() {
         return clusterSubscriptionProcessor.getAllSubscriptions();
     }
 
+    /**
+     * Retrieve all the cluster subscribers for a specific destination type in a specific protocol.
+     *
+     * @param protocolType The protocol type to retrieve data from
+     * @param destinationType The destination type of the subscriptions to retrieve
+     *
+     * @return Set of subscriptions registered for the given destination type in given protocol.
+     */
     public Set<AndesSubscription> getAllClusterSubscriptionsForDestinationType(ProtocolType protocolType,
             DestinationType destinationType) {
         return clusterSubscriptionProcessor.getAllSubscriptionsForDestinationType(protocolType, destinationType);
@@ -515,5 +529,38 @@ public class SubscriptionEngine {
 //                    DestinationType.TOPIC).size();
 //        }
 //    }
+
+    /**
+     * Add a handlers to handle specific destination type subscriptions for a protocol.
+     *
+     * @param protocolInfo The protocol information containing the subscription store information
+     */
+    public void addSubscriptionHandlersForProtocol(ProtocolInfo protocolInfo) {
+        final ProtocolType protocolType = protocolInfo.getProtocolType();
+
+
+        protocolInfo.getClusterSubscriptionStores().entrySet().stream().forEach(
+                entry -> clusterSubscriptionProcessor.addHandler(protocolType, entry.getKey(), entry.getValue()));
+
+        protocolInfo.getLocalSubscriptionStores().entrySet().stream().forEach(
+                entry -> localSubscriptionProcessor.addHandler(protocolType, entry.getKey(), entry.getValue()));
+
+
+    }
+
+    /**
+     * Remove handlers specific to a protocol.
+     *
+     * @param protocolInfo The protocol information object.
+     */
+    public void removeSubscriptionHandlersForProtocol(ProtocolInfo protocolInfo) {
+        final ProtocolType protocolType = protocolInfo.getProtocolType();
+
+        protocolInfo.getClusterSubscriptionStores().keySet().stream().forEach(
+                entry -> clusterSubscriptionProcessor.removeHandler(protocolType, entry));
+
+        protocolInfo.getLocalSubscriptionStores().keySet().stream().forEach(
+                entry -> localSubscriptionProcessor.removeHandler(protocolType, entry));
+    }
 
 }

@@ -17,6 +17,7 @@
  */
 package org.wso2.andes.server.virtualhost;
 
+import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.server.store.ConfigurationRecoveryHandler;
 import org.wso2.andes.server.store.MessageStore;
 import org.wso2.andes.server.store.MessageStoreRecoveryHandler;
@@ -88,23 +89,24 @@ public class VirtualHostConfigRecoveryHandler implements ConfigurationRecoveryHa
         return this;
     }
 
-    public void queue(String queueName, String owner, boolean exclusive, FieldTable arguments)
+    public void queue(String queueName, String owner, boolean exclusive, FieldTable arguments,
+                      ProtocolType protocolType)
     {
         try
         {
             AMQShortString queueNameShortString = new AMQShortString(queueName);
-    
+
             AMQQueue q = _virtualHost.getQueueRegistry().getQueue(queueNameShortString);
-    
+
             if (q == null)
             {
-                q = AMQQueueFactory.createAMQQueueImpl(queueNameShortString, true, owner == null ? null : new AMQShortString(owner), false, exclusive, _virtualHost,
-                                                       arguments);
+                q = AMQQueueFactory.createAMQQueueImpl(queueNameShortString, true, owner == null ? null : new
+                        AMQShortString(owner), false, exclusive, protocolType, _virtualHost, arguments);
                 _virtualHost.getQueueRegistry().registerQueue(q);
             }
-    
+
             CurrentActor.get().message(_logSubject, TransactionLogMessages.RECOVERY_START(queueName, true));
-    
+
             //Record that we have a queue for recovery
             _queueRecoveries.put(queueName, 0);
         }

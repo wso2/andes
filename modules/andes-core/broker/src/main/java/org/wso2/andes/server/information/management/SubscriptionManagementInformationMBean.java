@@ -94,10 +94,11 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject
     @MBeanOperationParameter(name = "limit", description = "limit") int limit)
 		    throws MBeanException {
         List<CompositeData> compositeDataList = new ArrayList<>();
-        ProtocolType protocolType = ProtocolType.valueOf(protocolTypeAsString.toUpperCase());
-        DestinationType destinationType = DestinationType.valueOf(destinationTypeAsString.toUpperCase());
 
         try {
+            ProtocolType protocolType = new ProtocolType(protocolTypeAsString);
+            DestinationType destinationType = DestinationType.valueOf(destinationTypeAsString.toUpperCase());
+        
             Set<AndesSubscription> subscriptions = AndesContext.getInstance().getSubscriptionEngine()
                     .getAllClusterSubscriptionsForDestinationType(protocolType, destinationType);
 
@@ -145,9 +146,11 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject
     String subscriptionTypeAsString,
     @MBeanOperationParameter(name = "destinationName", description = "Name of the destination") String destinationName)
 		    throws MBeanException {
-        ProtocolType protocolType = ProtocolType.valueOf(protocolTypeAsString.toUpperCase());
-        DestinationType subscriptionType = DestinationType.valueOf(subscriptionTypeAsString.toUpperCase());
+
 	    try {
+            ProtocolType protocolType = new ProtocolType(protocolTypeAsString);
+            DestinationType subscriptionType = DestinationType.valueOf(subscriptionTypeAsString.toUpperCase());
+
 		    Set<AndesSubscription> activeLocalSubscribersForNode = subscriptionEngine.getActiveLocalSubscribersForNode();
 
 		    List<LocalSubscription> subscriptions = activeLocalSubscribersForNode
@@ -178,9 +181,12 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject
     @MBeanOperationParameter(name = "subscriptionId", description = "ID of the Subscription to remove")
                                                                                                 String subscriptionId)
             throws MBeanException {
-        ProtocolType protocolType = ProtocolType.valueOf(protocolTypeAsString.toUpperCase());
-        DestinationType subscriptionType = DestinationType.valueOf(subscriptionTypeAsString.toUpperCase());
+
         try {
+
+            ProtocolType protocolType = new ProtocolType(protocolTypeAsString);
+            DestinationType subscriptionType = DestinationType.valueOf(subscriptionTypeAsString.toUpperCase());
+            
             Set<LocalSubscription> allSubscribersForDestination
                     = subscriptionEngine.getActiveLocalSubscribers(destinationName, protocolType, subscriptionType);
 

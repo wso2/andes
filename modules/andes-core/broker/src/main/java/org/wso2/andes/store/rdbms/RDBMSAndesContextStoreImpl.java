@@ -27,10 +27,12 @@ import org.wso2.andes.kernel.AndesExchange;
 import org.wso2.andes.kernel.AndesQueue;
 import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.DurableStoreConnection;
+import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.store.AndesDataIntegrityViolationException;
+import org.wso2.andes.subscription.BasicSubscription;
 //import org.wso2.carbon.metrics.manager.Level;
 //import org.wso2.carbon.metrics.manager.MetricManager;
 //import org.wso2.carbon.metrics.manager.Timer.Context;
@@ -42,6 +44,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -67,6 +70,11 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
      */
     private RDBMSStoreUtils rdbmsStoreUtils;
 
+    /**
+     * Set of registered protocols are kep here.
+     */
+    private Set<ProtocolType> protocols = new HashSet<>();
+
     
     
     /**
@@ -90,11 +98,11 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public Map<String, List<String>> getAllStoredDurableSubscriptions() throws AndesException {
+    public Set<BasicSubscription> getAllStoredDurableSubscriptions() throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
-        Map<String, List<String>> subscriberMap = new HashMap<>();
+        Set<BasicSubscription> subscriptions = new HashSet<>();
 //        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
 
         try {
@@ -106,18 +114,11 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             // create Subscriber Map
             while (resultSet.next()) {
-                String destinationId = resultSet.getString(RDBMSConstants.DESTINATION_IDENTIFIER);
-                List<String> subscriberList = subscriberMap.get(destinationId);
-
-                // if no entry in map create list and put into map
-                if (subscriberList == null) {
-                    subscriberList = new ArrayList<>();
-                    subscriberMap.put(destinationId, subscriberList);
-                }
-                // add subscriber data to list
-                subscriberList.add(resultSet.getString(RDBMSConstants.DURABLE_SUB_DATA));
+                BasicSubscription subscription
+                        = new BasicSubscription(resultSet.getString(RDBMSConstants.DURABLE_SUB_DATA));
+                subscriptions.add(subscription);
             }
-            return subscriberMap;
+            return subscriptions;
 
         } catch (SQLException e) {
             throw rdbmsStoreUtils.convertSQLException("Error occurred while " + RDBMSConstants
@@ -1920,5 +1921,29 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     private String generateSubscriptionID(AndesSubscription subscription) {
         return subscription.getSubscribedNode() + "_" + subscription.getSubscribedDestination() + "_" + subscription
                 .getSubscriptionID();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addProtocolType(ProtocolType protocolType) {
+        protocols.add(protocolType);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Set<ProtocolType> getProtocols() {
+        return protocols;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void removeProtocolType(ProtocolType protocolType) {
+        protocols.remove(protocolType);
     }
 }

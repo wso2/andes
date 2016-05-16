@@ -18,6 +18,8 @@
 
 package org.wso2.andes.subscription;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.DestinationType;
@@ -44,6 +46,8 @@ import java.util.Set;
  * </p>
  */
 public class SubscriptionProcessor {
+
+    private static Log log = LogFactory.getLog(SubscriptionProcessor.class);
 
     /**
      * An object that acts as a composite key to subscription store map structure.
@@ -83,8 +87,8 @@ public class SubscriptionProcessor {
         public boolean equals(Object obj) {
             boolean equal = false;
             if (obj instanceof StoreKey &&
-                    ((StoreKey) obj).protocolType == this.protocolType
-                    && ((StoreKey) obj).destinationType == this.destinationType) {
+                    ((StoreKey) obj).protocolType.equals(this.protocolType)
+                    && ((StoreKey) obj).destinationType.equals(this.destinationType)) {
                 equal = true;
             }
             return equal;
@@ -103,12 +107,21 @@ public class SubscriptionProcessor {
      * @param protocolType The protocol type of the handler
      * @param destinationType The destination type of the handler
      * @param andesSubscriptionStore The subscription processor to handle the given protocol
-     * @throws AndesException
      */
     protected void addHandler(ProtocolType protocolType, DestinationType destinationType,
-                              AndesSubscriptionStore andesSubscriptionStore) throws AndesException {
+                              AndesSubscriptionStore andesSubscriptionStore) {
         StoreKey storeKey = new StoreKey(protocolType, destinationType);
         subscriptionStores.put(storeKey, andesSubscriptionStore);
+    }
+
+    /**
+     * Remove a handler for a given protocol type and destination type.
+     *
+     * @param protocolType The protocol type of the handler
+     * @param destinationType The destination type of the handler
+     */
+    protected void removeHandler(ProtocolType protocolType, DestinationType destinationType) {
+        subscriptionStores.remove(new StoreKey(protocolType, destinationType));
     }
 
     /**
@@ -152,7 +165,14 @@ public class SubscriptionProcessor {
      */
     public void addSubscription(AndesSubscription subscription) throws AndesException {
         AndesSubscriptionStore andesSubscriptionStore = getSubscriptionStore(subscription);
-        andesSubscriptionStore.addSubscription(subscription);
+
+        if (null != andesSubscriptionStore) {
+            andesSubscriptionStore.addSubscription(subscription);
+        } else {
+            log.warn("A subscription store with protocol type " + subscription.getProtocolType().getProtocolName()
+            + " and destination type " + subscription.getDestinationType() + " is not found to add subscription "
+            + subscription);
+        }
     }
 
     /**

@@ -44,7 +44,6 @@ import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.DisablePubAckImpl;
 import org.wso2.andes.kernel.FlowControlListener;
 import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.disruptor.compression.LZ4CompressionHelper;
 import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.management.common.mbeans.QueueManagementInformation;
@@ -851,8 +850,9 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      */
     public int getSubscriptionCount(String queueName) {
         try {
-            return AndesContext.getInstance().getSubscriptionEngine()
-                    .numberOfSubscriptionsInCluster(queueName, ProtocolType.AMQP, DestinationType.QUEUE);
+            AMQQueue queue = queueRegistry.getQueue(new AMQShortString(queueName));
+            return AndesContext.getInstance().getSubscriptionEngine().numberOfSubscriptionsInCluster(
+                    queueName, queue.getProtocolType(), DestinationType.QUEUE);
         } catch (Exception e) {
             throw new RuntimeException("Error in getting subscriber count", e);
         }

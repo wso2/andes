@@ -18,6 +18,9 @@
 package org.wso2.andes.server.federation;
 
 import org.wso2.andes.AMQException;
+import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.framing.ProtocolVersion;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.configuration.qpid.BridgeConfig;
 import org.wso2.andes.configuration.qpid.BridgeConfigType;
@@ -673,6 +676,7 @@ public class Bridge implements BridgeConfig
             options.put("qpid.trace.exclude", _link.getFederationTag());
             options.put("qpid.trace.id",_link.getRemoteFederationTag());
 
+
             try
             {
                 _queue = AMQQueueFactory.createAMQQueueImpl(_tmpQueueName,
@@ -680,10 +684,11 @@ public class Bridge implements BridgeConfig
                                                         _link.getFederationTag(),
                                                         false,
                                                         false,
+                        AMQPUtils.getProtocolTypeForVersion(ProtocolVersion.defaultProtocolVersion()),
                                                         getVirtualHost(),
                                                         options);
             }
-            catch (AMQException e)
+            catch (AMQException | AndesException e)
             {
                 // TODO
                 throw new RuntimeException(e);

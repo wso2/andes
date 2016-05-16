@@ -20,6 +20,7 @@ package org.wso2.andes.subscription;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.HashCodeBuilder;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.ProtocolType;
@@ -72,7 +73,7 @@ public class BasicSubscription implements AndesSubscription {
      *
      * @param subscriptionAsStr encoded info as string
      */
-    public BasicSubscription(String subscriptionAsStr) {
+    public BasicSubscription(String subscriptionAsStr) throws AndesException {
         String[] propertyToken = subscriptionAsStr.split(",");
         for (String pt : propertyToken) {
             String[] tokens = pt.split("=");
@@ -101,7 +102,7 @@ public class BasicSubscription implements AndesSubscription {
             } else if (tokens[0].equals("hasExternalSubscriptions")) {
                 this.hasExternalSubscriptions = Boolean.parseBoolean(tokens[1]);
             } else if (tokens[0].equals("protocolType")) {
-                this.protocolType = ProtocolType.valueOf(tokens[1]);
+                this.protocolType = new ProtocolType(tokens[1]);
             } else if (tokens[0].equals("storageQueueName")) {
                 this.storageQueueName = tokens[1];
             } else if (tokens[0].equals("destinationType")) {
@@ -344,11 +345,8 @@ public class BasicSubscription implements AndesSubscription {
                 .append(",subscribedTime=").append(subscribeTime)
                 .append(",hasExternalSubscriptions=").append(hasExternalSubscriptions)
                 .append(",storageQueueName=").append(storageQueueName)
-                .append(",destinationType=").append(destinationType);
-
-        if (protocolType != null) {
-            builder.append(",protocolType=").append(protocolType);
-        }
+                .append(",destinationType=").append(destinationType)
+                .append(",protocolType=").append(protocolType);
 
         return builder.toString();
     }

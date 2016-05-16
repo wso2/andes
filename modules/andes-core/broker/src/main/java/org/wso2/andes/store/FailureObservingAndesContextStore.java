@@ -26,8 +26,10 @@ import org.wso2.andes.kernel.AndesExchange;
 import org.wso2.andes.kernel.AndesQueue;
 import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.DurableStoreConnection;
+import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
+import org.wso2.andes.subscription.BasicSubscription;
 
 import java.util.List;
 import java.util.Map;
@@ -81,7 +83,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public Map<String, List<String>> getAllStoredDurableSubscriptions() throws AndesException {
+    public Set<BasicSubscription> getAllStoredDurableSubscriptions() throws AndesException {
 
         try {
             return wrappedAndesContextStoreInstance.getAllStoredDurableSubscriptions();
@@ -838,5 +840,29 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
             notifyFailures(exception);
             throw exception;
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addProtocolType(ProtocolType protocolType) {
+        wrappedAndesContextStoreInstance.addProtocolType(protocolType);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Set<ProtocolType> getProtocols() {
+        return wrappedAndesContextStoreInstance.getProtocols();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void removeProtocolType(ProtocolType protocolType) {
+        wrappedAndesContextStoreInstance.removeProtocolType(protocolType);
     }
 }

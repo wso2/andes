@@ -19,7 +19,6 @@
 package org.wso2.andes.kernel;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.hazelcast.util.executor.NamedThreadPoolExecutor;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -315,12 +314,12 @@ public class AndesKernelBoot {
         //at the startup reload exchanges/queues/bindings and subscriptions
         log.info("Syncing exchanges, queues, bindings and subscriptions");
         ClusterResourceHolder.getInstance().getAndesRecoveryTask()
-                .recoverExchangesQueuesBindingsSubscriptions();
+                .recoverExchangesQueuesBindings();
 
         // All non-durable subscriptions subscribed from this node will be deleted since, there
         // can't be any non-durable subscriptions as node just started.
         // closeAllClusterSubscriptionsOfNode() should only be called after
-        // recoverExchangesQueuesBindingsSubscriptions() executed.
+        // recoverExchangesQueuesBindings() executed.
         String myNodeId = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         ClusterResourceHolder.getInstance().getSubscriptionManager()
                 .closeAllLocalSubscriptionsOfNode(myNodeId);

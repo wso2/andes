@@ -35,7 +35,6 @@ public class BrokerOptions
 
     public static final String PORTS = "p";
     public static final String SSL_PORTS = "s";
-    public static final String MQTT_PORT = "q";
     public static final String BIND = "b";
     public static final String MANAGEMENT = "m";
     public static final String LOG_CONFIG = "l";
@@ -148,13 +147,5 @@ public class BrokerOptions
     public void setLogWatchFrequency(final int logWatchFrequency)
     {
         _logWatchFrequency = logWatchFrequency;
-    }
-
-    public void setMQTTPort(Integer _mqttPort) {
-        this._mqttPort = _mqttPort;
-    }
-
-    public Integer getMQTTPort() {
-        return this._mqttPort;
     }
 }
