@@ -103,7 +103,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
      * @param localSubscription local subscription
      * @throws AndesException
      */
-    public void addSubscription(LocalSubscription localSubscription) throws AndesException, SubscriptionAlreadyExistsException {
+    public synchronized void addSubscription(LocalSubscription localSubscription) throws AndesException, SubscriptionAlreadyExistsException {
         // We don't add Subscriptions when the minimum node count is not fulfilled
         if (isNetworkPartitioned) {
             throw new AndesException("Cannot add new subscription due to network partition");
@@ -621,7 +621,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
      * </p>
      */
     @Override
-    public void minimumNodeCountNotFulfilled(int currentNodeCount) {
+    public synchronized void minimumNodeCountNotFulfilled(int currentNodeCount) {
         isNetworkPartitioned = true;
         log.warn("Minimum node count is below required, forcefully disconnecting all subscribers");
         forcefullyDisconnectAllLocalSubscriptionsOfNode();
@@ -632,7 +632,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
      * No action required.
      */
     @Override
-    public void minimumNodeCountFulfilled(int currentNodeCount) {
+    public synchronized void minimumNodeCountFulfilled(int currentNodeCount) {
         isNetworkPartitioned = false;
         // No action required.
     }

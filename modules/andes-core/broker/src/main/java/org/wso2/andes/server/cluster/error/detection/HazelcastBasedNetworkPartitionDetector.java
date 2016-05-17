@@ -187,7 +187,11 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
      */
     private void minimumNodeCountNotFulfilled(int currentClusterSize) {
         for (NetworkPartitionListener listener : networkPartitionListeners.values()) {
-            listener.minimumNodeCountNotFulfilled(currentClusterSize);
+            try {
+                listener.minimumNodeCountNotFulfilled(currentClusterSize);
+            } catch (Throwable e) {
+                log.warn("Error while updating minimum node count not fulfilled for listener: " + listener, e);
+            }
         }
     }
 
@@ -198,7 +202,11 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
      */
     private void minimumNodeCountFulfilled(int currentClusterSize) {
         for (NetworkPartitionListener listener : networkPartitionListeners.values()) {
-            listener.minimumNodeCountFulfilled(currentClusterSize);
+            try {
+                listener.minimumNodeCountFulfilled(currentClusterSize);
+            } catch (Throwable e) {
+                log.warn("Error while updating minimum node count fulfilled for listener: " + listener, e);
+            }
         }
     }
 
