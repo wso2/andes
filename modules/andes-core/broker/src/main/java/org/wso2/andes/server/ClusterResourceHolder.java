@@ -20,6 +20,7 @@ package org.wso2.andes.server;
 import org.wso2.andes.kernel.AndesRecoveryTask;
 import org.wso2.andes.kernel.AndesSubscriptionManager;
 import org.wso2.andes.kernel.MessageExpirationWorker;
+import org.wso2.andes.kernel.transport.ConfigSynchronizer;
 import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.store.QpidDeprecatedMessageStore;
 import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
@@ -47,7 +48,7 @@ public class ClusterResourceHolder {
     /**
      * Holds VirtualHost Config Synchronizer
      */
-    private VirtualHostConfigSynchronizer virtualHostConfigSynchronizer;
+    private ConfigSynchronizer configSynchronizer;
 
 
     /**
@@ -104,12 +105,12 @@ public class ClusterResourceHolder {
         return this.clusterManager;
     }
 
-    public VirtualHostConfigSynchronizer getVirtualHostConfigSynchronizer() {
-        return virtualHostConfigSynchronizer;
+    public ConfigSynchronizer getConfigSynchronizer() {
+        return configSynchronizer;
     }
 
-    public void setVirtualHostConfigSynchronizer(VirtualHostConfigSynchronizer virtualHostConfigSynchronizer) {
-        this.virtualHostConfigSynchronizer = virtualHostConfigSynchronizer;
+    public void setConfigSynchronizer(ConfigSynchronizer configSynchronizer) {
+        this.configSynchronizer = configSynchronizer;
     }
 
     public AndesRecoveryTask getAndesRecoveryTask() {

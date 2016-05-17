@@ -313,8 +313,8 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
         try
         {
             CurrentActor.set(new ManagementActor(_logActor.getRootMessageLogger()));
-            boolean isQueueDeletable = ClusterResourceHolder.getInstance().
-                    getVirtualHostConfigSynchronizer().checkIfQueueDeletable(queue);
+            boolean isQueueDeletable = QpidDataHolder.instance().getVirtualHostConfigSynchronizer()
+                    .checkIfQueueDeletable(queue);
             if(isQueueDeletable) {
                 // Removes the binding and unregister the queue.
                 queue.delete();

@@ -27,6 +27,7 @@ import org.wso2.andes.framing.QueueDeleteOkBody;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.server.QpidDataHolder;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.protocol.AMQSessionModel;
 import org.wso2.andes.server.queue.AMQQueue;
@@ -107,8 +108,8 @@ public class QueueDeleteHandler implements StateAwareMethodListener<QueueDeleteB
                                                           + " is exclusive, but not created on this Connection.");
                     }
 
-                    boolean isQueueDeletable = ClusterResourceHolder.getInstance().
-                            getVirtualHostConfigSynchronizer().checkIfQueueDeletable(queue);
+                    boolean isQueueDeletable = QpidDataHolder.instance().getVirtualHostConfigSynchronizer()
+                            .checkIfQueueDeletable(queue);
 
                     if (isQueueDeletable) {
                         int purged = queue.delete();

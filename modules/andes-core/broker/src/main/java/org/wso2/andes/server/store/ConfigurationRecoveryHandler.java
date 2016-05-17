@@ -26,25 +26,25 @@ public interface ConfigurationRecoveryHandler
 {
     QueueRecoveryHandler begin(MessageStore store);
 
-    public static interface QueueRecoveryHandler
+    interface QueueRecoveryHandler
     {
         void queue(String queueName, String owner, boolean exclusive, FieldTable arguments, ProtocolType protocolType);
         ExchangeRecoveryHandler completeQueueRecovery();
     }
 
-    public static interface ExchangeRecoveryHandler
+    interface ExchangeRecoveryHandler
     {
         void exchange(String exchangeName, String type, boolean autoDelete);
         BindingRecoveryHandler completeExchangeRecovery();
     }
 
-    public static interface BindingRecoveryHandler
+    interface BindingRecoveryHandler
     {
         void binding(String exchangeName, String queueName, String bindingKey, ByteBuffer buf);
         void completeBindingRecovery();
     }
 
-    public static interface QueueEntryRecoveryHandler
+    interface QueueEntryRecoveryHandler
     {
         void complete();
 

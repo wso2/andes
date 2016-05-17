@@ -60,7 +60,6 @@ import java.util.concurrent.TimeUnit;
  */
 public class AndesKernelBoot {
     private static Log log = LogFactory.getLog(AndesKernelBoot.class);
-    private static VirtualHost virtualHost;
     private static MessageStore messageStore;
 
     /**
@@ -89,11 +88,10 @@ public class AndesKernelBoot {
         int threadPoolCount = 1;
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
                 .setNameFormat("AndesRecoveryTask-%d").build();
-        andesRecoveryTaskScheduler = Executors.newScheduledThreadPool(threadPoolCount);
+        andesRecoveryTaskScheduler = Executors.newScheduledThreadPool(threadPoolCount, namedThreadFactory);
         startAndesComponents();
         startHouseKeepingThreads();
         syncNodeWithClusterState();
-        registerMBeans();
         startThriftServer();
         Andes.getInstance().startSafeZoneAnalysisWorker();
 
@@ -169,15 +167,6 @@ public class AndesKernelBoot {
                 log.error("Error occurred in slot recovery.", e);
             }
         }
-    }
-
-    /**
-     * Set the default virtual host. Andes operates
-     * this virtual host only
-     * @param defaultVirtualHost virtual host to set
-     */
-    public static void setVirtualHost(VirtualHost defaultVirtualHost) {
-        virtualHost = defaultVirtualHost;
     }
 
     /**
@@ -284,12 +273,7 @@ public class AndesKernelBoot {
         Andes.getInstance().initialise(subscriptionEngine, messagingEngine,
                 contextInformationManager, subscriptionManager);
 
-        // initialize amqp constructs syncing into Qpid
-        VirtualHostConfigSynchronizer _VirtualHostConfigSynchronizer = new
-                VirtualHostConfigSynchronizer(
-                virtualHost);
-        ClusterResourceHolder.getInstance()
-                             .setVirtualHostConfigSynchronizer(_VirtualHostConfigSynchronizer);
+
     }
 
 
@@ -299,7 +283,7 @@ public class AndesKernelBoot {
      *
      * @throws AndesException
      */
-    public static void syncNodeWithClusterState() throws AndesException {
+    private static void syncNodeWithClusterState() throws AndesException {
 
         // Mark all the existing durable subscriptions as inactive when starting a standalone node or the coordinator
         // node since there can be no active durable subscribers when starting the first node of the cluster.
@@ -330,7 +314,7 @@ public class AndesKernelBoot {
      *
      * @throws AndesException
      */
-    public static void startHouseKeepingThreads() throws AndesException {
+    private static void startHouseKeepingThreads() throws AndesException {
 
         //reload exchanges/queues/bindings and subscriptions
         AndesRecoveryTask andesRecoveryTask = new AndesRecoveryTask();
@@ -388,7 +372,7 @@ public class AndesKernelBoot {
      *
      * @throws AndesException
      */
-    public static void startAndesComponents() throws AndesException {
+    private static void startAndesComponents() throws AndesException {
 
         /**
          * initialize cluster manager for managing nodes in MB cluster

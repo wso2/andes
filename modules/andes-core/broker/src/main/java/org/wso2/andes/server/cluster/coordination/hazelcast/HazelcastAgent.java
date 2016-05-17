@@ -269,6 +269,8 @@ public class HazelcastAgent implements SlotAgent {
         ClusterSubscriptionChangedListener clusterSubscriptionChangedListener = new
                 ClusterSubscriptionChangedListener();
         clusterSubscriptionChangedListener.addSubscriptionListener(new ClusterCoordinationHandler(this));
+        this.subscriptionChangedNotifierChannel.addMessageListener(clusterSubscriptionChangedListener);
+
         if (StringUtils.isNotEmpty(subscriptionListenerId)) {
             this.subscriptionChangedNotifierChannel.removeMessageListener(subscriptionListenerId);
         }
@@ -353,6 +355,7 @@ public class HazelcastAgent implements SlotAgent {
         dbSyncNotificationListenerId = this.dbSyncNotifierChannel.addMessageListener(databaseSyncNotificationListener);
 
     }
+
 
     public void notifySubscriptionsChanged(ClusterNotification clusterNotification) throws AndesException {
         if (log.isDebugEnabled()) {

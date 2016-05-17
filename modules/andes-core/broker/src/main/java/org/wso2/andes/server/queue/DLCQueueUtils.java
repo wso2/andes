@@ -137,21 +137,21 @@ public class DLCQueueUtils {
 //        }
 
         // Try to retrieve queue to check if it is already available
-        AMQQueue queue = queueRegistry.getQueue(new AMQShortString(dlcQueueName));
+//        AMQQueue queue = queueRegistry.getQueue(new AMQShortString(dlcQueueName));
 
         // Skip creating if already available
-        if (null == queue) {
-            ProtocolType dlcProtocolType = new ProtocolType("DLC", "default");
-
-            //store a queue for DLC and notify the Hazelcast instance about the change
-            Andes.getInstance().createQueue(new InboundQueueEvent(
-                    dlcQueueName, tenantOwner, false, true, dlcProtocolType, DestinationType.QUEUE));
-            
-            //add the queue into internal qpid
-            ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().queue(dlcQueueName, tenantOwner,
-                    false, null, dlcProtocolType);
-            log.info(dlcQueueName + " Queue Created as Dead Letter Channel");
-        }
+//        if (null == queue) {
+//            ProtocolType dlcProtocolType = new ProtocolType("DLC", "default");
+//
+//            //store a queue for DLC and notify the Hazelcast instance about the change
+//            Andes.getInstance().createQueue(new InboundQueueEvent(
+//                    dlcQueueName, tenantOwner, false, true, dlcProtocolType, DestinationType.QUEUE));
+//
+//            //add the queue into internal qpid
+//            ClusterResourceHolder.getInstance().getConfigSynchronizer().queue(dlcQueueName, tenantOwner,
+//                    false, null, dlcProtocolType);
+//            log.info(dlcQueueName + " Queue Created as Dead Letter Channel");
+//        }
     }
 
     /**

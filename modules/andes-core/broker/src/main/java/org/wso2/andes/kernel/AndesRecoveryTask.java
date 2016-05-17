@@ -19,8 +19,6 @@ package org.wso2.andes.kernel;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
-import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
@@ -44,30 +42,49 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 	private List<ExchangeListener> exchangeListeners = new ArrayList<>();
 	private List<BindingListener> bindingListeners = new ArrayList<>();
 
-	AndesContextStore andesContextStore;
-	AMQPConstructStore amqpConstructStore;
-
-    AtomicBoolean isRunning;
+    private AtomicBoolean isRunning;
 
 	// set storeOperational to true since it can be assumed that the store is operational at startup
 	// if it is non-operational, the value will be updated immediately
-	AtomicBoolean isContextStoreOperational = new AtomicBoolean(true);
+    private AtomicBoolean isContextStoreOperational = new AtomicBoolean(true);
 
 	private static final Log log = LogFactory.getLog(AndesRecoveryTask.class);
 
-	public AndesRecoveryTask() {
+    private AndesContextStore andesContextStore;
+    private AMQPConstructStore amqpConstructStore;
+	AndesRecoveryTask() {
 
 		// Register AndesRecoveryTask class as a StoreHealthListener
 		FailureObservingStoreManager.registerStoreHealthListener(this);
-
-		queueListeners.add(new ClusterCoordinationHandler(HazelcastAgent.getInstance()));
-		exchangeListeners.add(new ClusterCoordinationHandler(HazelcastAgent.getInstance()));
-		bindingListeners.add(new ClusterCoordinationHandler(HazelcastAgent.getInstance()));
-
-		andesContextStore = AndesContext.getInstance().getAndesContextStore();
-		amqpConstructStore = AndesContext.getInstance().getAMQPConstructStore();
         isRunning = new AtomicBoolean(false);
-	}
+
+        andesContextStore = AndesContext.getInstance().getAndesContextStore();
+        amqpConstructStore = AndesContext.getInstance().getAMQPConstructStore();
+    }
+
+    /**
+     * Add Lister for queue change events
+     * @param queueListener {@link QueueListener}
+     */
+    public void addQueueListener(QueueListener queueListener) {
+        queueListeners.add(queueListener);
+    }
+
+    /**
+     * Add listener for exchange change events
+     * @param exchangeListener {@link ExchangeListener}
+     */
+    public void addExchangeChanged(ExchangeListener exchangeListener) {
+        exchangeListeners.add(exchangeListener);
+    }
+
+    /**
+     * Add listener for binding change events
+     * @param bindingListener {@link BindingListener}
+     */
+    public void addBindingListener(BindingListener bindingListener) {
+        bindingListeners.add(bindingListener);
+    }
 
 	@Override
 	public void run() {
@@ -94,9 +111,13 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
         }
     }
 
+    /**
+     * Execute a recovery task synchronously
+     */
     public void executeNow() {
         run();
     }
+
 	/**
 	 * reload and recover exchanges,
 	 * Queues, Bindings and Subscriptions
@@ -176,9 +197,9 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 			List<AndesExchange> exchanges = andesContextStore.getAllExchangesStored();
 			for (AndesExchange exchange : exchanges) {
 				List<AndesBinding> bindingsStored =
-						andesContextStore.getBindingsStoredForExchange(exchange.exchangeName);
+                        andesContextStore.getBindingsStoredForExchange(exchange.exchangeName);
 				List<AndesBinding> bindingsForExchange =
-						amqpConstructStore.getBindingsForExchange(exchange.exchangeName);
+                        amqpConstructStore.getBindingsForExchange(exchange.exchangeName);
 				List<AndesBinding> duplicatedBindings = new ArrayList<>(bindingsStored);
 				bindingsStored.removeAll(bindingsForExchange);
 				for (AndesBinding binding : bindingsStored) {
@@ -205,8 +226,7 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 
 	private void reloadSubscriptions() throws AndesException {
 		if (isContextStoreOperational.get()) {
-			ClusterResourceHolder.getInstance().getSubscriptionManager()
-			                     .reloadSubscriptionsFromStorage();
+			ClusterResourceHolder.getInstance().getSubscriptionManager().reloadSubscriptionsFromStorage();
 		} else {
 			log.warn("Failed to recover subscriptions from database due to non-operational context store.");
 		}

@@ -27,6 +27,7 @@ import org.wso2.andes.framing.ProtocolVersion;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.server.QpidDataHolder;
 import org.wso2.andes.server.exchange.*;
 import org.wso2.andes.server.filter.FilterManager;
 import org.wso2.andes.server.filter.FilterManagerFactory;
@@ -1080,8 +1081,8 @@ public class ServerSessionDelegate extends SessionDelegate
                     try
                     {
 
-                        boolean isQueueDeletable = ClusterResourceHolder.getInstance().
-                                getVirtualHostConfigSynchronizer().checkIfQueueDeletable(queue);
+                        boolean isQueueDeletable = QpidDataHolder.instance().getVirtualHostConfigSynchronizer()
+                                .checkIfQueueDeletable(queue);
 
                         if(isQueueDeletable) {
                             queue.delete();
