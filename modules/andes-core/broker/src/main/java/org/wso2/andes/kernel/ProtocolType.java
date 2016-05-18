@@ -5,7 +5,7 @@ import org.apache.commons.lang.StringUtils;
 /**
  * The transport protocol type which connects with Andes core.
  */
-public class ProtocolType {
+public final class ProtocolType {
 
     /**
      * The name of the protocol.
@@ -16,6 +16,11 @@ public class ProtocolType {
      * The version of the protocol.
      */
     private String version;
+
+    /**
+     * We keep the hashCode pre calculated so that operations will be faster.
+     */
+    private int hashCode;
 
     private static String separator = "-";
 
@@ -30,6 +35,7 @@ public class ProtocolType {
     public ProtocolType(String protocolName, String version) throws AndesException {
         setProtocolName(protocolName);
         setVersion(version);
+        generateHashCode();
     }
 
     /**
@@ -45,9 +51,12 @@ public class ProtocolType {
             if (properties.length == 2) {
                 setProtocolName(properties[0]);
                 setVersion(properties[1]);
+                generateHashCode();
             } else {
-                throw new AndesException("An empty string is given for creating a ProtocolType");
+                throw new AndesException("An invalid string is given for creating a ProtocolType : " + protocolType);
             }
+        } else {
+            throw new AndesException("An empty string is given for creating a ProtocolType");
         }
     }
 
@@ -90,19 +99,26 @@ public class ProtocolType {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        ProtocolType that = (ProtocolType) o;
+        /* We're using only the pre-calculated hashcode value here since we expect to have ony a limited number
+          * of protocol types in the system and each hash code is calculated using the string values
+          * protocolName and version.
+         */
+        return this.hashCode == o.hashCode();
+    }
 
-        if (!protocolName.equals(that.protocolName)) return false;
-        if (!version.equals(that.version)) return false;
-
-        return true;
+    /**
+     * Since there are limited set of ProtocolType objects available, we can keep the hash code pre calculated
+     * and the the hashcode number set will only grow when a new protocol is plugged in to Andes.
+     */
+    private void generateHashCode() {
+        int result = protocolName.hashCode();
+        result = 31 * result + version.hashCode();
+        this.hashCode = result;
     }
 
     @Override
     public int hashCode() {
-        int result = protocolName.hashCode();
-        result = 31 * result + version.hashCode();
-        return result;
+        return hashCode;
     }
 
     @Override

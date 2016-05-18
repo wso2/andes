@@ -99,7 +99,8 @@ public class SubscriptionProcessor {
     /**
      * Keeps all the handlers for each subscription type.
      */
-    private Map<StoreKey, AndesSubscriptionStore> subscriptionStores = new HashMap<>();
+    // Setting the initial capacity to 11 since after plugging in AMQP and MQTT the size will be 11.
+    private Map<StoreKey, AndesSubscriptionStore> subscriptionStores = new HashMap<>(11);
 
     /**
      * Add a processor for a given protocol
