@@ -561,6 +561,19 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
 
     /**
      * {@inheritDoc}
+     * <p>
+     * If the clustering mechanism failed and can't be recovered. subscription
+     * manager will disconnect all subscriptions.
+     * </p>
+     */
+    @Override
+    public void clusteringOutage(){
+        log.info("Clustering outage, forcefully disconnecting all subscribers");
+        forcefullyDisconnectAllLocalSubscriptionsOfNode();
+    }
+    
+    /**
+     * {@inheritDoc}
      * No action required.
      */
     @Override

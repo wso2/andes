@@ -32,6 +32,7 @@ import org.wso2.andes.kernel.slot.ConnectionException;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotCoordinationConstants;
 import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
+import org.wso2.andes.server.cluster.coordination.ClusterOutageException;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.thrift.exception.ThriftClientException;
 import org.wso2.andes.thrift.slot.gen.SlotInfo;
@@ -82,11 +83,14 @@ public class MBThriftClient {
             } catch (TException e1) {
                 handleCoordinatorChanges();
                 throw new ConnectionException("Coordinator has changed", e);
+            } catch (ClusterOutageException outage){
+                throw new ConnectionException("Unable to connect to coordinator", outage);
             }
-
         } catch (ThriftClientException e) {
             handleCoordinatorChanges();
             throw new ConnectionException("Error occurred in thrift client " + e.getMessage(), e);
+        } catch (ClusterOutageException outage){
+            throw new ConnectionException("Unable to connect to coordinator", outage);
         }
     }
 
@@ -129,11 +133,15 @@ public class MBThriftClient {
             } catch (TException e1) {
                 handleCoordinatorChanges();
                 throw new ConnectionException("Coordinator has changed", e);
+            } catch (ClusterOutageException outage){
+                throw new ConnectionException("Unable to connect to coordinator", outage);
             }
 
         } catch (ThriftClientException e) {
             log.error("Error occurred while receiving coordinator details from map", e);
             handleCoordinatorChanges();
+        } catch (ClusterOutageException outage){
+            throw new ConnectionException("Unable to connect to coordinator", outage);
         }
     }
 
@@ -161,11 +169,16 @@ public class MBThriftClient {
             } catch (TException e1) {
                 handleCoordinatorChanges();
                 throw new ConnectionException("Coordinator has changed", e);
+            } catch (ClusterOutageException outage){
+                throw new ConnectionException("Unable to connect to coordinator", outage);
             }
         } catch (ThriftClientException e) {
             log.error("Error occurred while receiving coordinator details from map", e);
             handleCoordinatorChanges();
+        } catch (ClusterOutageException outage){
+            throw new ConnectionException("Unable to connect to coordinator", outage);
         }
+        
         return deleteSuccess;
     }
 
@@ -189,10 +202,14 @@ public class MBThriftClient {
             } catch (TException e1) {
                 handleCoordinatorChanges();
                 throw new ConnectionException("Coordinator has changed", e);
+            } catch (ClusterOutageException outage){
+                throw new ConnectionException("Unable to connect to coordinator", outage);
             }
         } catch (ThriftClientException e) {
             log.error("Error occurred while receiving coordinator details from map", e);
             handleCoordinatorChanges();
+        } catch (ClusterOutageException outage){
+            throw new ConnectionException("Unable to connect to coordinator", outage);
         }
     }
 
@@ -215,10 +232,14 @@ public class MBThriftClient {
             } catch (TException e1) {
                 handleCoordinatorChanges();
                 throw new ConnectionException("Coordinator has changed", e);
+            } catch (ClusterOutageException outage){
+                throw new ConnectionException("Unable to connect to coordinator", outage);
             }
         } catch (ThriftClientException e) {
             log.error("Could not initialize the Thrift client." + e.getMessage(), e);
             handleCoordinatorChanges();
+        } catch (ClusterOutageException outage){
+            throw new ConnectionException("Unable to connect to coordinator", outage);
         }
     }
 
@@ -228,15 +249,24 @@ public class MBThriftClient {
      *
      * @return a SlotManagementService client
      */
-    private static SlotManagementService.Client getServiceClient() throws TTransportException, ThriftClientException {
+    private static SlotManagementService.Client getServiceClient() throws TTransportException, 
+                                                                          ThriftClientException,
+                                                                          ClusterOutageException {
         if (client == null) {
-            HazelcastAgent hazelcastAgent = HazelcastAgent.getInstance();
-            String thriftCoordinatorServerIP = hazelcastAgent.getThriftServerDetailsMap().get(
-                    SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_IP);
-            String thriftCoordinatorServerPortString = hazelcastAgent.getThriftServerDetailsMap().
-                    get(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_PORT);
-            
             Integer soTimeout = AndesConfigurationManager.readValue(AndesConfiguration.COORDINATION_THRIFT_SO_TIMEOUT);
+            HazelcastAgent hazelcastAgent = HazelcastAgent.getInstance();
+
+            String thriftCoordinatorServerIP = null;
+            String thriftCoordinatorServerPortString = null;
+            
+            if (hazelcastAgent.isActive()) {
+                thriftCoordinatorServerIP = hazelcastAgent.getThriftServerDetailsMap().get(
+                                                                       SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_IP);
+                thriftCoordinatorServerPortString = hazelcastAgent.getThriftServerDetailsMap().
+                        get(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_PORT);
+            } else { 
+                throw new ClusterOutageException("Clustering outage detected, unable to determine and connect to coordinator");
+            }
             
             if((null == thriftCoordinatorServerIP) || (null == thriftCoordinatorServerPortString)){
                 throw new ThriftClientException(
@@ -286,7 +316,7 @@ public class MBThriftClient {
      *
      * @throws TTransportException when connecting to thrift server is unsuccessful
      */
-    private static void reConnectToServer() throws TTransportException {
+    private static void reConnectToServer() throws TTransportException, ClusterOutageException {
         int thriftCoordinatorServerPort = 0;
         String thriftCoordinatorServerIP = null;
         Long reconnectTimeout = (Long) AndesConfigurationManager.readValue
@@ -294,12 +324,16 @@ public class MBThriftClient {
         try {
             //Reconnect timeout set because Hazelcast coordinator may still not elected in failover scenario
             Thread.sleep(reconnectTimeout);
+            
             HazelcastAgent hazelcastAgent = HazelcastAgent.getInstance();
-            thriftCoordinatorServerIP = hazelcastAgent.getThriftServerDetailsMap().get(
-                    SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_IP);
-            thriftCoordinatorServerPort = Integer.parseInt(
-                    hazelcastAgent.getThriftServerDetailsMap().
-                            get(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_PORT));
+            
+            if (hazelcastAgent.isActive()) {
+                thriftCoordinatorServerIP = hazelcastAgent.getThriftServerDetailsMap().get(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_IP);
+                thriftCoordinatorServerPort = Integer.parseInt(hazelcastAgent.getThriftServerDetailsMap().get(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_PORT));
+            } else { 
+                throw new ClusterOutageException("Clustering outage detected, unable to determine and connect to coordinator");
+            }
+            
             transport = new TSocket(thriftCoordinatorServerIP, thriftCoordinatorServerPort);
             log.info("Reconnecting to Slot Coordinator " + thriftCoordinatorServerIP + ":"
                     + thriftCoordinatorServerPort);
@@ -348,6 +382,9 @@ public class MBThriftClient {
                         } catch (InterruptedException ignored) {
                             //silently ignore
                         }
+                    } catch (ClusterOutageException clusterOutage){
+                        log.fatal("node will stop connecting to coordinator since cluster outage", clusterOutage);
+                        break;
                     }
 
                 }
@@ -396,11 +433,16 @@ public class MBThriftClient {
             } catch (TException e1) {
                 handleCoordinatorChanges();
                 throw new ConnectionException("Coordinator has changed", e);
+            } catch (ClusterOutageException outage){
+                throw new ConnectionException("Unable to connect to coordinator", outage);
             }
         } catch (ThriftClientException e) {
             log.error("Error occurred while receiving coordinator details from map", e);
             handleCoordinatorChanges();
+        } catch (ClusterOutageException outage){
+            throw new ConnectionException("Unable to connect to coordinator", outage);
         }
+        
         return globalSafeZone;
     }
 }

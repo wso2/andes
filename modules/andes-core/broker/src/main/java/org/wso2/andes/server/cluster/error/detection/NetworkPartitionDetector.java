@@ -52,9 +52,15 @@ public interface NetworkPartitionDetector {
     void networkPatitionMerged();
 
     /**
+     * Invoked when clustering framework shutdown or encountered a fatal error.
+     */
+    void clusterOutageOccured();
+
+    /**
      * Registers a {@link NetworkPartitionListener} with the scheme.
      * 
      * @param listner
      */
     void addNetworkPartitionListener(NetworkPartitionListener listner);
+    
 }

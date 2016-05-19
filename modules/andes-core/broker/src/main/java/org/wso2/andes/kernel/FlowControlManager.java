@@ -408,6 +408,18 @@ public class FlowControlManager  implements StoreHealthListener, NetworkPartitio
     /**
      * {@inheritDoc}
      * <p>
+     * If the clustering mechanism failed and can't be recovered. node needs to
+     * reject all incoming traffic
+     * </p>
+     */
+    public void clusteringOutage(){
+        log.warn("Clustering outage, activating error based flow control");
+        blockListenersOnErrorBasedFlowControl(true);
+    }
+    
+    /**
+     * {@inheritDoc}
+     * <p>
      * When the cluster size becomes larger than minimum node count required
      * flow
      * control will be disabled.
