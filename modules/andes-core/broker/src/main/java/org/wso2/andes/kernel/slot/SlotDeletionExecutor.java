@@ -18,19 +18,18 @@
 
 package org.wso2.andes.kernel.slot;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
-
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.cluster.error.detection.NetworkPartitionListener;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 
 /**
  * This class is responsible for deleting slots and scheduling slot deletions.
@@ -76,7 +75,7 @@ public class SlotDeletionExecutor implements NetworkPartitionListener{
     public void init() {
         
         if ( AndesContext.getInstance().isClusteringEnabled()){ // network partition detection works only when clustered.
-            AndesContext.getInstance().getClusterAgent().addNetworkPartitionListener(this);
+            AndesContext.getInstance().getClusterAgent().addNetworkPartitionListener(40, this);
         }
         
         this.slotDeletionExecutorService = Executors.newSingleThreadExecutor(namedThreadFactory);

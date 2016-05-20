@@ -18,10 +18,10 @@
 
 package org.wso2.andes.server.cluster;
 
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.IMap;
+import com.hazelcast.core.IdGenerator;
+import com.hazelcast.core.Member;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -41,10 +41,11 @@ import org.wso2.andes.server.cluster.error.detection.HazelcastBasedNetworkPartit
 import org.wso2.andes.server.cluster.error.detection.NetworkPartitionDetector;
 import org.wso2.andes.server.cluster.error.detection.NetworkPartitionListener;
 
-import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.IMap;
-import com.hazelcast.core.IdGenerator;
-import com.hazelcast.core.Member;
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Hazelcast based cluster agent implementation
@@ -390,8 +391,11 @@ public class HazelcastClusterAgent implements ClusterAgent {
         return addresses;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void addNetworkPartitionListener(NetworkPartitionListener listner) {
-        networkPartitionDetector.addNetworkPartitionListener(listner);
+    public void addNetworkPartitionListener(int priority, NetworkPartitionListener listener) {
+        networkPartitionDetector.addNetworkPartitionListener(priority, listener);
     }
 }
