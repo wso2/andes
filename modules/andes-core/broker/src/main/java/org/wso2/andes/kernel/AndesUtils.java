@@ -244,8 +244,8 @@ public class AndesUtils {
         } else if (MessageMetaDataType.META_DATA_0_10 == metaDataType){
             // We set AMQP as the default
             protocolType = createProtocolType(ProtocolVersion.v0_10);
-        } else if (MessageMetaDataType.META_DATA_0_8 == metaDataType) {
-            protocolType = createProtocolType(ProtocolVersion.v8_0);
+        } else if (MessageMetaDataType.META_DATA_0_91 == metaDataType) {
+            protocolType = createProtocolType(ProtocolVersion.v0_91);
         } else {
             protocolType = createProtocolType(ProtocolVersion.defaultProtocolVersion());
         }
