@@ -158,7 +158,7 @@ public class VirtualHostConfigRecoveryHandler implements ConfigurationRecoveryHa
         ServerMessage serverMessage;
         switch(message.getMetaData().getType())
         {
-            case META_DATA_0_8:
+            case META_DATA_0_91:
                 serverMessage = new AMQMessage(message);
                 break;
             case META_DATA_0_10:

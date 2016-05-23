@@ -24,8 +24,10 @@ import org.wso2.andes.server.message.MessageMetaData_0_10;
 import java.nio.ByteBuffer;
 
 public enum MessageMetaDataType
+    /* TODO: Need to remove this class and implement this using the ProtocolType and separate database columns
+       for each property instead of handling bytes */
 {
-    META_DATA_0_8  {   public Factory<MessageMetaData> getFactory() { return MessageMetaData.FACTORY; } },
+    META_DATA_0_91 {   public Factory<MessageMetaData> getFactory() { return MessageMetaData.FACTORY; } },
     META_DATA_0_10 {   public Factory<MessageMetaData_0_10> getFactory() { return MessageMetaData_0_10.FACTORY; } },
     META_DATA_MQTT {   public Factory<MQTTMessageMetaData> getFactory() { return MQTTMessageMetaData.FACTORY; } };
 

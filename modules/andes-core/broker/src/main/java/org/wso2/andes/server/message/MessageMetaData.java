@@ -158,7 +158,9 @@ public class MessageMetaData implements StorableMessageMetaData
 
     public MessageMetaDataType getType()
     {
-        return MessageMetaDataType.META_DATA_0_8;
+        /* TODO: Need to pick the correct information from ProtocolVersion class which can be referenced from the
+           channel this publishes messages and use ProtocolType here */
+        return MessageMetaDataType.META_DATA_0_91;
     }
 
     public boolean isCompressed() {

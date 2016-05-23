@@ -82,6 +82,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
     /**
      * The meta data type which specify which protocol this meta data belongs to``
      */
+    // TODO: Need to remove this type and use ProtocolType instead
     private MessageMetaDataType metaDataType;
 
     private boolean isCompressed;
@@ -302,7 +303,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         StorableMessageMetaData mdt = type.getFactory()
                 .createMetaData(buf);
         //todo need to discuss on making the flow more generic
-        if (type.equals(MessageMetaDataType.META_DATA_0_10) || type.equals(MessageMetaDataType.META_DATA_0_8)) {
+        if (type.equals(MessageMetaDataType.META_DATA_0_10) || type.equals(MessageMetaDataType.META_DATA_0_91)) {
             isPersistent = mdt.isPersistent();
             expirationTime = ((MessageMetaData) mdt).getMessageHeader().getExpiration();
             arrivalTime = mdt.getArrivalTime();
