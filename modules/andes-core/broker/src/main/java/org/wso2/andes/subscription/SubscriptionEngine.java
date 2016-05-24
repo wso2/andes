@@ -30,11 +30,11 @@ import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.ProtocolInfo;
 import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.SubscriptionListener.SubscriptionChange;
-//import org.wso2.andes.metrics.MetricsConstants;
+import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.ClusterResourceHolder;
-//import org.wso2.carbon.metrics.manager.Gauge;
-//import org.wso2.carbon.metrics.manager.Level;
-//import org.wso2.carbon.metrics.manager.MetricManager;
+import org.wso2.carbon.metrics.core.Gauge;
+import org.wso2.carbon.metrics.core.Level;
+import org.wso2.carbon.metrics.core.MetricManager;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -62,11 +62,6 @@ public class SubscriptionEngine {
         andesContextStore = AndesContext.getInstance().getAndesContextStore();
         clusterSubscriptionProcessor = SubscriptionProcessorBuilder.getClusterSubscriptionProcessor();
         localSubscriptionProcessor = SubscriptionProcessorBuilder.getLocalSubscriptionProcessor();
-
-//        //Add subscribers gauge to metrics manager
-//        MetricManager.gauge(MetricsConstants.QUEUE_SUBSCRIBERS, Level.INFO, new QueueSubscriberGauge());
-//        //Add topic gauge to metrics manager
-//        MetricManager.gauge(MetricsConstants.TOPIC_SUBSCRIBERS, Level.INFO, new TopicSubscriberGauge());
     }
 
     /**
@@ -509,26 +504,38 @@ public class SubscriptionEngine {
         return clusterSubscriptionProcessor.getAllSubscriptionsForDestinationType(protocolType, destinationType);
     }
 
-//    /**
-//     * Gauge will return total number of queue subscriptions for current node
-//     */
-//    private class QueueSubscriberGauge implements Gauge<Integer> {
-//        public Integer getValue() {
-//            return localSubscriptionProcessor.getAllSubscriptionsForDestinationType(ProtocolType.AMQP,
-//                    DestinationType.QUEUE).size();
-//
-//        }
-//    }
-//
-//    /**
-//     * Gauge will return total number of topic subscriptions current node
-//     */
-//    private class TopicSubscriberGauge implements Gauge {
-//        public Integer getValue() {
-//            return localSubscriptionProcessor.getAllSubscriptionsForDestinationType(ProtocolType.AMQP,
-//                    DestinationType.TOPIC).size();
-//        }
-//    }
+    /**
+     * Gauge will return total number of queue subscriptions for current node
+     */
+    private class QueueSubscriberGauge implements Gauge<Integer> {
+        private final ProtocolType protocolType;
+
+        public QueueSubscriberGauge(ProtocolType protocolType) {
+            this.protocolType = protocolType;
+        }
+
+        public Integer getValue() {
+            return localSubscriptionProcessor.getAllSubscriptionsForDestinationType(protocolType,
+                    DestinationType.QUEUE).size();
+
+        }
+    }
+
+    /**
+     * Gauge will return total number of topic subscriptions current node
+     */
+    private class TopicSubscriberGauge implements Gauge {
+        private final ProtocolType protocolType;
+
+        public TopicSubscriberGauge(ProtocolType protocolType) {
+            this.protocolType = protocolType;
+        }
+
+        public Integer getValue() {
+            return localSubscriptionProcessor.getAllSubscriptionsForDestinationType(protocolType,
+                    DestinationType.TOPIC).size();
+        }
+    }
 
     /**
      * Add a handlers to handle specific destination type subscriptions for a protocol.
@@ -538,6 +545,10 @@ public class SubscriptionEngine {
     public void addSubscriptionHandlersForProtocol(ProtocolInfo protocolInfo) {
         final ProtocolType protocolType = protocolInfo.getProtocolType();
 
+        //Add subscribers gauge to metrics manager
+        MetricManager.gauge(MetricsConstants.QUEUE_SUBSCRIBERS, Level.INFO, new QueueSubscriberGauge(protocolType));
+        //Add topic gauge to metrics manager
+        MetricManager.gauge(MetricsConstants.TOPIC_SUBSCRIBERS, Level.INFO, new TopicSubscriberGauge(protocolType));
 
         protocolInfo.getClusterSubscriptionStores().entrySet().stream().forEach(
                 entry -> clusterSubscriptionProcessor.addHandler(protocolType, entry.getKey(), entry.getValue()));

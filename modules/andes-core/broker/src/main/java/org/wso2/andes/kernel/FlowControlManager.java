@@ -28,9 +28,9 @@ import org.wso2.andes.server.cluster.error.detection.NetworkPartitionListener;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
-//import org.wso2.carbon.metrics.manager.Gauge;
-//import org.wso2.carbon.metrics.manager.Level;
-//import org.wso2.carbon.metrics.manager.MetricManager;
+import org.wso2.carbon.metrics.core.Gauge;
+import org.wso2.carbon.metrics.core.Level;
+import org.wso2.carbon.metrics.core.MetricManager;
 
 import java.util.ArrayList;
 import java.util.concurrent.Executors;
@@ -140,7 +140,7 @@ public class FlowControlManager  implements StoreHealthListener, NetworkPartitio
         executor = Executors.newSingleThreadScheduledExecutor(namedThreadFactory);
 
         //Will start the gauge
-//        MetricManager.gauge(Level.INFO, MetricsConstants.ACTIVE_CHANNELS, new ChannelGauge());
+        MetricManager.gauge(MetricsConstants.ACTIVE_CHANNELS, Level.INFO, new ChannelGauge());
     }
 
     /**
@@ -438,9 +438,9 @@ public class FlowControlManager  implements StoreHealthListener, NetworkPartitio
     /**
      * This will get current number of channels.
      */
-//    private class ChannelGauge implements Gauge<Integer> {
-//        public Integer getValue() {
-//            return channels.size();
-//        }
-//    }
+    private class ChannelGauge implements Gauge<Integer> {
+        public Integer getValue() {
+            return channels.size();
+        }
+    }
 }

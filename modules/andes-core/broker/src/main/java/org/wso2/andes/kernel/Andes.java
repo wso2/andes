@@ -34,10 +34,14 @@ import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.kernel.slot.Slot;
+import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionEngine;
 import org.wso2.andes.tools.utils.MessageTracer;
+import org.wso2.carbon.metrics.core.Level;
+import org.wso2.carbon.metrics.core.Meter;
+import org.wso2.carbon.metrics.core.MetricManager;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -51,9 +55,6 @@ import java.util.concurrent.TimeoutException;
 
 import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_PURGED_COUNT_TIMEOUT;
 
-//import org.wso2.carbon.metrics.manager.Level;
-//import org.wso2.carbon.metrics.manager.Meter;
-//import org.wso2.carbon.metrics.manager.MetricManager;
 
 /**
  * API for all the tasks done by Andes.
@@ -202,8 +203,8 @@ public class Andes {
         inboundEventManager.messageReceived(message, andesChannel, pubAckHandler);
 
         //Adding metrics meter for message rate
-//        Meter messageMeter = MetricManager.meter(Level.INFO, MetricsConstants.MSG_RECEIVE_RATE);
-//        messageMeter.mark();
+        Meter messageMeter = MetricManager.meter(MetricsConstants.MSG_RECEIVE_RATE, Level.INFO);
+        messageMeter.mark();
     }
 
     /**
@@ -219,8 +220,8 @@ public class Andes {
                 ackData.getAcknowledgedMessage().getDestination(), MessageTracer.ACK_RECEIVED_FROM_PROTOCOL);
 
         //Adding metrics meter for ack rate
-//        Meter ackMeter = MetricManager.meter(Level.INFO, MetricsConstants.ACK_RECEIVE_RATE);
-//        ackMeter.mark();
+        Meter ackMeter = MetricManager.meter(MetricsConstants.ACK_RECEIVE_RATE, Level.INFO);
+        ackMeter.mark();
 
         //We call this later as this call removes the ackData.getAcknowledgedMessage() message
         inboundEventManager.ackReceived(ackData);
