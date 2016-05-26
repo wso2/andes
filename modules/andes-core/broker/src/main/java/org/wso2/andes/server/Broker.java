@@ -31,6 +31,8 @@ import org.wso2.andes.configuration.qpid.management.ConfigurationManagementMBean
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesKernelBoot;
+import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
+import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.information.management.ServerInformationMBean;
 import org.wso2.andes.server.logging.SystemOutMessageLogger;
 import org.wso2.andes.server.logging.actors.BrokerActor;
@@ -287,15 +289,15 @@ public class Broker
 
             isActorSet = true;
 
-            /**
-             * Boot andes kernel before starting AMQP transport.
-             */
-            AndesKernelBoot.initializeComponents();
+            // Sync qpid with queues, bindings and exchange information
+            ClusterCoordinationHandler clusterCoordinationHandler =
+                    new ClusterCoordinationHandler(HazelcastAgent.getInstance());
+            ClusterResourceHolder.getInstance().getAndesRecoveryTask().addBindingListener(clusterCoordinationHandler);
+            ClusterResourceHolder.getInstance().getAndesRecoveryTask().addExchangeChanged(clusterCoordinationHandler);
+            ClusterResourceHolder.getInstance().getAndesRecoveryTask().addQueueListener(clusterCoordinationHandler);
+            ClusterResourceHolder.getInstance().getAndesRecoveryTask().executeNow();
 
             startAMQPListener(config, options, serverConfig);
-
-            AndesKernelBoot.startMessaging();
-            AndesKernelBoot.createSuperTenantDLC();
 
             AMQPUtils.DEFAULT_CONTENT_CHUNK_SIZE = AndesConfigurationManager.readValue(
                     AndesConfiguration.PERFORMANCE_TUNING_MAX_CONTENT_CHUNK_SIZE);

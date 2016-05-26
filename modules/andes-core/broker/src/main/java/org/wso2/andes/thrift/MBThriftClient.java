@@ -37,6 +37,10 @@ import org.wso2.andes.thrift.exception.ThriftClientException;
 import org.wso2.andes.thrift.slot.gen.SlotInfo;
 import org.wso2.andes.thrift.slot.gen.SlotManagementService;
 
+import java.io.IOException;
+import java.net.Socket;
+import java.net.UnknownHostException;
+
 /**
  * A wrapper client for the native thrift client. All the public methods in this class are
  * synchronized in order to avoid out of sequence response exception from thrift server. Only one
@@ -235,17 +239,14 @@ public class MBThriftClient {
                     SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_IP);
             String thriftCoordinatorServerPortString = hazelcastAgent.getThriftServerDetailsMap().
                     get(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_PORT);
-            
-            Integer soTimeout = AndesConfigurationManager.readValue(AndesConfiguration.COORDINATION_THRIFT_SO_TIMEOUT);
-            
             if((null == thriftCoordinatorServerIP) || (null == thriftCoordinatorServerPortString)){
                 throw new ThriftClientException(
                         "Thrift coordinator details are not updated in the map yet");
             }else{
 
                 int thriftCoordinatorServerPort = Integer.parseInt(thriftCoordinatorServerPortString);
-                transport = new TSocket(thriftCoordinatorServerIP,
-                        thriftCoordinatorServerPort, soTimeout);
+                Integer thriftSocketConnectionTimeout = AndesConfigurationManager.readValue(AndesConfiguration.COORDINATOR_THRIFT_SOCKET_CONNECTION_TIMEOUT);
+                transport = new TSocket(thriftCoordinatorServerIP, thriftCoordinatorServerPort, thriftSocketConnectionTimeout);
                 try {
                     transport.open();
                     TProtocol protocol = new TBinaryProtocol(transport);
@@ -348,6 +349,8 @@ public class MBThriftClient {
                         } catch (InterruptedException ignored) {
                             //silently ignore
                         }
+                    } catch (Throwable e){
+                        log.error("Error occurred while re connecting to thrift server ",e);
                     }
 
                 }

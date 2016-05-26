@@ -23,7 +23,10 @@ package org.wso2.andes.kernel;
  */
 public interface ExchangeListener {
 
-    public static enum ExchangeChange {
+    /**
+     * Exchange change event types
+     */
+    enum ExchangeChange {
         Added,
         Deleted
     }
@@ -35,7 +38,7 @@ public interface ExchangeListener {
      * @param changeType the change
      * @throws AndesException
      */
-    public void handleClusterExchangesChanged(AndesExchange exchange, ExchangeChange changeType) throws AndesException;
+    void handleClusterExchangesChanged(AndesExchange exchange, ExchangeChange changeType) throws AndesException;
 
     /**
      * handle when exchange is changed in local node
@@ -44,5 +47,5 @@ public interface ExchangeListener {
      * @param changeType the change
      * @throws AndesException
      */
-    public void handleLocalExchangesChanged(AndesExchange exchange, ExchangeChange changeType) throws AndesException;
+    void handleLocalExchangesChanged(AndesExchange exchange, ExchangeChange changeType) throws AndesException;
 }

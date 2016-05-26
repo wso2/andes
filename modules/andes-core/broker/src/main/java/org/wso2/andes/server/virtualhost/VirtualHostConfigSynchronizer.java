@@ -28,6 +28,7 @@ import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.transport.ConfigSynchronizer;
 import org.wso2.andes.server.binding.BindingFactory;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.queue.AMQQueue;
@@ -40,7 +41,8 @@ import java.util.Map;
 public class VirtualHostConfigSynchronizer implements
         ConfigurationRecoveryHandler.QueueRecoveryHandler,
         ConfigurationRecoveryHandler.ExchangeRecoveryHandler,
-        ConfigurationRecoveryHandler.BindingRecoveryHandler {
+        ConfigurationRecoveryHandler.BindingRecoveryHandler,
+        ConfigSynchronizer {
 
     private final VirtualHost _virtualHost;
     private static final Logger _logger = Logger.getLogger(VirtualHostConfigSynchronizer.class);

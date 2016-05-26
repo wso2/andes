@@ -27,7 +27,7 @@ import org.wso2.andes.subscription.LocalSubscription;
  */
 public interface SubscriptionListener {
 
-	static enum SubscriptionChange{
+	enum SubscriptionChange{
         ADDED,
         DELETED,
         DISCONNECTED,
@@ -43,7 +43,7 @@ public interface SubscriptionListener {
      * @param changeType type of change happened
      * @throws AndesException
      */
-	public void handleClusterSubscriptionsChanged(AndesSubscription subscription, SubscriptionChange changeType) throws AndesException;
+    void handleClusterSubscriptionsChanged(AndesSubscription subscription, SubscriptionChange changeType) throws AndesException;
 
     /**
      * handle local subscription changes
@@ -51,6 +51,6 @@ public interface SubscriptionListener {
      * @param changeType type of change happened
      * @throws AndesException
      */
-	public void handleLocalSubscriptionsChanged(LocalSubscription subscription, SubscriptionChange changeType) throws AndesException;
+    void handleLocalSubscriptionsChanged(LocalSubscription subscription, SubscriptionChange changeType) throws AndesException;
 
 }

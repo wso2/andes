@@ -19,7 +19,16 @@ package org.wso2.andes.server.cluster.coordination;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesBinding;
+import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesExchange;
+import org.wso2.andes.kernel.AndesQueue;
+import org.wso2.andes.kernel.AndesSubscription;
+import org.wso2.andes.kernel.BindingListener;
+import org.wso2.andes.kernel.ExchangeListener;
+import org.wso2.andes.kernel.QueueListener;
+import org.wso2.andes.kernel.SubscriptionListener;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.subscription.BasicSubscription;
@@ -40,7 +49,7 @@ public class ClusterCoordinationHandler implements QueueListener, ExchangeListen
         switch (changeType) {
             case ADDED:
                 //create a queue
-                ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterQueueAdded(andesQueue);
+                ClusterResourceHolder.getInstance().getConfigSynchronizer().clusterQueueAdded(andesQueue);
                 break;
             case DELETED:
                 //Delete remaining subscriptions from the local and cluster subscription maps
@@ -50,11 +59,11 @@ public class ClusterCoordinationHandler implements QueueListener, ExchangeListen
                         andesQueue.queueName, andesQueue.getProtocolType(), andesQueue.getDestinationType());
 
                 //delete queue
-                ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterQueueRemoved(andesQueue);
+                ClusterResourceHolder.getInstance().getConfigSynchronizer().clusterQueueRemoved(andesQueue);
                 break;
             case PURGED:
                 //purge queue
-                ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterQueuePurged(andesQueue);
+                ClusterResourceHolder.getInstance().getConfigSynchronizer().clusterQueuePurged(andesQueue);
                 break;
         }
 
@@ -83,11 +92,11 @@ public class ClusterCoordinationHandler implements QueueListener, ExchangeListen
         switch (changeType) {
             case Added:
                 //create a exchange
-                ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterExchangeAdded(exchange);
+                ClusterResourceHolder.getInstance().getConfigSynchronizer().clusterExchangeAdded(exchange);
                 break;
             case Deleted:
                 //delete exchange
-                ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterExchangeRemoved(exchange);
+                ClusterResourceHolder.getInstance().getConfigSynchronizer().clusterExchangeRemoved(exchange);
                 break;
         }
     }
@@ -111,11 +120,11 @@ public class ClusterCoordinationHandler implements QueueListener, ExchangeListen
         switch (changeType) {
             case ADDED:
                 //create a binding
-                ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterBindingAdded(binding);
+                ClusterResourceHolder.getInstance().getConfigSynchronizer().clusterBindingAdded(binding);
                 break;
             case DELETED:
                 //delete binding
-                ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterBindingRemoved(binding);
+                ClusterResourceHolder.getInstance().getConfigSynchronizer().clusterBindingRemoved(binding);
                 break;
         }
     }

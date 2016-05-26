@@ -28,6 +28,8 @@ import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.AMQBrokerManagerMBean;
+import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.server.QpidDataHolder;
 import org.wso2.andes.server.binding.BindingFactory;
 import org.wso2.andes.server.connection.ConnectionRegistry;
 import org.wso2.andes.server.connection.IConnectionRegistry;
@@ -213,8 +215,6 @@ public class VirtualHostImpl implements VirtualHost {
             initialiseAndesStores(hostConfig);
         }
 
-        AndesKernelBoot.recoverDistributedSlotMap();
-
         // This needs to be after the RT has been defined as it creates the default durable exchanges.
         initialiseModel(configuration);
         exchangeRegistry.initialise();
@@ -350,11 +350,10 @@ public class VirtualHostImpl implements VirtualHost {
      */
     private void initialiseAndesStores(VirtualHostConfiguration hostConfig) throws Exception {
 
-        //Set virtual host
-        AndesKernelBoot.setVirtualHost(this);
-
-        //kernel will start message stores for Andes
-        AndesKernelBoot.startAndesStores();
+        // initialize amqp constructs syncing into Qpid
+        VirtualHostConfigSynchronizer virtualHostConfigSynchronizer = new VirtualHostConfigSynchronizer(this);
+        ClusterResourceHolder.getInstance().setConfigSynchronizer(virtualHostConfigSynchronizer);
+        QpidDataHolder.instance().setVirtualHostConfigSynchronizer(virtualHostConfigSynchronizer);
 
         // this is considered as an internal impl now, so hard coding
         // qpid related messagestore
