@@ -34,10 +34,9 @@ import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.kernel.slot.Slot;
-import org.wso2.andes.kernel.transport.ConfigSynchronizer;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.store.ConfigurationRecoveryHandler;
+import org.wso2.andes.server.resource.manager.AndesResourceManager;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionEngine;
 import org.wso2.andes.tools.utils.MessageTracer;
@@ -45,7 +44,6 @@ import org.wso2.carbon.metrics.core.Level;
 import org.wso2.carbon.metrics.core.Meter;
 import org.wso2.carbon.metrics.core.MetricManager;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -96,6 +94,11 @@ public class Andes {
      * Manages all subscription related events.
      */
     private AndesSubscriptionManager subscriptionManager;
+
+    /**
+     * Manager for exposing all resources.
+     */
+    private AndesResourceManager andesResourceManager;
 
     /**
      * Scheduler for periodically trigger Slot Deletion Safe Zone
@@ -162,12 +165,16 @@ public class Andes {
     /**
      * Initialise is package specific. We don't need outsiders initialising the API
      */
-    void initialise(SubscriptionEngine subscriptionEngine, MessagingEngine messagingEngine,
-            AndesContextInformationManager contextInformationManager, AndesSubscriptionManager subscriptionManager) {
+    void initialise(SubscriptionEngine subscriptionEngine,
+                    MessagingEngine messagingEngine,
+                    AndesContextInformationManager contextInformationManager,
+                    AndesSubscriptionManager subscriptionManager,
+                    AndesResourceManager andesResourceManager) {
 
         this.contextInformationManager = contextInformationManager;
         this.messagingEngine = messagingEngine;
         this.subscriptionManager = subscriptionManager;
+        this.andesResourceManager = andesResourceManager;
 
         inboundEventManager = new InboundEventManager(subscriptionEngine, messagingEngine);
         andesContext = AndesContext.getInstance();
@@ -813,5 +820,8 @@ public class Andes {
         //TODO:Need to properly clean the subscriptions, deactivate active subscriptions .etc
     }
 
+    public AndesResourceManager getAndesResourceManager() {
+        return andesResourceManager;
+    }
 }
 

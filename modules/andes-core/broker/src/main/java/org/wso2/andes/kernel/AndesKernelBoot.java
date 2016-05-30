@@ -35,6 +35,7 @@ import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.information.management.MessageStatusInformationMBean;
 import org.wso2.andes.server.information.management.SubscriptionManagementInformationMBean;
 import org.wso2.andes.server.queue.DLCQueueUtils;
+import org.wso2.andes.server.resource.manager.AndesResourceManager;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
 import org.wso2.andes.store.FailureObservingAndesContextStore;
@@ -268,10 +269,12 @@ public class AndesKernelBoot {
         AndesContextInformationManager contextInformationManager = 
                 new AndesContextInformationManager(amqpConstructStore, subscriptionEngine,
                                                    contextStore, messageStore);
-        
+
+        AndesResourceManager andesResourceManager = new AndesResourceManager();
+
         // When message stores are initialised initialise Andes as well.
         Andes.getInstance().initialise(subscriptionEngine, messagingEngine,
-                contextInformationManager, subscriptionManager);
+                contextInformationManager, subscriptionManager, andesResourceManager);
 
 
     }
