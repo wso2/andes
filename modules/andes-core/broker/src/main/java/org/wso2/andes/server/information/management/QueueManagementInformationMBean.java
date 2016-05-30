@@ -376,6 +376,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                     AndesMessageMetadata metadata = Andes.getInstance().getMessageMetaData(messageId);
                     String destination = metadata.getDestination();
 
+                    // TODO AKA: Do we really
                     metadata.setStorageQueueName(AndesUtils.getStorageQueueForDestination(destination,
                             ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID(),
                             DestinationType.QUEUE));

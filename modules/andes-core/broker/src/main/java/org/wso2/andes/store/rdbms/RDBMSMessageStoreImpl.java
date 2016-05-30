@@ -57,13 +57,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
-import static org.wso2.andes.store.rdbms.RDBMSConstants.CONTENT_TABLE;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_CONTENT;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_ID;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.MSG_OFFSET;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_MESSAGE_PART;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_METADATA;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.TASK_RETRIEVING_CONTENT_FOR_MESSAGES;
+import static org.wso2.andes.store.rdbms.RDBMSConstants.*;
 
 
 /**
@@ -370,6 +364,61 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
+    public void storeMessages(long instanceId, List<AndesMessage> messageList) throws AndesException {
+        Connection connection = null;
+        PreparedStatement storeMetadataPS = null;
+        PreparedStatement storeContentPS = null;
+
+        try {
+
+            connection = getConnection();
+            storeMetadataPS = connection.prepareStatement(PS_INSERT_METADATA_NEW);
+//            storeContentPS = connection.prepareStatement(PS_INSERT_MESSAGE_PART);
+
+            for (AndesMessage message : messageList) {
+
+                addMetadataToBatch(storeMetadataPS, instanceId, message.getMetadata(), message.getMetadata().getStorageQueueName());
+
+//                for (AndesMessagePart messagePart : message.getContentChunkList()) {
+//                    addContentToBatch(storeContentPS, messagePart);
+//                }
+            }
+
+            storeMetadataPS.executeBatch();
+//            storeContentPS.executeBatch();
+            connection.commit();
+
+            // Add messages to cache after adding them to the database
+            // Messages are added afterwards since we need to add messages to the cache only if they are added to the
+            // database.
+            addToCache(messageList);
+        } catch (BatchUpdateException bue) {
+            // If adding some of the messages failed, add them individually
+
+            log.error("Error while storing messages", bue);
+            rollback(connection, RDBMSConstants.TASK_ADDING_METADATA);
+
+            for (AndesMessage message : messageList) {
+                storeMessage(instanceId, message);
+            }
+        } catch (AndesException e) {
+            rollback(connection, RDBMSConstants.TASK_ADDING_METADATA);
+            throw e;
+        } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_ADDING_METADATA);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while inserting messages to queue ", e);
+        } finally {
+            close(storeMetadataPS, RDBMSConstants.TASK_ADDING_MESSAGES);
+//            close(storeContentPS, RDBMSConstants.TASK_ADDING_MESSAGES);
+            close(connection, RDBMSConstants.TASK_ADDING_MESSAGES);
+        }
+    }
+
+    /**
+     * TODO Remove
+     * {@inheritDoc}
+     */
+    @Override
     public void storeMessages(List<AndesMessage> messageList) throws AndesException {
         Connection connection = null;
         PreparedStatement storeMetadataPS = null;
@@ -420,6 +469,56 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * Store a given Andes message to the database and the cache
      *
      * @param message The message
+     * @throws AndesException
+     */
+    private void storeMessage(long instanceId, AndesMessage message) throws AndesException {
+        Connection connection = null;
+        PreparedStatement storeMetadataPS = null;
+        PreparedStatement storeContentPS = null;
+
+        try {
+            connection = getConnection();
+            storeMetadataPS = connection.prepareStatement(PS_INSERT_METADATA_NEW);
+            storeContentPS = connection.prepareStatement(PS_INSERT_MESSAGE_PART);
+
+            AndesMessageMetadata metadata = message.getMetadata();
+            storeMetadataPS.setLong(1, instanceId);
+            storeMetadataPS.setLong(2, metadata.getMessageID());
+            storeMetadataPS.setInt(3, getCachedQueueID(metadata.getStorageQueueName()));
+            storeMetadataPS.setBytes(4, metadata.getMetadata());
+
+            for (AndesMessagePart messagePart : message.getContentChunkList()) {
+                addContentToBatch(storeContentPS, messagePart);
+            }
+            storeMetadataPS.execute();
+            storeContentPS.executeBatch();
+            connection.commit();
+            addToCache(message);
+        } catch (AndesException e) {
+            rollback(connection, RDBMSConstants.TASK_ADDING_MESSAGE);
+            throw e;
+        } catch (SQLException e) {
+            AndesException andesException = rdbmsStoreUtils
+                    .convertSQLException("Error occurred while inserting message to queue ", e);
+            if (AndesDataIntegrityViolationException.class.isInstance(andesException)) {
+                log.warn("Dropped message with ID: " + message.getMetadata().getMessageID() + " since queue: " + message
+                        .getMetadata().getStorageQueueName() + " does not exist", e);
+            } else {
+                rollback(connection, RDBMSConstants.TASK_ADDING_MESSAGE);
+                throw andesException;
+            }
+        } finally {
+            close(storeMetadataPS, RDBMSConstants.TASK_ADDING_MESSAGE);
+            close(storeContentPS, RDBMSConstants.TASK_ADDING_MESSAGE);
+            close(connection, RDBMSConstants.TASK_ADDING_MESSAGE);
+        }
+    }
+
+    /**
+     * TODO Remove
+     * Store a given Andes message to the database and the cache
+     *
+     * @param message
      * @throws AndesException
      */
     private void storeMessage(AndesMessage message) throws AndesException {
@@ -620,6 +719,38 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * @param metadata          AndesMessageMetadata
      * @param queueName         queue to be assigned
      * @throws AndesException
+     */
+    private void addMetadataToBatch(PreparedStatement preparedStatement, long instanceId, AndesMessageMetadata metadata,
+                                    final String queueName) throws AndesException {
+
+        Timer.Context metaAdditionToBatchContext = MetricManager.timer(MetricsConstants.ADD_META_DATA_TO_BATCH, Level
+                .INFO)
+                .start();
+        Timer.Context contextWrite = MetricManager.timer(MetricsConstants.DB_WRITE, Level.INFO).start();
+        try {
+            preparedStatement.setLong(1, instanceId);
+            preparedStatement.setLong(2, metadata.getMessageID());
+            preparedStatement.setInt(3, getCachedQueueID(queueName));
+            preparedStatement.setBytes(4, metadata.getMetadata());
+            preparedStatement.addBatch();
+        } catch (SQLException e) {
+            throw rdbmsStoreUtils.convertSQLException(
+                    "error occurred while adding metadata with messaged id: " + metadata.getMessageID() + " to batch",
+                    e);
+        } finally {
+            metaAdditionToBatchContext.stop();
+            contextWrite.stop();
+        }
+    }
+
+    /**
+     * TODO Remove
+     * Adds a single metadata to a batch insert of metadata.
+     *
+     * @param preparedStatement prepared statement to add messages to metadata table
+     * @param metadata          AndesMessageMetadata
+     * @param queueName         queue to be assigned
+     * @throws SQLException
      */
     private void addMetadataToBatch(PreparedStatement preparedStatement, AndesMessageMetadata metadata,
             final String queueName) throws AndesException {

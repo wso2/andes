@@ -90,7 +90,6 @@ public class AndesKernelBoot {
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
                 .setNameFormat("AndesRecoveryTask-%d").build();
         andesRecoveryTaskScheduler = Executors.newScheduledThreadPool(threadPoolCount, namedThreadFactory);
-        startAndesComponents();
         startHouseKeepingThreads();
         syncNodeWithClusterState();
         startThriftServer();
@@ -241,17 +240,19 @@ public class AndesKernelBoot {
         
         AndesKernelBoot.contextStore =  new FailureObservingAndesContextStore(contextStoreInConfig) ;
         AndesContext.getInstance().setAndesContextStore(contextStore);
-        
+
         //create subscription store
         SubscriptionEngine subscriptionEngine = new SubscriptionEngine();
         AndesContext.getInstance().setSubscriptionEngine(subscriptionEngine);
-        
+
         /**
          * initialize subscription managing
          */
         AndesSubscriptionManager subscriptionManager = new AndesSubscriptionManager();
         ClusterResourceHolder.getInstance().setSubscriptionManager(subscriptionManager);
         subscriptionManager.init();
+
+        startAndesComponents();
 
         // directly wire the instance without wrapped instance
         messageStore = new FailureObservingMessageStore(createMessageStoreFromConfig(contextStoreInConfig));

@@ -18,13 +18,10 @@
 
 package org.wso2.andes.server.cluster;
 
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-
+import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.IMap;
+import com.hazelcast.core.IdGenerator;
+import com.hazelcast.core.Member;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -41,10 +38,12 @@ import org.wso2.andes.server.cluster.error.detection.HazelcastBasedNetworkPartit
 import org.wso2.andes.server.cluster.error.detection.NetworkPartitionDetector;
 import org.wso2.andes.server.cluster.error.detection.NetworkPartitionListener;
 
-import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.IMap;
-import com.hazelcast.core.IdGenerator;
-import com.hazelcast.core.Member;
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Hazelcast based cluster agent implementation
@@ -179,8 +178,11 @@ public class HazelcastClusterAgent implements ClusterAgent {
     public String getIdOfNode(Member node) {
         String nodeId = nodeIdMap.get(node.getSocketAddress().toString());
         if(StringUtils.isEmpty(nodeId)) {
+            // TODO: Shouldn't we take the value from getLocalNodeIdentifier()
             nodeId = node.getSocketAddress().toString();
         }
+
+        // TODO Why don't we set the node ID in the map here.
         return nodeId;
     }
 

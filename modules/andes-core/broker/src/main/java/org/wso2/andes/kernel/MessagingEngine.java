@@ -90,6 +90,11 @@ public class MessagingEngine {
     private SlotCoordinator slotCoordinator;
 
     /**
+     * Local instance ID used when storing message data
+     */
+    private long instanceID;
+
+    /**
      * private constructor for singleton pattern
      */
     private MessagingEngine() {
@@ -144,11 +149,15 @@ public class MessagingEngine {
         //register listeners for queue changes
         queueListener = new ClusterCoordinationHandler(HazelcastAgent.getInstance());
 
+        this.instanceID = generateUniqueId();
+
         /*
         Initialize the SlotCoordinator
          */
         if (AndesContext.getInstance().isClusteringEnabled()) {
             slotCoordinator = new SlotCoordinatorCluster();
+            String localNodeIdentifier = AndesContext.getInstance().getClusterAgent().getLocalNodeIdentifier();
+            log.info("Instance ID for node (" + localNodeIdentifier + ") is " + this.instanceID);
         } else {
             slotCoordinator = new SlotCoordinatorStandalone();
         }
@@ -187,6 +196,7 @@ public class MessagingEngine {
      */
     public void messagesReceived(List<AndesMessage> messageList) throws AndesException {
         messageStore.storeMessages(messageList);
+        messageStore.storeMessages(instanceID, messageList);
     }
 
     /**

@@ -83,6 +83,7 @@ public class RDBMSConstants {
     // Message Store tables
     protected static final String CONTENT_TABLE = "MB_CONTENT";
     protected static final String METADATA_TABLE = "MB_METADATA";
+    protected static final String METADATA_TABLE_NEW = "MB_METADATA_NEW";
     protected static final String QUEUES_TABLE = "MB_QUEUE_MAPPING";
     protected static final String EXPIRATION_TABLE = "MB_EXPIRATION_DATA";
     protected static final String MSG_STORE_STATUS_TABLE = "MB_MSG_STORE_STATUS";
@@ -91,6 +92,7 @@ public class RDBMSConstants {
 
    
     // Message Store table columns
+    protected static final String INSTANCE_ID = "INSTANCE_ID";
     protected static final String MESSAGE_ID = "MESSAGE_ID";
     protected static final String QUEUE_ID = "QUEUE_ID";
     protected static final String DLC_QUEUE_ID = "DLC_QUEUE_ID";
@@ -169,6 +171,15 @@ public class RDBMSConstants {
             + DLC_QUEUE_ID + ","
             + METADATA + ")"
             + " VALUES ( ?,?,-1,? )";
+
+    protected static final String PS_INSERT_METADATA_NEW =
+            "INSERT INTO " + METADATA_TABLE_NEW + " ("
+                    + INSTANCE_ID + ","
+                    + MESSAGE_ID + ","
+                    + QUEUE_ID + ","
+                    + DLC_QUEUE_ID + ","
+                    + METADATA + ")"
+                    + " VALUES ( ?,?,?,-1,? )";
 
     protected static final String PS_INSERT_EXPIRY_DATA =
             "INSERT INTO " + EXPIRATION_TABLE + " ("
