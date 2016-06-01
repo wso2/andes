@@ -74,10 +74,12 @@ public class MBThriftServer {
             throw new AndesException("Invalid thrift server host 0.0.0.0");
         }
         try {
-            Integer thriftSocketConnectionTimeout = AndesConfigurationManager.readValue(AndesConfiguration.COORDINATOR_THRIFT_SOCKET_CONNECTION_TIMEOUT);
-            TServerSocket socket = new TServerSocket(new InetSocketAddress(hostName, port), thriftSocketConnectionTimeout);
+            Integer thriftSocketConnectionTimeout =
+                    AndesConfigurationManager.readValue(AndesConfiguration.COORDINATION_THRIFT_SO_TIMEOUT);
+            TServerSocket socket = new TServerSocket(new InetSocketAddress(hostName, port),
+                    thriftSocketConnectionTimeout);
             SlotManagementService.Processor<SlotManagementServiceImpl> processor =
-                    new SlotManagementService.Processor<SlotManagementServiceImpl>(slotManagementServerHandler);
+                                                    new SlotManagementService.Processor<>(slotManagementServerHandler);
             TProtocolFactory protocolFactory = new TBinaryProtocol.Factory();
             server = new TThreadPoolServer(new TThreadPoolServer.Args(socket).
                     processor(processor).inputProtocolFactory(protocolFactory));

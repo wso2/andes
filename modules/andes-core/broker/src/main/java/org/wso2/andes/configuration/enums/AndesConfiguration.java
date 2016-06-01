@@ -53,11 +53,6 @@ public enum AndesConfiguration implements ConfigurationProperty {
     /**
      * Thrift server reconnect timeout. Value specified in SECONDS
      */
-    COORDINATOR_THRIFT_SOCKET_CONNECTION_TIMEOUT("coordination/thriftSocketConnectionTimeout", "0", Integer.class),
-
-    /**
-     * Thrift server reconnect timeout. Value specified in SECONDS
-     */
     COORDINATOR_THRIFT_RECONNECT_TIMEOUT("coordination/thriftServerReconnectTimeout", "5", Long.class),
 
     /**

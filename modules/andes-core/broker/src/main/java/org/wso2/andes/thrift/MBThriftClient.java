@@ -37,10 +37,6 @@ import org.wso2.andes.thrift.exception.ThriftClientException;
 import org.wso2.andes.thrift.slot.gen.SlotInfo;
 import org.wso2.andes.thrift.slot.gen.SlotManagementService;
 
-import java.io.IOException;
-import java.net.Socket;
-import java.net.UnknownHostException;
-
 /**
  * A wrapper client for the native thrift client. All the public methods in this class are
  * synchronized in order to avoid out of sequence response exception from thrift server. Only one
@@ -109,19 +105,19 @@ public class MBThriftClient {
     }
 
     /**
-     * updateMessageId method. This method will pass the locally chosen slot range to the SlotManagerClusterMode. Slot manager
-     * maintains a list of slot ranges in a map along with the queue. This messageId will
-     * be stored in that map.
+     * This method will pass the locally chosen slot range to the SlotManagerClusterMode. Slot
+     * manager maintains a list of slot ranges in a map along with the queue. This messageId will be stored in that
+     * map.
      *
-     * @param queueName name of the queue
-     * @param nodeId unique hazelcast identifier of node.
+     * @param queueName      name of the queue
+     * @param nodeId         unique hazelcast identifier of node.
      * @param startMessageId start message Id of the locally chosen slot.
-     * @param endMessageId end message Id of the locally chosen slot.
-     * @param localSafeZone Minimum message ID of the node that is deemed safe.
-     * @throws TException in case of an connection error
+     * @param endMessageId   end message Id of the locally chosen slot.
+     * @param localSafeZone  Minimum message ID of the node that is deemed safe.
+     * @throws ConnectionException
      */
-    public static synchronized void updateMessageId(String queueName, String nodeId,
-                                                    long startMessageId, long endMessageId, long localSafeZone) throws ConnectionException {
+    public static synchronized void updateMessageId(String queueName, String nodeId, long startMessageId,
+                                                    long endMessageId, long localSafeZone) throws ConnectionException {
         try {
             client = getServiceClient();
             client.updateMessageId(queueName, nodeId, startMessageId, endMessageId, localSafeZone);
@@ -147,7 +143,8 @@ public class MBThriftClient {
      *
      * @param queueName  name of the queue where slot belongs to
      * @param slot      to be deleted
-     * @throws TException
+     * @return whether slot is deleted successfully
+     * @throws ConnectionException
      */
     public static synchronized boolean deleteSlot(String queueName, Slot slot,
                                                String nodeId) throws ConnectionException {
@@ -178,7 +175,7 @@ public class MBThriftClient {
      *
      * @param nodeId    of this node
      * @param queueName name of the queue
-     * @throws TException
+     * @throws ConnectionException
      */
     public static synchronized void reAssignSlotWhenNoSubscribers(String nodeId,
                                                                   String queueName) throws ConnectionException {
@@ -245,8 +242,10 @@ public class MBThriftClient {
             }else{
 
                 int thriftCoordinatorServerPort = Integer.parseInt(thriftCoordinatorServerPortString);
-                Integer thriftSocketConnectionTimeout = AndesConfigurationManager.readValue(AndesConfiguration.COORDINATOR_THRIFT_SOCKET_CONNECTION_TIMEOUT);
-                transport = new TSocket(thriftCoordinatorServerIP, thriftCoordinatorServerPort, thriftSocketConnectionTimeout);
+                Integer thriftSocketConnectionTimeout =
+                        AndesConfigurationManager.readValue(AndesConfiguration.COORDINATION_THRIFT_SO_TIMEOUT);
+                transport = new TSocket(thriftCoordinatorServerIP, thriftCoordinatorServerPort,
+                                                                                        thriftSocketConnectionTimeout);
                 try {
                     transport.open();
                     TProtocol protocol = new TBinaryProtocol(transport);
@@ -385,7 +384,8 @@ public class MBThriftClient {
      * @return global safeZone
      * @throws ConnectionException when MB thrift server is down
      */
-    public static synchronized long updateSlotDeletionSafeZone(long safeZoneMessageID, String nodeID) throws ConnectionException {
+    public static synchronized long updateSlotDeletionSafeZone(long safeZoneMessageID, String nodeID)
+                                                                                            throws ConnectionException {
         long globalSafeZone = 0;
         try {
             client = getServiceClient();

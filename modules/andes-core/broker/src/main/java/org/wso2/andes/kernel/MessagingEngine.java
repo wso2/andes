@@ -104,7 +104,8 @@ public class MessagingEngine {
      *         Subscription to send
      * @throws AndesException
      */
-    public void recoverMessage(List<DeliverableAndesMetadata> andesMetadataList, LocalSubscription subToResend) throws AndesException {
+    public void recoverMessage(List<DeliverableAndesMetadata> andesMetadataList, LocalSubscription subToResend)
+                                                                                                throws AndesException {
         for (DeliverableAndesMetadata andesMetadata : andesMetadataList) {
             reQueueMessageToSubscriber(andesMetadata, subToResend);
         }
@@ -595,6 +596,21 @@ public class MessagingEngine {
     }
 
     /**
+     * Get {@link AndesMessage}s from queue starting from given id up a given message count
+     *
+     * @param queueName      Name of the queue
+     * @param firstMsgId     ID of the starting id
+     * @param count          Maximum number of messages to return
+     * @param getContentFlag Whether to fetch content or not
+     * @return List of messages.
+     * @throws AndesException
+     */
+    public List<AndesMessage> getNextNMessageFromQueue(final String queueName, long firstMsgId, int count,
+                                                                        boolean getContentFlag) throws AndesException {
+        return messageStore.getNextNMessageFromQueue(queueName, firstMsgId, count, getContentFlag);
+    }
+
+    /**
      * Get message metadata from queue starting from given index up a given message count.
      *
      * @param queueName Name of the queue
@@ -603,9 +619,24 @@ public class MessagingEngine {
      * @return List of {@link AndesMessageMetadata}
      * @throws AndesException
      */
-    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName, int offset, int count) throws
-            AndesException {
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName, int offset, int count)
+                                                                                                throws AndesException {
         return messageStore.getNextNMessageMetadataFromQueue(queueName, offset, count);
+    }
+
+    /**
+     * Get {@link AndesMessage}s from queue starting from given index up a given message count.
+     *
+     * @param queueName      Name of the queue
+     * @param offset         Starting index
+     * @param count          Maximum num of messages to return
+     * @param getContentFlag Whether to fetch content or not
+     * @return List of {@link AndesMessage}
+     * @throws AndesException
+     */
+    public List<AndesMessage> getNextNMessageFromQueue(final String queueName, int offset, int count,
+                                                                        boolean getContentFlag) throws AndesException {
+        return messageStore.getNextNMessageFromQueue(queueName, offset, count, getContentFlag);
     }
 
     /**
