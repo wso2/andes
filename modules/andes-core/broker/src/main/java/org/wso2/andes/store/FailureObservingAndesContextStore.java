@@ -865,4 +865,9 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     public void removeProtocolType(ProtocolType protocolType) {
         wrappedAndesContextStoreInstance.removeProtocolType(protocolType);
     }
+
+    @Override
+    public void createSlot(long instanceID, long slotId, String storageQueue, int messageCount) throws AndesException {
+        wrappedAndesContextStoreInstance.createSlot(instanceID, slotId, storageQueue, messageCount);
+    }
 }

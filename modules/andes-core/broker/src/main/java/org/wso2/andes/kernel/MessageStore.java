@@ -73,7 +73,7 @@ public interface MessageStore extends HealthAwareStore {
      *
      * @param messageList messages to be stored
      */
-    void storeMessages(long instanceId, List<AndesMessage> messageList) throws AndesException;
+    void storeMessages(long instanceId, long slotId, List<AndesMessage> messageList) throws AndesException;
 
     /**
      * Store messages into database.

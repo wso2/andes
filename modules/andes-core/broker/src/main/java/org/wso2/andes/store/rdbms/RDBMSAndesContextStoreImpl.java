@@ -1946,4 +1946,35 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     public void removeProtocolType(ProtocolType protocolType) {
         protocols.remove(protocolType);
     }
+
+    @Override
+    public void createSlot(long instanceID, long slotId, String storageQueue, int messageCount) throws AndesException {
+
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+
+        try {
+
+            connection = getConnection();
+
+            preparedStatement =
+                    connection.prepareStatement(RDBMSConstants.PS_INSERT_SLOT_NEW);
+            preparedStatement.setLong(1, instanceID);
+            preparedStatement.setLong(2, slotId);
+            preparedStatement.setString(3, storageQueue);
+            preparedStatement.setInt(4, messageCount);
+
+            preparedStatement.executeUpdate();
+            connection.commit();
+        } catch (SQLException e) {
+            String errMsg =
+                    RDBMSConstants.TASK_CREATE_SLOT + " instance ID: " + instanceID + " slotID: " +
+                            slotId + " storageQueue:" + storageQueue + " messageCount:" + messageCount;
+            rollback(connection, RDBMSConstants.TASK_CREATE_SLOT);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
+        } finally {
+            close(preparedStatement, RDBMSConstants.TASK_CREATE_SLOT);
+            close(connection, RDBMSConstants.TASK_CREATE_SLOT);
+        }
+    }
 }

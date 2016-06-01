@@ -459,4 +459,5 @@ public interface AndesContextStore extends HealthAwareStore{
      */
     void removeProtocolType(ProtocolType protocolType);
 
+    void createSlot(long instanceID, long slotId, String storageQueue, int messageCount) throws AndesException;
 }

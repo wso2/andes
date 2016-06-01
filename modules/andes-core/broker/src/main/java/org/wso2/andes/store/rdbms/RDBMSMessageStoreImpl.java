@@ -364,7 +364,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void storeMessages(long instanceId, List<AndesMessage> messageList) throws AndesException {
+    public void storeMessages(long instanceId, long slotId, List<AndesMessage> messageList) throws AndesException {
         Connection connection = null;
         PreparedStatement storeMetadataPS = null;
         PreparedStatement storeContentPS = null;
@@ -377,7 +377,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
             for (AndesMessage message : messageList) {
 
-                addMetadataToBatch(storeMetadataPS, instanceId, message.getMetadata(), message.getMetadata().getStorageQueueName());
+                addMetadataToBatch(storeMetadataPS, instanceId, slotId, message.getMetadata(), message.getMetadata()
+                        .getStorageQueueName());
 
 //                for (AndesMessagePart messagePart : message.getContentChunkList()) {
 //                    addContentToBatch(storeContentPS, messagePart);
@@ -720,7 +721,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * @param queueName         queue to be assigned
      * @throws AndesException
      */
-    private void addMetadataToBatch(PreparedStatement preparedStatement, long instanceId, AndesMessageMetadata metadata,
+    private void addMetadataToBatch(PreparedStatement preparedStatement, long instanceId, long slotId,
+                                    AndesMessageMetadata metadata,
                                     final String queueName) throws AndesException {
 
         Timer.Context metaAdditionToBatchContext = MetricManager.timer(MetricsConstants.ADD_META_DATA_TO_BATCH, Level
@@ -729,9 +731,10 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Timer.Context contextWrite = MetricManager.timer(MetricsConstants.DB_WRITE, Level.INFO).start();
         try {
             preparedStatement.setLong(1, instanceId);
-            preparedStatement.setLong(2, metadata.getMessageID());
-            preparedStatement.setInt(3, getCachedQueueID(queueName));
-            preparedStatement.setBytes(4, metadata.getMetadata());
+            preparedStatement.setLong(2, slotId);
+            preparedStatement.setLong(3, metadata.getMessageID());
+            preparedStatement.setInt(4, getCachedQueueID(queueName));
+            preparedStatement.setBytes(5, metadata.getMetadata());
             preparedStatement.addBatch();
         } catch (SQLException e) {
             throw rdbmsStoreUtils.convertSQLException(

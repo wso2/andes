@@ -117,9 +117,9 @@ public class FailureObservingMessageStore implements MessageStore {
     }
 
     @Override
-    public void storeMessages(long instanceId, List<AndesMessage> messageList) throws AndesException {
+    public void storeMessages(long instanceId, long slotId, List<AndesMessage> messageList) throws AndesException {
         try {
-            wrappedInstance.storeMessages(instanceId, messageList);
+            wrappedInstance.storeMessages(instanceId, slotId, messageList);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

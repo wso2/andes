@@ -47,6 +47,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * This class will handle all message related functions of WSO2 Message Broker
@@ -93,20 +94,21 @@ public class MessagingEngine {
      * Local instance ID used when storing message data
      */
     private long instanceID;
+    private LocalSlotManager localSlotManager;
+    private AndesContextStore contextStore;
 
     /**
      * private constructor for singleton pattern
      */
     private MessagingEngine() {
+        localSlotManager = new LocalSlotManager(this);
     }
 
     /**
      * Recover message
      *
-     * @param andesMetadataList
-     *         message to be recovered
-     * @param subToResend
-     *         Subscription to send
+     * @param andesMetadataList message to be recovered
+     * @param subToResend       Subscription to send
      * @throws AndesException
      */
     public void recoverMessage(List<DeliverableAndesMetadata> andesMetadataList, LocalSubscription subToResend)
@@ -136,14 +138,15 @@ public class MessagingEngine {
      * storing strategy will be set according to the configurations by calling this.
      *
      * @param messageStore       MessageStore
-     * @param subscriptionEngine SubscriptionStore
-     * @throws AndesException
+     * @param contextStore
+     *@param subscriptionEngine SubscriptionStore  @throws AndesException
      */
-    public void initialise(MessageStore messageStore, SubscriptionEngine subscriptionEngine) throws AndesException {
+    public void initialise(MessageStore messageStore, AndesContextStore contextStore, SubscriptionEngine subscriptionEngine) throws AndesException {
 
         configureMessageIDGenerator();
 
         this.messageStore = messageStore;
+        this.contextStore = contextStore;
         this.subscriptionEngine = subscriptionEngine;
 
         //register listeners for queue changes
@@ -195,8 +198,17 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public void messagesReceived(List<AndesMessage> messageList) throws AndesException {
+        Map<String, List<AndesMessage>> queueToMsgsMap = messageList.stream().collect(Collectors.groupingBy(
+                (AndesMessage m) -> m.getMetadata().getDestination()));
+
+        for (String targetQueueName : queueToMsgsMap.keySet()) {
+//            long slotId = localSlotManager.getSlotId(targetQueueName, queueToMsgsMap.get(targetQueueName).size());
+            long slotId = generateUniqueId();
+            contextStore.createSlot(instanceID, slotId, targetQueueName, queueToMsgsMap.get(targetQueueName).size());
+            messageStore.storeMessages(instanceID, slotId, messageList);
+        }
+
         messageStore.storeMessages(messageList);
-        messageStore.storeMessages(instanceID, messageList);
     }
 
     /**
@@ -303,7 +315,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public int clearMessagesFromQueueInMemory(String destination, Long purgedTimestamp, ProtocolType protocolType,
-            DestinationType destinationType) throws AndesException {
+                                              DestinationType destinationType) throws AndesException {
 
         MessageFlusher messageFlusher = MessageFlusher.getInstance();
         MessageDeliveryInfo messageDeliveryInfo = messageFlusher
@@ -326,7 +338,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public int purgeMessages(String destination, String ownerName, ProtocolType protocolType,
-            DestinationType destinationType) throws AndesException {
+                             DestinationType destinationType) throws AndesException {
 
         // The timestamp is recorded to track messages that came before the purge event.
         Long purgedTimestamp = System.currentTimeMillis();
@@ -586,7 +598,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public List<DeliverableAndesMetadata> getMetaDataList(final Slot slot, final String queueName, long firstMsgId,
-            long lastMsgID) throws AndesException {
+                                                          long lastMsgID) throws AndesException {
         return messageStore.getMetadataList(slot, queueName, firstMsgId, lastMsgID);
     }
 
@@ -601,7 +613,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName, long firstMsgId,
-            int count) throws AndesException {
+                                                                       int count) throws AndesException {
         return messageStore.getNextNMessageMetadataFromQueue(queueName, firstMsgId, count);
     }
 
@@ -660,7 +672,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public List<AndesMessageMetadata> getNextNMessageMetadataInDLCForQueue(final String queueName,
-            final String dlcQueueName, long firstMsgId, int count) throws AndesException {
+                                                                           final String dlcQueueName, long firstMsgId, int count) throws AndesException {
         return messageStore.getNextNMessageMetadataForQueueFromDLC(queueName, dlcQueueName, firstMsgId, count);
     }
 
@@ -674,7 +686,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public List<AndesMessageMetadata> getNextNMessageMetadataFromDLC(final String dlcQueueName, long firstMsgId,
-            int count) throws AndesException {
+                                                                     int count) throws AndesException {
         return messageStore.getNextNMessageMetadataFromDLC(dlcQueueName, firstMsgId, count);
     }
 

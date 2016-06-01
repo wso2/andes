@@ -114,6 +114,7 @@ public class RDBMSConstants {
     protected static final String QUEUE_COUNTER_TABLE = "MB_QUEUE_COUNTER";
     // Slot related tables
     protected static final String SLOT_TABLE = "MB_SLOT";
+    protected static final String SLOT_TABLE_NEW = "MB_SLOT_NEW";
     protected static final String SLOT_MESSAGE_ID_TABLE = "MB_SLOT_MESSAGE_ID";
     protected static final String QUEUE_TO_LAST_ASSIGNED_ID = "MB_QUEUE_TO_LAST_ASSIGNED_ID";
 
@@ -175,11 +176,12 @@ public class RDBMSConstants {
     protected static final String PS_INSERT_METADATA_NEW =
             "INSERT INTO " + METADATA_TABLE_NEW + " ("
                     + INSTANCE_ID + ","
+                    + SLOT_ID + ","
                     + MESSAGE_ID + ","
                     + QUEUE_ID + ","
                     + DLC_QUEUE_ID + ","
                     + METADATA + ")"
-                    + " VALUES ( ?,?,?,-1,? )";
+                    + " VALUES ( ?,?,?,?,-1,? )";
 
     protected static final String PS_INSERT_EXPIRY_DATA =
             "INSERT INTO " + EXPIRATION_TABLE + " ("
@@ -531,6 +533,18 @@ public class RDBMSConstants {
             + SLOT_STATE + ","
             + ASSIGNED_NODE_ID + ")"
             + " VALUES (?,?,?," + SlotState.ASSIGNED.getCode() + ",?)";
+
+    /**
+     * Prepared statement to create a new slot in database
+     */
+    protected static final String PS_INSERT_SLOT_NEW =
+            "INSERT INTO " + SLOT_TABLE_NEW + " ("
+                    + INSTANCE_ID + ","
+                    + SLOT_ID + ","
+                    + STORAGE_QUEUE_NAME + ","
+                    + MESSAGE_COUNT + ","
+                    + SLOT_STATE + ")"
+                    + " VALUES (?,?,?,?," + SlotState.CREATED.getCode() + ")";
 
     /**
      * Prepared statement to delete a slot from database

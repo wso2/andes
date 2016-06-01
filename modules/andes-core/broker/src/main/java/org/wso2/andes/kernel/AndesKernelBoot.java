@@ -257,7 +257,7 @@ public class AndesKernelBoot {
         // directly wire the instance without wrapped instance
         messageStore = new FailureObservingMessageStore(createMessageStoreFromConfig(contextStoreInConfig));
         MessagingEngine messagingEngine = MessagingEngine.getInstance();
-        messagingEngine.initialise(messageStore, subscriptionEngine);
+        messagingEngine.initialise(messageStore, contextStore, subscriptionEngine);
 
         // Setting the message store in the context store
         AndesContext.getInstance().setMessageStore(messageStore);
