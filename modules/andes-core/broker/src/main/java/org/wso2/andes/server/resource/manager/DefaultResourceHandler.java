@@ -18,11 +18,16 @@ package org.wso2.andes.server.resource.manager;
 
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessage;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.AndesQueue;
 import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.DestinationType;
+import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.subscription.LocalSubscription;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -48,12 +53,36 @@ public abstract class DefaultResourceHandler implements ResourceHandler {
 
     /**
      * Initializing the default resource handler with protocol type and destination type.
-     * @param protocolType The protocol type.
+     *
+     * @param protocolType    The protocol type.
      * @param destinationType The destination type.
      */
     public DefaultResourceHandler(ProtocolType protocolType, DestinationType destinationType) {
         this.protocolType = protocolType;
         this.destinationType = destinationType;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<AndesQueue> getDestinations(String keyword, int offset, int limit) throws AndesException {
+
+        return AndesContext.getInstance().getAMQPConstructStore().getQueues(keyword)
+                .stream()
+                .filter(d -> d.getProtocolType() == protocolType)
+                .filter(d -> d.getDestinationType() == destinationType)
+                .skip(offset)
+                .limit(limit)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public AndesQueue getDestination(String destinationName) throws AndesException {
+        return AndesContext.getInstance().getAMQPConstructStore().getQueue(destinationName);
     }
 
     /**
@@ -70,10 +99,10 @@ public abstract class DefaultResourceHandler implements ResourceHandler {
                 .filter(s -> s.isDurable() == ((destinationType == DestinationType.QUEUE)
                                                || (destinationType == DestinationType.DURABLE_TOPIC)))
                 .filter(s -> s.hasExternalSubscriptions() == active)
-                .filter(s -> null != subscriptionName && !ALL_WILDCARD.equals(subscriptionName) && s.getSubscriptionID()
-                        .contains(subscriptionName))
-                .filter(s -> null != destinationName && !ALL_WILDCARD.equals(destinationName) && s.getSubscribedDestination
-                        ().equals(destinationName))
+                .filter(s -> null != subscriptionName && !ALL_WILDCARD.equals(subscriptionName)
+                             && s.getSubscriptionID().contains(subscriptionName))
+                .filter(s -> null != destinationName && !ALL_WILDCARD.equals(destinationName)
+                             && s.getSubscribedDestination().equals(destinationName))
                 .skip(offset)
                 .limit(limit)
                 .collect(Collectors.toList());
@@ -115,5 +144,35 @@ public abstract class DefaultResourceHandler implements ResourceHandler {
                 .findFirst()
                 .orElseThrow(() -> new NullPointerException("Matching subscription could not be found to disconnect."));
         localSubscription.forcefullyDisconnect();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<AndesMessage> browseDestinationWithMessageID(String destinationName, boolean content,
+                                                             long nextMessageID, int limit) throws AndesException {
+        return MessagingEngine.getInstance().getNextNMessageFromQueue(destinationName, nextMessageID, limit, content);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<AndesMessage> browseDestinationWithOffset(String destinationName, boolean content, int offset, int
+            limit) throws AndesException {
+        return MessagingEngine.getInstance().getNextNMessageFromQueue(destinationName, offset, limit, content);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public AndesMessage getMessage(String destinationName, long andesMessageID, boolean content) throws AndesException {
+        return MessagingEngine.getInstance().getNextNMessageFromQueue(destinationName, andesMessageID, 1, content)
+                .stream()
+                .findFirst()
+                .orElseThrow(() ->
+                        new AndesException("Message with message ID : '" + andesMessageID + "' could not be found."));
     }
 }

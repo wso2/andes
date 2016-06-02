@@ -419,7 +419,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     /**
      * Store a given Andes message to the database and the cache
      *
-     * @param message
+     * @param message The message
      * @throws AndesException
      */
     private void storeMessage(AndesMessage message) throws AndesException {
@@ -619,7 +619,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * @param preparedStatement prepared statement to add messages to metadata table
      * @param metadata          AndesMessageMetadata
      * @param queueName         queue to be assigned
-     * @throws SQLException
+     * @throws AndesException
      */
     private void addMetadataToBatch(PreparedStatement preparedStatement, AndesMessageMetadata metadata,
             final String queueName) throws AndesException {
@@ -935,6 +935,57 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
+    public List<AndesMessage> getNextNMessageFromQueue(String storageQueueName, long firstMsgId, int count, boolean getContentFlag) throws AndesException {
+        List<AndesMessage> andesMessages = new ArrayList<>(count);
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet results = null;
+
+        Timer.Context nextMetaRetrievalContext = MetricManager.timer(MetricsConstants
+                .GET_NEXT_MESSAGE_METADATA_FROM_QUEUE, Level.INFO).start();
+        Timer.Context contextRead = MetricManager.timer(MetricsConstants.DB_READ, Level.INFO).start();
+
+        try {
+            connection = getConnection();
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_METADATA_FROM_QUEUE);
+            preparedStatement.setLong(1, firstMsgId - 1);
+            preparedStatement.setInt(2, getCachedQueueID(storageQueueName));
+
+            results = preparedStatement.executeQuery();
+            int resultCount = 0;
+            while (results.next()) {
+                if (resultCount == count) {
+                    break;
+                }
+
+                AndesMessageMetadata md = new AndesMessageMetadata(results.getLong(RDBMSConstants.MESSAGE_ID),
+                        results.getBytes(RDBMSConstants.METADATA), true);
+                md.setStorageQueueName(storageQueueName);
+
+                AndesMessage andesMessage = new AndesMessage(md);
+                if (getContentFlag) {
+                    andesMessage.setChunkList(getContent(LongArrayList.newListWith(md.getMessageID())).get(md.getMessageID()));
+                }
+                andesMessages.add(andesMessage);
+
+                resultCount++;
+            }
+
+        } catch (SQLException e) {
+            throw rdbmsStoreUtils
+                    .convertSQLException("error occurred while retrieving message metadata from queue ", e);
+        } finally {
+            nextMetaRetrievalContext.stop();
+            contextRead.stop();
+            close(connection, preparedStatement, results, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_FROM_QUEUE);
+        }
+        return andesMessages;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(String storageQueueName, int offset, int
             count) throws AndesException {
         List<AndesMessageMetadata> mdList = new ArrayList<>(count);
@@ -982,6 +1033,63 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             close(connection, preparedStatement, results, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_FROM_QUEUE);
         }
         return mdList;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<AndesMessage> getNextNMessageFromQueue(String storageQueueName, int offset, int count, boolean
+            getContentFlag) throws AndesException {
+        List<AndesMessage> andesMessages = new ArrayList<>(count);Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet results = null;
+
+        Timer.Context nextMetaRetrievalContext = MetricManager.timer(MetricsConstants
+                .GET_NEXT_MESSAGE_METADATA_FROM_QUEUE, Level.INFO).start();
+        Timer.Context contextRead = MetricManager.timer(MetricsConstants.DB_READ, Level.INFO).start();
+
+        try {
+            connection = getConnection();
+            preparedStatement = connection
+                    .prepareStatement(RDBMSConstants.PS_SELECT_METADATA_FROM_QUEUE);
+            preparedStatement.setLong(1, 0);
+            preparedStatement.setInt(2, getCachedQueueID(storageQueueName));
+
+            results = preparedStatement.executeQuery();
+
+            int resultCount = 0;
+            while (results.next()) {
+                if (resultCount < offset) {
+                    continue;
+                }
+
+                if (resultCount == offset + count) {
+                    break;
+                }
+
+                AndesMessageMetadata md = new AndesMessageMetadata(
+                        results.getLong(RDBMSConstants.MESSAGE_ID),
+                        results.getBytes(RDBMSConstants.METADATA),
+                        true
+                );
+                md.setStorageQueueName(storageQueueName);
+                AndesMessage andesMessage = new AndesMessage(md);
+                if (getContentFlag) {
+                    andesMessage.setChunkList(getContent(LongArrayList.newListWith(md.getMessageID())).get(md.getMessageID()));
+                }
+                andesMessages.add(andesMessage);
+
+                resultCount++;
+            }
+        } catch (SQLException e) {
+            throw rdbmsStoreUtils.convertSQLException("error occurred while retrieving message metadata from queue ", e);
+        } finally {
+            nextMetaRetrievalContext.stop();
+            contextRead.stop();
+            close(connection, preparedStatement, results, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_FROM_QUEUE);
+        }
+        return andesMessages;
     }
 
     /**

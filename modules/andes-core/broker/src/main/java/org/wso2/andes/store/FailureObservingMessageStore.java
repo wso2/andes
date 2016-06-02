@@ -252,10 +252,38 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
+    public List<AndesMessage> getNextNMessageFromQueue(String storageQueueName, long firstMsgId, int count, boolean
+            getContentFlag) throws AndesException {
+        try {
+            return wrappedInstance.getNextNMessageFromQueue(storageQueueName, firstMsgId, count, getContentFlag);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(String storageQueueName, int offset, int
             count) throws AndesException {
         try {
             return wrappedInstance.getNextNMessageMetadataFromQueue(storageQueueName, offset, count);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<AndesMessage> getNextNMessageFromQueue(String storageQueueName, int offset, int count,
+                                                                        boolean getContentFlag) throws AndesException {
+        try {
+            return wrappedInstance.getNextNMessageFromQueue(storageQueueName, offset, count, getContentFlag);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

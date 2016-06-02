@@ -122,9 +122,11 @@ public class AndesQueue {
     }
 
     public int hashCode() {
-        return new HashCodeBuilder(17, 31).
-                append(queueName).
-                toHashCode();
+        return new HashCodeBuilder(17, 31)
+                .append(queueName)
+                .append(protocolType)
+                .append(destinationType)
+                .toHashCode();
     }
 
     public ProtocolType getProtocolType() {

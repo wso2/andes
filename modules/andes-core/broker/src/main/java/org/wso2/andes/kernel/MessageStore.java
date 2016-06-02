@@ -163,6 +163,18 @@ public interface MessageStore extends HealthAwareStore {
      * Get message metadata from queue starting from given index up a given message count.
      *
      * @param storageQueueName Name of the queue
+     * @param firstMsgId The starting message ID.
+     * @param count     Maximum num of messages to return
+     * @return List of {@link AndesMessageMetadata}
+     * @throws AndesException
+     */
+    List<AndesMessage> getNextNMessageFromQueue(final String storageQueueName, long firstMsgId, int count,
+                                                                        boolean getContentFlag) throws AndesException;
+
+    /**
+     * Get message metadata from queue starting from given index up a given message count.
+     *
+     * @param storageQueueName Name of the queue
      * @param offset    Starting index
      * @param count     Maximum num of messages to return
      * @return List of {@link AndesMessageMetadata}
@@ -170,6 +182,19 @@ public interface MessageStore extends HealthAwareStore {
      */
     List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String storageQueueName,
                                                                 int offset, int count) throws AndesException;
+
+    /**
+     * Get {@link AndesMessage}s from queue starting from given index up a given message count.
+     *
+     * @param storageQueueName Name of the queue
+     * @param offset    Starting index
+     * @param count     Maximum num of messages to return
+     * @param getContentFlag Whether to fetch content or not.
+     * @return A list of messages.
+     * @throws AndesException
+     */
+    List<AndesMessage> getNextNMessageFromQueue(final String storageQueueName, int offset, int count,
+                                                                        boolean getContentFlag) throws AndesException;
 
     /**
      * Read a list of message ids from store specifying a starting message id
@@ -181,7 +206,7 @@ public interface MessageStore extends HealthAwareStore {
      * @return list of messageIds
      * @throws AndesException
      */
-    public LongArrayList getNextNMessageIdsFromQueue(final String storageQueueName, long firstMsgId, int count)
+     LongArrayList getNextNMessageIdsFromQueue(final String storageQueueName, long firstMsgId, int count)
             throws AndesException;
 
     /**

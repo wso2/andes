@@ -41,7 +41,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- *
+ * The resource manager class will hold all protocol handler that is registered. This manager will expose the resource
+ * and operations of the broker.
  */
 public class AndesResourceManager {
     Table<ProtocolType, DestinationType, ResourceHandler> resourceManagerTable = HashBasedTable.create();
