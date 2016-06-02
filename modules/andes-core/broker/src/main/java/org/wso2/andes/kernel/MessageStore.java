@@ -168,8 +168,8 @@ public interface MessageStore extends HealthAwareStore {
      * @return List of {@link AndesMessageMetadata}
      * @throws AndesException
      */
-    List<AndesMessage> getNextNMessageFromQueue(final String storageQueueName, long firstMsgId, int count,
-                                                                        boolean getContentFlag) throws AndesException;
+    List<AndesMessage> getNextNMessagesFromQueue(final String storageQueueName, long firstMsgId, int count,
+                                                 boolean getContentFlag) throws AndesException;
 
     /**
      * Get message metadata from queue starting from given index up a given message count.
@@ -193,8 +193,8 @@ public interface MessageStore extends HealthAwareStore {
      * @return A list of messages.
      * @throws AndesException
      */
-    List<AndesMessage> getNextNMessageFromQueue(final String storageQueueName, int offset, int count,
-                                                                        boolean getContentFlag) throws AndesException;
+    List<AndesMessage> getNextNMessagesFromQueue(final String storageQueueName, int offset, int count,
+                                                 boolean getContentFlag) throws AndesException;
 
     /**
      * Read a list of message ids from store specifying a starting message id

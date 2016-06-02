@@ -605,9 +605,9 @@ public class MessagingEngine {
      * @return List of messages.
      * @throws AndesException
      */
-    public List<AndesMessage> getNextNMessageFromQueue(final String queueName, long firstMsgId, int count,
-                                                                        boolean getContentFlag) throws AndesException {
-        return messageStore.getNextNMessageFromQueue(queueName, firstMsgId, count, getContentFlag);
+    public List<AndesMessage> getNextNMessagesFromQueue(final String queueName, long firstMsgId, int count,
+                                                        boolean getContentFlag) throws AndesException {
+        return messageStore.getNextNMessagesFromQueue(queueName, firstMsgId, count, getContentFlag);
     }
 
     /**
@@ -634,9 +634,9 @@ public class MessagingEngine {
      * @return List of {@link AndesMessage}
      * @throws AndesException
      */
-    public List<AndesMessage> getNextNMessageFromQueue(final String queueName, int offset, int count,
-                                                                        boolean getContentFlag) throws AndesException {
-        return messageStore.getNextNMessageFromQueue(queueName, offset, count, getContentFlag);
+    public List<AndesMessage> getNextNMessagesFromQueue(final String queueName, int offset, int count,
+                                                        boolean getContentFlag) throws AndesException {
+        return messageStore.getNextNMessagesFromQueue(queueName, offset, count, getContentFlag);
     }
 
     /**

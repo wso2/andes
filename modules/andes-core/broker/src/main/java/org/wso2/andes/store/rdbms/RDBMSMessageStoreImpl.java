@@ -935,7 +935,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public List<AndesMessage> getNextNMessageFromQueue(String storageQueueName, long firstMsgId, int count, boolean getContentFlag) throws AndesException {
+    public List<AndesMessage> getNextNMessagesFromQueue(String storageQueueName, long firstMsgId, int count,
+                                                                        boolean getContentFlag) throws AndesException {
         List<AndesMessage> andesMessages = new ArrayList<>(count);
         Connection connection = null;
         PreparedStatement preparedStatement = null;
@@ -964,7 +965,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
                 AndesMessage andesMessage = new AndesMessage(md);
                 if (getContentFlag) {
-                    andesMessage.setChunkList(getContent(LongArrayList.newListWith(md.getMessageID())).get(md.getMessageID()));
+                    andesMessage.setChunkList(
+                                    getContent(LongArrayList.newListWith(md.getMessageID())).get(md.getMessageID()));
                 }
                 andesMessages.add(andesMessage);
 
@@ -1026,7 +1028,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 resultCount++;
             }
         } catch (SQLException e) {
-            throw rdbmsStoreUtils.convertSQLException("error occurred while retrieving message metadata from queue ", e);
+            throw rdbmsStoreUtils.convertSQLException(
+                                                    "Error occurred while retrieving message metadata from queue ", e);
         } finally {
             nextMetaRetrievalContext.stop();
             contextRead.stop();
@@ -1039,7 +1042,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public List<AndesMessage> getNextNMessageFromQueue(String storageQueueName, int offset, int count, boolean
+    public List<AndesMessage> getNextNMessagesFromQueue(String storageQueueName, int offset, int count, boolean
             getContentFlag) throws AndesException {
         List<AndesMessage> andesMessages = new ArrayList<>(count);Connection connection = null;
         PreparedStatement preparedStatement = null;
@@ -1076,14 +1079,16 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 md.setStorageQueueName(storageQueueName);
                 AndesMessage andesMessage = new AndesMessage(md);
                 if (getContentFlag) {
-                    andesMessage.setChunkList(getContent(LongArrayList.newListWith(md.getMessageID())).get(md.getMessageID()));
+                    andesMessage.setChunkList(
+                            getContent(LongArrayList.newListWith(md.getMessageID())).get(md.getMessageID()));
                 }
                 andesMessages.add(andesMessage);
 
                 resultCount++;
             }
         } catch (SQLException e) {
-            throw rdbmsStoreUtils.convertSQLException("error occurred while retrieving message metadata from queue ", e);
+            throw rdbmsStoreUtils.convertSQLException(
+                                                    "Error occurred while retrieving message metadata from queue ", e);
         } finally {
             nextMetaRetrievalContext.stop();
             contextRead.stop();
