@@ -422,8 +422,8 @@ public class QpidAndesBridge {
         try {
             Andes.getInstance().deleteExchange(AMQPUtils.createAndesExchange(exchange));
         } catch (AndesException e) {
-            log.error("error while deleting exchange", e);
-            throw new AMQException(AMQConstant.INTERNAL_ERROR, "error while deleting exchange", e);
+            log.error("Error while deleting exchange", e);
+            throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while deleting exchange", e);
         }
     }
 
@@ -446,8 +446,8 @@ public class QpidAndesBridge {
             }
             Andes.getInstance().createQueue(AMQPUtils.createAndesQueue(queue));
         } catch (AndesException e) {
-            log.error("error while creating queue", e);
-            throw new AMQException(AMQConstant.INTERNAL_ERROR, "error while creating queue", e);
+            log.error("Error while creating queue", e);
+            throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while creating queue", e);
         }
     }
 

@@ -252,10 +252,10 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public List<AndesMessage> getNextNMessageFromQueue(String storageQueueName, long firstMsgId, int count, boolean
+    public List<AndesMessage> getNextNMessagesFromQueue(String storageQueueName, long firstMsgId, int count, boolean
             getContentFlag) throws AndesException {
         try {
-            return wrappedInstance.getNextNMessageFromQueue(storageQueueName, firstMsgId, count, getContentFlag);
+            return wrappedInstance.getNextNMessagesFromQueue(storageQueueName, firstMsgId, count, getContentFlag);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -280,10 +280,10 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public List<AndesMessage> getNextNMessageFromQueue(String storageQueueName, int offset, int count,
-                                                                        boolean getContentFlag) throws AndesException {
+    public List<AndesMessage> getNextNMessagesFromQueue(String storageQueueName, int offset, int count,
+                                                        boolean getContentFlag) throws AndesException {
         try {
-            return wrappedInstance.getNextNMessageFromQueue(storageQueueName, offset, count, getContentFlag);
+            return wrappedInstance.getNextNMessagesFromQueue(storageQueueName, offset, count, getContentFlag);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
