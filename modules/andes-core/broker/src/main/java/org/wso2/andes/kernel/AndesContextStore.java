@@ -77,9 +77,17 @@ public interface AndesContextStore extends HealthAwareStore{
      *
      * @param subscription The subscriptoin object to update
      * @throws AndesException
+     * @return If a subscription was updated return 1, else return 0
      */
-    void updateDurableSubscription(AndesSubscription subscription)
-		    throws AndesException;
+    int updateDurableSubscription(AndesSubscription subscription) throws AndesException;
+
+    /**
+     * Update already the store if there is a matching subscription. Else, insert the subscription.
+     *
+     * @param subscription The subscriptoin object to update
+     * @throws AndesException
+     */
+    void updateOrInsertDurableSubscription(AndesSubscription subscription) throws AndesException;
 
     /**
      * Updates a List of subscriptions with a given subscriptionId and given subscription information.

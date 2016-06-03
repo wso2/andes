@@ -134,9 +134,22 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public void updateDurableSubscription(AndesSubscription subscription) throws AndesException {
+    public int updateDurableSubscription(AndesSubscription subscription) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.updateDurableSubscription(subscription);
+            return wrappedAndesContextStoreInstance.updateDurableSubscription(subscription);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void updateOrInsertDurableSubscription(AndesSubscription subscription) throws AndesException {
+        try {
+            wrappedAndesContextStoreInstance.updateOrInsertDurableSubscription(subscription);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
