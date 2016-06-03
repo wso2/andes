@@ -633,6 +633,14 @@ public class RDBMSConstants {
             + " WHERE " + STORAGE_QUEUE_NAME + " =?"
             + " ORDER BY " + SLOT_ID;
 
+    protected static final String PS_SELECT_FRESH_SLOT =
+            "SELECT " + SLOT_ID
+                    + " FROM " + SLOT_TABLE_NEW
+                    + " WHERE " + STORAGE_QUEUE_NAME + " = ?"
+                    + " AND " + SLOT_STATE + " = " + SlotState.CREATED.getCode()
+                    + " ORDER BY " + SLOT_ID
+                    + " LIMIT 1";
+
     protected static final String PS_SELECT_UNASSIGNED_SLOT =
             "SELECT " + START_MESSAGE_ID + "," + END_MESSAGE_ID + "," + STORAGE_QUEUE_NAME
             + " FROM " + SLOT_TABLE

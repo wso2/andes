@@ -236,5 +236,5 @@ public interface SlotAgent {
 	 */
 	void clearSlotStorage() throws AndesException;
 
-
+	long getFreshSlot(String queueName, String nodeId) throws AndesException;
 }

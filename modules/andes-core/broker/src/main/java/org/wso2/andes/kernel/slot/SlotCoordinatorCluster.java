@@ -49,6 +49,14 @@ public class SlotCoordinatorCluster implements SlotCoordinator {
      * {@inheritDoc}
      */
     @Override
+    public long getSlotId(String queueName) throws ConnectionException {
+        return MBThriftClient.getSlotId(queueName, nodeId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void updateMessageId(String queueName,
                                 long startMessageId, long endMessageId, long localSafeZone) throws ConnectionException {
         MBThriftClient.updateMessageId(queueName,nodeId,startMessageId,endMessageId, localSafeZone);

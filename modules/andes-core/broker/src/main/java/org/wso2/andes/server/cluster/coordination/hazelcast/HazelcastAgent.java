@@ -26,6 +26,7 @@ import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.ILock;
 import com.hazelcast.core.IMap;
 import com.hazelcast.core.ITopic;
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -1084,4 +1085,9 @@ public class HazelcastAgent implements SlotAgent {
         // Add the current ring buffer configuration to the configurations of the Hazelcast instance
         config.addRingBufferConfig(ringConfig);
     }
+
+    public long getFreshSlot(String queueName, String nodeId) {
+        throw new NotImplementedException();
+    }
+
 }

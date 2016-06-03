@@ -412,6 +412,9 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
     	
         long startTime = System.currentTimeMillis();
         Slot currentSlot = slotCoordinator.getSlot(storageQueueName);
+        long slotId = slotCoordinator.getSlotId(storageQueueName);
+
+        log.info("Returned slot id is " + slotId);
         long endTime = System.currentTimeMillis();
 
         if (log.isDebugEnabled()) {

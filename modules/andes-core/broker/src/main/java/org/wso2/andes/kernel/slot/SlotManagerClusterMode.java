@@ -189,6 +189,7 @@ public class SlotManagerClusterMode {
     }
 
     /**
+     * TODO: Remove
      * Get an unassigned slot (slots dropped by sudden subscription closes)
      *
      * @param queueName name of the queue slot is required
@@ -209,6 +210,29 @@ public class SlotManagerClusterMode {
             }
         }
         return slotToBeAssigned;
+    }
+
+    /**
+     * Get an unassigned slot (slots dropped by sudden subscription closes)
+     *
+     * @param queueName name of the queue slot is required
+     * @return slot or null if cannot find
+     */
+    private long getFreshSlotNew(String queueName, String nodeId) throws AndesException {
+        long slotId;
+        String lockKey = queueName + SlotManagerClusterMode.class;
+        synchronized (lockKey.intern()) {
+            //get oldest unassigned slot from database
+            slotId = slotAgent.getFreshSlot(queueName, nodeId);
+
+            if (log.isDebugEnabled()) {
+                if (-1 != slotId) {
+                    log.debug("Giving a slot from unassigned slots. Slot: " + slotId +
+                            " to queue: " + queueName);
+                }
+            }
+        }
+        return slotId;
     }
 
     /**
@@ -629,4 +653,14 @@ public class SlotManagerClusterMode {
         slotAgent.clearSlotStorage();
     }
 
+    public long getSlotId(String queueName, String nodeId) throws AndesException{
+        long slotId;
+
+        String lockKey = queueName + SlotManagerClusterMode.class;
+        synchronized (lockKey.intern()) {
+            slotId = getFreshSlotNew(queueName, nodeId);
+        }
+
+        return slotId;
+    }
 }

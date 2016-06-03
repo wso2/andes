@@ -1977,4 +1977,35 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             close(connection, RDBMSConstants.TASK_CREATE_SLOT);
         }
     }
+
+    public long getFreshSlot(String queueName, String nodeId) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        long slotId;
+
+        try {
+            connection = getConnection();
+
+            preparedStatement =
+                    connection.prepareStatement(RDBMSConstants.PS_SELECT_FRESH_SLOT);
+            preparedStatement.setString(1, queueName);
+            resultSet = preparedStatement.executeQuery();
+
+            if (resultSet.next()) {
+                slotId = resultSet.getLong(1);
+            } else {
+                slotId = -1;
+            }
+            return slotId;
+
+        } catch (SQLException e) {
+            String errMsg =
+                    RDBMSConstants.TASK_GET_ALL_SLOTS_BY_QUEUE_NAME + " queueName: " + queueName;
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
+        } finally {
+            close(resultSet, RDBMSConstants.TASK_GET_ALL_SLOTS_BY_QUEUE_NAME);
+            close(preparedStatement, RDBMSConstants.TASK_GET_ALL_SLOTS_BY_QUEUE_NAME);
+            close(connection, RDBMSConstants.TASK_GET_ALL_SLOTS_BY_QUEUE_NAME);
+        }    }
 }

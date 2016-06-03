@@ -870,4 +870,9 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     public void createSlot(long instanceID, long slotId, String storageQueue, int messageCount) throws AndesException {
         wrappedAndesContextStoreInstance.createSlot(instanceID, slotId, storageQueue, messageCount);
     }
+
+    public long getFreshSlot(String queueName, String nodeId) throws AndesException {
+        return wrappedAndesContextStoreInstance.getFreshSlot(queueName, nodeId);
+    }
+
 }

@@ -641,4 +641,22 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
         log.info("Context store became non-operational. Therefore, blocking Database Slot Agent");
         messageStoresUnavailable = SettableFuture.create();
     }
+
+    public long getFreshSlot(String queueName, String nodeId) throws AndesException{
+        String task = "New slot creation";
+        long slotId = -1;
+
+        for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
+            waitUntilStoresBecomeAvailable(task);
+            try {
+                slotId = andesContextStore.getFreshSlot(queueName, nodeId);
+//                andesContextStore.assignSlot(slotId, nodeId);
+                break;
+            } catch (AndesStoreUnavailableException e) {
+                handleFailure(attemptCount, task, e);
+            }
+        }
+
+        return slotId;
+    }
 }
