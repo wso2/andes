@@ -460,21 +460,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
      * @throws AndesException
      */
     public void updateSubscriptionsAfterClusterMerge() throws AndesException {
-        Set<AndesSubscription> subList = subscriptionEngine.getActiveLocalSubscribersForNode();
-        notifyLocalSubscriptionListToMembers(subList);
         HazelcastAgent.getInstance().notifyDBSyncEvent(new ClusterNotification("", "", ""));
-    }
-
-    /**
-     * Notify cluster members a merge
-     * @param subscriptionList
-     * @throws AndesException
-     */
-    private void notifyLocalSubscriptionListToMembers(Collection<AndesSubscription> subscriptionList)
-            throws AndesException{
-        for (AndesSubscription localSubscription: subscriptionList) {
-            AndesContext.getInstance().getAndesContextStore().updateDurableSubscription(localSubscription);
-        }
     }
 
     /**
