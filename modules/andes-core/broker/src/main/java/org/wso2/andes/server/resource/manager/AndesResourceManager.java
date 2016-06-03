@@ -34,18 +34,30 @@ import org.wso2.andes.kernel.AndesUtils;
 import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.DisablePubAckImpl;
 import org.wso2.andes.kernel.FlowControlListener;
+import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.server.ClusterResourceHolder;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The resource manager class will hold all protocol handler that is registered. This manager will expose the resource
  * and operations of the broker.
  */
 public class AndesResourceManager {
+    /**
+     * A 2 key map to store resource handlers. Keys are {@link ProtocolType} and {@link DestinationType}.
+     */
     Table<ProtocolType, DestinationType, ResourceHandler> resourceManagerTable = HashBasedTable.create();
+
+    /**
+     * A message decoder to decode messages belonging to a {@link ProtocolType}. Decodes messages for end user
+     * applications.
+     */
+    Map<ProtocolType, MessageDecoder> messageDecoderMap = new HashMap<>();
 
     /**
      * AndesChannel for this dead letter channel restore which implements flow control.
@@ -65,7 +77,8 @@ public class AndesResourceManager {
     boolean restoreBlockedByFlowControl = false;
 
     /**
-     * Initializing Manager
+     * Initializing manager
+     *
      * @throws AndesException
      */
     public AndesResourceManager() throws AndesException {
@@ -418,6 +431,16 @@ public class AndesResourceManager {
     }
 
     /**
+     * Gets the pending message count for a given storage queue name.
+     *
+     * @param storageQueueName Storage queue name.
+     * @return Number of pending messages.
+     */
+    public long getMessageCountForStorageQueue(String storageQueueName) throws AndesException {
+        return MessagingEngine.getInstance().getMessageCountOfQueue(storageQueueName);
+    }
+
+    /**
      * Registers a {@link ResourceHandler} for resource managing.
      *
      * @param protocolType    The {@link ProtocolType} for the resource handler.
@@ -437,5 +460,34 @@ public class AndesResourceManager {
      */
     public void unregisterResourceHandler(ProtocolType protocolType, DestinationType destinationType) {
         resourceManagerTable.remove(protocolType, destinationType);
+    }
+
+    /**
+     * Registers a message decoder with given protocol type.
+     *
+     * @param protocolType   The protocol type.
+     * @param messageDecoder The message decoder instance.
+     */
+    public void registerMessageDecoder(ProtocolType protocolType, MessageDecoder messageDecoder) {
+        messageDecoderMap.put(protocolType, messageDecoder);
+    }
+
+    /**
+     * Unregisters a message decoder based on protocol type.
+     *
+     * @param protocolType The protocol type.
+     */
+    public void unregisterMessageDecoder(ProtocolType protocolType) {
+        messageDecoderMap.remove(protocolType);
+    }
+
+    /**
+     * Gets the message decoder from protocol type.
+     *
+     * @param protocolType The protocol type.
+     * @return The message decoder instance.
+     */
+    public MessageDecoder getMessageDecoder(ProtocolType protocolType) {
+        return messageDecoderMap.get(protocolType);
     }
 }

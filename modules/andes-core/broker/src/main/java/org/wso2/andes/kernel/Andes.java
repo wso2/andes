@@ -47,6 +47,7 @@ import org.wso2.carbon.metrics.core.MetricManager;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -820,8 +821,67 @@ public class Andes {
         //TODO:Need to properly clean the subscriptions, deactivate active subscriptions .etc
     }
 
+    /**
+     * Gets the andes resource manager.
+     *
+     * @return Andes resource manager.
+     */
     public AndesResourceManager getAndesResourceManager() {
         return andesResourceManager;
+    }
+
+    /**
+     * Gets the supported protocol types by the broker.
+     *
+     * @return A set of protocol types.
+     */
+    public Set<ProtocolType> getSupportedProtocols() {
+        return AndesContext.getInstance().getAndesContextStore().getProtocols();
+    }
+
+    /**
+     * Whether clustering is enabled in the broker.
+     *
+     * @return true if clustering enabled, else false.
+     */
+    public boolean isClusteringEnabled() {
+        return AndesContext.getInstance().isClusteringEnabled();
+    }
+
+    /**
+     * Gets the node ID.
+     *
+     * @return The node ID.
+     */
+    public String getLocalNodeID() {
+        return ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
+    }
+
+    /**
+     * Gets the coordinators node address as a string.
+     *
+     * @return The IP address
+     */
+    public String getCoordinatorNodeAddress() {
+        return ClusterResourceHolder.getInstance().getClusterManager().getCoordinatorNodeAddress();
+    }
+
+    /**
+     * Gets all the nodes of the cluster.
+     *
+     * @return A list of IP addresses and ports as strings.
+     */
+    public List<String> getAllClusterNodeAddresses() {
+        return ClusterResourceHolder.getInstance().getClusterManager().getAllClusterNodeAddresses();
+    }
+
+    /**
+     * Gets the health of the store.
+     *
+     * @return true if store is healthy, else false.
+     */
+    public boolean getStoreHealth() {
+        return ClusterResourceHolder.getInstance().getClusterManager().getStoreHealth();
     }
 }
 
