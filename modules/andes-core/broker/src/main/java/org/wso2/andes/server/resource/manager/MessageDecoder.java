@@ -42,6 +42,6 @@ public interface MessageDecoder {
      * @return Message content as a string.
      * @throws AndesException
      */
-    String getMessageContentAsString(AndesMessage andesMessage) throws AndesException;
+    String getMessageContent(AndesMessage andesMessage) throws AndesException;
 
 }
