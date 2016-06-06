@@ -106,8 +106,8 @@ public class AndesResourceManager {
     /**
      * Gets the collection of destinations(queues/topics)
      *
-     * @param protocol        The protocol type matching for the destination type. Example : AMQP, amqp, MQTT, mqtt.
-     * @param destinationType The destination type matching for the destination. Example : queue, topic, durable_topic.
+     * @param protocol        The protocol type matching for the destination type.
+     * @param destinationType The destination type matching for the destination.
      * @param keyword         Search keyword for destination name. "*" will return all destinations. Destinations that
      *                        <strong>contains</strong> the keyword will be returned.
      * @param offset          The offset value for the collection of destination.
@@ -122,8 +122,8 @@ public class AndesResourceManager {
     /**
      * Deletes all the destinations.
      *
-     * @param protocol        The protocol type matching for the destination type. Example : amqp, mqtt.
-     * @param destinationType The destination type matching for the destination. Example : queue, topic, durable_topic.
+     * @param protocol        The protocol type matching for the destination type.
+     * @param destinationType The destination type matching for the destination.
      */
     public void deleteDestinations(ProtocolType protocol, DestinationType destinationType) throws AndesException {
         resourceManagerTable.get(protocol, destinationType).deleteDestinations();
@@ -132,8 +132,8 @@ public class AndesResourceManager {
     /**
      * Gets a destination.
      *
-     * @param protocol        The protocol type matching for the destination type. Example : amqp, mqtt.
-     * @param destinationType The destination type matching for the destination. Example : queue, topic, durable_topic.
+     * @param protocol        The protocol type matching for the destination type.
+     * @param destinationType The destination type matching for the destination.
      * @param destinationName The name of the destination.
      * @return A {@link AndesQueue} with details of the destination.
      */
@@ -145,8 +145,8 @@ public class AndesResourceManager {
     /**
      * Creates a new destination.
      *
-     * @param protocol        The protocol type matching for the destination type. Example : amqp, mqtt.
-     * @param destinationType The destination type matching for the destination. Example : queue, topic, durable_topic.
+     * @param protocol        The protocol type matching for the destination type.
+     * @param destinationType The destination type matching for the destination.
      * @param destinationName The name of the destination.
      * @param currentUsername The username of the user who creates the destination.
      * @return A newly created {@link AndesQueue}.
@@ -159,8 +159,8 @@ public class AndesResourceManager {
     /**
      * Deletes a destination.
      *
-     * @param protocol        The protocol type matching for the destination type. Example : amqp, mqtt.
-     * @param destinationType The destination type matching for the destination. Example : queue, topic, durable_topic.
+     * @param protocol        The protocol type matching for the destination type.
+     * @param destinationType The destination type matching for the destination.
      * @param destinationName The name of the destination to be deleted.
      */
     public void deleteDestination(ProtocolType protocol, DestinationType destinationType, String destinationName)
@@ -172,9 +172,8 @@ public class AndesResourceManager {
      * Gets subscriptions belonging to a specific protocol type and destination type. The subscriptions can be filtered
      * by subscription name, destination name and whether they are active or not.
      *
-     * @param protocol         The protocol type matching for the subscription. Example : amqp, mqtt.
-     * @param destinationType  The destination type matching for the subscription. Example : queue, topic,
-     *                         durable_topic.
+     * @param protocol         The protocol type matching for the subscription.
+     * @param destinationType  The destination type matching for the subscription.
      * @param subscriptionName The name of the subscription. If "*", all subscriptions are included. Else subscriptions
      *                         that <strong>contains</strong> the value are included.
      * @param destinationName  The name of the destination name. If "*", all destinations are included. Else
@@ -193,9 +192,8 @@ public class AndesResourceManager {
     /**
      * Close/unsubscribe subscriptions forcefully belonging to a specific protocol type, destination type.
      *
-     * @param protocol        The protocol type matching for the subscription. Example : amqp, mqtt.
-     * @param destinationType The subscription type matching for the subscription. Example : queue, topic,
-     *                        durable_topic.
+     * @param protocol        The protocol type matching for the subscription.
+     * @param destinationType The subscription type matching for the subscription.
      * @param destinationName The name of the destination to close/unsubscribe. If "*", all destinations are included.
      *                        Else destinations that <strong>contains</strong> the value are included.
      */
@@ -207,9 +205,8 @@ public class AndesResourceManager {
     /**
      * Close/Remove/Unsubscribe subscriptions forcefully belonging to a specific protocol type, destination type.
      *
-     * @param protocol        The protocol type matching for the subscription. Example : amqp, mqtt.
-     * @param destinationType The subscription type matching for the subscription. Example : queue, topic,
-     *                        durable_topic.
+     * @param protocol        The protocol type matching for the subscription.
+     * @param destinationType The subscription type matching for the subscription.
      * @param destinationName The name of the destination to close/unsubscribe. If "*", all destinations are included.
      *                        Else destinations that <strong>equals</strong> the value are included.
      */
@@ -221,8 +218,8 @@ public class AndesResourceManager {
     /**
      * Browse message of a destination using message ID.
      *
-     * @param protocol        The protocol type matching for the message. Example : amqp, mqtt.
-     * @param destinationType The destination type matching for the message. Example : queue, topic, durable_topic.
+     * @param protocol        The protocol type matching for the message.
+     * @param destinationType The destination type matching for the message.
      * @param destinationName The name of the destination
      * @param content         Whether to return message content or not.
      * @param nextMessageID   The starting message ID to return from.
@@ -239,8 +236,8 @@ public class AndesResourceManager {
     /**
      * Browse message of a destination. Please note this is time costly.
      *
-     * @param protocol        The protocol type matching for the message. Example : amqp, mqtt.
-     * @param destinationType The destination type matching for the message. Example : queue, topic, durable_topic.
+     * @param protocol        The protocol type matching for the message.
+     * @param destinationType The destination type matching for the message.
      * @param destinationName The name of the destination
      * @param content         Whether to return message content or not.
      * @param offset          Starting index of the messages to return.
@@ -256,8 +253,8 @@ public class AndesResourceManager {
     /**
      * Gets a message by message ID belonging to a particular protocol, destination type and destination name.
      *
-     * @param protocol        The protocol type matching for the message. Example : amqp, mqtt.
-     * @param destinationType The destination type matching for the message. Example : queue, topic, durable_topic.
+     * @param protocol        The protocol type matching for the message.
+     * @param destinationType The destination type matching for the message.
      * @param destinationName The name of the destination to which the message belongs to.
      * @param andesMessageID  The message ID. This message is the andes metadata message ID.
      * @param content         Whether to return content or not.
@@ -271,47 +268,23 @@ public class AndesResourceManager {
     /**
      * Purge all messages belonging to a destination.
      *
-     * @param protocol        The protocol type matching for the message. Example : amqp, mqtt.
-     * @param destinationType The destination type matching for the message. Example : queue, topic, durable_topic.
+     * @param protocol        The protocol type matching for the message.
+     * @param destinationType The destination type matching for the message.
      * @param destinationName The name of the destination to purge messages.
      */
     public void deleteMessages(ProtocolType protocol, DestinationType destinationType, String destinationName) throws
             AndesException {
         resourceManagerTable.get(protocol, destinationType).deleteMessages(destinationName);
     }
-
-    /**
-     * Delete a selected message list from a given Dead Letter Queue of a tenant.
-     *
-     * @param andesMetadataIDs     The browser message Ids
-     * @param destinationQueueName The Dead Letter Queue Name for the tenant
-     */
-    void deleteMessagesFromDeadLetterQueue(long[] andesMetadataIDs, String destinationQueueName) {
-        List<AndesMessageMetadata> messageMetadataList = new ArrayList<>(andesMetadataIDs.length);
-
-        for (long andesMetadataID : andesMetadataIDs) {
-            AndesMessageMetadata messageToRemove = new AndesMessageMetadata(andesMetadataID, null, false);
-            messageToRemove.setStorageQueueName(destinationQueueName);
-            messageToRemove.setDestination(destinationQueueName);
-            messageMetadataList.add(messageToRemove);
-        }
-
-        // Deleting messages which are in the list.
-        try {
-            Andes.getInstance().deleteMessagesFromDLC(messageMetadataList);
-        } catch (AndesException e) {
-            throw new RuntimeException("Error deleting messages from Dead Letter Channel", e);
-        }
-    }
-
+    
     /**
      * Restore a given browser message Id list from the Dead Letter Queue to the same queue it was previous in before
      * moving to the Dead Letter Queue and remove them from the Dead Letter Queue.
      *
-     * @param andesMetadataIDs     The browser message Ids
-     * @param destinationQueueName The Dead Letter Queue Name for the tenant
+     * @param andesMetadataIDs The browser message Ids
+     * @param dlcQueueName     The Dead Letter Queue Name for the tenant
      */
-    void restoreMessagesFromDeadLetterQueue(long[] andesMetadataIDs, String destinationQueueName) {
+    public void restoreMessagesFromDeadLetterQueue(long[] andesMetadataIDs, String dlcQueueName) {
         if (null != andesMetadataIDs) {
             LongArrayList andesMessageIdList = new LongArrayList(andesMetadataIDs.length);
             andesMessageIdList.addAll(andesMetadataIDs);
@@ -361,21 +334,21 @@ public class AndesResourceManager {
                 }
 
             } catch (AndesException e) {
-                throw new RuntimeException("Error restoring messages from " + destinationQueueName, e);
+                throw new RuntimeException("Error restoring messages from " + dlcQueueName, e);
             }
         }
     }
-
+    
     /**
      * Restore a given browser message Id list from the Dead Letter Queue to a different given queue in the same tenant
      * and remove them from the Dead Letter Queue.
      *
-     * @param destinationQueueName    The Dead Letter Queue Name for the tenant
      * @param andesMetadataIDs        The browser message Ids
      * @param newDestinationQueueName The new destination
+     * @param dlcQueueName            The Dead Letter Queue Name for the tenant
      */
-    void restoreMessagesFromDeadLetterQueue(long[] andesMetadataIDs, String newDestinationQueueName, String
-            destinationQueueName) {
+    public void restoreMessagesFromDeadLetterQueue(long[] andesMetadataIDs, String newDestinationQueueName, String
+            dlcQueueName) {
         if (null != andesMetadataIDs) {
 
             LongArrayList andesMessageIdList = new LongArrayList(andesMetadataIDs.length);
@@ -425,8 +398,32 @@ public class AndesResourceManager {
                 }
 
             } catch (AndesException e) {
-                throw new RuntimeException("Error restoring messages from " + destinationQueueName, e);
+                throw new RuntimeException("Error restoring messages from " + dlcQueueName, e);
             }
+        }
+    }
+    
+    /**
+     * Delete a selected message list from a given Dead Letter Queue of a tenant.
+     *
+     * @param andesMetadataIDs The browser message Ids
+     * @param dlcQueueName     The Dead Letter Queue Name for the tenant
+     */
+    public void deleteMessagesFromDeadLetterQueue(long[] andesMetadataIDs, String dlcQueueName) {
+        List<AndesMessageMetadata> messageMetadataList = new ArrayList<>(andesMetadataIDs.length);
+        
+        for (long andesMetadataID : andesMetadataIDs) {
+            AndesMessageMetadata messageToRemove = new AndesMessageMetadata(andesMetadataID, null, false);
+            messageToRemove.setStorageQueueName(dlcQueueName);
+            messageToRemove.setDestination(dlcQueueName);
+            messageMetadataList.add(messageToRemove);
+        }
+        
+        // Deleting messages which are in the list.
+        try {
+            Andes.getInstance().deleteMessagesFromDLC(messageMetadataList);
+        } catch (AndesException e) {
+            throw new RuntimeException("Error deleting messages from Dead Letter Channel", e);
         }
     }
 

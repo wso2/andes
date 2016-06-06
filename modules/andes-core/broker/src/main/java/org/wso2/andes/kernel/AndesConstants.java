@@ -35,4 +35,18 @@ public class AndesConstants {
      */
     public static final String TENANT_SEPARATOR = "/";
 
+    /**
+     * The protocol name for the DLC.
+     */
+    public static final String DLC_PROTOCOL_NAME = "DLC";
+
+    /**
+     * The protocol version for the DLC.
+     */
+    public static final String DLC_PROTOCOL_VERSION = "default";
+
+    /**
+     * The destination type for the DLC.
+     */
+    public static final DestinationType DLC_DESTINATION_TYPE = DestinationType.QUEUE;
 }
