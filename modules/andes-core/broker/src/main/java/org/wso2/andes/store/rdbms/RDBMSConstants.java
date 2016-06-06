@@ -165,14 +165,6 @@ public class RDBMSConstants {
      * We need to select rows that have the DLC_QUEUE_ID = -1 indicating that the message is not moved
      * into the dead letter channel
      */
-    protected static final String PS_INSERT_METADATA =
-            "INSERT INTO " + METADATA_TABLE + " ("
-            + MESSAGE_ID + ","
-            + QUEUE_ID + ","
-            + DLC_QUEUE_ID + ","
-            + METADATA + ")"
-            + " VALUES ( ?,?,-1,? )";
-
     protected static final String PS_INSERT_METADATA_NEW =
             "INSERT INTO " + METADATA_TABLE_NEW + " ("
                     + INSTANCE_ID + ","
@@ -252,10 +244,10 @@ public class RDBMSConstants {
 
     protected static final String PS_SELECT_METADATA_RANGE_FROM_QUEUE =
             "SELECT " + MESSAGE_ID + "," + METADATA
-            + " FROM " + METADATA_TABLE
+            + " FROM " + METADATA_TABLE_NEW
             + " WHERE " + QUEUE_ID + "=?"
             + " AND " + DLC_QUEUE_ID + "=-1"
-            + " AND " + MESSAGE_ID + " BETWEEN ? AND ?"
+            + " AND " + SLOT_ID + " = ?"
             + " ORDER BY " + MESSAGE_ID;
 
     protected static final String PS_SELECT_METADATA_RANGE_FROM_QUEUE_IN_DLC =
@@ -318,7 +310,7 @@ public class RDBMSConstants {
             + " AND " + DLC_QUEUE_ID + "!=-1";
 
     protected static final String PS_DELETE_METADATA =
-            "DELETE  FROM " + METADATA_TABLE
+            "DELETE  FROM " + METADATA_TABLE_NEW
             + " WHERE " + MESSAGE_ID + "=?"
             + " AND " + DLC_QUEUE_ID + "=-1";
 
@@ -550,10 +542,8 @@ public class RDBMSConstants {
      * Prepared statement to delete a slot from database
      */
     protected static final String PS_DELETE_NON_OVERLAPPING_SLOT =
-            "DELETE FROM " + SLOT_TABLE
-            + " WHERE " + START_MESSAGE_ID + "=?"
-            + " AND " + END_MESSAGE_ID + "=?"
-            + " AND " + SLOT_STATE + "!=" + SlotState.OVERLAPPED.getCode();
+            "DELETE FROM " + SLOT_TABLE_NEW
+            + " WHERE " + SLOT_ID + "=?";
 
     /**
      * Prepared statement to delete a slot by queue name

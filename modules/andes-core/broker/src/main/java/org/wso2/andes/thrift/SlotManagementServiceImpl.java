@@ -85,15 +85,11 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
     }
 
     @Override
-    public boolean deleteSlot(String queueName, SlotInfo slotInfo, String nodeId) throws TException {
+    public boolean deleteSlot(String queueName, long slotInfo, String nodeId) throws TException {
         if (AndesContext.getInstance().getClusterAgent().isCoordinator()) {
-            Slot slot = new Slot();
-            boolean result = false;
-            slot.setStartMessageId(slotInfo.getStartMessageId());
-            slot.setEndMessageId(slotInfo.getEndMessageId());
-            slot.setStorageQueueName(slotInfo.getQueueName());
+            boolean result;
             try {
-                result = slotManager.deleteSlot(queueName, slot, nodeId);
+                result = slotManager.deleteSlot(queueName, slotInfo, nodeId);
             } catch (AndesException e) {
                 throw new TException("Failed to delete slot for queue:" + queueName, e);
             }

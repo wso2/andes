@@ -105,8 +105,6 @@ public class SlotDeletionExecutor {
 
                         // Check DB for any remaining messages. (JIRA FIX: MB-1612)
                         // If there are any remaining messages wait till overlapped slot delivers the messages
-                        if (MessagingEngine.getInstance().getMessageCountForQueueInRange(
-                                slot.getStorageQueueName(), slot.getStartMessageId(), slot.getEndMessageId()) == 0) {
                             // Invoke coordinator to delete slot
                             boolean deleteSuccess = deleteSlotAtCoordinator(slot);
                             if (!deleteSuccess) {
@@ -123,9 +121,6 @@ public class SlotDeletionExecutor {
                                     slotWorker.deleteSlot(slot);
                                 }
                             }
-                        } else {
-                            slotsToDelete.put(slot); // Not deleted. Hence putting back in queue
-                        }
                     }
 
                 } catch (InterruptedException e) {

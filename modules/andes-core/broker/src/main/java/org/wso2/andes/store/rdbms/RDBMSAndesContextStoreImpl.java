@@ -1120,7 +1120,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public boolean deleteSlot(long startMessageId, long endMessageId) throws AndesException {
+    public boolean deleteSlot(long slotId) throws AndesException {
         Connection connection = null;
         PreparedStatement deleteNonOverlappingSlotPS = null;
         PreparedStatement getSlotPS = null;
@@ -1132,41 +1132,40 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
 
             deleteNonOverlappingSlotPS = connection.prepareStatement(RDBMSConstants.PS_DELETE_NON_OVERLAPPING_SLOT);
-            deleteNonOverlappingSlotPS.setLong(1, startMessageId);
-            deleteNonOverlappingSlotPS.setLong(2, endMessageId);
+            deleteNonOverlappingSlotPS.setLong(1, slotId);
 
             int rowsAffected = deleteNonOverlappingSlotPS.executeUpdate();
             connection.commit();
 
             if (rowsAffected == 0) {
                 // Check if the Slot exists in Store
-                getSlotPS = connection.prepareStatement(RDBMSConstants.PS_GET_SLOT);
-                getSlotPS.setLong(1, startMessageId);
-                getSlotPS.setLong(2, endMessageId);
-
-                ResultSet resultSet = getSlotPS.executeQuery();
-
-                // slotDeleted set to true if there is no overlapping slot in the DB
-                slotDeleted = !resultSet.next();
-                resultSet.close();
+//                getSlotPS = connection.prepareStatement(RDBMSConstants.PS_GET_SLOT);
+//                getSlotPS.setLong(1, startMessageId);
+//                getSlotPS.setLong(2, endMessageId);
+//
+//                ResultSet resultSet = getSlotPS.executeQuery();
+//
+//                // slotDeleted set to true if there is no overlapping slot in the DB
+//                slotDeleted = !resultSet.next();
+//                resultSet.close();
+                slotDeleted =false;
             } else {
                 slotDeleted = true;
             }
 
             if (logger.isDebugEnabled()) {
                 if (slotDeleted) {
-                    logger.debug("Slot deleted, startMessageId " + startMessageId + " endMessageId" + endMessageId);
+                    logger.debug("Slot deleted, startMessageId " + slotId);
                 } else {
                     logger.debug(
-                            "Cannot delete slot, startMessageId " + startMessageId + " endMessageId" + endMessageId);
+                            "Cannot delete slot, startMessageId " + slotId);
                 }
             }
 
             return slotDeleted;
         } catch (SQLException e) {
             String errMsg =
-                    RDBMSConstants.TASK_DELETE_SLOT + " startMessageId: " + startMessageId + " endMessageId: " +
-                            endMessageId;
+                    RDBMSConstants.TASK_DELETE_SLOT + " startMessageId: " + slotId;
             rollback(connection, RDBMSConstants.TASK_DELETE_SLOT);
             throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {

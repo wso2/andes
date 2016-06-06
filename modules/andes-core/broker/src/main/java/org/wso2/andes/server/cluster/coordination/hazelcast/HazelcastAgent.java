@@ -506,45 +506,46 @@ public class HazelcastAgent implements SlotAgent {
      * {@inheritDoc}
      */
     @Override
-    public boolean deleteSlot(String nodeId, String queueName, long startMessageId, long endMessageId)
+    public boolean deleteSlot(String nodeId, String queueName, long slotId)
             throws AndesException {
-        boolean slotDeleted = false;
-        try {
-            HashMap<String, TreeSet<Slot>> queueToSlotMap = null;
-            HashmapStringTreeSetWrapper wrapper = this.slotAssignmentMap.get(nodeId);
-            if (null != wrapper) {
-                queueToSlotMap = wrapper.getStringListHashMap();
-            }
-            if (null != queueToSlotMap) {
-                TreeSet<Slot> currentSlotList = queueToSlotMap.get(queueName);
-                if (null != currentSlotList) {
-                    // com.google.gson.Gson gson = new GsonBuilder().create();
-                    //get the actual reference of the slot to be removed
-                    Slot matchingSlot = null; //currentSlotList.ceiling(emptySlot);
-                    for (Slot slot : currentSlotList) {
-                        if (slot.getStartMessageId() == startMessageId) {
-                            matchingSlot = slot;
-                        }
-                    }
-                    if (null != matchingSlot) {
-                        if (matchingSlot.addState(SlotState.DELETED)) {
-                            currentSlotList.remove(matchingSlot);
-                            queueToSlotMap.put(queueName, currentSlotList);
-                            wrapper.setStringListHashMap(queueToSlotMap);
-                            slotAssignmentMap.set(nodeId, wrapper);
-                            slotDeleted = true;
-                        }
-                    } else {
-                        // We can say slot deleted since the slot does not exist
-                        slotDeleted = true;
-                    }
-                }
-            }
-        } catch (HazelcastInstanceNotActiveException ex) {
-            throw new AndesException("Failed to delete slot for queue : " +
-                    queueName + " from node " + nodeId, ex);
-        }
-        return slotDeleted;
+//        boolean slotDeleted = false;
+//        try {
+//            HashMap<String, TreeSet<Slot>> queueToSlotMap = null;
+//            HashmapStringTreeSetWrapper wrapper = this.slotAssignmentMap.get(nodeId);
+//            if (null != wrapper) {
+//                queueToSlotMap = wrapper.getStringListHashMap();
+//            }
+//            if (null != queueToSlotMap) {
+//                TreeSet<Slot> currentSlotList = queueToSlotMap.get(queueName);
+//                if (null != currentSlotList) {
+//                    // com.google.gson.Gson gson = new GsonBuilder().create();
+//                    //get the actual reference of the slot to be removed
+//                    Slot matchingSlot = null; //currentSlotList.ceiling(emptySlot);
+//                    for (Slot slot : currentSlotList) {
+//                        if (slot.getStartMessageId() == startMessageId) {
+//                            matchingSlot = slot;
+//                        }
+//                    }
+//                    if (null != matchingSlot) {
+//                        if (matchingSlot.addState(SlotState.DELETED)) {
+//                            currentSlotList.remove(matchingSlot);
+//                            queueToSlotMap.put(queueName, currentSlotList);
+//                            wrapper.setStringListHashMap(queueToSlotMap);
+//                            slotAssignmentMap.set(nodeId, wrapper);
+//                            slotDeleted = true;
+//                        }
+//                    } else {
+//                        // We can say slot deleted since the slot does not exist
+//                        slotDeleted = true;
+//                    }
+//                }
+//            }
+//        } catch (HazelcastInstanceNotActiveException ex) {
+//            throw new AndesException("Failed to delete slot for queue : " +
+//                    queueName + " from node " + nodeId, ex);
+//        }
+//        return slotDeleted;
+        throw new NotImplementedException();
     }
 
     /**

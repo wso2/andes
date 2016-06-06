@@ -36,7 +36,7 @@ service SlotManagementService {
 
     /* Delete empty slots
     */
-    bool deleteSlot(1: string queueName, 2: SlotInfo slotInfo, 3: string nodeId),
+    bool deleteSlot(1: string queueName, 2: i64 slotId, 3: string nodeId),
 
     /* Re-assign the slot when there are no local subscribers in the node
     */

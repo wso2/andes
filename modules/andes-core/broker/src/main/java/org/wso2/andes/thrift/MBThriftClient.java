@@ -178,19 +178,17 @@ public class MBThriftClient {
      * @return whether slot is deleted successfully
      * @throws ConnectionException
      */
-    public static synchronized boolean deleteSlot(String queueName, Slot slot,
+    public static synchronized boolean deleteSlot(String queueName, long slot,
                                                String nodeId) throws ConnectionException {
-        SlotInfo slotInfo = new SlotInfo(slot.getStartMessageId(), slot.getEndMessageId(),
-                slot.getStorageQueueName(),nodeId,slot.isAnOverlappingSlot());
         boolean deleteSuccess = false;
         try {
             client = getServiceClient();
-            deleteSuccess = client.deleteSlot(queueName, slotInfo, nodeId);
+            deleteSuccess = client.deleteSlot(queueName, slot, nodeId);
         } catch (TException e) {
             try {
                 //retry to connect once
                 reConnectToServer();
-                deleteSuccess = client.deleteSlot(queueName, slotInfo, nodeId);
+                deleteSuccess = client.deleteSlot(queueName, slot, nodeId);
             } catch (TException e1) {
                 handleCoordinatorChanges();
                 throw new ConnectionException("Coordinator has changed", e);

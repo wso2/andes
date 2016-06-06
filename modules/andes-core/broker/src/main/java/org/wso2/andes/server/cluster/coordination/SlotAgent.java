@@ -45,10 +45,9 @@ public interface SlotAgent {
 	 *
 	 * @param nodeId id of the node
 	 * @param queueName queue name
-	 * @param startMessageId start message id
-	 * @param endMessageId end message id
+	 * @param slotId Id of the empty slot
 	 */
-	boolean deleteSlot(String nodeId, String queueName, long startMessageId, long endMessageId) throws AndesException;
+	boolean deleteSlot(String nodeId, String queueName, long slotId) throws AndesException;
 
 	/**
 	 * Delete slot assignments related to a specific queue name by

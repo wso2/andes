@@ -79,7 +79,7 @@ public class SlotCoordinatorCluster implements SlotCoordinator {
      */
     @Override
     public boolean deleteSlot(String queueName, Slot slot) throws ConnectionException {
-        return MBThriftClient.deleteSlot(queueName, slot, nodeId);
+        return MBThriftClient.deleteSlot(queueName, slot.getSlotId(), nodeId);
     }
 
     /**

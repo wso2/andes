@@ -102,16 +102,16 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
      * {@inheritDoc}
      */
     @Override
-    public boolean deleteSlot(String nodeId, String queueName, long startMessageId, long endMessageId)
+    public boolean deleteSlot(String nodeId, String queueName, long slotId)
             throws AndesException {
 
-        String task = "delete slot with start message id: " + startMessageId + ", end message id: " + endMessageId
+        String task = "delete slot with start message id: " + slotId
                       + " for queue: " + queueName + " and node: " + nodeId;
         
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
             waitUntilStoresBecomeAvailable(task);
             try {
-                return andesContextStore.deleteSlot(startMessageId, endMessageId);
+                return andesContextStore.deleteSlot(slotId);
             } catch (AndesStoreUnavailableException e) {
                 handleFailure(attemptCount, task, e);
 

@@ -150,13 +150,13 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
                     if (messageDeliveryInfo.messageBufferHasRoom()) {
 
                         //get a slot from coordinator.
-                        Slot currentSlot = requestSlot(storageQueueName);
-                        currentSlot.setDestinationOfMessagesInSlot(destinationOfMessagesInQueue);
+                        long currentSlotId = requestSlotId(storageQueueName);
+                        //currentSlot.setDestinationOfMessagesInSlot(destinationOfMessagesInQueue);
 
                         /**
                          * If the slot is empty
                          */
-                        if (0 == currentSlot.getEndMessageId()) {
+                        if (-1 == currentSlotId) {
 
                                     /*
                                     If the message buffer in MessageFlusher is not empty
@@ -183,18 +183,16 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
                             }
                         } else {
                             if (log.isDebugEnabled()) {
-                                log.debug("Received slot for storage queue " + storageQueueName + " " +
-                                        "is: " + currentSlot.getStartMessageId() +
-                                        " - " + currentSlot.getEndMessageId() +
-                                        "Thread Id:" + Thread.currentThread().getId());
+                                log.debug("Received slot for storage queue " + storageQueueName + " "
+                                        + "is: " + currentSlotId
+                                        + "Thread Id:" + Thread.currentThread().getId());
                             }
                             List<DeliverableAndesMetadata> messagesRead = getMetaDataListBySlot(storageQueueName,
-                                    currentSlot);
+                                    currentSlotId);
 
                             if (messagesRead != null && !messagesRead.isEmpty()) {
                                 if (log.isDebugEnabled()) {
-                                    log.debug("Number of messages read from slot " + currentSlot.getStartMessageId()
-                                            + " - " + currentSlot.getEndMessageId() + " is " + messagesRead.size()
+                                    log.debug("Number of messages read from slot " + currentSlotId + " is " + messagesRead.size()
                                             + " storage queue= " + storageQueueName);
                                 }
 
@@ -202,10 +200,13 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
 
                                 Map<String, Slot> subscriptionSlots = storageQueueToSlotTracker.get(storageQueueName);
 
-                                Slot trackedSlot = subscriptionSlots.get(currentSlot.getId());
+                                String slotIdAsAString = Long.toString(currentSlotId);
+                                Slot trackedSlot = subscriptionSlots.get(slotIdAsAString);
                                 if (trackedSlot == null) {
-                                    subscriptionSlots.put(currentSlot.getId(), currentSlot);
-                                    trackedSlot = currentSlot;
+                                    Slot newSlot = new Slot(currentSlotId);
+                                    newSlot.setStorageQueueName(storageQueueName);
+                                    subscriptionSlots.put(slotIdAsAString, newSlot);
+                                    trackedSlot = newSlot;
                                 } else {
                                     if (log.isDebugEnabled()) {
                                         log.debug("Overlapped slot received. Slot ID " + trackedSlot.getId());
@@ -218,8 +219,8 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
                                 MessageFlusher.getInstance()
                                         .sendMessagesInBuffer(messageDeliveryInfo, storageQueueName);
                             } else {
-                                currentSlot.setSlotInActive();
-                                SlotDeletionExecutor.getInstance().executeSlotDeletion(currentSlot);
+//                                currentSlotId.setSlotInActive();
+//                                SlotDeletionExecutor.getInstance().executeSlotDeletion(currentSlotId);
                             }
                         }
 
@@ -309,13 +310,13 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
      * Returns a list of {@link AndesMessageMetadata} in specified slot
      *
      * @param storageQueueName name of the storage queue which this slot belongs to
-     * @param slot             the slot which messages are retrieved.
+     * @param slotId             the slot which messages are retrieved.
      * @return a list of {@link AndesMessageMetadata}
      * @throws AndesException an exception if there are errors at message store level.
      */
-    private List<DeliverableAndesMetadata> getMetaDataListBySlot(String storageQueueName, Slot slot)
+    private List<DeliverableAndesMetadata> getMetaDataListBySlot(String storageQueueName, long slotId)
             throws AndesException {
-        return getMetadataListBySlot(storageQueueName, slot, 0);
+        return getMetadataListBySlot(storageQueueName, slotId, 0);
     }
 
     /**
@@ -327,7 +328,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
      * @return return a list of {@link org.wso2.andes.kernel.AndesMessageMetadata}
      * @throws AndesException
      */
-    private List<DeliverableAndesMetadata> getMetadataListBySlot(String storageQueueName, Slot slot,
+    private List<DeliverableAndesMetadata> getMetadataListBySlot(String storageQueueName, long slot,
             int numberOfRetriesBefore) throws AndesException {
 
         List<DeliverableAndesMetadata> messagesRead;
@@ -350,10 +351,8 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
 
         try {
 
-            long firstMsgId = slot.getStartMessageId();
-            long lastMsgId = slot.getEndMessageId();
             //Read messages in the slot
-            messagesRead = MessagingEngine.getInstance().getMetaDataList(slot, storageQueueName, firstMsgId, lastMsgId);
+            messagesRead = MessagingEngine.getInstance().getMetaDataList(slot, storageQueueName);
 
             if (log.isDebugEnabled()) {
                 StringBuilder messageIDString = new StringBuilder();
@@ -368,13 +367,13 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
             if (numberOfRetriesBefore <= MAX_META_DATA_RETRIEVAL_COUNT) {
                 String errorMsg = String
                         .format("error occurred retrieving metadata list for slot :" + " %s, retry count = %d",
-                                slot.toString(), numberOfRetriesBefore);
+                                slot, numberOfRetriesBefore);
                 log.error(errorMsg, aex);
                 messagesRead = getMetadataListBySlot(storageQueueName, slot, numberOfRetriesBefore + 1);
             } else {
                 String errorMsg = String
                         .format("error occurred retrieving metadata list for slot : %s, in final attempt = %d. "
-                                        + "this slot will not be delivered and become stale in message store", slot.toString(),
+                                        + "this slot will not be delivered and become stale in message store", slot,
                                 numberOfRetriesBefore);
                 throw new AndesException(errorMsg, aex);
             }
@@ -392,7 +391,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
      * @return a {@link Slot}
      * @throws ConnectionException if connectivity to coordinator is lost.
      */
-    private Slot requestSlot(String storageQueueName) throws ConnectionException {
+    private long requestSlotId(String storageQueueName) throws ConnectionException {
     	
     	 if ( networkOutageDetected != null){
              try {
@@ -411,7 +410,6 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
          }
     	
         long startTime = System.currentTimeMillis();
-        Slot currentSlot = slotCoordinator.getSlot(storageQueueName);
         long slotId = slotCoordinator.getSlotId(storageQueueName);
 
         log.info("Returned slot id is " + slotId);
@@ -421,7 +419,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
             log.debug((endTime - startTime) + " milliSec took to get a slot" +
                     " from slot manager");
         }
-        return currentSlot;
+        return slotId;
     }
 
     /**

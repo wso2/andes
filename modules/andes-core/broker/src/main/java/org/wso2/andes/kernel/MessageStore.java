@@ -76,13 +76,6 @@ public interface MessageStore extends HealthAwareStore {
     void storeMessages(long instanceId, long slotId, List<AndesMessage> messageList) throws AndesException;
 
     /**
-     * Store messages into database.
-     *
-     * @param messageList messages to be stored
-     */
-    void storeMessages(List<AndesMessage> messageList) throws AndesException;
-
-    /**
      * Store a message in a different Queue without altering the meta data.
      *
      * @param messageId        The message Id to move
@@ -139,8 +132,7 @@ public interface MessageStore extends HealthAwareStore {
      * @return list of metadata
      * @throws AndesException
      */
-    List<DeliverableAndesMetadata> getMetadataList(Slot slot, final String storageQueueName, long firstMsgId,
-            long lastMsgID) throws AndesException;
+    List<DeliverableAndesMetadata> getMetadataList(long slot, final String storageQueueName) throws AndesException;
 
     /**
      * Get number of messages in the queue within the message id range

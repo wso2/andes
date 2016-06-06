@@ -42,15 +42,16 @@ public class SlotUtils {
      * @return Whether the slot is empty or not
      */
     public static boolean checkSlotEmptyFromMessageStore(Slot slot) {
-        try {
-            List<DeliverableAndesMetadata> messagesReturnedFromCassandra =
-                    MessagingEngine.getInstance().getMetaDataList(slot, slot.getStorageQueueName(), slot
-                                    .getStartMessageId(),
-                            slot.getEndMessageId());
-            return messagesReturnedFromCassandra == null || messagesReturnedFromCassandra.isEmpty();
-        } catch (AndesException e) {
-            log.error("Error occurred while querying metadata from message store", e);
+        // TODO: Implement
+//        try {
+//            List<DeliverableAndesMetadata> messagesReturnedFromCassandra =
+//                    MessagingEngine.getInstance().getMetaDataList(slot, slot.getStorageQueueName(), slot
+//                                    .getStartMessageId(),
+//                            slot.getEndMessageId());
+//            return messagesReturnedFromCassandra == null || messagesReturnedFromCassandra.isEmpty();
+//        } catch (AndesException e) {
+//            log.error("Error occurred while querying metadata from message store", e);
             return false;
-        }
+//        }
     }
 }

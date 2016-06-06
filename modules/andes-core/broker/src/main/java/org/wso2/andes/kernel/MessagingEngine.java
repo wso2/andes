@@ -207,8 +207,6 @@ public class MessagingEngine {
             contextStore.createSlot(instanceID, slotId, targetQueueName, queueToMsgsMap.get(targetQueueName).size());
             messageStore.storeMessages(instanceID, slotId, messageList);
         }
-
-        messageStore.storeMessages(messageList);
     }
 
     /**
@@ -597,9 +595,8 @@ public class MessagingEngine {
      * @return List of message metadata
      * @throws AndesException
      */
-    public List<DeliverableAndesMetadata> getMetaDataList(final Slot slot, final String queueName, long firstMsgId,
-                                                          long lastMsgID) throws AndesException {
-        return messageStore.getMetadataList(slot, queueName, firstMsgId, lastMsgID);
+    public List<DeliverableAndesMetadata> getMetaDataList(final long slot, final String queueName) throws AndesException {
+        return messageStore.getMetadataList(slot, queueName);
     }
 
     /**
