@@ -141,11 +141,12 @@ public class DLCQueueUtils {
 
         // Skip creating if already available
 //        if (null == queue) {
-//            ProtocolType dlcProtocolType = new ProtocolType("DLC", "default");
+//            ProtocolType dlcProtocolType =
+//                                new ProtocolType(AndesConstants.DLC_PROTOCOL_NAME, AndesConstants.DLC_PROTOCOL_VERSION);
 //
 //            //store a queue for DLC and notify the Hazelcast instance about the change
 //            Andes.getInstance().createQueue(new InboundQueueEvent(
-//                    dlcQueueName, tenantOwner, false, true, dlcProtocolType, DestinationType.QUEUE));
+//                    dlcQueueName, tenantOwner, false, true, dlcProtocolType, AndesConstants.DLC_DESTINATION_TYPE));
 //
 //            //add the queue into internal qpid
 //            ClusterResourceHolder.getInstance().getConfigSynchronizer().queue(dlcQueueName, tenantOwner,

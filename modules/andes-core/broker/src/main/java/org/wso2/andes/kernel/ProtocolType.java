@@ -111,8 +111,8 @@ public final class ProtocolType {
      * and the the hashcode number set will only grow when a new protocol is plugged in to Andes.
      */
     private void generateHashCode() {
-        int result = protocolName.hashCode();
-        result = 31 * result + version.hashCode();
+        int result = protocolName.toLowerCase().hashCode();
+        result = 31 * result + version.toLowerCase().hashCode();
         this.hashCode = result;
     }
 
