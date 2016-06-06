@@ -94,6 +94,7 @@ public class ClusterManager implements StoreHealthListener{
      */
     public void init() throws AndesException{
 
+
         if (AndesContext.getInstance().isClusteringEnabled()) {
             initClusterMode();
             ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()

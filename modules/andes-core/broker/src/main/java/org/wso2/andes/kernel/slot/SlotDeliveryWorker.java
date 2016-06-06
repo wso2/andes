@@ -27,6 +27,8 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.DestinationType;
+import org.wso2.andes.kernel.MasterSlaveStateChangeListener;
+import org.wso2.andes.kernel.MasterSlaveStateManager;
 import org.wso2.andes.kernel.MessageDeliveryInfo;
 import org.wso2.andes.kernel.MessageFlusher;
 import org.wso2.andes.kernel.MessagingEngine;
@@ -535,7 +537,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
 
     }
 
-    
+
     /**
      * Check if the given storage queue is already added in the current worker.
      *
@@ -545,7 +547,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
     public boolean isStorageQueueAdded(String storageQueueName) {
         return storageQueueDataMap.containsKey(storageQueueName);
     }
-    
+
     /**
      * {@inheritDoc}
      * <p> Creates a {@link SettableFuture} indicating message store became offline.
@@ -593,7 +595,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
         log.warn(this.getId() + ": Clustering outage, stopping work");
         flagNetworkoutage();
     }
-    
+
     /**
      * Convenient utility method to indicate network/clustering is not working/healthy.
      */
@@ -607,8 +609,8 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
     }
  
 
-    
-	
+
+
 	/**
 	 * network partition is healed. therefore removing the barrier (- allows the this thread to work) 
 	 */
@@ -618,5 +620,6 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
 		networkOutageDetected.set(false);
 
 	}
+
 }
 

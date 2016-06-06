@@ -70,6 +70,7 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 		andesContextStore = AndesContext.getInstance().getAndesContextStore();
 		amqpConstructStore = AndesContext.getInstance().getAMQPConstructStore();
         isRunning = new AtomicBoolean(false);
+
 	}
 
 	@Override
@@ -259,4 +260,5 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 			log.info("AndesRecoveryTask became operational.");
 		}
 	}
+
 }

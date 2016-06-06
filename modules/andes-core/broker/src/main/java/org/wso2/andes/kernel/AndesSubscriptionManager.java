@@ -23,6 +23,7 @@ import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.slot.OrphanedSlotHandler;
 import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
+import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
@@ -35,7 +36,7 @@ import java.util.*;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class AndesSubscriptionManager implements NetworkPartitionListener {
+public class AndesSubscriptionManager implements NetworkPartitionListener, MasterSlaveStateChangeListener {
 
     private static Log log = LogFactory.getLog(AndesSubscriptionManager.class);
 
@@ -60,6 +61,9 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
         addSubscriptionListener(new OrphanedMessageHandler());
         addSubscriptionListener(new ClusterCoordinationHandler(HazelcastAgent.getInstance()));
         addSubscriptionListener(new OrphanedSlotHandler());
+
+        // Register this class to receive notifications on the Master/Slave state change
+        MasterSlaveStateManager.addMasterSlaveStateListener(this);
     }
 
     /**
@@ -162,6 +166,29 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
                 notifyLocalSubscriptionHasChanged(mockSubscription, SubscriptionListener.SubscriptionChange.DELETED);
             }
         }
+    }
+
+    /**
+     * Bring the node to the state of the cluster. If this is the coordinator, disconnect all active durable
+     * subscriptions.
+     *
+     * @throws AndesException
+     */
+    public void syncNodeWithPersistedState() throws AndesException {
+
+        ClusterResourceHolder.getInstance().getSubscriptionManager().deactivateAllActiveSubscriptions();
+
+        //at the startup reload exchanges/queues/bindings and subscriptions
+        log.info("Syncing exchanges, queues, bindings and subscriptions");
+        ClusterResourceHolder.getInstance().getAndesRecoveryTask()
+                .recoverExchangesQueuesBindingsSubscriptions();
+
+        // All non-durable subscriptions subscribed from this node will be deleted since, there
+        // can't be any non-durable subscriptions as node just started.
+        // closeAllClusterSubscriptionsOfNode() should only be called after
+        // recoverExchangesQueuesBindingsSubscriptions() executed.
+        String myNodeId = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
+        closeAllLocalSubscriptionsOfNode(myNodeId);
     }
 
     /**
@@ -565,5 +592,28 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
     @Override
     public void minimumNodeCountFulfilled(int currentNodeCount) {
         // No action required.
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void electedAsMaster() {
+        log.info("This node is elected as the master. Hence synchronizing subscriptions.");
+        try {
+            syncNodeWithPersistedState();
+        } catch (AndesException e) {
+            //Be slave
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void electedAsSlave() {
+        //Forcefully disconnect all the  subscribers once this node is becomes the slave
+        log.warn("This node is elected as a slave, forcefully disconnecting all subscribers");
+        forcefullyDisconnectAllLocalSubscriptionsOfNode();
     }
 }

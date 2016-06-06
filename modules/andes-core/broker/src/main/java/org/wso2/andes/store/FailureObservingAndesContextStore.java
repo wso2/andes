@@ -852,4 +852,64 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
             throw exception;
         }
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean acquireLock() {
+        return wrappedAndesContextStoreInstance.acquireLock();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void insertHeartBeat(String nodeId, int hearBeat) throws AndesException {
+        try {
+            wrappedAndesContextStoreInstance.insertHeartBeat(nodeId, hearBeat);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<String, Integer> readHeartBeat() throws AndesException {
+        try {
+            return wrappedAndesContextStoreInstance.readHeartBeat();
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<String, Integer> readNodes() throws AndesException {
+        try {
+            return wrappedAndesContextStoreInstance.readNodes();
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void updateHeartBeat(String nodeId, int heartBeat) throws AndesException {
+        try {
+            wrappedAndesContextStoreInstance.updateHeartBeat(nodeId, heartBeat);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
 }

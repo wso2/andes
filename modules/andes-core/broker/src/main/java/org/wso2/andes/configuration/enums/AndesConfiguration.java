@@ -656,7 +656,36 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * subscriptions) etc.
      */
     RECOVERY_NETWORK_PARTITIONS_MINIMUM_CLUSTER_SIZE("recovery/networkPartitionsDetection/minimumClusterSize",
-                                                     "1", Integer.class);
+                                                     "1", Integer.class),
+    /**
+     * Time interval in seconds for the master election task to run.
+     */
+    MASTER_ELECTION_TASK_PERIOD("deployment/masterSlave/masterElectionTaskInterval", "10", Integer.class),
+
+    /**
+     * Specifies if the deployment pattern is set to Master/Slave. If this is set to true, clustering will be
+     * disabled by default.
+     */
+    MASTER_SLAVE_ENABLED("deployment/masterSlave/@enabled", "true", Boolean.class),
+
+    /**
+     * The mechanism to elect the master. Could be one of 'DEFAULT' or 'LOCK' where 'DEFAULT' depends on the heartbeat
+     * value set by the master where as 'LOCK' depends on locking tables in the database.
+     */
+    MASTER_ELECTION_MECHANISM("deployment/masterSlave/electionMethod", "LOCK", String.class),
+
+    /**
+     * The node identifier for this broker node. This is useful if the mechanism of master election is set to default.
+     * The nodeID is what distinguishes which node sent the heartbeat to the database.
+     */
+    MASTER_SLAVE_NODE_ID("deployment/masterSlave/nodeID", "MB1", String.class),
+
+    /**
+     * The order of the priority given to the nodes to be elected as the master. If two nodes fight to be the master at
+     * the same time, the node which comes earlier in the order will be elected as the master.
+     */
+    MASTER_ELECTION_FAILOVER_ORDER("deployment/masterSlave/priorities", "MB1;MB2;MB3",
+            String.class);
 
     /**
      * Meta data about configuration.
