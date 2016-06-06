@@ -29,6 +29,7 @@ import java.util.UUID;
 import javax.security.auth.Subject;
 
 import org.wso2.andes.AMQException;
+import org.wso2.andes.amqp.AMQPAuthenticationManager;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.configuration.qpid.ConnectionConfig;
 import org.wso2.andes.server.logging.LogActor;
@@ -368,7 +369,7 @@ public class ServerConnection extends Connection implements AMQConnectionModel, 
         else
         {
             _authorizedSubject = authorizedSubject;
-            _authorizedPrincipal = UsernamePrincipal.getUsernamePrincipalFromSubject(_authorizedSubject);
+            _authorizedPrincipal = AMQPAuthenticationManager.extractUserPrincipalFromSubject(_authorizedSubject);
         }
     }
 

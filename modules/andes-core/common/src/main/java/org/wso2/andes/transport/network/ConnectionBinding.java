@@ -71,13 +71,6 @@ public abstract class ConnectionBinding
     public Connection endpoint(Sender<ByteBuffer> sender)
     {
         Connection conn = connection();
-
-        if (conn.getConnectionSettings() != null && 
-            conn.getConnectionSettings().isUseSASLEncryption())
-        {
-            sender = new SASLSender(sender);
-            conn.addConnectionListener((ConnectionListener)sender);
-        }
         
         // XXX: hardcoded max-frame
         Disassembler dis = new Disassembler(sender, MAX_FRAME_SIZE);
@@ -87,17 +80,7 @@ public abstract class ConnectionBinding
 
     public Receiver<ByteBuffer> receiver(Connection conn)
     {
-        if (conn.getConnectionSettings() != null && 
-            conn.getConnectionSettings().isUseSASLEncryption())
-        {
-            SASLReceiver receiver = new SASLReceiver(new InputHandler(new Assembler(conn)));
-            conn.addConnectionListener((ConnectionListener)receiver);
-            return receiver;
-        }
-        else
-        {
-            return new InputHandler(new Assembler(conn));
-        }
+        return new InputHandler(new Assembler(conn));
     }
 
 }

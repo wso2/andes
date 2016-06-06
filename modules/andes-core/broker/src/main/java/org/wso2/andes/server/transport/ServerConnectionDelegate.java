@@ -17,15 +17,16 @@
  */
 package org.wso2.andes.server.transport;
 
+import org.wso2.andes.amqp.AMQPAuthenticationManager;
 import org.wso2.andes.protocol.ProtocolEngine;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.registry.IApplicationRegistry;
 import org.wso2.andes.server.security.SecurityManager;
-import org.wso2.andes.server.security.auth.AuthenticationResult;
-import org.wso2.andes.server.security.auth.AuthenticationResult.AuthenticationStatus;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.transport.*;
 
+import javax.security.auth.Subject;
+import javax.security.auth.login.LoginException;
 import javax.security.sasl.SaslException;
 import javax.security.sasl.SaslServer;
 import java.util.*;
@@ -80,22 +81,16 @@ public class ServerConnectionDelegate extends ServerDelegate
 
     protected void secure(final SaslServer ss, final Connection conn, final byte[] response)
     {
-        final AuthenticationResult authResult = _appRegistry.getAuthenticationManager().authenticate(ss, response);
+
         final ServerConnection sconn = (ServerConnection) conn;
-        
-        
-        if (AuthenticationStatus.SUCCESS.equals(authResult.getStatus()))
-        {
+
+        try {
+            Subject authSubject = AMQPAuthenticationManager.authenticate(response);
             tuneAuthorizedConnection(sconn);
-            sconn.setAuthorizedSubject(authResult.getSubject());
-        }
-        else if (AuthenticationStatus.CONTINUE.equals(authResult.getStatus()))
-        {
-            connectionAuthContinue(sconn, authResult.getChallenge());
-        }
-        else
-        {
-            connectionAuthFailed(sconn, authResult.getCause());
+            sconn.setAuthorizedSubject(authSubject);
+        } catch (LoginException e) {
+            _logger.error("Authentication error." , e);
+            connectionAuthFailed(sconn, e);
         }
     }
 

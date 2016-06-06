@@ -26,10 +26,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import javax.security.sasl.Sasl;
-import javax.security.sasl.SaslException;
-import javax.security.sasl.SaslServer;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,51 +75,18 @@ public class ServerDelegate extends ConnectionDelegate
             return;
         }
 
-        try
-        {
-            
-            SaslServer ss = createSaslServer(mechanism);
-            if (ss == null)
-            {
-                conn.connectionClose(ConnectionCloseCode.CONNECTION_FORCED,
-                     "null SASL mechanism: " + mechanism);
-                return;
-            }
-            conn.setSaslServer(ss);
-            secure(conn, ok.getResponse());
-        }
-        catch (SaslException e)
-        {
-            connectionAuthFailed(conn, e);
-        }
+        secure(conn, ok.getResponse());
     }
 
-    protected SaslServer createSaslServer(String mechanism)
-            throws SaslException
+    protected void secure(final Connection conn, final byte[] response)
     {
-        SaslServer ss = Sasl.createSaslServer(mechanism, "AMQP", "localhost", null, null);
-        return ss;
-    }
 
-    protected void secure(final SaslServer ss, final Connection conn, final byte[] response)
-    {
-        try
-        {
-            byte[] challenge = ss.evaluateResponse(response);
-            if (ss.isComplete())
-            {
-                ss.dispose();
-                tuneAuthorizedConnection(conn);
-            }
-            else
-            {
-                connectionAuthContinue(conn, challenge);
-            }
-        }
-        catch (SaslException e)
-        {
-            connectionAuthFailed(conn, e);
-        }
+//        try {
+//            AMQPAuthenticationManager.authenticate(response);
+//            tuneAuthorizedConnection(conn);
+//        } catch (LoginException e) {
+//            connectionAuthFailed(conn, e);
+//        }
     }
 
     protected void connectionAuthFailed(final Connection conn, Exception e)
@@ -140,15 +103,9 @@ public class ServerDelegate extends ConnectionDelegate
     protected void tuneAuthorizedConnection(final Connection conn)
     {
         conn.connectionTune
-            (getChannelMax(),
-             org.wso2.andes.transport.network.ConnectionBinding.MAX_FRAME_SIZE,
-             0, getHeartbeatMax());
-    }
-    
-    protected void secure(final Connection conn, final byte[] response)
-    {
-        final SaslServer ss = conn.getSaslServer();
-        secure(ss, conn, response);
+                (getChannelMax(),
+                        org.wso2.andes.transport.network.ConnectionBinding.MAX_FRAME_SIZE,
+                        0, getHeartbeatMax());
     }
 
     protected int getHeartbeatMax()

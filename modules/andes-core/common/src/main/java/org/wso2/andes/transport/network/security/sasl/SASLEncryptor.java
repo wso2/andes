@@ -42,19 +42,20 @@ public abstract class SASLEncryptor implements ConnectionListener
     
     public void opened(Connection conn) 
     {
-        if (conn.getSaslClient() != null)
-        {
-            saslClient = conn.getSaslClient();
-            if (saslClient.isComplete() && saslClient.getNegotiatedProperty(Sasl.QOP) == "auth-conf")
-            {                
-                sendBuffSize = Integer.parseInt(
-                        (String)saslClient.getNegotiatedProperty(Sasl.RAW_SEND_SIZE));
-                recvBuffSize = Integer.parseInt(
-                        (String)saslClient.getNegotiatedProperty(Sasl.MAX_BUFFER));
-                securityLayerEstablished();
-                securityLayerEstablished = true;
-            }
-        }
+        // Akafixthis: this class can't import from andes-core
+//        if (conn.getSaslClient() != null)
+//        {
+//            saslClient = conn.getSaslClient();
+//            if (saslClient.isComplete() && saslClient.getNegotiatedProperty(Sasl.QOP) == "auth-conf")
+//            {
+//                sendBuffSize = Integer.parseInt(
+//                        (String)saslClient.getNegotiatedProperty(Sasl.RAW_SEND_SIZE));
+//                recvBuffSize = Integer.parseInt(
+//                        (String)saslClient.getNegotiatedProperty(Sasl.MAX_BUFFER));
+//                securityLayerEstablished();
+//                securityLayerEstablished = true;
+//            }
+//        }
     }
     
     public void exception(Connection conn, ConnectionException exception){}

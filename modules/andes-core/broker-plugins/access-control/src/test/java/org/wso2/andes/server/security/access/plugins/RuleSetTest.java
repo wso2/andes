@@ -26,6 +26,7 @@ import java.util.Arrays;
 
 import javax.security.auth.Subject;
 
+import org.wso2.andes.amqp.AMQPAuthenticationManager;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.server.security.Result;
 import org.wso2.andes.server.security.access.ObjectProperties;
@@ -86,7 +87,7 @@ public class RuleSetTest extends QpidTestCase
     
     public void assertDenyGrantAllow(Subject subject, Operation operation, ObjectType objectType, ObjectProperties properties)
     {
-        final Principal identity = UsernamePrincipal.getUsernamePrincipalFromSubject(subject);
+        final Principal identity = AMQPAuthenticationManager.extractUserPrincipalFromSubject(subject);
         
         assertEquals(Result.DENIED, _ruleSet.check(subject, operation, objectType, properties));
         _ruleSet.grant(0, identity.getName(), Permission.ALLOW, operation, objectType, properties);

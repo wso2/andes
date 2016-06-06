@@ -22,6 +22,7 @@ import org.wso2.andes.AMQChannelException;
 import org.wso2.andes.AMQConnectionException;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
+import org.wso2.andes.amqp.AMQPAuthenticationManager;
 import org.wso2.andes.codec.AMQCodecFactory;
 import org.wso2.andes.codec.AMQDecoder;
 import org.wso2.andes.common.ClientProperties;
@@ -997,7 +998,8 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
     
     public Principal getAuthorizedPrincipal()
     {
-        return _authorizedSubject == null ? null : UsernamePrincipal.getUsernamePrincipalFromSubject(_authorizedSubject);
+        return _authorizedSubject == null ? null :
+                AMQPAuthenticationManager.extractUserPrincipalFromSubject(_authorizedSubject);
     }
 
     public SocketAddress getRemoteAddress()

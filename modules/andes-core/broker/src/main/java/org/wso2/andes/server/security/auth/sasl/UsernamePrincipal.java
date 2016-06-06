@@ -79,19 +79,4 @@ public class UsernamePrincipal implements Principal
             }
         }
     }
-
-    public static UsernamePrincipal getUsernamePrincipalFromSubject(final Subject authSubject)
-    {
-        if (authSubject == null)
-        {
-            throw new IllegalArgumentException("No authenticated subject.");
-        }
-
-        final Set<UsernamePrincipal> principals = authSubject.getPrincipals(UsernamePrincipal.class);
-        if (principals.size() != 1)
-        {
-            throw new IllegalArgumentException("Can't find single UsernamePrincipal in authenticated subject");
-        }
-        return principals.iterator().next();
-    }
 }

@@ -460,6 +460,11 @@
                 <version>${org.eclipse.osgi.services.version}</version>
             </dependency>
             <dependency>
+                <groupId>org.wso2.carbon.security.caas</groupId>
+                <artifactId>org.wso2.carbon.security.caas</artifactId>
+                <version>${carbon.security.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>com.goldmansachs</groupId>
                 <artifactId>gs-collections-api</artifactId>
                 <version>${gs-collections-api.version}</version>
@@ -631,6 +636,7 @@
         <securevault.version>1.0.0-wso2v2</securevault.version>
         <guava.version>19.0</guava.version>
         <lz4.version>1.3.0</lz4.version>
+        <carbon.security.version>1.0.0-SNAPSHOT</carbon.security.version>
         <gs-collections-api.version>7.0.3</gs-collections-api.version>
         <gs-collections.version>7.0.3</gs-collections.version>
 
