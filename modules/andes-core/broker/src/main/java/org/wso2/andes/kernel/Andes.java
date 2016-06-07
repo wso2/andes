@@ -571,9 +571,8 @@ public class Andes {
      * @return List of message metadata
      * @throws AndesException
      */
-    public List<DeliverableAndesMetadata> getMetaDataList(Slot slot, final String queueName, long firstMsgId,
-            long lastMsgID) throws AndesException {
-        return messagingEngine.getMetaDataList(slot, queueName, firstMsgId, lastMsgID);
+    public List<DeliverableAndesMetadata> getMetaDataList(long slot, final String queueName) throws AndesException {
+        return messagingEngine.getMetaDataList(slot, queueName);
     }
 
     /**

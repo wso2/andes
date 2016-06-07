@@ -26,6 +26,8 @@ service SlotManagementService {
     */
     SlotInfo getSlotInfo(1: string queueName, 2: string nodeId),
 
+    i64 getSlotId(1: string queueName, 2: string nodeId),
+
     /* The updateMessageId operation is to update the message ID in the coordinator after chunk of messages are published.
     *  In addition, the coordinator will check if the received slot overlaps with any existing,assigned slots, 
     *  and memorize such ranges to be given back to the same node.
@@ -34,7 +36,7 @@ service SlotManagementService {
 
     /* Delete empty slots
     */
-    bool deleteSlot(1: string queueName, 2: SlotInfo slotInfo, 3: string nodeId),
+    bool deleteSlot(1: string queueName, 2: i64 slotId, 3: string nodeId),
 
     /* Re-assign the slot when there are no local subscribers in the node
     */

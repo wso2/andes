@@ -1120,7 +1120,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public boolean deleteSlot(long startMessageId, long endMessageId) throws AndesException {
+    public boolean deleteSlot(long slotId) throws AndesException {
         Connection connection = null;
         PreparedStatement deleteNonOverlappingSlotPS = null;
         PreparedStatement getSlotPS = null;
@@ -1132,41 +1132,40 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
 
             deleteNonOverlappingSlotPS = connection.prepareStatement(RDBMSConstants.PS_DELETE_NON_OVERLAPPING_SLOT);
-            deleteNonOverlappingSlotPS.setLong(1, startMessageId);
-            deleteNonOverlappingSlotPS.setLong(2, endMessageId);
+            deleteNonOverlappingSlotPS.setLong(1, slotId);
 
             int rowsAffected = deleteNonOverlappingSlotPS.executeUpdate();
             connection.commit();
 
             if (rowsAffected == 0) {
                 // Check if the Slot exists in Store
-                getSlotPS = connection.prepareStatement(RDBMSConstants.PS_GET_SLOT);
-                getSlotPS.setLong(1, startMessageId);
-                getSlotPS.setLong(2, endMessageId);
-
-                ResultSet resultSet = getSlotPS.executeQuery();
-
-                // slotDeleted set to true if there is no overlapping slot in the DB
-                slotDeleted = !resultSet.next();
-                resultSet.close();
+//                getSlotPS = connection.prepareStatement(RDBMSConstants.PS_GET_SLOT);
+//                getSlotPS.setLong(1, startMessageId);
+//                getSlotPS.setLong(2, endMessageId);
+//
+//                ResultSet resultSet = getSlotPS.executeQuery();
+//
+//                // slotDeleted set to true if there is no overlapping slot in the DB
+//                slotDeleted = !resultSet.next();
+//                resultSet.close();
+                slotDeleted =false;
             } else {
                 slotDeleted = true;
             }
 
             if (logger.isDebugEnabled()) {
                 if (slotDeleted) {
-                    logger.debug("Slot deleted, startMessageId " + startMessageId + " endMessageId" + endMessageId);
+                    logger.debug("Slot deleted, startMessageId " + slotId);
                 } else {
                     logger.debug(
-                            "Cannot delete slot, startMessageId " + startMessageId + " endMessageId" + endMessageId);
+                            "Cannot delete slot, startMessageId " + slotId);
                 }
             }
 
             return slotDeleted;
         } catch (SQLException e) {
             String errMsg =
-                    RDBMSConstants.TASK_DELETE_SLOT + " startMessageId: " + startMessageId + " endMessageId: " +
-                            endMessageId;
+                    RDBMSConstants.TASK_DELETE_SLOT + " startMessageId: " + slotId;
             rollback(connection, RDBMSConstants.TASK_DELETE_SLOT);
             throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
@@ -1236,8 +1235,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     /**
      * {@inheritDoc}
      */
-    @Override public void createSlotAssignment(String nodeId, String queueName, long startMsgId,
-                                               long endMsgId)
+    @Override public void createSlotAssignment(String nodeId, String queueName, long slotId)
             throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
@@ -1249,16 +1247,14 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             preparedStatement =
                     connection.prepareStatement(RDBMSConstants.PS_INSERT_SLOT_ASSIGNMENT);
             preparedStatement.setString(1, nodeId);
-            preparedStatement.setString(2, queueName);
-            preparedStatement.setLong(3, startMsgId);
-            preparedStatement.setLong(4, endMsgId);
+            preparedStatement.setLong(2, slotId);
 
             preparedStatement.executeUpdate();
             connection.commit();
         } catch (SQLException e) {
             String errMsg =
                     RDBMSConstants.TASK_CREATE_SLOT_ASSIGNMENT + " nodeId: " + nodeId + " queueName: " +
-                            queueName + "startMsgId: " + startMsgId + "endMsgId: " + endMsgId;
+                            queueName + "startMsgId: " + slotId;
             rollback(connection, RDBMSConstants.TASK_CREATE_SLOT_ASSIGNMENT);
             throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
@@ -1945,5 +1941,68 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     @Override
     public void removeProtocolType(ProtocolType protocolType) {
         protocols.remove(protocolType);
+    }
+
+    @Override
+    public void createSlot(long instanceID, long slotId, String storageQueue, int messageCount) throws AndesException {
+
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+
+        try {
+
+            connection = getConnection();
+
+            preparedStatement =
+                    connection.prepareStatement(RDBMSConstants.PS_INSERT_SLOT_NEW);
+            preparedStatement.setLong(1, instanceID);
+            preparedStatement.setLong(2, slotId);
+            preparedStatement.setString(3, storageQueue);
+            preparedStatement.setInt(4, messageCount);
+
+            preparedStatement.executeUpdate();
+            connection.commit();
+        } catch (SQLException e) {
+            String errMsg =
+                    RDBMSConstants.TASK_CREATE_SLOT + " instance ID: " + instanceID + " slotID: " +
+                            slotId + " storageQueue:" + storageQueue + " messageCount:" + messageCount;
+            rollback(connection, RDBMSConstants.TASK_CREATE_SLOT);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
+        } finally {
+            close(preparedStatement, RDBMSConstants.TASK_CREATE_SLOT);
+            close(connection, RDBMSConstants.TASK_CREATE_SLOT);
+        }
+    }
+
+    public long getFreshSlot(String queueName, String nodeId) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        long slotId;
+
+        try {
+            connection = getConnection();
+
+            preparedStatement =
+                    connection.prepareStatement(RDBMSConstants.PS_SELECT_FRESH_SLOT);
+            preparedStatement.setString(1, queueName);
+            resultSet = preparedStatement.executeQuery();
+
+            if (resultSet.next()) {
+                slotId = resultSet.getLong(1);
+            } else {
+                slotId = -1;
+            }
+            return slotId;
+
+        } catch (SQLException e) {
+            String errMsg =
+                    RDBMSConstants.TASK_GET_ALL_SLOTS_BY_QUEUE_NAME + " queueName: " + queueName;
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
+        } finally {
+            close(resultSet, RDBMSConstants.TASK_GET_ALL_SLOTS_BY_QUEUE_NAME);
+            close(preparedStatement, RDBMSConstants.TASK_GET_ALL_SLOTS_BY_QUEUE_NAME);
+            close(connection, RDBMSConstants.TASK_GET_ALL_SLOTS_BY_QUEUE_NAME);
+        }
     }
 }

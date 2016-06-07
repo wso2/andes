@@ -117,9 +117,9 @@ public class FailureObservingMessageStore implements MessageStore {
     }
 
     @Override
-    public void storeMessages(List<AndesMessage> messageList) throws AndesException {
+    public void storeMessages(long instanceId, long slotId, List<AndesMessage> messageList) throws AndesException {
         try {
-            wrappedInstance.storeMessages(messageList);
+            wrappedInstance.storeMessages(instanceId, slotId, messageList);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -198,10 +198,9 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public List<DeliverableAndesMetadata> getMetadataList(Slot slot, String storageQueueName, long firstMsgId,
-            long lastMsgID) throws AndesException {
+    public List<DeliverableAndesMetadata> getMetadataList(long slot, String storageQueueName) throws AndesException {
         try {
-            return wrappedInstance.getMetadataList(slot, storageQueueName, firstMsgId, lastMsgID);
+            return wrappedInstance.getMetadataList(slot, storageQueueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

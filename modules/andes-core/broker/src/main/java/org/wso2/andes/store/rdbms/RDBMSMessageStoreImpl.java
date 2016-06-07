@@ -57,13 +57,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
-import static org.wso2.andes.store.rdbms.RDBMSConstants.CONTENT_TABLE;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_CONTENT;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_ID;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.MSG_OFFSET;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_MESSAGE_PART;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_METADATA;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.TASK_RETRIEVING_CONTENT_FOR_MESSAGES;
+import static org.wso2.andes.store.rdbms.RDBMSConstants.*;
 
 
 /**
@@ -370,7 +364,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void storeMessages(List<AndesMessage> messageList) throws AndesException {
+    public void storeMessages(long instanceId, long slotId, List<AndesMessage> messageList) throws AndesException {
         Connection connection = null;
         PreparedStatement storeMetadataPS = null;
         PreparedStatement storeContentPS = null;
@@ -378,12 +372,13 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         try {
 
             connection = getConnection();
-            storeMetadataPS = connection.prepareStatement(PS_INSERT_METADATA);
+            storeMetadataPS = connection.prepareStatement(PS_INSERT_METADATA_NEW);
             storeContentPS = connection.prepareStatement(PS_INSERT_MESSAGE_PART);
 
             for (AndesMessage message : messageList) {
 
-                addMetadataToBatch(storeMetadataPS, message.getMetadata(), message.getMetadata().getStorageQueueName());
+                addMetadataToBatch(storeMetadataPS, instanceId, slotId, message.getMetadata(), message.getMetadata()
+                        .getStorageQueueName());
 
                 for (AndesMessagePart messagePart : message.getContentChunkList()) {
                     addContentToBatch(storeContentPS, messagePart);
@@ -400,8 +395,12 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             addToCache(messageList);
         } catch (BatchUpdateException bue) {
             // If adding some of the messages failed, add them individually
+
+            log.error("Error while storing messages", bue);
+            rollback(connection, RDBMSConstants.TASK_ADDING_METADATA);
+
             for (AndesMessage message : messageList) {
-                storeMessage(message);
+                storeMessage(instanceId, message);
             }
         } catch (AndesException e) {
             rollback(connection, RDBMSConstants.TASK_ADDING_METADATA);
@@ -418,24 +417,25 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
     /**
      * Store a given Andes message to the database and the cache
-     *
-     * @param message The message
+     * TODO: What should we do if the batch fails?
+     * @param message
      * @throws AndesException
      */
-    private void storeMessage(AndesMessage message) throws AndesException {
+    private void storeMessage(long instanceId, AndesMessage message) throws AndesException {
         Connection connection = null;
         PreparedStatement storeMetadataPS = null;
         PreparedStatement storeContentPS = null;
 
         try {
             connection = getConnection();
-            storeMetadataPS = connection.prepareStatement(PS_INSERT_METADATA);
+            storeMetadataPS = connection.prepareStatement(PS_INSERT_METADATA_NEW);
             storeContentPS = connection.prepareStatement(PS_INSERT_MESSAGE_PART);
 
             AndesMessageMetadata metadata = message.getMetadata();
-            storeMetadataPS.setLong(1, metadata.getMessageID());
-            storeMetadataPS.setInt(2, getCachedQueueID(metadata.getStorageQueueName()));
-            storeMetadataPS.setBytes(3, metadata.getMetadata());
+            storeMetadataPS.setLong(1, instanceId);
+            storeMetadataPS.setLong(2, metadata.getMessageID());
+            storeMetadataPS.setInt(3, getCachedQueueID(metadata.getStorageQueueName()));
+            storeMetadataPS.setBytes(4, metadata.getMetadata());
 
             for (AndesMessagePart messagePart : message.getContentChunkList()) {
                 addContentToBatch(storeContentPS, messagePart);
@@ -621,6 +621,40 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * @param queueName         queue to be assigned
      * @throws AndesException
      */
+    private void addMetadataToBatch(PreparedStatement preparedStatement, long instanceId, long slotId,
+                                    AndesMessageMetadata metadata,
+                                    final String queueName) throws AndesException {
+
+        Timer.Context metaAdditionToBatchContext = MetricManager.timer(MetricsConstants.ADD_META_DATA_TO_BATCH, Level
+                .INFO)
+                .start();
+        Timer.Context contextWrite = MetricManager.timer(MetricsConstants.DB_WRITE, Level.INFO).start();
+        try {
+            preparedStatement.setLong(1, instanceId);
+            preparedStatement.setLong(2, slotId);
+            preparedStatement.setLong(3, metadata.getMessageID());
+            preparedStatement.setInt(4, getCachedQueueID(queueName));
+            preparedStatement.setBytes(5, metadata.getMetadata());
+            preparedStatement.addBatch();
+        } catch (SQLException e) {
+            throw rdbmsStoreUtils.convertSQLException(
+                    "error occurred while adding metadata with messaged id: " + metadata.getMessageID() + " to batch",
+                    e);
+        } finally {
+            metaAdditionToBatchContext.stop();
+            contextWrite.stop();
+        }
+    }
+
+    /**
+     * TODO Remove
+     * Adds a single metadata to a batch insert of metadata.
+     *
+     * @param preparedStatement prepared statement to add messages to metadata table
+     * @param metadata          AndesMessageMetadata
+     * @param queueName         queue to be assigned
+     * @throws SQLException
+     */
     private void addMetadataToBatch(PreparedStatement preparedStatement, AndesMessageMetadata metadata,
             final String queueName) throws AndesException {
 
@@ -752,8 +786,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public List<DeliverableAndesMetadata> getMetadataList(Slot slot, final String storageQueueName, long firstMsgId,
-            long lastMsgID) throws AndesException {
+    public List<DeliverableAndesMetadata> getMetadataList(long slot, final String storageQueueName) throws AndesException {
 
         List<DeliverableAndesMetadata> metadataList = new ArrayList<>();
         Connection connection = null;
@@ -768,26 +801,25 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             connection = getConnection();
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_METADATA_RANGE_FROM_QUEUE);
             preparedStatement.setInt(1, getCachedQueueID(storageQueueName));
-            preparedStatement.setLong(2, firstMsgId);
-            preparedStatement.setLong(3, lastMsgID);
+            preparedStatement.setLong(2, slot);
 
             resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
-                DeliverableAndesMetadata md = new DeliverableAndesMetadata(slot,
+                DeliverableAndesMetadata md = new DeliverableAndesMetadata(null,
                         resultSet.getLong(RDBMSConstants.MESSAGE_ID), resultSet.getBytes(RDBMSConstants.METADATA),
                         true);
                 md.setStorageQueueName(storageQueueName);
                 metadataList.add(md);
                 //Tracing message
-                MessageTracer.trace(md, MessageTracer.METADATA_READ_FROM_DB + " slot = " + slot.getId());
+                MessageTracer.trace(md, MessageTracer.METADATA_READ_FROM_DB + " slot = " + slot);
             }
             if (log.isDebugEnabled()) {
-                log.debug("request: metadata range (" + firstMsgId + " , " + lastMsgID + ") in destination queue "
+                log.debug("request: metadata range (" + slot + ") in destination queue "
                         + storageQueueName + ", response: metadata count " + metadataList.size());
             }
         } catch (SQLException e) {
             throw rdbmsStoreUtils.convertSQLException(
-                    "Error occurred while retrieving messages between msg id " + firstMsgId + " and " + lastMsgID
+                    "Error occurred while retrieving messages between msg id " + slot
                             + " from queue " + storageQueueName, e);
         } finally {
             metaListRetrievalContext.stop();

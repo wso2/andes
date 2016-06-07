@@ -83,6 +83,7 @@ public class RDBMSConstants {
     // Message Store tables
     protected static final String CONTENT_TABLE = "MB_CONTENT";
     protected static final String METADATA_TABLE = "MB_METADATA";
+    protected static final String METADATA_TABLE_NEW = "MB_METADATA_NEW";
     protected static final String QUEUES_TABLE = "MB_QUEUE_MAPPING";
     protected static final String EXPIRATION_TABLE = "MB_EXPIRATION_DATA";
     protected static final String MSG_STORE_STATUS_TABLE = "MB_MSG_STORE_STATUS";
@@ -91,6 +92,7 @@ public class RDBMSConstants {
 
    
     // Message Store table columns
+    protected static final String INSTANCE_ID = "INSTANCE_ID";
     protected static final String MESSAGE_ID = "MESSAGE_ID";
     protected static final String QUEUE_ID = "QUEUE_ID";
     protected static final String DLC_QUEUE_ID = "DLC_QUEUE_ID";
@@ -112,6 +114,7 @@ public class RDBMSConstants {
     protected static final String QUEUE_COUNTER_TABLE = "MB_QUEUE_COUNTER";
     // Slot related tables
     protected static final String SLOT_TABLE = "MB_SLOT";
+    protected static final String SLOT_TABLE_NEW = "MB_SLOT_NEW";
     protected static final String SLOT_MESSAGE_ID_TABLE = "MB_SLOT_MESSAGE_ID";
     protected static final String QUEUE_TO_LAST_ASSIGNED_ID = "MB_QUEUE_TO_LAST_ASSIGNED_ID";
 
@@ -162,13 +165,15 @@ public class RDBMSConstants {
      * We need to select rows that have the DLC_QUEUE_ID = -1 indicating that the message is not moved
      * into the dead letter channel
      */
-    protected static final String PS_INSERT_METADATA =
-            "INSERT INTO " + METADATA_TABLE + " ("
-            + MESSAGE_ID + ","
-            + QUEUE_ID + ","
-            + DLC_QUEUE_ID + ","
-            + METADATA + ")"
-            + " VALUES ( ?,?,-1,? )";
+    protected static final String PS_INSERT_METADATA_NEW =
+            "INSERT INTO " + METADATA_TABLE_NEW + " ("
+                    + INSTANCE_ID + ","
+                    + SLOT_ID + ","
+                    + MESSAGE_ID + ","
+                    + QUEUE_ID + ","
+                    + DLC_QUEUE_ID + ","
+                    + METADATA + ")"
+                    + " VALUES ( ?,?,?,?,-1,? )";
 
     protected static final String PS_INSERT_EXPIRY_DATA =
             "INSERT INTO " + EXPIRATION_TABLE + " ("
@@ -239,10 +244,10 @@ public class RDBMSConstants {
 
     protected static final String PS_SELECT_METADATA_RANGE_FROM_QUEUE =
             "SELECT " + MESSAGE_ID + "," + METADATA
-            + " FROM " + METADATA_TABLE
+            + " FROM " + METADATA_TABLE_NEW
             + " WHERE " + QUEUE_ID + "=?"
             + " AND " + DLC_QUEUE_ID + "=-1"
-            + " AND " + MESSAGE_ID + " BETWEEN ? AND ?"
+            + " AND " + SLOT_ID + " = ?"
             + " ORDER BY " + MESSAGE_ID;
 
     protected static final String PS_SELECT_METADATA_RANGE_FROM_QUEUE_IN_DLC =
@@ -305,7 +310,7 @@ public class RDBMSConstants {
             + " AND " + DLC_QUEUE_ID + "!=-1";
 
     protected static final String PS_DELETE_METADATA =
-            "DELETE  FROM " + METADATA_TABLE
+            "DELETE  FROM " + METADATA_TABLE_NEW
             + " WHERE " + MESSAGE_ID + "=?"
             + " AND " + DLC_QUEUE_ID + "=-1";
 
@@ -522,13 +527,23 @@ public class RDBMSConstants {
             + " VALUES (?,?,?," + SlotState.ASSIGNED.getCode() + ",?)";
 
     /**
+     * Prepared statement to create a new slot in database
+     */
+    protected static final String PS_INSERT_SLOT_NEW =
+            "INSERT INTO " + SLOT_TABLE_NEW + " ("
+                    + INSTANCE_ID + ","
+                    + SLOT_ID + ","
+                    + STORAGE_QUEUE_NAME + ","
+                    + MESSAGE_COUNT + ","
+                    + SLOT_STATE + ")"
+                    + " VALUES (?,?,?,?," + SlotState.CREATED.getCode() + ")";
+
+    /**
      * Prepared statement to delete a slot from database
      */
     protected static final String PS_DELETE_NON_OVERLAPPING_SLOT =
-            "DELETE FROM " + SLOT_TABLE
-            + " WHERE " + START_MESSAGE_ID + "=?"
-            + " AND " + END_MESSAGE_ID + "=?"
-            + " AND " + SLOT_STATE + "!=" + SlotState.OVERLAPPED.getCode();
+            "DELETE FROM " + SLOT_TABLE_NEW
+            + " WHERE " + SLOT_ID + "=?";
 
     /**
      * Prepared statement to delete a slot by queue name
@@ -541,12 +556,10 @@ public class RDBMSConstants {
      * Prepared statement to assign a slot to node
      */
     protected static final String PS_INSERT_SLOT_ASSIGNMENT =
-            "UPDATE " + SLOT_TABLE
+            "UPDATE " + SLOT_TABLE_NEW
             + " SET " + ASSIGNED_NODE_ID + "=?, "
-            + ASSIGNED_QUEUE_NAME + "=?,"
             + SLOT_STATE + "=" + SlotState.ASSIGNED.getCode()
-            + " WHERE " + START_MESSAGE_ID + "=?"
-            + " AND " + END_MESSAGE_ID + "=?";
+            + " WHERE " + SLOT_ID + "=?";
 
     /**
      * Prepared statement to un-assign a slot from node
@@ -607,6 +620,14 @@ public class RDBMSConstants {
             + " FROM " + SLOT_TABLE
             + " WHERE " + STORAGE_QUEUE_NAME + " =?"
             + " ORDER BY " + SLOT_ID;
+
+    protected static final String PS_SELECT_FRESH_SLOT =
+            "SELECT " + SLOT_ID
+                    + " FROM " + SLOT_TABLE_NEW
+                    + " WHERE " + STORAGE_QUEUE_NAME + " = ?"
+                    + " AND " + SLOT_STATE + " = " + SlotState.CREATED.getCode()
+                    + " ORDER BY " + SLOT_ID
+                    + " LIMIT 1";
 
     protected static final String PS_SELECT_UNASSIGNED_SLOT =
             "SELECT " + START_MESSAGE_ID + "," + END_MESSAGE_ID + "," + STORAGE_QUEUE_NAME

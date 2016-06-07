@@ -491,9 +491,9 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
      * @throws AndesException
      */
     @Override
-    public boolean deleteSlot(long startMessageId, long endMessageId) throws AndesException {
+    public boolean deleteSlot(long slotId) throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.deleteSlot(startMessageId, endMessageId);
+            return wrappedAndesContextStoreInstance.deleteSlot(slotId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -576,9 +576,9 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
      * @throws AndesException
      */
     @Override
-    public void createSlotAssignment(String nodeId, String queueName, long startMsgId, long endMsgId) throws AndesException {
+    public void createSlotAssignment(String nodeId, String queueName, long slotId) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.createSlotAssignment(nodeId, queueName, startMsgId, endMsgId);
+            wrappedAndesContextStoreInstance.createSlotAssignment(nodeId, queueName, slotId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -865,4 +865,14 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     public void removeProtocolType(ProtocolType protocolType) {
         wrappedAndesContextStoreInstance.removeProtocolType(protocolType);
     }
+
+    @Override
+    public void createSlot(long instanceID, long slotId, String storageQueue, int messageCount) throws AndesException {
+        wrappedAndesContextStoreInstance.createSlot(instanceID, slotId, storageQueue, messageCount);
+    }
+
+    public long getFreshSlot(String queueName, String nodeId) throws AndesException {
+        return wrappedAndesContextStoreInstance.getFreshSlot(queueName, nodeId);
+    }
+
 }

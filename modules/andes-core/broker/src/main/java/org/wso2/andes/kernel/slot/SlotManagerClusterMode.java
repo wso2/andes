@@ -127,7 +127,7 @@ public class SlotManagerClusterMode {
             }
 
             if (null != slotToBeAssigned) {
-                updateSlotAssignmentMap(queueName, slotToBeAssigned, nodeId);
+                //updateSlotAssignmentMap(queueName, slotToBeAssigned, nodeId);
                 if (log.isDebugEnabled()) {
                     log.debug("Assigning slot for node : " + nodeId + " | " + slotToBeAssigned);
                 }
@@ -189,6 +189,7 @@ public class SlotManagerClusterMode {
     }
 
     /**
+     * TODO: Remove
      * Get an unassigned slot (slots dropped by sudden subscription closes)
      *
      * @param queueName name of the queue slot is required
@@ -209,6 +210,29 @@ public class SlotManagerClusterMode {
             }
         }
         return slotToBeAssigned;
+    }
+
+    /**
+     * Get an unassigned slot (slots dropped by sudden subscription closes)
+     *
+     * @param queueName name of the queue slot is required
+     * @return slot or null if cannot find
+     */
+    private long getFreshSlotNew(String queueName, String nodeId) throws AndesException {
+        long slotId;
+        String lockKey = queueName + SlotManagerClusterMode.class;
+        synchronized (lockKey.intern()) {
+            //get oldest unassigned slot from database
+            slotId = slotAgent.getFreshSlot(queueName, nodeId);
+
+            if (log.isDebugEnabled()) {
+                if (-1 != slotId) {
+                    log.debug("Giving a slot from unassigned slots. Slot: " + slotId +
+                            " to queue: " + queueName);
+                }
+            }
+        }
+        return slotId;
     }
 
     /**
@@ -241,7 +265,7 @@ public class SlotManagerClusterMode {
      * @param allocatedSlot Slot object which is allocated to a particular node
      * @param nodeId        ID of the node to which slot is Assigned
      */
-    private void updateSlotAssignmentMap(String queueName, Slot allocatedSlot, String nodeId) throws AndesException {
+    private void updateSlotAssignmentMap(String queueName, long allocatedSlot, String nodeId) throws AndesException {
         //Lock is used because this method will be called by multiple nodes at the same time
         String lockKey = nodeId + SlotManagerClusterMode.class;
         synchronized (lockKey.intern()) {
@@ -388,30 +412,18 @@ public class SlotManagerClusterMode {
      * @param storageQueueName name of the queue which is owned by the slot to be deleted
      * @param emptySlot        reference of the slot to be deleted
      */
-    public boolean deleteSlot(String storageQueueName, Slot emptySlot, String nodeId) throws AndesException {
+    public boolean deleteSlot(String storageQueueName, long emptySlot, String nodeId) throws AndesException {
         boolean slotDeleted = false;
 
-        long startMsgId = emptySlot.getStartMessageId();
-        long endMsgId = emptySlot.getEndMessageId();
-        long slotDeleteSafeZone = getSlotDeleteSafeZone();
-        if (log.isDebugEnabled()) {
-            log.debug("Trying to delete slot. safeZone= " + getSlotDeleteSafeZone() + " startMsgID: " + startMsgId);
-        }
-        if (slotDeleteSafeZone > endMsgId) {
             String lockKey = nodeId + SlotManagerClusterMode.class;
             synchronized (lockKey.intern()) {
-                slotDeleted = slotAgent.deleteSlot(nodeId, storageQueueName, startMsgId, endMsgId);
+                slotDeleted = slotAgent.deleteSlot(nodeId, storageQueueName, emptySlot);
                 if (log.isDebugEnabled()) {
-                    log.debug(" Deleted slot id = " + emptySlot.getId() + " queue name = " + storageQueueName
+                    log.debug(" Deleted slot id = " + emptySlot + " queue name = " + storageQueueName
                             + " deleteSuccess: " + slotDeleted);
                 }
             }
-        } else {
-            if (log.isDebugEnabled()) {
-                log.debug("Cannot delete slot as it is within safe zone " + "startMsgID= " + startMsgId + " safeZone= "
-                        + slotDeleteSafeZone + " endMsgId= " + endMsgId + " slotToDelete= " + emptySlot);
-            }
-        }
+
         return slotDeleted;
     }
 
@@ -629,4 +641,17 @@ public class SlotManagerClusterMode {
         slotAgent.clearSlotStorage();
     }
 
+    public long getSlotId(String queueName, String nodeId) throws AndesException{
+        long slotId;
+
+        String lockKey = queueName + SlotManagerClusterMode.class;
+        synchronized (lockKey.intern()) {
+            slotId = getFreshSlotNew(queueName, nodeId);
+            if (-1 != slotId) {
+                updateSlotAssignmentMap(queueName, slotId, nodeId);
+            }
+        }
+
+        return slotId;
+    }
 }

@@ -18,6 +18,8 @@
 
 package org.wso2.andes.kernel.slot;
 
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
+
 /**
  * This class is responsible of coordinating with the Standalone Slot Manager
  */
@@ -39,6 +41,11 @@ public class SlotCoordinatorStandalone implements SlotCoordinator {
            slot = new Slot();
         }
         return slot;
+    }
+
+    @Override
+    public long getSlotId(String queueName) throws ConnectionException {
+        throw new NotImplementedException();
     }
 
     /**

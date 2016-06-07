@@ -49,6 +49,14 @@ public class SlotCoordinatorCluster implements SlotCoordinator {
      * {@inheritDoc}
      */
     @Override
+    public long getSlotId(String queueName) throws ConnectionException {
+        return MBThriftClient.getSlotId(queueName, nodeId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void updateMessageId(String queueName,
                                 long startMessageId, long endMessageId, long localSafeZone) throws ConnectionException {
         MBThriftClient.updateMessageId(queueName,nodeId,startMessageId,endMessageId, localSafeZone);
@@ -71,7 +79,7 @@ public class SlotCoordinatorCluster implements SlotCoordinator {
      */
     @Override
     public boolean deleteSlot(String queueName, Slot slot) throws ConnectionException {
-        return MBThriftClient.deleteSlot(queueName, slot, nodeId);
+        return MBThriftClient.deleteSlot(queueName, slot.getSlotId(), nodeId);
     }
 
     /**

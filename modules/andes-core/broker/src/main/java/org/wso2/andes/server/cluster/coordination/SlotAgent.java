@@ -45,10 +45,9 @@ public interface SlotAgent {
 	 *
 	 * @param nodeId id of the node
 	 * @param queueName queue name
-	 * @param startMessageId start message id
-	 * @param endMessageId end message id
+	 * @param slotId Id of the empty slot
 	 */
-	boolean deleteSlot(String nodeId, String queueName, long startMessageId, long endMessageId) throws AndesException;
+	boolean deleteSlot(String nodeId, String queueName, long slotId) throws AndesException;
 
 	/**
 	 * Delete slot assignments related to a specific queue name by
@@ -74,7 +73,7 @@ public interface SlotAgent {
 	 * @param queueName name of queue
 	 * @param allocatedSlot allocated slot
 	 */
-	void updateSlotAssignment(String nodeId, String queueName, Slot allocatedSlot)
+	void updateSlotAssignment(String nodeId, String queueName, long allocatedSlot)
 			throws AndesException;
 
 	/**
@@ -236,5 +235,5 @@ public interface SlotAgent {
 	 */
 	void clearSlotStorage() throws AndesException;
 
-
+	long getFreshSlot(String queueName, String nodeId) throws AndesException;
 }

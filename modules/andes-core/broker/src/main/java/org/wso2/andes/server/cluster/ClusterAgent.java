@@ -22,6 +22,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.cluster.error.detection.NetworkPartitionListener;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * This is responsible for handling cluster communication

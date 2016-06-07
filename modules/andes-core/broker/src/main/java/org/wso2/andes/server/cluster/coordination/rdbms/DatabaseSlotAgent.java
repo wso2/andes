@@ -102,16 +102,16 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
      * {@inheritDoc}
      */
     @Override
-    public boolean deleteSlot(String nodeId, String queueName, long startMessageId, long endMessageId)
+    public boolean deleteSlot(String nodeId, String queueName, long slotId)
             throws AndesException {
 
-        String task = "delete slot with start message id: " + startMessageId + ", end message id: " + endMessageId
+        String task = "delete slot with start message id: " + slotId
                       + " for queue: " + queueName + " and node: " + nodeId;
         
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
             waitUntilStoresBecomeAvailable(task);
             try {
-                return andesContextStore.deleteSlot(startMessageId, endMessageId);
+                return andesContextStore.deleteSlot(slotId);
             } catch (AndesStoreUnavailableException e) {
                 handleFailure(attemptCount, task, e);
 
@@ -166,17 +166,16 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
      * {@inheritDoc}
      */
     @Override
-    public void updateSlotAssignment(String nodeId, String queueName, Slot allocatedSlot)
+    public void updateSlotAssignment(String nodeId, String queueName, long allocatedSlot)
             throws AndesException {
 
-        String task = "update slot with start message id: " + allocatedSlot.getStartMessageId()
+        String task = "update slot with start message id: " + allocatedSlot
                       + " for queue: " + queueName + " and node: " + nodeId;
 
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
             waitUntilStoresBecomeAvailable(task);
             try {
-                andesContextStore.createSlotAssignment(nodeId, queueName, allocatedSlot.getStartMessageId(),
-                        allocatedSlot.getEndMessageId());
+                andesContextStore.createSlotAssignment(nodeId, queueName, allocatedSlot);
                 break;
             } catch (AndesStoreUnavailableException e) {
                 handleFailure(attemptCount, task, e);
@@ -640,5 +639,22 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
     public void storeNonOperational(HealthAwareStore store, Exception ex) {
         log.info("Context store became non-operational. Therefore, blocking Database Slot Agent");
         messageStoresUnavailable = SettableFuture.create();
+    }
+
+    public long getFreshSlot(String queueName, String nodeId) throws AndesException{
+        String task = "New slot creation";
+        long slotId = -1;
+
+        for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
+            waitUntilStoresBecomeAvailable(task);
+            try {
+                slotId = andesContextStore.getFreshSlot(queueName, nodeId);
+                break;
+            } catch (AndesStoreUnavailableException e) {
+                handleFailure(attemptCount, task, e);
+            }
+        }
+
+        return slotId;
     }
 }

@@ -37,6 +37,8 @@ public class Slot implements Serializable, Comparable<Slot> {
 
     private static Log log = LogFactory.getLog(Slot.class);
 
+    private long slotId;
+
     /**
      * Number of messages in the slot
      */
@@ -99,6 +101,7 @@ public class Slot implements Serializable, Comparable<Slot> {
         slotStates.add(slotState);
         pendingMessageCount = new AtomicInteger();
         messagesOfSlot = new ConcurrentHashMap<>();
+        slotId = -1;
     }
 
     public Slot(long start, long end, String destinationOfMessagesInSlot) {
@@ -106,6 +109,11 @@ public class Slot implements Serializable, Comparable<Slot> {
         this.startMessageId = start;
         this.endMessageId = end;
         this.destinationOfMessagesInSlot = destinationOfMessagesInSlot;
+    }
+
+    public Slot(long slotId) {
+        this(SlotState.CREATED);
+        this.slotId = slotId;
     }
 
     public void setStorageQueueName(String storageQueueName) {
@@ -352,6 +360,10 @@ public class Slot implements Serializable, Comparable<Slot> {
      */
     public String getId() {
         return storageQueueName + "|" + startMessageId + "-" + endMessageId;
+    }
+
+    public long getSlotId() {
+        return slotId;
     }
 
     @SuppressWarnings("NullableProblems")

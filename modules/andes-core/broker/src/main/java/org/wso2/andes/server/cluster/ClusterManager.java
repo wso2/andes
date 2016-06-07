@@ -179,6 +179,7 @@ public class ClusterManager implements StoreHealthListener{
 
     /**
      * Gets the unique ID for the local node
+     * TODO C5: we might be able to remove this method since we don't need unique IDs between two nodes
      *
      * @return unique ID
      */
@@ -213,7 +214,7 @@ public class ClusterManager implements StoreHealthListener{
 
             clearAllPersistedStatesOfDisappearedNode(nodeId);
 
-            log.info("Initializing Standalone Mode. Current Node ID:" + this.nodeId + " "
+            log.info("Initializing Standalone Mode. Current Node ID: " + this.nodeId + ", host address: "
                      + InetAddress.getLocalHost().getHostAddress());
 
             andesContextStore.storeNodeDetails(nodeId, InetAddress.getLocalHost().getHostAddress());
@@ -237,6 +238,7 @@ public class ClusterManager implements StoreHealthListener{
         this.nodeId = clusterAgent.getLocalNodeIdentifier();
         log.info("Initializing Cluster Mode. Current Node ID:" + this.nodeId);
 
+        // TODO C5: Why do we need this? This is same as this.nodeId
         String localMemberHostAddress = clusterAgent.getLocalNodeIdentifier();
 
         if (log.isDebugEnabled()) {

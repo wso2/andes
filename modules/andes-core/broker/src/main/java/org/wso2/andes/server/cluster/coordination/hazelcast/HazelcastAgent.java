@@ -26,6 +26,7 @@ import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.ILock;
 import com.hazelcast.core.IMap;
 import com.hazelcast.core.ITopic;
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -505,45 +506,46 @@ public class HazelcastAgent implements SlotAgent {
      * {@inheritDoc}
      */
     @Override
-    public boolean deleteSlot(String nodeId, String queueName, long startMessageId, long endMessageId)
+    public boolean deleteSlot(String nodeId, String queueName, long slotId)
             throws AndesException {
-        boolean slotDeleted = false;
-        try {
-            HashMap<String, TreeSet<Slot>> queueToSlotMap = null;
-            HashmapStringTreeSetWrapper wrapper = this.slotAssignmentMap.get(nodeId);
-            if (null != wrapper) {
-                queueToSlotMap = wrapper.getStringListHashMap();
-            }
-            if (null != queueToSlotMap) {
-                TreeSet<Slot> currentSlotList = queueToSlotMap.get(queueName);
-                if (null != currentSlotList) {
-                    // com.google.gson.Gson gson = new GsonBuilder().create();
-                    //get the actual reference of the slot to be removed
-                    Slot matchingSlot = null; //currentSlotList.ceiling(emptySlot);
-                    for (Slot slot : currentSlotList) {
-                        if (slot.getStartMessageId() == startMessageId) {
-                            matchingSlot = slot;
-                        }
-                    }
-                    if (null != matchingSlot) {
-                        if (matchingSlot.addState(SlotState.DELETED)) {
-                            currentSlotList.remove(matchingSlot);
-                            queueToSlotMap.put(queueName, currentSlotList);
-                            wrapper.setStringListHashMap(queueToSlotMap);
-                            slotAssignmentMap.set(nodeId, wrapper);
-                            slotDeleted = true;
-                        }
-                    } else {
-                        // We can say slot deleted since the slot does not exist
-                        slotDeleted = true;
-                    }
-                }
-            }
-        } catch (HazelcastInstanceNotActiveException ex) {
-            throw new AndesException("Failed to delete slot for queue : " +
-                    queueName + " from node " + nodeId, ex);
-        }
-        return slotDeleted;
+//        boolean slotDeleted = false;
+//        try {
+//            HashMap<String, TreeSet<Slot>> queueToSlotMap = null;
+//            HashmapStringTreeSetWrapper wrapper = this.slotAssignmentMap.get(nodeId);
+//            if (null != wrapper) {
+//                queueToSlotMap = wrapper.getStringListHashMap();
+//            }
+//            if (null != queueToSlotMap) {
+//                TreeSet<Slot> currentSlotList = queueToSlotMap.get(queueName);
+//                if (null != currentSlotList) {
+//                    // com.google.gson.Gson gson = new GsonBuilder().create();
+//                    //get the actual reference of the slot to be removed
+//                    Slot matchingSlot = null; //currentSlotList.ceiling(emptySlot);
+//                    for (Slot slot : currentSlotList) {
+//                        if (slot.getStartMessageId() == startMessageId) {
+//                            matchingSlot = slot;
+//                        }
+//                    }
+//                    if (null != matchingSlot) {
+//                        if (matchingSlot.addState(SlotState.DELETED)) {
+//                            currentSlotList.remove(matchingSlot);
+//                            queueToSlotMap.put(queueName, currentSlotList);
+//                            wrapper.setStringListHashMap(queueToSlotMap);
+//                            slotAssignmentMap.set(nodeId, wrapper);
+//                            slotDeleted = true;
+//                        }
+//                    } else {
+//                        // We can say slot deleted since the slot does not exist
+//                        slotDeleted = true;
+//                    }
+//                }
+//            }
+//        } catch (HazelcastInstanceNotActiveException ex) {
+//            throw new AndesException("Failed to delete slot for queue : " +
+//                    queueName + " from node " + nodeId, ex);
+//        }
+//        return slotDeleted;
+        throw new NotImplementedException();
     }
 
     /**
@@ -642,38 +644,40 @@ public class HazelcastAgent implements SlotAgent {
      * {@inheritDoc}
      */
     @Override
-    public void updateSlotAssignment(String nodeId, String queueName, Slot allocatedSlot) throws AndesException {
-        TreeSet<Slot> currentSlotList;
-        HashMap<String, TreeSet<Slot>> queueToSlotMap;
+    public void updateSlotAssignment(String nodeId, String queueName, long allocatedSlot) throws AndesException {
 
-        try {
-            HashmapStringTreeSetWrapper wrapper = this.slotAssignmentMap.get(nodeId);
-            if (null == wrapper) {
-                wrapper = new HashmapStringTreeSetWrapper();
-                queueToSlotMap = new HashMap<>();
-                wrapper.setStringListHashMap(queueToSlotMap);
-                this.slotAssignmentMap.putIfAbsent(nodeId, wrapper);
-            }
-            wrapper = this.slotAssignmentMap.get(nodeId);
-            queueToSlotMap = wrapper.getStringListHashMap();
-            currentSlotList = queueToSlotMap.get(queueName);
-            if (null == currentSlotList) {
-                currentSlotList = new TreeSet<>();
-            }
+        throw new NotImplementedException();
+        //        TreeSet<Slot> currentSlotList;
+//        HashMap<String, TreeSet<Slot>> queueToSlotMap;
 
-            //update slot state
-            if (allocatedSlot.addState(SlotState.ASSIGNED)) {
-                //remove any similar slot from hazelcast and add the updated one
-                currentSlotList.remove(allocatedSlot);
-                currentSlotList.add(allocatedSlot);
-                queueToSlotMap.put(queueName, currentSlotList);
-                wrapper.setStringListHashMap(queueToSlotMap);
-                this.slotAssignmentMap.set(nodeId, wrapper);
-            }
-        } catch (HazelcastInstanceNotActiveException ex) {
-            throw new AndesException("Failed to update slot assignment for queue : " +
-                    queueName + " from node " + nodeId, ex);
-        }
+//        try {
+//            HashmapStringTreeSetWrapper wrapper = this.slotAssignmentMap.get(nodeId);
+//            if (null == wrapper) {
+//                wrapper = new HashmapStringTreeSetWrapper();
+//                queueToSlotMap = new HashMap<>();
+//                wrapper.setStringListHashMap(queueToSlotMap);
+//                this.slotAssignmentMap.putIfAbsent(nodeId, wrapper);
+//            }
+//            wrapper = this.slotAssignmentMap.get(nodeId);
+//            queueToSlotMap = wrapper.getStringListHashMap();
+//            currentSlotList = queueToSlotMap.get(queueName);
+//            if (null == currentSlotList) {
+//                currentSlotList = new TreeSet<>();
+//            }
+//
+//            //update slot state
+//            if (allocatedSlot.addState(SlotState.ASSIGNED)) {
+//                //remove any similar slot from hazelcast and add the updated one
+//                currentSlotList.remove(allocatedSlot);
+//                currentSlotList.add(allocatedSlot);
+//                queueToSlotMap.put(queueName, currentSlotList);
+//                wrapper.setStringListHashMap(queueToSlotMap);
+//                this.slotAssignmentMap.set(nodeId, wrapper);
+//            }
+//        } catch (HazelcastInstanceNotActiveException ex) {
+//            throw new AndesException("Failed to update slot assignment for queue : " +
+//                    queueName + " from node " + nodeId, ex);
+//        }
     }
 
     /**
@@ -1084,4 +1088,9 @@ public class HazelcastAgent implements SlotAgent {
         // Add the current ring buffer configuration to the configurations of the Hazelcast instance
         config.addRingBufferConfig(ringConfig);
     }
+
+    public long getFreshSlot(String queueName, String nodeId) {
+        throw new NotImplementedException();
+    }
+
 }

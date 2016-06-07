@@ -265,7 +265,7 @@ public interface AndesContextStore extends HealthAwareStore{
      * @return True if slot deletion successful
      * @throws AndesException
      */
-    boolean deleteSlot(long startMessageId, long endMessageId) throws AndesException;
+    boolean deleteSlot(long slotId) throws AndesException;
 
     /**
      * Delete all slots by queue name.
@@ -306,7 +306,7 @@ public interface AndesContextStore extends HealthAwareStore{
      * @param endMsgId end message id of slot
      * @throws AndesException
      */
-    void createSlotAssignment(String nodeId, String queueName, long startMsgId, long endMsgId)
+    void createSlotAssignment(String nodeId, String queueName, long slotId)
             throws AndesException;
 
     /**
@@ -459,4 +459,7 @@ public interface AndesContextStore extends HealthAwareStore{
      */
     void removeProtocolType(ProtocolType protocolType);
 
+    void createSlot(long instanceID, long slotId, String storageQueue, int messageCount) throws AndesException;
+
+    long getFreshSlot(String queueName, String nodeId) throws AndesException;
 }

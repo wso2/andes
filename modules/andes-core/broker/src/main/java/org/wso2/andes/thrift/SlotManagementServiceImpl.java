@@ -56,6 +56,22 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
     }
 
     @Override
+    public long getSlotId(String queueName, String nodeId) throws TException {
+        long slotId;
+
+        if (AndesContext.getInstance().getClusterAgent().isCoordinator()) {
+            try {
+                slotId = slotManager.getSlotId(queueName, nodeId);
+            } catch (AndesException e) {
+                throw new TException("Failed to get slot info for queue: " + queueName + " nodeId: " + nodeId, e);
+            }
+        } else {
+            throw new TException("This node is not the slot coordinator right now");
+        }
+        return slotId;
+    }
+
+    @Override
     public void updateMessageId(String queueName, String nodeId, long startMessageId, long endMessageId, long localSafeZone) throws TException {
         if (AndesContext.getInstance().getClusterAgent().isCoordinator()) {
             try {
@@ -69,15 +85,11 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
     }
 
     @Override
-    public boolean deleteSlot(String queueName, SlotInfo slotInfo, String nodeId) throws TException {
+    public boolean deleteSlot(String queueName, long slotInfo, String nodeId) throws TException {
         if (AndesContext.getInstance().getClusterAgent().isCoordinator()) {
-            Slot slot = new Slot();
-            boolean result = false;
-            slot.setStartMessageId(slotInfo.getStartMessageId());
-            slot.setEndMessageId(slotInfo.getEndMessageId());
-            slot.setStorageQueueName(slotInfo.getQueueName());
+            boolean result;
             try {
-                result = slotManager.deleteSlot(queueName, slot, nodeId);
+                result = slotManager.deleteSlot(queueName, slotInfo, nodeId);
             } catch (AndesException e) {
                 throw new TException("Failed to delete slot for queue:" + queueName, e);
             }

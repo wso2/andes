@@ -31,6 +31,8 @@ public interface SlotCoordinator {
      */
     public Slot getSlot(String queueName) throws ConnectionException;
 
+    long getSlotId(String queueName) throws ConnectionException;
+
     /**
      * Record Slot's last message ID related to a particular queue
      * @param queueName  Name of the queue
