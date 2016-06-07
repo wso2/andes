@@ -204,8 +204,8 @@ public class MessagingEngine {
         for (String targetQueueName : queueToMsgsMap.keySet()) {
 //            long slotId = localSlotManager.getSlotId(targetQueueName, queueToMsgsMap.get(targetQueueName).size());
             long slotId = generateUniqueId();
-            contextStore.createSlot(instanceID, slotId, targetQueueName, queueToMsgsMap.get(targetQueueName).size());
             messageStore.storeMessages(instanceID, slotId, messageList);
+            contextStore.createSlot(instanceID, slotId, targetQueueName, queueToMsgsMap.get(targetQueueName).size());
         }
     }
 

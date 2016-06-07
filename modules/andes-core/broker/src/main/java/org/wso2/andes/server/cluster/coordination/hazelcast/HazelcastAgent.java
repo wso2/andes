@@ -644,38 +644,40 @@ public class HazelcastAgent implements SlotAgent {
      * {@inheritDoc}
      */
     @Override
-    public void updateSlotAssignment(String nodeId, String queueName, Slot allocatedSlot) throws AndesException {
-        TreeSet<Slot> currentSlotList;
-        HashMap<String, TreeSet<Slot>> queueToSlotMap;
+    public void updateSlotAssignment(String nodeId, String queueName, long allocatedSlot) throws AndesException {
 
-        try {
-            HashmapStringTreeSetWrapper wrapper = this.slotAssignmentMap.get(nodeId);
-            if (null == wrapper) {
-                wrapper = new HashmapStringTreeSetWrapper();
-                queueToSlotMap = new HashMap<>();
-                wrapper.setStringListHashMap(queueToSlotMap);
-                this.slotAssignmentMap.putIfAbsent(nodeId, wrapper);
-            }
-            wrapper = this.slotAssignmentMap.get(nodeId);
-            queueToSlotMap = wrapper.getStringListHashMap();
-            currentSlotList = queueToSlotMap.get(queueName);
-            if (null == currentSlotList) {
-                currentSlotList = new TreeSet<>();
-            }
+        throw new NotImplementedException();
+        //        TreeSet<Slot> currentSlotList;
+//        HashMap<String, TreeSet<Slot>> queueToSlotMap;
 
-            //update slot state
-            if (allocatedSlot.addState(SlotState.ASSIGNED)) {
-                //remove any similar slot from hazelcast and add the updated one
-                currentSlotList.remove(allocatedSlot);
-                currentSlotList.add(allocatedSlot);
-                queueToSlotMap.put(queueName, currentSlotList);
-                wrapper.setStringListHashMap(queueToSlotMap);
-                this.slotAssignmentMap.set(nodeId, wrapper);
-            }
-        } catch (HazelcastInstanceNotActiveException ex) {
-            throw new AndesException("Failed to update slot assignment for queue : " +
-                    queueName + " from node " + nodeId, ex);
-        }
+//        try {
+//            HashmapStringTreeSetWrapper wrapper = this.slotAssignmentMap.get(nodeId);
+//            if (null == wrapper) {
+//                wrapper = new HashmapStringTreeSetWrapper();
+//                queueToSlotMap = new HashMap<>();
+//                wrapper.setStringListHashMap(queueToSlotMap);
+//                this.slotAssignmentMap.putIfAbsent(nodeId, wrapper);
+//            }
+//            wrapper = this.slotAssignmentMap.get(nodeId);
+//            queueToSlotMap = wrapper.getStringListHashMap();
+//            currentSlotList = queueToSlotMap.get(queueName);
+//            if (null == currentSlotList) {
+//                currentSlotList = new TreeSet<>();
+//            }
+//
+//            //update slot state
+//            if (allocatedSlot.addState(SlotState.ASSIGNED)) {
+//                //remove any similar slot from hazelcast and add the updated one
+//                currentSlotList.remove(allocatedSlot);
+//                currentSlotList.add(allocatedSlot);
+//                queueToSlotMap.put(queueName, currentSlotList);
+//                wrapper.setStringListHashMap(queueToSlotMap);
+//                this.slotAssignmentMap.set(nodeId, wrapper);
+//            }
+//        } catch (HazelcastInstanceNotActiveException ex) {
+//            throw new AndesException("Failed to update slot assignment for queue : " +
+//                    queueName + " from node " + nodeId, ex);
+//        }
     }
 
     /**

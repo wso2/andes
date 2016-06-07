@@ -306,7 +306,7 @@ public interface AndesContextStore extends HealthAwareStore{
      * @param endMsgId end message id of slot
      * @throws AndesException
      */
-    void createSlotAssignment(String nodeId, String queueName, long startMsgId, long endMsgId)
+    void createSlotAssignment(String nodeId, String queueName, long slotId)
             throws AndesException;
 
     /**

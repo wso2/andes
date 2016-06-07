@@ -1235,8 +1235,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     /**
      * {@inheritDoc}
      */
-    @Override public void createSlotAssignment(String nodeId, String queueName, long startMsgId,
-                                               long endMsgId)
+    @Override public void createSlotAssignment(String nodeId, String queueName, long slotId)
             throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
@@ -1248,16 +1247,14 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             preparedStatement =
                     connection.prepareStatement(RDBMSConstants.PS_INSERT_SLOT_ASSIGNMENT);
             preparedStatement.setString(1, nodeId);
-            preparedStatement.setString(2, queueName);
-            preparedStatement.setLong(3, startMsgId);
-            preparedStatement.setLong(4, endMsgId);
+            preparedStatement.setLong(2, slotId);
 
             preparedStatement.executeUpdate();
             connection.commit();
         } catch (SQLException e) {
             String errMsg =
                     RDBMSConstants.TASK_CREATE_SLOT_ASSIGNMENT + " nodeId: " + nodeId + " queueName: " +
-                            queueName + "startMsgId: " + startMsgId + "endMsgId: " + endMsgId;
+                            queueName + "startMsgId: " + slotId;
             rollback(connection, RDBMSConstants.TASK_CREATE_SLOT_ASSIGNMENT);
             throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
@@ -2006,5 +2003,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             close(resultSet, RDBMSConstants.TASK_GET_ALL_SLOTS_BY_QUEUE_NAME);
             close(preparedStatement, RDBMSConstants.TASK_GET_ALL_SLOTS_BY_QUEUE_NAME);
             close(connection, RDBMSConstants.TASK_GET_ALL_SLOTS_BY_QUEUE_NAME);
-        }    }
+        }
+    }
 }

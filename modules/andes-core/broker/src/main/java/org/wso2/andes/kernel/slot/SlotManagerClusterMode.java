@@ -127,7 +127,7 @@ public class SlotManagerClusterMode {
             }
 
             if (null != slotToBeAssigned) {
-                updateSlotAssignmentMap(queueName, slotToBeAssigned, nodeId);
+                //updateSlotAssignmentMap(queueName, slotToBeAssigned, nodeId);
                 if (log.isDebugEnabled()) {
                     log.debug("Assigning slot for node : " + nodeId + " | " + slotToBeAssigned);
                 }
@@ -265,7 +265,7 @@ public class SlotManagerClusterMode {
      * @param allocatedSlot Slot object which is allocated to a particular node
      * @param nodeId        ID of the node to which slot is Assigned
      */
-    private void updateSlotAssignmentMap(String queueName, Slot allocatedSlot, String nodeId) throws AndesException {
+    private void updateSlotAssignmentMap(String queueName, long allocatedSlot, String nodeId) throws AndesException {
         //Lock is used because this method will be called by multiple nodes at the same time
         String lockKey = nodeId + SlotManagerClusterMode.class;
         synchronized (lockKey.intern()) {
@@ -647,6 +647,9 @@ public class SlotManagerClusterMode {
         String lockKey = queueName + SlotManagerClusterMode.class;
         synchronized (lockKey.intern()) {
             slotId = getFreshSlotNew(queueName, nodeId);
+            if (-1 != slotId) {
+                updateSlotAssignmentMap(queueName, slotId, nodeId);
+            }
         }
 
         return slotId;

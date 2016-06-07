@@ -576,9 +576,9 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
      * @throws AndesException
      */
     @Override
-    public void createSlotAssignment(String nodeId, String queueName, long startMsgId, long endMsgId) throws AndesException {
+    public void createSlotAssignment(String nodeId, String queueName, long slotId) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.createSlotAssignment(nodeId, queueName, startMsgId, endMsgId);
+            wrappedAndesContextStoreInstance.createSlotAssignment(nodeId, queueName, slotId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

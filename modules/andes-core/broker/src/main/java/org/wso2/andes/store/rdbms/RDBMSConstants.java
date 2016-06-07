@@ -556,12 +556,10 @@ public class RDBMSConstants {
      * Prepared statement to assign a slot to node
      */
     protected static final String PS_INSERT_SLOT_ASSIGNMENT =
-            "UPDATE " + SLOT_TABLE
+            "UPDATE " + SLOT_TABLE_NEW
             + " SET " + ASSIGNED_NODE_ID + "=?, "
-            + ASSIGNED_QUEUE_NAME + "=?,"
             + SLOT_STATE + "=" + SlotState.ASSIGNED.getCode()
-            + " WHERE " + START_MESSAGE_ID + "=?"
-            + " AND " + END_MESSAGE_ID + "=?";
+            + " WHERE " + SLOT_ID + "=?";
 
     /**
      * Prepared statement to un-assign a slot from node

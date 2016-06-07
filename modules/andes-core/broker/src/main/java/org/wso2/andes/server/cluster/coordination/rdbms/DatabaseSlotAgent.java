@@ -166,17 +166,16 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
      * {@inheritDoc}
      */
     @Override
-    public void updateSlotAssignment(String nodeId, String queueName, Slot allocatedSlot)
+    public void updateSlotAssignment(String nodeId, String queueName, long allocatedSlot)
             throws AndesException {
 
-        String task = "update slot with start message id: " + allocatedSlot.getStartMessageId()
+        String task = "update slot with start message id: " + allocatedSlot
                       + " for queue: " + queueName + " and node: " + nodeId;
 
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
             waitUntilStoresBecomeAvailable(task);
             try {
-                andesContextStore.createSlotAssignment(nodeId, queueName, allocatedSlot.getStartMessageId(),
-                        allocatedSlot.getEndMessageId());
+                andesContextStore.createSlotAssignment(nodeId, queueName, allocatedSlot);
                 break;
             } catch (AndesStoreUnavailableException e) {
                 handleFailure(attemptCount, task, e);
@@ -650,7 +649,6 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
             waitUntilStoresBecomeAvailable(task);
             try {
                 slotId = andesContextStore.getFreshSlot(queueName, nodeId);
-//                andesContextStore.assignSlot(slotId, nodeId);
                 break;
             } catch (AndesStoreUnavailableException e) {
                 handleFailure(attemptCount, task, e);

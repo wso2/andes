@@ -73,7 +73,7 @@ public interface SlotAgent {
 	 * @param queueName name of queue
 	 * @param allocatedSlot allocated slot
 	 */
-	void updateSlotAssignment(String nodeId, String queueName, Slot allocatedSlot)
+	void updateSlotAssignment(String nodeId, String queueName, long allocatedSlot)
 			throws AndesException;
 
 	/**
