@@ -30,7 +30,6 @@ import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
 import org.wso2.carbon.metrics.core.Gauge;
 import org.wso2.carbon.metrics.core.Level;
-import org.wso2.carbon.metrics.core.MetricManager;
 
 import java.util.ArrayList;
 import java.util.concurrent.Executors;
@@ -140,7 +139,7 @@ public class FlowControlManager  implements StoreHealthListener, NetworkPartitio
         executor = Executors.newSingleThreadScheduledExecutor(namedThreadFactory);
 
         //Will start the gauge
-        MetricManager.gauge(MetricsConstants.ACTIVE_CHANNELS, Level.INFO, new ChannelGauge());
+        AndesContext.getInstance().getMetricService().gauge(MetricsConstants.ACTIVE_CHANNELS, Level.INFO, new ChannelGauge());
     }
 
     /**

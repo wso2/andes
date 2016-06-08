@@ -28,6 +28,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesChannel;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.DisablePubAckImpl;
 import org.wso2.andes.kernel.MessagingEngine;
@@ -38,7 +39,6 @@ import org.wso2.andes.subscription.SubscriptionEngine;
 import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.core.Gauge;
 import org.wso2.carbon.metrics.core.Level;
-import org.wso2.carbon.metrics.core.MetricManager;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -161,8 +161,8 @@ public class InboundEventManager {
         ringBuffer = disruptor.start();
 
         //Will add the gauge to metrics manager
-        MetricManager.gauge(MetricsConstants.DISRUPTOR_INBOUND_RING, Level.INFO, new InBoundRingGauge());
-        MetricManager.gauge(MetricsConstants.DISRUPTOR_MESSAGE_ACK, Level.INFO, new AckedMessageCountGauge());
+        AndesContext.getInstance().getMetricService().gauge(MetricsConstants.DISRUPTOR_INBOUND_RING, Level.INFO, new InBoundRingGauge());
+        AndesContext.getInstance().getMetricService().gauge(MetricsConstants.DISRUPTOR_MESSAGE_ACK, Level.INFO, new AckedMessageCountGauge());
     }
 
     /**

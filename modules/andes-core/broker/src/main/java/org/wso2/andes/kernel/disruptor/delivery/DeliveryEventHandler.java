@@ -21,6 +21,7 @@ package org.wso2.andes.kernel.disruptor.delivery;
 import com.lmax.disruptor.EventHandler;
 import org.apache.log4j.Logger;
 import org.wso2.andes.kernel.Andes;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.MessageStatus;
@@ -34,7 +35,6 @@ import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.core.Level;
 import org.wso2.carbon.metrics.core.Meter;
-import org.wso2.carbon.metrics.core.MetricManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -98,7 +98,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                         MessageTracer.trace(message, MessageTracer.DISPATCHED_TO_PROTOCOL);
 
                         //Adding metrics meter for ack rate
-                        Meter messageMeter = MetricManager.meter(MetricsConstants.MSG_SENT_RATE, Level.INFO);
+                        Meter messageMeter = AndesContext.getInstance().getMetricService().meter(MetricsConstants.MSG_SENT_RATE, Level.INFO);
                         messageMeter.mark();
 
                         subscription.sendMessageToSubscriber(protocolMessage, deliveryEventData.getAndesContent());

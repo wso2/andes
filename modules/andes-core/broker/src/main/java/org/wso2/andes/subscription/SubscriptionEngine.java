@@ -34,7 +34,6 @@ import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.carbon.metrics.core.Gauge;
 import org.wso2.carbon.metrics.core.Level;
-import org.wso2.carbon.metrics.core.MetricManager;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -546,9 +545,9 @@ public class SubscriptionEngine {
         final ProtocolType protocolType = protocolInfo.getProtocolType();
 
         //Add subscribers gauge to metrics manager
-        MetricManager.gauge(MetricsConstants.QUEUE_SUBSCRIBERS, Level.INFO, new QueueSubscriberGauge(protocolType));
+        AndesContext.getInstance().getMetricService().gauge(MetricsConstants.QUEUE_SUBSCRIBERS, Level.INFO, new QueueSubscriberGauge(protocolType));
         //Add topic gauge to metrics manager
-        MetricManager.gauge(MetricsConstants.TOPIC_SUBSCRIBERS, Level.INFO, new TopicSubscriberGauge(protocolType));
+        AndesContext.getInstance().getMetricService().gauge(MetricsConstants.TOPIC_SUBSCRIBERS, Level.INFO, new TopicSubscriberGauge(protocolType));
 
         protocolInfo.getClusterSubscriptionStores().entrySet().stream().forEach(
                 entry -> clusterSubscriptionProcessor.addHandler(protocolType, entry.getKey(), entry.getValue()));
