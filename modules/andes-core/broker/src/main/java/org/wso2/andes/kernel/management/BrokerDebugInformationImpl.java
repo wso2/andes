@@ -17,19 +17,22 @@
 package org.wso2.andes.kernel.management;
 
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.management.mbeans.MessageStatusInformation;
+import org.wso2.andes.kernel.management.mbeans.BrokerDebugInformationMXBean;
 import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
 
 import java.io.File;
 import java.io.IOException;
 
-public class MessageStatusInformationMBean implements MessageStatusInformation {
-
-
-    public MessageStatusInformationMBean() {
+/**
+ * MBeans for debugging the broker. Exposes Andes internal data/information.
+ */
+public class BrokerDebugInformationImpl implements BrokerDebugInformationMXBean {
+    public BrokerDebugInformationImpl() {
     }
 
-
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void dumpMessageStatusInfo(String filePath) {
         try {
@@ -39,7 +42,6 @@ public class MessageStatusInformationMBean implements MessageStatusInformation {
             }
             fileToWriteMessageStatus.getParentFile().mkdirs();
             fileToWriteMessageStatus.createNewFile();
-
 
             //Get slot delivery workers
             SlotDeliveryWorkerManager.getInstance().dumpAllSlotInformationToFile(fileToWriteMessageStatus);

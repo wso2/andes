@@ -19,7 +19,7 @@ package org.wso2.andes.kernel.management;
 
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.ProtocolType;
-import org.wso2.andes.kernel.management.mbeans.BrokerManagementInformation;
+import org.wso2.andes.kernel.management.mbeans.BrokerManagementInformationMXBean;
 
 import java.util.List;
 import java.util.Set;
@@ -28,7 +28,7 @@ import java.util.Set;
  * The the JMS MBean that expose cluster management information exposes the Cluster Management related information using
  * MBeans.
  */
-public class BrokerManagementInformationMBean implements BrokerManagementInformation {
+public class BrokerManagementInformationImpl implements BrokerManagementInformationMXBean {
 
     /**
      * {@inheritDoc}

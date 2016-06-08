@@ -21,7 +21,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesQueue;
 import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.ProtocolType;
-import org.wso2.andes.kernel.management.mbeans.DestinationManagementInformation;
+import org.wso2.andes.kernel.management.mbeans.DestinationManagementInformationMXBean;
 import org.wso2.andes.server.util.CompositeDataHelper;
 
 import java.util.ArrayList;
@@ -35,7 +35,7 @@ import javax.management.openmbean.OpenDataException;
 /**
  * MBeans for managing resources related to destinations such as queues and topics.
  */
-public class DestinationManagementInformationMBean implements DestinationManagementInformation {
+public class DestinationManagementInformationImpl implements DestinationManagementInformationMXBean {
 
     /**
      * Helper class for converting destinations for {@link CompositeData}.
@@ -47,7 +47,7 @@ public class DestinationManagementInformationMBean implements DestinationManagem
      *
      * @throws MBeanException
      */
-    public DestinationManagementInformationMBean() throws MBeanException {
+    public DestinationManagementInformationImpl() throws MBeanException {
         destinationCompositeDataHelper = new CompositeDataHelper().new DestinationCompositeDataHelper();
     }
 

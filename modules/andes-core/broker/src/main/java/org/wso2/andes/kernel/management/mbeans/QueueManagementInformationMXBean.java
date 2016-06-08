@@ -28,7 +28,7 @@ import javax.management.MBeanException;
  * This interface contains all operations invoked by the UI console with relation to queues. (addition, deletion,
  * purging, etc.)
  */
-public interface QueueManagementInformation {
+public interface QueueManagementInformationMXBean {
 
     /***
      * Retrieve all destination queue names.

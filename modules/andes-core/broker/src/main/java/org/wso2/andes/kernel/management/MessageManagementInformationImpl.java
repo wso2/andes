@@ -21,7 +21,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.ProtocolType;
-import org.wso2.andes.kernel.management.mbeans.MessageManagementInformation;
+import org.wso2.andes.kernel.management.mbeans.MessageManagementInformationMXBean;
 import org.wso2.andes.server.util.CompositeDataHelper;
 
 import java.util.ArrayList;
@@ -33,7 +33,7 @@ import javax.management.openmbean.OpenDataException;
 /**
  * MBeans for managing resources related to messages.
  */
-public class MessageManagementInformationMBean implements MessageManagementInformation {
+public class MessageManagementInformationImpl implements MessageManagementInformationMXBean {
 
     /**
      * Helper class for converting a message for {@link CompositeData}.
@@ -43,7 +43,7 @@ public class MessageManagementInformationMBean implements MessageManagementInfor
     /**
      * Initializes the composite data helper.
      */
-    public MessageManagementInformationMBean() {
+    public MessageManagementInformationImpl() {
         messagesCompositeDataHelper = new CompositeDataHelper().new MessagesCompositeDataHelper();
     }
 

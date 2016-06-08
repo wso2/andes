@@ -16,7 +16,15 @@
 
 package org.wso2.andes.kernel.management.mbeans;
 
-public interface MessageStatusInformation {
+/**
+ * MBean interface for debugging the broker.
+ */
+public interface BrokerDebugInformationMXBean {
 
-    void dumpMessageStatusInfo( String filePath);
+    /**
+     * Dumps message status information to a file in the server.
+     *
+     * @param filePath File path to dump information.
+     */
+    void dumpMessageStatusInfo(String filePath);
 }

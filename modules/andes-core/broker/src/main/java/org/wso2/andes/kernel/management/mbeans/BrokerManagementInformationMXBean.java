@@ -9,7 +9,7 @@ import java.util.Set;
 /**
  * Exposes the Cluster Management related information
  */
-public interface BrokerManagementInformation {
+public interface BrokerManagementInformationMXBean {
 
     /**
      * Gets the supported protocols of the broker.

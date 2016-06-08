@@ -22,7 +22,7 @@ import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolType;
-import org.wso2.andes.kernel.management.mbeans.SubscriptionManagementInformation;
+import org.wso2.andes.kernel.management.mbeans.SubscriptionManagementInformationMXBean;
 import org.wso2.andes.server.util.CompositeDataHelper;
 
 import java.util.ArrayList;
@@ -34,7 +34,7 @@ import javax.management.openmbean.OpenDataException;
 /**
  * MBeans for managing resources related to subscriptions.
  */
-public class SubscriptionManagementInformationMBean implements SubscriptionManagementInformation {
+public class SubscriptionManagementInformationImpl implements SubscriptionManagementInformationMXBean {
 
     /**
      * Helper class for converting a subscription for {@link CompositeData}.
@@ -44,7 +44,7 @@ public class SubscriptionManagementInformationMBean implements SubscriptionManag
     /**
      * Instantiates the MBeans related to subscriptions.
      */
-    public SubscriptionManagementInformationMBean() {
+    public SubscriptionManagementInformationImpl() {
         subscriptionCompositeDataHelper = new CompositeDataHelper().new SubscriptionCompositeDataHelper();
     }
 

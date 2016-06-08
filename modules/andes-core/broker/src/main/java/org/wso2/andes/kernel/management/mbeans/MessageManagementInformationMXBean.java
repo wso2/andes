@@ -22,12 +22,12 @@ import javax.management.openmbean.CompositeData;
 /**
  * Interface for managing messages.
  */
-public interface MessageManagementInformation {
+public interface MessageManagementInformationMXBean {
 
     /**
      * Browse message of a destination using message ID.
      * <p>
-     * To browse messages without message ID, use {@link MessageManagementInformation#browseDestinationWithOffset
+     * To browse messages without message ID, use {@link MessageManagementInformationMXBean#browseDestinationWithOffset
      * (String, String, String, boolean, int, int)}.
      *
      * @param protocolTypeAsString    The protocol type matching for the message.
@@ -47,7 +47,7 @@ public interface MessageManagementInformation {
     /**
      * Browse message of a destination. Please note this is time costly.
      * <p>
-     * To browse messages with message ID, use {@link MessageManagementInformation#browseDestinationWithMessageID
+     * To browse messages with message ID, use {@link MessageManagementInformationMXBean#browseDestinationWithMessageID
      * (String, String, String, boolean, long, int)}.
      *
      * @param protocolTypeAsString    The protocol type matching for the message.

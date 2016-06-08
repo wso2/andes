@@ -22,7 +22,7 @@ import javax.management.openmbean.CompositeData;
 /**
  * Interface for managing destinations - queues/topics.
  */
-public interface DestinationManagementInformation {
+public interface DestinationManagementInformationMXBean {
 
     /**
      * Gets the collection of destinations(queues/topics)

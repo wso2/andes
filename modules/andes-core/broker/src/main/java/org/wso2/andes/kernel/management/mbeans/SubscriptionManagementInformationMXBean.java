@@ -22,7 +22,7 @@ import javax.management.openmbean.CompositeData;
 /**
  * Interface for managing subscriptions.
  */
-public interface SubscriptionManagementInformation {
+public interface SubscriptionManagementInformationMXBean {
 
     /**
      * Gets subscriptions belonging to a specific protocol type and destination type. The subscriptions can be filtered
