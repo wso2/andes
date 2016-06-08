@@ -62,7 +62,6 @@ import org.wso2.andes.server.logging.actors.CurrentActor;
 import org.wso2.andes.server.logging.actors.ManagementActor;
 import org.wso2.andes.server.logging.messages.ConnectionMessages;
 import org.wso2.andes.server.logging.subjects.ConnectionLogSubject;
-import org.wso2.andes.server.management.Managable;
 import org.wso2.andes.server.management.ManagedObject;
 import org.wso2.andes.server.output.ProtocolOutputConverter;
 import org.wso2.andes.server.output.ProtocolOutputConverterRegistry;
@@ -95,7 +94,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocolSession, ConnectionConfig
+public class AMQProtocolEngine implements ProtocolEngine, AMQProtocolSession, ConnectionConfig
 {
     private static final Logger _logger = Logger.getLogger(AMQProtocolEngine.class);
 
@@ -122,8 +121,6 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
     private final AMQStateManager _stateManager;
 
     private AMQCodecFactory _codecFactory;
-
-    private AMQProtocolSessionMBean _managedObject;
 
     private SaslServer _saslServer;
 
@@ -176,11 +173,6 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
     private final NetworkConnection _network;
     private final Sender<ByteBuffer> _sender;
 
-    public ManagedObject getManagedObject()
-    {
-        return _managedObject;
-    }
-
     public AMQProtocolEngine(VirtualHostRegistry virtualHostRegistry, NetworkConnection network)
     {
         _stateManager = new AMQStateManager(virtualHostRegistry, this);
@@ -202,11 +194,6 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
 
         _registry = virtualHostRegistry.getApplicationRegistry();
         initialiseStatistics();
-    }
-
-    private AMQProtocolSessionMBean createMBean() throws JMException
-    {
-        return new AMQProtocolSessionMBean(this);
     }
 
     public long getSessionID()
@@ -609,9 +596,9 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
     private void checkForNotification()
     {
         int channelsCount = _channelMap.size();
-        if (_managedObject != null && channelsCount >= _maxNoOfChannels)
+        if (channelsCount >= _maxNoOfChannels)
         {
-            _managedObject.notifyClients("Channel count (" + channelsCount + ") has reached the threshold value");
+            _logger.info("Channel count (" + channelsCount + ") has reached the threshold value");
         }
     }
 
@@ -760,13 +747,6 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
                 closeAllChannels();
                 
                 getConfigStore().removeConfiguredObject(this);
-
-                if (_managedObject != null)
-                {
-                    _managedObject.unregister();
-                    // Ensure we only do this once.
-                    _managedObject = null;
-                }
 
                 for (Task task : _taskList)
                 {
@@ -954,16 +934,6 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
         _virtualHost.getConnectionRegistry().registerConnection(this);
         
         _configStore.addConfiguredObject(this);
-
-        try
-        {
-            _managedObject = createMBean();
-            _managedObject.register();
-        }
-        catch (JMException e)
-        {
-            _logger.error(e);
-        }
     }
 
     public void addSessionCloseTask(Task task)

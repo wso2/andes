@@ -313,11 +313,6 @@ public class TopicExchange extends AbstractExchange
         }
     }
 
-    protected AbstractExchangeMBean createMBean() throws JMException
-    {
-        return new TopicExchangeMBean(this);
-    }
-
     public Logger getLogger()
     {
         return _logger;

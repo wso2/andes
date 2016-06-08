@@ -80,7 +80,6 @@ import org.wso2.andes.server.subscription.SubscriptionFactoryImpl;
 import org.wso2.andes.server.txn.AutoCommitTransaction;
 import org.wso2.andes.server.txn.LocalTransaction;
 import org.wso2.andes.server.txn.ServerTransaction;
-import org.wso2.andes.server.virtualhost.AMQChannelMBean;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.amqp.StoredAMQPMessage;
 
@@ -200,8 +199,6 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     private final UUID _id;
     private long _createTime = System.currentTimeMillis();
 
-    private AMQChannelMBean _managedObject;
-
     public AMQChannel(AMQProtocolSession session, int channelId, MessageStore messageStore)
             throws AMQException {
         _session = session;
@@ -266,13 +263,6 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         // by default the session is non-transactional
         _transaction = new AutoCommitTransaction(_messageStore);
 
-     
-        try {
-            _managedObject = new AMQChannelMBean(this);
-            _managedObject.register();
-        } catch (JMException e) {
-            _logger.error("Error in creating AMQChannelMBean", e);
-        }
     }
 
     public ConfigStore getConfigStore()
@@ -693,9 +683,6 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             getConfigStore().removeConfiguredObject(this);
 
             forgetMessages4Channel();
-            if (_managedObject != null) {
-                _managedObject.unregister();
-            }
         } catch (AndesException e) {
             throw new AMQException("Exception occurred while closing channel " + _channelId, e);
         } finally {

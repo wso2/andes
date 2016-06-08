@@ -22,19 +22,18 @@ import org.wso2.andes.AMQException;
 import org.wso2.andes.exchange.ExchangeDefaults;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
+import org.wso2.andes.server.binding.Binding;
+import org.wso2.andes.server.message.AMQMessageHeader;
+import org.wso2.andes.server.message.InboundMessage;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.BaseQueue;
 import org.wso2.andes.server.virtualhost.VirtualHost;
-import org.wso2.andes.server.message.InboundMessage;
-import org.wso2.andes.server.message.AMQMessageHeader;
-import org.wso2.andes.server.binding.Binding;
 
-import javax.management.JMException;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
@@ -193,11 +192,6 @@ public class HeadersExchange extends AbstractExchange
     public boolean hasBindings()
     {
         return !getBindings().isEmpty();
-    }
-
-    protected AbstractExchangeMBean createMBean() throws JMException
-    {
-        return new HeadersExchangeMBean(this);
     }
 
     public Logger getLogger()

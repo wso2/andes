@@ -77,11 +77,6 @@ public class DirectExchange extends AbstractExchange
         super(TYPE);
     }
 
-    protected AbstractExchangeMBean createMBean() throws JMException
-    {
-        return new DirectExchangeMBean(this);
-    }
-
     public Logger getLogger()
     {
         return _logger;
