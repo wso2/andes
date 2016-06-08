@@ -22,6 +22,7 @@ import com.lmax.disruptor.EventHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesChannel;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
@@ -36,7 +37,6 @@ import org.wso2.andes.subscription.SubscriptionEngine;
 import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.core.Level;
 import org.wso2.carbon.metrics.core.Meter;
-import org.wso2.carbon.metrics.core.MetricManager;
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -238,7 +238,7 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                 event.pubAckHandler.ack(message.getMetadata());
 
                 //Adding metrics meter for ack rate
-                Meter ackMeter = MetricManager.meter(MetricsConstants.ACK_SENT_RATE, Level.INFO);
+                Meter ackMeter = AndesContext.getInstance().getMetricService().meter(MetricsConstants.ACK_SENT_RATE, Level.INFO);
                 ackMeter.mark();
 
                 event.clearMessageList();

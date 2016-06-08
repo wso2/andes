@@ -24,6 +24,7 @@ import org.wso2.andes.configuration.StoreConfiguration;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.server.cluster.ClusterAgent;
 import org.wso2.andes.subscription.SubscriptionEngine;
+import org.wso2.carbon.metrics.core.MetricService;
 
 import java.util.List;
 
@@ -35,12 +36,12 @@ public class AndesContext {
     private SubscriptionEngine subscriptionEngine;
     private AndesContextStore andesContextStore;
     private StoreConfiguration storeConfiguration;
-//    private CarbonHazelcastAgent clusteringAgent;
     private boolean isClusteringEnabled;
     private AMQPConstructStore AMQPConstructStore;
     private static AndesContext instance = new AndesContext();
     private MessageStore messageStore;
     private int deliveryTimeoutForMessage;
+    private MetricService metricService;
 
     /**
      * This is mainly used by Cluster Manager to manger cluster communication
@@ -236,5 +237,23 @@ public class AndesContext {
      */
     public void setMessageStore(MessageStore messageStore) {
         this.messageStore = messageStore;
+    }
+
+    /**
+     * Get carbon metrics service
+     *
+     * @return {@link MetricService} object
+     */
+    public MetricService getMetricService() {
+        return metricService;
+    }
+
+    /**
+     * Set carbon metric service
+     *
+     * @param metricService {@link MetricService} object
+     */
+    public void setMetricService(MetricService metricService) {
+        this.metricService = metricService;
     }
 }

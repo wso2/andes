@@ -42,7 +42,6 @@ import org.wso2.andes.subscription.SubscriptionEngine;
 import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.core.Level;
 import org.wso2.carbon.metrics.core.Meter;
-import org.wso2.carbon.metrics.core.MetricManager;
 
 import java.util.Collection;
 import java.util.List;
@@ -213,7 +212,7 @@ public class Andes {
         inboundEventManager.messageReceived(message, andesChannel, pubAckHandler);
 
         //Adding metrics meter for message rate
-        Meter messageMeter = MetricManager.meter(MetricsConstants.MSG_RECEIVE_RATE, Level.INFO);
+        Meter messageMeter = AndesContext.getInstance().getMetricService().meter(MetricsConstants.MSG_RECEIVE_RATE, Level.INFO);
         messageMeter.mark();
     }
 
@@ -230,7 +229,7 @@ public class Andes {
                 ackData.getAcknowledgedMessage().getDestination(), MessageTracer.ACK_RECEIVED_FROM_PROTOCOL);
 
         //Adding metrics meter for ack rate
-        Meter ackMeter = MetricManager.meter(MetricsConstants.ACK_RECEIVE_RATE, Level.INFO);
+        Meter ackMeter = AndesContext.getInstance().getMetricService().meter(MetricsConstants.ACK_RECEIVE_RATE, Level.INFO);
         ackMeter.mark();
 
         //We call this later as this call removes the ackData.getAcknowledgedMessage() message

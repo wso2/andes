@@ -29,13 +29,13 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.core.Gauge;
 import org.wso2.carbon.metrics.core.Level;
-import org.wso2.carbon.metrics.core.MetricManager;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -126,7 +126,7 @@ public class DisruptorBasedFlusher {
         ringBuffer = disruptor.getRingBuffer();
 
         //Will add the gauge listener to periodically calculate the outbound messages in the ring
-        MetricManager.gauge(MetricsConstants.DISRUPTOR_OUTBOUND_RING, Level.INFO, new OutBoundRingGauge());
+        AndesContext.getInstance().getMetricService().gauge(MetricsConstants.DISRUPTOR_OUTBOUND_RING, Level.INFO, new OutBoundRingGauge());
     }
 
     /**
