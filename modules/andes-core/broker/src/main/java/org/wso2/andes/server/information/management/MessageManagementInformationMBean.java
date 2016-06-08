@@ -99,26 +99,26 @@ public class MessageManagementInformationMBean extends AMQManagedObject implemen
             throws MBeanException{
         List<CompositeData> compositeDataList = new ArrayList<>();
 
-        try {
-            ProtocolType protocolType = new ProtocolType(protocolTypeAsString);
-
-            List<AndesMessageMetadata> nextNMessageMetadataFromQueue;
-            if (!DLCQueueUtils.isDeadLetterQueue(destinationName)) {
-                nextNMessageMetadataFromQueue = Andes.getInstance()
-                        .getNextNMessageMetadataFromQueue(destinationName, nextMessageID, limit);
-            } else {
-                nextNMessageMetadataFromQueue = Andes.getInstance()
-                        .getNextNMessageMetadataFromDLC(destinationName, 0, limit);
-            }
-
-            for (AndesMessageMetadata andesMessageMetadata : nextNMessageMetadataFromQueue) {
-                compositeDataList.add(messagesCompositeDataHelper.getMessageAsCompositeData(protocolType,
-                                                                                        andesMessageMetadata, content));
-            }
-
-        } catch (AndesException | OpenDataException e) {
-            throw new MBeanException(e, "Error occurred in browse queue.");
-        }
+//        try {
+//            ProtocolType protocolType = new ProtocolType(protocolTypeAsString);
+//
+//            List<AndesMessageMetadata> nextNMessageMetadataFromQueue;
+//            if (!DLCQueueUtils.isDeadLetterQueue(destinationName)) {
+//                nextNMessageMetadataFromQueue = Andes.getInstance()
+//                        .getNextNMessageMetadataFromQueue(destinationName, nextMessageID, limit);
+//            } else {
+//                nextNMessageMetadataFromQueue = Andes.getInstance()
+//                        .getNextNMessageMetadataFromDLC(destinationName, 0, limit);
+//            }
+//
+//            for (AndesMessageMetadata andesMessageMetadata : nextNMessageMetadataFromQueue) {
+//                compositeDataList.add(messagesCompositeDataHelper.getMessageAsCompositeData(protocolType,
+//                                                                                        andesMessageMetadata, content));
+//            }
+//
+//        } catch (AndesException | OpenDataException e) {
+//            throw new MBeanException(e, "Error occurred in browse queue.");
+//        }
         return compositeDataList.toArray(new CompositeData[compositeDataList.size()]);
     }
 
@@ -136,26 +136,26 @@ public class MessageManagementInformationMBean extends AMQManagedObject implemen
             throws MBeanException {
         List<CompositeData> compositeDataList = new ArrayList<>();
 
-        try {
-            ProtocolType protocolType = new ProtocolType(protocolTypeAsString);
-
-            List<AndesMessageMetadata> nextNMessageMetadataFromQueue;
-            if (!DLCQueueUtils.isDeadLetterQueue(destinationName)) {
-                nextNMessageMetadataFromQueue = Andes.getInstance()
-                        .getNextNMessageMetadataFromQueue(destinationName, offset, limit);
-            } else {
-                nextNMessageMetadataFromQueue = Andes.getInstance()
-                        .getNextNMessageMetadataFromDLC(destinationName, 0, limit);
-            }
-
-            for (AndesMessageMetadata andesMessageMetadata : nextNMessageMetadataFromQueue) {
-                compositeDataList.add(messagesCompositeDataHelper.getMessageAsCompositeData(protocolType,
-                                                                                        andesMessageMetadata, content));
-            }
-
-        } catch (AndesException | OpenDataException e) {
-            throw new MBeanException(e, "Error occurred in browse queue.");
-        }
+//        try {
+//            ProtocolType protocolType = new ProtocolType(protocolTypeAsString);
+//
+//            List<AndesMessageMetadata> nextNMessageMetadataFromQueue;
+//            if (!DLCQueueUtils.isDeadLetterQueue(destinationName)) {
+//                nextNMessageMetadataFromQueue = Andes.getInstance()
+//                        .getNextNMessageMetadataFromQueue(destinationName, offset, limit);
+//            } else {
+//                nextNMessageMetadataFromQueue = Andes.getInstance()
+//                        .getNextNMessageMetadataFromDLC(destinationName, 0, limit);
+//            }
+//
+//            for (AndesMessageMetadata andesMessageMetadata : nextNMessageMetadataFromQueue) {
+//                compositeDataList.add(messagesCompositeDataHelper.getMessageAsCompositeData(protocolType,
+//                                                                                        andesMessageMetadata, content));
+//            }
+//
+//        } catch (AndesException | OpenDataException e) {
+//            throw new MBeanException(e, "Error occurred in browse queue.");
+//        }
 
         return compositeDataList.toArray(new CompositeData[compositeDataList.size()]);
     }
@@ -172,26 +172,26 @@ public class MessageManagementInformationMBean extends AMQManagedObject implemen
     @MBeanOperationParameter(name = "content", description = "Get content of message") boolean content)
             throws MBeanException {
         CompositeData message = null;
-        try {
-            ProtocolType protocolType = new ProtocolType(protocolTypeAsString);
-
-            List<AndesMessageMetadata> nextNMessageMetadataFromQueue;
-            if (!DLCQueueUtils.isDeadLetterQueue(destinationName)) {
-                nextNMessageMetadataFromQueue = Andes.getInstance()
-                        .getNextNMessageMetadataFromQueue(destinationName, andesMessageID, 1);
-            } else {
-                nextNMessageMetadataFromQueue = Andes.getInstance()
-                        .getNextNMessageMetadataFromDLC(destinationName, 0, 1);
-            }
-
-            for (AndesMessageMetadata andesMessageMetadata : nextNMessageMetadataFromQueue) {
-                message = messagesCompositeDataHelper.getMessageAsCompositeData(protocolType, andesMessageMetadata,
-                                                                                                            content);
-            }
-
-        } catch (AndesException | OpenDataException e) {
-            throw new MBeanException(e, "Error occurred in browse queue.");
-        }
+//        try {
+//            ProtocolType protocolType = new ProtocolType(protocolTypeAsString);
+//
+//            List<AndesMessageMetadata> nextNMessageMetadataFromQueue;
+//            if (!DLCQueueUtils.isDeadLetterQueue(destinationName)) {
+//                nextNMessageMetadataFromQueue = Andes.getInstance()
+//                        .getNextNMessageMetadataFromQueue(destinationName, andesMessageID, 1);
+//            } else {
+//                nextNMessageMetadataFromQueue = Andes.getInstance()
+//                        .getNextNMessageMetadataFromDLC(destinationName, 0, 1);
+//            }
+//
+//            for (AndesMessageMetadata andesMessageMetadata : nextNMessageMetadataFromQueue) {
+//                message = messagesCompositeDataHelper.getMessageAsCompositeData(protocolType, andesMessageMetadata,
+//                                                                                                            content);
+//            }
+//
+//        } catch (AndesException | OpenDataException e) {
+//            throw new MBeanException(e, "Error occurred in browse queue.");
+//        }
         return message;
     }
 
@@ -205,32 +205,32 @@ public class MessageManagementInformationMBean extends AMQManagedObject implemen
     @MBeanOperationParameter(name = "destinationName", description = "Destination Name") String destinationName)
             throws MBeanException {
 
-        AMQQueue queue = queueRegistry.getQueue(new AMQShortString(destinationName));
-
-        try {
-            if (queue == null) {
-                throw new JMException("The Queue '" + destinationName + "' is not a registered queue.");
-            }
-
-            queue.purge(0l); //This is to trigger the AMQChannel purge event so that the queue
-            // state of qpid is updated. This method also validates the request owner and throws
-            // an exception if permission is denied.
-
-            InboundQueueEvent andesQueue = AMQPUtils.createAndesQueue(queue);
-            int purgedMessageCount = Andes.getInstance().purgeQueue(andesQueue);
-            log.info("Total message count purged for queue (from store) : " + destinationName + " : " +
-                     purgedMessageCount + ". All in memory messages received before the purge call" +
-                     " are abandoned from delivery phase. ");
-
-        } catch (JMException jme) {
-            if (jme.toString().contains("not a registered queue")) {
-                throw new MBeanException(jme, "The Queue " + destinationName + " is not a registered " +
-                                              "queue.");
-            } else {
-                throw new MBeanException(jme, "Error in purging queue : " + destinationName);
-            }
-        } catch (AMQException | AndesException amqex) {
-            throw new MBeanException(amqex, "Error in purging queue : " + destinationName);
-        }
+//        AMQQueue queue = queueRegistry.getQueue(new AMQShortString(destinationName));
+//
+//        try {
+//            if (queue == null) {
+//                throw new JMException("The Queue '" + destinationName + "' is not a registered queue.");
+//            }
+//
+//            queue.purge(0l); //This is to trigger the AMQChannel purge event so that the queue
+//            // state of qpid is updated. This method also validates the request owner and throws
+//            // an exception if permission is denied.
+//
+//            InboundQueueEvent andesQueue = AMQPUtils.createAndesQueue(queue);
+//            int purgedMessageCount = Andes.getInstance().purgeQueue(andesQueue);
+//            log.info("Total message count purged for queue (from store) : " + destinationName + " : " +
+//                     purgedMessageCount + ". All in memory messages received before the purge call" +
+//                     " are abandoned from delivery phase. ");
+//
+//        } catch (JMException jme) {
+//            if (jme.toString().contains("not a registered queue")) {
+//                throw new MBeanException(jme, "The Queue " + destinationName + " is not a registered " +
+//                                              "queue.");
+//            } else {
+//                throw new MBeanException(jme, "Error in purging queue : " + destinationName);
+//            }
+//        } catch (AMQException | AndesException amqex) {
+//            throw new MBeanException(amqex, "Error in purging queue : " + destinationName);
+//        }
     }
 }

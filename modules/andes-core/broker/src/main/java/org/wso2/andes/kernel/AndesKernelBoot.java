@@ -24,28 +24,26 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.StoreConfiguration;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.management.BrokerDebugInformationImpl;
+import org.wso2.andes.kernel.management.BrokerManagementInformationImpl;
+import org.wso2.andes.kernel.management.DestinationManagementInformationImpl;
+import org.wso2.andes.kernel.management.MessageManagementInformationImpl;
+import org.wso2.andes.kernel.management.SubscriptionManagementInformationImpl;
 import org.wso2.andes.kernel.slot.SlotCreator;
 import org.wso2.andes.kernel.slot.SlotDeletionExecutor;
 import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.ClusterAgent;
-import org.wso2.andes.server.cluster.ClusterManagementInformationMBean;
 import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
-import org.wso2.andes.server.information.management.MessageStatusInformationMBean;
-import org.wso2.andes.server.information.management.SubscriptionManagementInformationMBean;
 import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.server.resource.manager.AndesResourceManager;
-import org.wso2.andes.server.virtualhost.VirtualHost;
-import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
 import org.wso2.andes.store.FailureObservingAndesContextStore;
 import org.wso2.andes.store.FailureObservingMessageStore;
 import org.wso2.andes.subscription.SubscriptionEngine;
 import org.wso2.andes.thrift.MBThriftServer;
-//import org.wso2.carbon.context.CarbonContext;
-//import org.wso2.carbon.user.api.UserStoreException;
 
-import javax.management.JMException;
+import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -55,6 +53,9 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import javax.management.JMException;
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
 
 /**
  * Andes kernel startup/shutdown related work is done through this class.
@@ -349,22 +350,26 @@ public class AndesKernelBoot {
     /**
      * Register Andes MBeans
      *
+     * @throws AndesException
      */
     public static void registerMBeans() throws AndesException {
-
         try {
-            ClusterManagementInformationMBean clusterManagementMBean = new
-                    ClusterManagementInformationMBean(
-                    ClusterResourceHolder.getInstance().getClusterManager());
-            clusterManagementMBean.register();
+            MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
 
-            SubscriptionManagementInformationMBean subscriptionManagementInformationMBean = new
-                    SubscriptionManagementInformationMBean();
-            subscriptionManagementInformationMBean.register();
+            ObjectName mbeanName = new ObjectName("org.wso2.andes.kernel.management:type=BrokerManagementInformationImpl");
+            mBeanServer.registerMBean(new BrokerManagementInformationImpl(), mbeanName);
 
-            MessageStatusInformationMBean messageStatusInformationMBean = new
-                    MessageStatusInformationMBean();
-            messageStatusInformationMBean.register();
+            mbeanName = new ObjectName("org.wso2.andes.kernel.management:type=DestinationManagementInformationImpl");
+            mBeanServer.registerMBean(new DestinationManagementInformationImpl(), mbeanName);
+
+            mbeanName = new ObjectName("org.wso2.andes.kernel.management:type=MessageManagementInformationImpl");
+            mBeanServer.registerMBean(new MessageManagementInformationImpl(), mbeanName);
+
+            mbeanName = new ObjectName("org.wso2.andes.kernel.management:type=BrokerDebugInformationImpl");
+            mBeanServer.registerMBean(new BrokerDebugInformationImpl(), mbeanName);
+
+            mbeanName = new ObjectName("org.wso2.andes.kernel.management:type=SubscriptionManagementInformationImpl");
+            mBeanServer.registerMBean(new SubscriptionManagementInformationImpl(), mbeanName);
         } catch (JMException ex) {
             throw new AndesException("Unable to register Andes MBeans", ex);
         }
