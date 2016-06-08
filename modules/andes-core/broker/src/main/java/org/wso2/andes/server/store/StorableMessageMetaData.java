@@ -37,7 +37,4 @@ public interface StorableMessageMetaData
 
     public String getDestination();
 
-    public boolean isCompressed();
-
-
 }

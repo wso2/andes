@@ -211,7 +211,7 @@ public class MessagingEngine {
         andesMetadata.markAsNackedByClient(channelID);
         LocalSubscription subToResend = subscriptionEngine.getLocalSubscriptionForChannelId(channelID);
         if (subToResend != null) {
-            subToResend.msgRejectReceived(andesMetadata.messageID);
+            subToResend.msgRejectReceived(andesMetadata.getMessageID());
             reQueueMessageToSubscriber(andesMetadata, subToResend);
         } else {
             log.warn("Cannot handle reject. Subscription not found for channel " + channelID + "Dropping message id= "
@@ -304,7 +304,6 @@ public class MessagingEngine {
 
     /**
      * This is the andes-specific purge method and can be called from AMQPBridge,
-     * MQTTBridge or UI MBeans (QueueManagementInformationMBean)
      * Remove messages of the queue matching to given destination queue (h2 / mysql etc. )
      *
      * @param destination     queue or topic name (subscribed routing key) whose messages should be removed
@@ -393,12 +392,12 @@ public class MessagingEngine {
 
         for (AndesMessageMetadata message : messagesToRemove) {
             List<AndesMessageMetadata> messagesOfStorageQueue = storageSeparatedMessages
-                    .get(message.getStorageQueueName());
+                    .get(message.getStorageDestination());
             if (null == messagesOfStorageQueue) {
                 messagesOfStorageQueue = new ArrayList<>();
             }
             messagesOfStorageQueue.add(message);
-            storageSeparatedMessages.put(message.getStorageQueueName(), messagesOfStorageQueue);
+            storageSeparatedMessages.put(message.getStorageDestination(), messagesOfStorageQueue);
         }
 
         //delete message content along with metadata
@@ -433,12 +432,12 @@ public class MessagingEngine {
 
         for (DeliverableAndesMetadata message : messagesToRemove) {
             List<AndesMessageMetadata> messagesOfStorageQueue = storageSeparatedMessages
-                    .get(message.getStorageQueueName());
+                    .get(message.getStorageDestination());
             if (null == messagesOfStorageQueue) {
                 messagesOfStorageQueue = new ArrayList<>();
             }
             messagesOfStorageQueue.add(message);
-            storageSeparatedMessages.put(message.getStorageQueueName(), messagesOfStorageQueue);
+            storageSeparatedMessages.put(message.getStorageDestination(), messagesOfStorageQueue);
         }
 
         //delete message content along with metadata
@@ -454,12 +453,12 @@ public class MessagingEngine {
         Map<String, List<AndesMessageMetadata>> storageSeparatedMessages = new HashMap<>();
         for (DeliverableAndesMetadata message : messagesToMove) {
             List<AndesMessageMetadata> messagesOfStorageQueue = storageSeparatedMessages
-                    .get(message.getStorageQueueName());
+                    .get(message.getStorageDestination());
             if (null == messagesOfStorageQueue) {
                 messagesOfStorageQueue = new ArrayList<>();
             }
             messagesOfStorageQueue.add(message);
-            storageSeparatedMessages.put(message.getStorageQueueName(), messagesOfStorageQueue);
+            storageSeparatedMessages.put(message.getStorageDestination(), messagesOfStorageQueue);
         }
 
         for (Map.Entry<String, List<AndesMessageMetadata>> entry : storageSeparatedMessages.entrySet()) {
@@ -480,12 +479,12 @@ public class MessagingEngine {
 
         for (AndesMessageMetadata message : messagesToMove) {
             List<AndesMessageMetadata> messagesOfStorageQueue = storageSeparatedMessages
-                    .get(message.getStorageQueueName());
+                    .get(message.getStorageDestination());
             if (null == messagesOfStorageQueue) {
                 messagesOfStorageQueue = new ArrayList<>();
             }
             messagesOfStorageQueue.add(message);
-            storageSeparatedMessages.put(message.getStorageQueueName(), messagesOfStorageQueue);
+            storageSeparatedMessages.put(message.getStorageDestination(), messagesOfStorageQueue);
         }
         for (Map.Entry<String, List<AndesMessageMetadata>> entry : storageSeparatedMessages.entrySet()) {
             //move messages to dead letter channel

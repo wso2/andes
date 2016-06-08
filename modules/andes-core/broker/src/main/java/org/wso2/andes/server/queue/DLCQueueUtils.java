@@ -21,16 +21,11 @@ package org.wso2.andes.server.queue;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesConstants;
-import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.ProtocolType;
-import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
-import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.registry.IApplicationRegistry;
@@ -159,15 +154,16 @@ public class DLCQueueUtils {
      * Add message to DLC
      *
      * @param message Message to be moved to DLC
+     * @param protocolType {@link ProtocolType}
      */
-    public static void addToDeadLetterChannel(QueueEntry message) {
+    public static void addToDeadLetterChannel(QueueEntry message, ProtocolType protocolType) {
         try {
 
         AMQMessage amqMessage = (AMQMessage)message.getMessage();
         Long messageID = amqMessage.getMessageNumber();
         String storageQueue = amqMessage.getRoutingKey();
-        AndesMessageMetadata messageToMove = AMQPUtils.convertAMQMessageToAndesMetadata(amqMessage);
-        messageToMove.setStorageQueueName(storageQueue);
+        AndesMessageMetadata messageToMove = AMQPUtils.convertAMQMessageToAndesMetadata(amqMessage, protocolType);
+        messageToMove.setStorageDestination(storageQueue);
 
         List<AndesMessageMetadata> messageToMoveToDLC = new ArrayList<>();
         messageToMoveToDLC.add(messageToMove);

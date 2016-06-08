@@ -23,7 +23,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.framing.ProtocolVersion;
 import org.wso2.andes.server.queue.QueueEntry;
-import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.OutboundSubscription;
 
@@ -48,14 +47,17 @@ public class AndesUtils {
     //this constant will be used to prefix storage queue name for topics
     public final static String TOPIC_NODE_QUEUE_PREFIX = "TopicQueue";
 
-    public static final String DIRECT_EXCHANGE_NAME = "amq.direct";
+    public static final String QUEUE_DELIVERY_STRATEGY = "amq.direct";
 
-    public static final String TOPIC_EXCHANGE_NAME = "amq.topic";
+    public static final String TOPIC_DELIVERY_STRATEGY = "amq.topic";
 
     public static final String DEFAULT_EXCHANGE_NAME = "<<default>>";
 
-    //This will be used to co-relate between the message id used in the browser and the message id used internally in MB
-    private static ConcurrentHashMap<String, Long> browserMessageIdCorrelater = new ConcurrentHashMap<String, Long>();
+    /**
+     * This will be used to co-relate between the message id used in the browser and the message id used
+     * internally in MB
+     */
+    private static ConcurrentHashMap<String, Long> browserMessageIdCorrelater = new ConcurrentHashMap<>();
 
     private static PrintWriter printWriterGlobal;
 
@@ -141,8 +143,7 @@ public class AndesUtils {
         // We need to add a prefix so that we could differentiate if queue is created under the same name
         //as topic
         if (DestinationType.TOPIC == destinationType) {
-            storageQueueName = new StringBuilder(TOPIC_NODE_QUEUE_PREFIX).append("|").
-                    append(destination).append("|").append(nodeID).toString();
+            storageQueueName = TOPIC_NODE_QUEUE_PREFIX + "|" + destination + "|" + nodeID;
         } else {
             storageQueueName = destination;
         }
@@ -204,10 +205,9 @@ public class AndesUtils {
      * durable topic subscription
      */
     private static boolean isPersistentQueue(String destination) {
-        if (destination.startsWith("tmp_") || destination.contains("carbon:") || destination.startsWith("TempQueue")) {
-            return false;
-        }
-        return true;
+        return !(destination.startsWith("tmp_") ||
+                destination.contains("carbon:") ||
+                destination.startsWith("TempQueue"));
     }
 
     /**
@@ -226,31 +226,6 @@ public class AndesUtils {
             }
         }
         return destinations;
-    }
-
-    /**
-     * Determine the matching protocol type for a given meta data type.
-     *
-     * @param metaDataType The meta data type to determine subscription type for
-     * @return Matching subscription type
-     */
-    public static ProtocolType getProtocolTypeForMetaDataType(MessageMetaDataType metaDataType) throws AndesException {
-
-        ProtocolType protocolType;
-
-        if (MessageMetaDataType.META_DATA_MQTT == metaDataType) {
-            protocolType = new ProtocolType("MQTT", "default");
-            // TODO: Remove this logic when modularizing transport metadata
-        } else if (MessageMetaDataType.META_DATA_0_10 == metaDataType){
-            // We set AMQP as the default
-            protocolType = createProtocolType(ProtocolVersion.v0_10);
-        } else if (MessageMetaDataType.META_DATA_0_91 == metaDataType) {
-            protocolType = createProtocolType(ProtocolVersion.v0_91);
-        } else {
-            protocolType = createProtocolType(ProtocolVersion.defaultProtocolVersion());
-        }
-
-        return protocolType;
     }
 
     /**

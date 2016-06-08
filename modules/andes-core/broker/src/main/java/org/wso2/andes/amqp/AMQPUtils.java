@@ -86,6 +86,9 @@ public class AMQPUtils {
      for the next chunk it can be retrieved without accessing the database */
     private static Map<Long, AndesMessagePart> messagePartCache = new HashMap<Long, AndesMessagePart>();
 
+    /**
+     * Mapping from {@link ProtocolVersion} to {@link ProtocolType}
+     */
     private static Map<ProtocolVersion, ProtocolType> protocolTypeMap = new HashMap<>();
 
     /**
@@ -189,37 +192,31 @@ public class AMQPUtils {
      * @return StorableMessageMetaData
      */
     public static StorableMessageMetaData convertAndesMetadataToAMQMetadata(AndesMessageMetadata andesMessageMetadata) {
-        byte[] dataAsBytes = andesMessageMetadata.getMetadata();
-        ByteBuffer buf = ByteBuffer.wrap(dataAsBytes);
-        buf.position(1);
-        buf = buf.slice();
-        MessageMetaDataType type = MessageMetaDataType.values()[dataAsBytes[0]];
-        return type.getFactory().createMetaData(buf);
+        return MessageMetaData.FACTORY.createMetaData(andesMessageMetadata);
     }
 
     /**
      * convert an AMQMessage to andes metadata
      *
      * @param amqMessage qpid amqMessage
+     * @param protocolType {@link ProtocolType}
      * @return andes message metadata
      * @throws AndesException
      */
-    public static AndesMessageMetadata convertAMQMessageToAndesMetadata(AMQMessage amqMessage) throws AndesException {
+    public static AndesMessageMetadata convertAMQMessageToAndesMetadata(AMQMessage amqMessage, ProtocolType protocolType) throws AndesException {
         MessageMetaData amqMetadata = amqMessage.getMessageMetaData();
-        String queue = amqMetadata.getMessagePublishInfo().getRoutingKey().toString();
+        String destination = amqMetadata.getMessagePublishInfo().getRoutingKey().toString();
+        String exchange = amqMetadata.getMessagePublishInfo().getExchange().toString();
+        final int bodySize = amqMetadata.getStorableSize();
+        ByteBuffer byteBuffer = ByteBuffer.allocate(bodySize);
+        amqMetadata.writeToBuffer(0, byteBuffer);
 
-        final int bodySize = 1 + amqMetadata.getStorableSize();
-        byte[] underlying = new byte[bodySize];
-        underlying[0] = (byte) amqMetadata.getType().ordinal();
-        java.nio.ByteBuffer buf = java.nio.ByteBuffer.wrap(underlying);
-        buf.position(1);
-        buf = buf.slice();
-        amqMetadata.writeToBuffer(0, buf);
-
-        AndesMessageMetadata metadata = new AndesMessageMetadata(amqMessage.getMessageId(),underlying,true);
+        AndesMessageMetadata metadata = new AndesMessageMetadata(destination, protocolType);
         metadata.setExpirationTime(amqMessage.getExpiration());
         metadata.setArrivalTime(amqMessage.getArrivalTime());
         metadata.setMessageContentLength(amqMetadata.getContentSize());
+        metadata.setDeliveryStrategy(exchange);
+        metadata.setProtocolMetadata(byteBuffer.array());
 
         return metadata;
     }

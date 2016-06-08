@@ -39,6 +39,7 @@ import java.util.UUID;
  */
 public class DeliverableAndesMetadata extends AndesMessageMetadata {
 
+    private static Log log = LogFactory.getLog(DeliverableAndesMetadata.class);
     /**
      * Map to keep message status and delivery information of this message to vivid channels
      */
@@ -47,6 +48,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
      * State transition of the message
      */
     private List<MessageStatus> messageStatus;
+
     /**
      * Parent slot of message.
      */
@@ -70,10 +72,8 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
      */
     private boolean stale;
 
-    private static Log log = LogFactory.getLog(DeliverableAndesMetadata.class);
-
-    public DeliverableAndesMetadata(Slot slot, long messageID, byte[] metadata, boolean parse) {
-        super(messageID, metadata, parse);
+    public DeliverableAndesMetadata(Slot slot, byte[] metadata) throws AndesException {
+        super(metadata);
         this.slot = slot;
         this.timeMessageIsRead = System.currentTimeMillis();
         this.channelDeliveryInfo = new ConcurrentHashMap<>();
@@ -108,9 +108,9 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
      * @return check expire result
      */
     public boolean isExpired() {
-        if (expirationTime != 0L) {
+        if (getExpirationTime() != 0L) {
             long now = System.currentTimeMillis();
-            if (now > expirationTime) {
+            if (now > getExpirationTime()) {
                 addMessageStatus(MessageStatus.EXPIRED);
                 return true;
             } else {
@@ -496,7 +496,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
                 messageStatus.add(state);
             } else {
                 log.warn(
-                        "Invalid message state transition suggested: " + state + " Message ID: " + messageID + "slot = "
+                        "Invalid message state transition suggested: " + state + " Message ID: " + getMessageID() + "slot = "
                                 + slot.getId());
             }
         } else {
@@ -505,7 +505,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
                 messageStatus.add(state);
             } else {
                 log.warn("Invalid message state transition from " + messageStatus.get(messageStatus.size() - 1)
-                        + " suggested: " + state + " Message ID: " + messageID + " slot = " + slot.getId()
+                        + " suggested: " + state + " Message ID: " + getMessageID() + " slot = " + slot.getId()
                         + " Message Status History >> " + messageStatus);
             }
         }
@@ -533,7 +533,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
         StringBuilder information = new StringBuilder();
 
         information.append("Message ID ");
-        information.append(Long.toString(messageID));
+        information.append(Long.toString(getMessageID()));
         information.append(',');
         information.append("Message Header ");
         information.append("null");
@@ -551,7 +551,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
         information.append(Long.toString(timeMessageIsRead));
         information.append(',');
         information.append("Expiration time ");
-        information.append(Long.toString(expirationTime));
+        information.append(Long.toString(getExpirationTime()));
         information.append(',');
         information.append("Channels sent ");
         String deliveries = "";
@@ -603,8 +603,8 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
                     messageStatusesForChannel.add(state);
                 } else {
                     log.warn(
-                            "Invalid channel message state transition suggested: " + state + " Message ID: " + messageID
-                                    + " Slot = " + slot.getId() + " Message Status History >> " + messageStatus);
+                            "Invalid channel message state transition suggested: " + state + " Message ID: " +
+                            getMessageID() + " Slot = " + slot.getId() + " Message Status History >> " + messageStatus);
                 }
             } else {
                 isValidTransition = messageStatusesForChannel.
@@ -615,7 +615,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
                 } else {
                     log.warn("Invalid channel message state transition from " + messageStatusesForChannel
                             .get(messageStatusesForChannel.size() - 1) + " suggested: " + state + " Message ID: "
-                            + messageID + " Slot = " + slot.getId() + " Channel Status History >> "
+                            + getMessageID() + " Slot = " + slot.getId() + " Channel Status History >> "
                             + messageStatusesForChannel);
                 }
             }

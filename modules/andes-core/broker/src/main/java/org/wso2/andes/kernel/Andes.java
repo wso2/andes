@@ -339,7 +339,6 @@ public class Andes {
 
     /**
      * This is the andes-specific purge method and can be called from AMQPBridge,
-     * MQTTBridge or UI MBeans (QueueManagementInformationMBean)
      * Remove messages of the queue matching to given destination queue ( h2 / mysql etc. ).
      *
      * @param queueEvent queue event related to purge

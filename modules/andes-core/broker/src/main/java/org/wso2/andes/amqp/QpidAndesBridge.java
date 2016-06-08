@@ -38,6 +38,7 @@ import org.wso2.andes.kernel.AndesUtils;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.DisablePubAckImpl;
 import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.QueueBrowserDeliveryWorker;
 import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.disruptor.inbound.InboundBindingEvent;
@@ -168,10 +169,14 @@ public class QpidAndesBridge {
      * @param channelID        id of the channel message came in
      * @param andesChannel     AndesChannel
      * @param transactionEvent not null if this is a message in a transaction, null otherwise
+     * @param protocolType {@link ProtocolType}
      * @throws AMQException
      */
-    public static void messageReceived(IncomingMessage incomingMessage, UUID channelID,
-                                AndesChannel andesChannel, InboundTransactionEvent transactionEvent) throws AMQException {
+    public static void messageReceived(IncomingMessage incomingMessage,
+                                       UUID channelID,
+                                       AndesChannel andesChannel,
+                                       InboundTransactionEvent transactionEvent,
+                                       ProtocolType protocolType) throws AMQException {
 
         long receivedTime = System.currentTimeMillis();
         try {
@@ -184,7 +189,7 @@ public class QpidAndesBridge {
             // message published time by publisher.
             message.getMessageMetaData().setArrivalTime(receivedTime);
 
-            AndesMessageMetadata metadata = AMQPUtils.convertAMQMessageToAndesMetadata(message);
+            AndesMessageMetadata metadata = AMQPUtils.convertAMQMessageToAndesMetadata(message, protocolType);
             String queue = message.getRoutingKey();
 
             if (queue == null) {

@@ -154,7 +154,7 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
         } else {
             andesChannel.recordAdditionToBuffer(message.getContentChunkList().size());
             AndesMessageMetadata messageMetadata = message.getMetadata();
-            messageMetadata.setStorageQueueName(messageMetadata.getDestination());
+            messageMetadata.setStorageDestination(messageMetadata.getDestination());
             event.addMessage(message);
         }
     }
@@ -169,8 +169,7 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
         try {
 
             // Get subscription list according to the message type
-            ProtocolType protocolType =
-                    AndesUtils.getProtocolTypeForMetaDataType(message.getMetadata().getMetaDataType());
+            ProtocolType protocolType = message.getMetadata().getProtocolType();
 
             subscriptionList = subscriptionEngine.getClusterSubscribersForDestination(messageRoutingKey,
                     protocolType, DestinationType.TOPIC);
@@ -195,11 +194,11 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                     //Message should be written to storage queue name. This is
                     //determined by destination of the message. So should be
                     //updated (but internal metadata will have topic name as usual)
-                    clonedMessage.getMetadata().setStorageQueueName(subscription.getStorageQueueName());
+                    clonedMessage.getMetadata().setStorageDestination(subscription.getStorageQueueName());
 
                     if (MessageTracer.isEnabled()) {
                         MessageTracer.trace(message, MessageTracer.MESSAGE_CLONED + clonedMessage.getMetadata()
-                                .getMessageID() + " for " + clonedMessage.getMetadata().getStorageQueueName());
+                                .getMessageID() + " for " + clonedMessage.getMetadata().getStorageDestination());
                     }
 
                     if (subscription.isDurable()) {
@@ -208,8 +207,8 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                          * in metadata as well so that they become independent messages
                          * baring subscription bound queue name as the destination
                          */
-                        clonedMessage.getMetadata().updateMetadata(subscription.getTargetQueue(),
-                                AndesUtils.DIRECT_EXCHANGE_NAME);
+                        clonedMessage.getMetadata().setDestination(subscription.getTargetQueue());
+                        clonedMessage.getMetadata().setDeliveryStrategy(AndesUtils.QUEUE_DELIVERY_STRATEGY);
                     }
                     if (log.isDebugEnabled()) {
                         log.debug("Storing metadata queue " + subscription.getStorageQueueName() + " messageID "

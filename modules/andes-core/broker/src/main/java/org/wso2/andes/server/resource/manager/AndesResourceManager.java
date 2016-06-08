@@ -21,9 +21,9 @@ import com.google.common.collect.Table;
 import com.gs.collections.api.iterator.MutableLongIterator;
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
-import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesChannel;
+import org.wso2.andes.kernel.AndesConstants;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
@@ -77,6 +77,11 @@ public class AndesResourceManager {
     boolean restoreBlockedByFlowControl = false;
 
     /**
+     * Protocol type of the dead letter queue
+     */
+    private ProtocolType dlcProtocolType;
+
+    /**
      * Initializing manager
      *
      * @throws AndesException
@@ -100,6 +105,7 @@ public class AndesResourceManager {
         });
 
         disablePubAck = new DisablePubAckImpl();
+        dlcProtocolType = new ProtocolType(AndesConstants.DLC_PROTOCOL_NAME, AndesConstants.DLC_PROTOCOL_VERSION);
     }
 
 
@@ -276,7 +282,7 @@ public class AndesResourceManager {
             AndesException {
         resourceManagerTable.get(protocol, destinationType).deleteMessages(destinationName);
     }
-    
+
     /**
      * Restore a given browser message Id list from the Dead Letter Queue to the same queue it was previous in before
      * moving to the Dead Letter Queue and remove them from the Dead Letter Queue.
@@ -307,7 +313,7 @@ public class AndesResourceManager {
                     AndesMessageMetadata metadata = Andes.getInstance().getMessageMetaData(messageId);
                     String destination = metadata.getDestination();
 
-                    metadata.setStorageQueueName(AndesUtils.getStorageQueueForDestination(destination,
+                    metadata.setStorageDestination(AndesUtils.getStorageQueueForDestination(destination,
                             ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID(),
                             DestinationType.QUEUE));
 
@@ -338,7 +344,7 @@ public class AndesResourceManager {
             }
         }
     }
-    
+
     /**
      * Restore a given browser message Id list from the Dead Letter Queue to a different given queue in the same tenant
      * and remove them from the Dead Letter Queue.
@@ -356,7 +362,8 @@ public class AndesResourceManager {
             List<AndesMessageMetadata> messagesToRemove = new ArrayList<>(andesMessageIdList.size());
 
             try {
-                LongObjectHashMap<List<AndesMessagePart>> messageContent = Andes.getInstance().getContent(andesMessageIdList);
+                LongObjectHashMap<List<AndesMessagePart>> messageContent =
+                        Andes.getInstance().getContent(andesMessageIdList);
 
                 boolean interruptedByFlowControl = false;
 
@@ -373,9 +380,13 @@ public class AndesResourceManager {
 
                     // Set the new destination queue
                     metadata.setDestination(newDestinationQueueName);
-                    metadata.setStorageQueueName(AndesUtils.getStorageQueueForDestination(newDestinationQueueName, ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID(), DestinationType.QUEUE));
+                    metadata.setStorageDestination(
+                            AndesUtils.getStorageQueueForDestination(newDestinationQueueName,
+                                    ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID(),
+                                    DestinationType.QUEUE));
 
-                    metadata.updateMetadata(newDestinationQueueName, AMQPUtils.DIRECT_EXCHANGE_NAME);
+                    metadata.setDestination(newDestinationQueueName);
+                    metadata.setDeliveryStrategy(AndesUtils.QUEUE_DELIVERY_STRATEGY);
                     AndesMessageMetadata clonedMetadata = metadata.shallowCopy(metadata.getMessageID());
                     AndesMessage andesMessage = new AndesMessage(clonedMetadata);
 
@@ -394,7 +405,8 @@ public class AndesResourceManager {
 
                 if (interruptedByFlowControl) {
                     // Throw this out so UI will show this to the user as an error message.
-                    throw new RuntimeException("Message restore from dead letter queue has been interrupted by flow " + "control. Please try again later.");
+                    throw new RuntimeException("Message restore from dead letter queue has been interrupted by flow " +
+                            "control. Please try again later.");
                 }
 
             } catch (AndesException e) {
@@ -402,7 +414,7 @@ public class AndesResourceManager {
             }
         }
     }
-    
+
     /**
      * Delete a selected message list from a given Dead Letter Queue of a tenant.
      *
@@ -411,14 +423,13 @@ public class AndesResourceManager {
      */
     public void deleteMessagesFromDeadLetterQueue(long[] andesMetadataIDs, String dlcQueueName) {
         List<AndesMessageMetadata> messageMetadataList = new ArrayList<>(andesMetadataIDs.length);
-        
+
         for (long andesMetadataID : andesMetadataIDs) {
-            AndesMessageMetadata messageToRemove = new AndesMessageMetadata(andesMetadataID, null, false);
-            messageToRemove.setStorageQueueName(dlcQueueName);
-            messageToRemove.setDestination(dlcQueueName);
+            AndesMessageMetadata messageToRemove =
+                    new AndesMessageMetadata(andesMetadataID, dlcQueueName, dlcProtocolType);
             messageMetadataList.add(messageToRemove);
         }
-        
+
         // Deleting messages which are in the list.
         try {
             Andes.getInstance().deleteMessagesFromDLC(messageMetadataList);
