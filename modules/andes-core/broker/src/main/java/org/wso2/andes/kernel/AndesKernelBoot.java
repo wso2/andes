@@ -57,9 +57,6 @@ import javax.management.JMException;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
-//import org.wso2.carbon.context.CarbonContext;
-//import org.wso2.carbon.user.api.UserStoreException;
-
 /**
  * Andes kernel startup/shutdown related work is done through this class.
  */

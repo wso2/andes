@@ -23,6 +23,7 @@ import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.management.mbeans.SubscriptionManagementInformationMXBean;
+import org.wso2.andes.server.resource.manager.AndesResourceManager;
 import org.wso2.andes.server.util.CompositeDataHelper;
 
 import java.util.ArrayList;
@@ -37,6 +38,11 @@ import javax.management.openmbean.OpenDataException;
 public class SubscriptionManagementInformationImpl implements SubscriptionManagementInformationMXBean {
 
     /**
+     * Andes resource manager instance.
+     */
+    AndesResourceManager andesResourceManager;
+
+    /**
      * Helper class for converting a subscription for {@link CompositeData}.
      */
     private CompositeDataHelper.SubscriptionCompositeDataHelper subscriptionCompositeDataHelper;
@@ -46,6 +52,7 @@ public class SubscriptionManagementInformationImpl implements SubscriptionManage
      */
     public SubscriptionManagementInformationImpl() {
         subscriptionCompositeDataHelper = new CompositeDataHelper().new SubscriptionCompositeDataHelper();
+        andesResourceManager = Andes.getInstance().getAndesResourceManager();
     }
 
     /**
@@ -60,9 +67,8 @@ public class SubscriptionManagementInformationImpl implements SubscriptionManage
             ProtocolType protocolType = new ProtocolType(protocolTypeAsString);
             DestinationType destinationType = DestinationType.valueOf(destinationTypeAsString.toUpperCase());
 
-            List<AndesSubscription> andesSubscriptions = Andes.getInstance().getAndesResourceManager()
-                    .getSubscriptions(protocolType, destinationType, subscriptionName, destinationName, active,
-                            offset, limit);
+            List<AndesSubscription> andesSubscriptions = andesResourceManager.getSubscriptions(protocolType,
+                    destinationType, subscriptionName, destinationName, active, offset, limit);
 
             for (AndesSubscription subscription : andesSubscriptions) {
                 Long pendingMessageCount = MessagingEngine.getInstance().getMessageCountOfQueue(subscription
@@ -86,8 +92,7 @@ public class SubscriptionManagementInformationImpl implements SubscriptionManage
         try {
             ProtocolType protocolType = new ProtocolType(protocolTypeAsString);
             DestinationType subscriptionType = DestinationType.valueOf(subscriptionTypeAsString.toUpperCase());
-            Andes.getInstance().getAndesResourceManager().removeSubscriptions(protocolType, subscriptionType,
-                    destinationName);
+            andesResourceManager.removeSubscriptions(protocolType, subscriptionType, destinationName);
         } catch (AndesException e) {
             throw new MBeanException(e, "Error in removing subscriptions");
         }
@@ -102,8 +107,7 @@ public class SubscriptionManagementInformationImpl implements SubscriptionManage
         try {
             ProtocolType protocolType = new ProtocolType(protocolTypeAsString);
             DestinationType subscriptionType = DestinationType.valueOf(subscriptionTypeAsString.toUpperCase());
-            Andes.getInstance().getAndesResourceManager().removeSubscription(protocolType, subscriptionType,
-                    destinationName, subscriptionId);
+            andesResourceManager.removeSubscription(protocolType, subscriptionType, destinationName, subscriptionId);
         } catch (AndesException e) {
             throw new MBeanException(e, "Error in removing a subscription.");
         }

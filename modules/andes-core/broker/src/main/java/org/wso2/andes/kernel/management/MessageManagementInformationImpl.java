@@ -22,6 +22,7 @@ import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.management.mbeans.MessageManagementInformationMXBean;
+import org.wso2.andes.server.resource.manager.AndesResourceManager;
 import org.wso2.andes.server.util.CompositeDataHelper;
 
 import java.util.ArrayList;
@@ -36,6 +37,11 @@ import javax.management.openmbean.OpenDataException;
 public class MessageManagementInformationImpl implements MessageManagementInformationMXBean {
 
     /**
+     * Andes resource manager instance.
+     */
+    AndesResourceManager andesResourceManager;
+
+    /**
      * Helper class for converting a message for {@link CompositeData}.
      */
     CompositeDataHelper.MessagesCompositeDataHelper messagesCompositeDataHelper;
@@ -45,6 +51,7 @@ public class MessageManagementInformationImpl implements MessageManagementInform
      */
     public MessageManagementInformationImpl() {
         messagesCompositeDataHelper = new CompositeDataHelper().new MessagesCompositeDataHelper();
+        andesResourceManager = Andes.getInstance().getAndesResourceManager();
     }
 
     /**
@@ -60,9 +67,8 @@ public class MessageManagementInformationImpl implements MessageManagementInform
             ProtocolType protocolType = new ProtocolType(protocolTypeAsString);
             DestinationType destinationType = DestinationType.valueOf(destinationTypeAsString.toUpperCase());
 
-            List<AndesMessage> andesMessages = Andes.getInstance().getAndesResourceManager()
-                    .browseDestinationWithMessageID(protocolType, destinationType, destinationName, getContentFlag,
-                            nextMessageID, limit);
+            List<AndesMessage> andesMessages = andesResourceManager.browseDestinationWithMessageID(protocolType,
+                    destinationType, destinationName, getContentFlag, nextMessageID, limit);
 
             for (AndesMessage andesMessage : andesMessages) {
                 compositeDataList.add(messagesCompositeDataHelper.getMessageAsCompositeData(protocolType,
@@ -88,9 +94,8 @@ public class MessageManagementInformationImpl implements MessageManagementInform
             ProtocolType protocolType = new ProtocolType(protocolTypeAsString);
             DestinationType destinationType = DestinationType.valueOf(destinationTypeAsString.toUpperCase());
 
-            List<AndesMessage> andesMessages = Andes.getInstance().getAndesResourceManager()
-                    .browseDestinationWithOffset(protocolType, destinationType, destinationName, getContentFlag,
-                            offset, limit);
+            List<AndesMessage> andesMessages = andesResourceManager.browseDestinationWithOffset(protocolType,
+                    destinationType, destinationName, getContentFlag, offset, limit);
 
             for (AndesMessage andesMessage : andesMessages) {
                 compositeDataList.add(messagesCompositeDataHelper.getMessageAsCompositeData(protocolType,
@@ -114,8 +119,8 @@ public class MessageManagementInformationImpl implements MessageManagementInform
             ProtocolType protocolType = new ProtocolType(protocolTypeAsString);
             DestinationType destinationType = DestinationType.valueOf(destinationTypeAsString.toUpperCase());
 
-            AndesMessage andesMessages = Andes.getInstance().getAndesResourceManager().getMessage(protocolType,
-                    destinationType, destinationName, andesMessageID, getContentFlag);
+            AndesMessage andesMessages = andesResourceManager.getMessage(protocolType, destinationType,
+                    destinationName, andesMessageID, getContentFlag);
 
             message = messagesCompositeDataHelper.getMessageAsCompositeData(protocolType, andesMessages,
                     getContentFlag);
@@ -137,8 +142,7 @@ public class MessageManagementInformationImpl implements MessageManagementInform
             ProtocolType protocolType = new ProtocolType(protocolTypeAsString);
             DestinationType destinationType = DestinationType.valueOf(destinationTypeAsString.toUpperCase());
 
-            Andes.getInstance().getAndesResourceManager().deleteMessages(protocolType, destinationType,
-                    destinationName);
+            andesResourceManager.deleteMessages(protocolType, destinationType, destinationName);
         } catch (AndesException e) {
             throw new MBeanException(e, "Error occurred in browse queue.");
         }

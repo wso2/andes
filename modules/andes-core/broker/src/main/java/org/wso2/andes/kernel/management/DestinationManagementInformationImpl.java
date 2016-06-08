@@ -22,6 +22,7 @@ import org.wso2.andes.kernel.AndesQueue;
 import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.management.mbeans.DestinationManagementInformationMXBean;
+import org.wso2.andes.server.resource.manager.AndesResourceManager;
 import org.wso2.andes.server.util.CompositeDataHelper;
 
 import java.util.ArrayList;
@@ -38,6 +39,11 @@ import javax.management.openmbean.OpenDataException;
 public class DestinationManagementInformationImpl implements DestinationManagementInformationMXBean {
 
     /**
+     * Andes resource manager instance.
+     */
+    private AndesResourceManager andesResourceManager;
+
+    /**
      * Helper class for converting destinations for {@link CompositeData}.
      */
     private CompositeDataHelper.DestinationCompositeDataHelper destinationCompositeDataHelper;
@@ -48,6 +54,7 @@ public class DestinationManagementInformationImpl implements DestinationManageme
      * @throws MBeanException
      */
     public DestinationManagementInformationImpl() throws MBeanException {
+        andesResourceManager = Andes.getInstance().getAndesResourceManager();
         destinationCompositeDataHelper = new CompositeDataHelper().new DestinationCompositeDataHelper();
     }
 
@@ -62,8 +69,8 @@ public class DestinationManagementInformationImpl implements DestinationManageme
             ProtocolType protocolType = new ProtocolType(protocolTypeAsString);
             DestinationType destinationType = DestinationType.valueOf(destinationTypeAsString.toUpperCase());
 
-            List<AndesQueue> destinations = Andes.getInstance().getAndesResourceManager().getDestinations
-                    (protocolType, destinationType, keyword, offset, limit);
+            List<AndesQueue> destinations = andesResourceManager.getDestinations(protocolType, destinationType,
+                    keyword, offset, limit);
 
             for (AndesQueue destination : destinations) {
 
@@ -87,7 +94,7 @@ public class DestinationManagementInformationImpl implements DestinationManageme
         try {
             ProtocolType protocolType = new ProtocolType(protocolTypeAsString);
             DestinationType destinationType = DestinationType.valueOf(destinationTypeAsString.toUpperCase());
-            Andes.getInstance().getAndesResourceManager().deleteDestinations(protocolType, destinationType);
+            andesResourceManager.deleteDestinations(protocolType, destinationType);
         } catch (AndesException e) {
             throw new MBeanException(e, "Error occurred in deleting destinations.");
         }
@@ -102,8 +109,8 @@ public class DestinationManagementInformationImpl implements DestinationManageme
         try {
             ProtocolType protocolType = new ProtocolType(protocolTypeAsString);
             DestinationType destinationType = DestinationType.valueOf(destinationTypeAsString.toUpperCase());
-            AndesQueue destination = Andes.getInstance().getAndesResourceManager().getDestination(protocolType,
-                    destinationType, destinationName);
+            AndesQueue destination = andesResourceManager.getDestination(protocolType, destinationType,
+                    destinationName);
             if (null != destination) {
                 long messageCountOfQueue = Andes.getInstance().getMessageCountOfQueue(destination.queueName);
                 return destinationCompositeDataHelper.getDestinationAsCompositeData(destination, messageCountOfQueue);
@@ -125,9 +132,8 @@ public class DestinationManagementInformationImpl implements DestinationManageme
         try {
             ProtocolType protocolType = new ProtocolType(protocolTypeAsString);
             DestinationType destinationType = DestinationType.valueOf(destinationTypeAsString.toUpperCase());
-            AndesQueue destination = Andes.getInstance().getAndesResourceManager().createDestination(protocolType,
-                    destinationType, destinationName, currentUsername);
-
+            AndesQueue destination = andesResourceManager.createDestination(protocolType, destinationType,
+                    destinationName, currentUsername);
 
             long messageCountOfQueue = Andes.getInstance().getMessageCountOfQueue(destination.queueName);
             newDestination = destinationCompositeDataHelper.getDestinationAsCompositeData(destination,

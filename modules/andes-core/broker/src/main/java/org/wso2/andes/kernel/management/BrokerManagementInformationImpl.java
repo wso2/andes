@@ -31,11 +31,23 @@ import java.util.Set;
 public class BrokerManagementInformationImpl implements BrokerManagementInformationMXBean {
 
     /**
+     * Andes instance for getting broker related information.
+     */
+    private Andes andesInstance;
+
+    /**
+     * Initializes broker managing bean.
+     */
+    public BrokerManagementInformationImpl() {
+         andesInstance = Andes.getInstance();
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
     public Set<ProtocolType> getSupportedProtocols() {
-        return Andes.getInstance().getSupportedProtocols();
+        return andesInstance.getSupportedProtocols();
     }
 
     /**
@@ -43,7 +55,7 @@ public class BrokerManagementInformationImpl implements BrokerManagementInformat
      */
     @Override
     public boolean isClusteringEnabled() {
-        return Andes.getInstance().isClusteringEnabled();
+        return andesInstance.isClusteringEnabled();
     }
 
     /**
@@ -51,7 +63,7 @@ public class BrokerManagementInformationImpl implements BrokerManagementInformat
      */
     @Override
     public String getMyNodeID() {
-        return Andes.getInstance().getLocalNodeID();
+        return andesInstance.getLocalNodeID();
     }
 
     /**
@@ -59,7 +71,7 @@ public class BrokerManagementInformationImpl implements BrokerManagementInformat
      */
     @Override
     public String getCoordinatorNodeAddress() {
-        return Andes.getInstance().getCoordinatorNodeAddress();
+        return andesInstance.getCoordinatorNodeAddress();
     }
 
     /**
@@ -67,7 +79,7 @@ public class BrokerManagementInformationImpl implements BrokerManagementInformat
      */
     @Override
     public List<String> getAllClusterNodeAddresses() {
-        return Andes.getInstance().getAllClusterNodeAddresses();
+        return andesInstance.getAllClusterNodeAddresses();
     }
 
     /**
@@ -75,6 +87,6 @@ public class BrokerManagementInformationImpl implements BrokerManagementInformat
      */
     @Override
     public boolean getStoreHealth() {
-        return Andes.getInstance().getStoreHealth();
+        return andesInstance.getStoreHealth();
     }
 }

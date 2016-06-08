@@ -27,8 +27,6 @@ import java.io.IOException;
  * MBeans for debugging the broker. Exposes Andes internal data/information.
  */
 public class BrokerDebugInformationImpl implements BrokerDebugInformationMXBean {
-    public BrokerDebugInformationImpl() {
-    }
 
     /**
      * {@inheritDoc}

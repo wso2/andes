@@ -85,9 +85,15 @@ public class CompositeDataHelper {
          * @return An object array with the properties of the destination.
          */
         private Object[] getDestinationItemValue(AndesQueue destination, long messageCount) {
-            return new Object[]{destination.queueName, destination.queueOwner, destination.isDurable, destination
-                    .subscriptionCount, messageCount, destination.getProtocolType().getProtocolName(), destination
-                                        .getDestinationType().name()};
+            return new Object[]{
+                    destination.queueName,
+                    destination.queueOwner,
+                    destination.isDurable,
+                    destination.subscriptionCount,
+                    messageCount,
+                    destination.getProtocolType().getProtocolName(),
+                    destination.getDestinationType().name()
+            };
         }
 
         /**
@@ -159,11 +165,18 @@ public class CompositeDataHelper {
          * @return An object array with the properties of the subscription.
          */
         private Object[] getSubscriptionItemValue(AndesSubscription subscription, long pendingMessageCount) {
-            return new Object[]{subscription.getSubscriptionID(), subscription.getSubscribedDestination(),
-                                subscription.getTargetQueueBoundExchangeName(), subscription.getTargetQueue(),
-                                subscription.isDurable(), subscription.hasExternalSubscriptions(),
-                                pendingMessageCount, subscription.getSubscribedNode(), subscription.getProtocolType()
-                                        .getProtocolName(), subscription.getDestinationType().name()};
+            return new Object[]{
+                    subscription.getSubscriptionID(),
+                    subscription.getSubscribedDestination(),
+                    subscription.getTargetQueueBoundExchangeName(),
+                    subscription.getTargetQueue(),
+                    subscription.isDurable(),
+                    subscription.hasExternalSubscriptions(),
+                    pendingMessageCount,
+                    subscription.getSubscribedNode(),
+                    subscription.getProtocolType().getProtocolName(),
+                    subscription.getDestinationType().name()
+            };
         }
 
         /**
@@ -214,8 +227,10 @@ public class CompositeDataHelper {
          * javax.management.openmbean.CompositeData}.
          * @throws OpenDataException
          */
-        public CompositeDataSupport getMessageAsCompositeData(ProtocolType protocolType, AndesMessage andesMessage,
-                                                              boolean getMessageContent) throws OpenDataException,
+        public CompositeDataSupport getMessageAsCompositeData(
+                ProtocolType protocolType,
+                AndesMessage andesMessage,
+                boolean getMessageContent) throws OpenDataException,
                 AndesException {
             setMessageCompositeType();
 
@@ -270,6 +285,5 @@ public class CompositeDataHelper {
                     .toArray(new String[MESSAGE_COMPOSITE_ITEM_NAMES.size()]), MESSAGE_COMPOSITE_ITEM_NAMES.toArray
                     (new String[MESSAGE_COMPOSITE_ITEM_NAMES.size()]), messageAttributeTypes);
         }
-
     }
 }
