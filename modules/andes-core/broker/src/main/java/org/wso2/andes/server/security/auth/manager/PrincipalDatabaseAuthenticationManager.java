@@ -47,7 +47,6 @@ import org.wso2.andes.configuration.qpid.plugins.ConfigurationPluginFactory;
 import org.wso2.andes.server.security.auth.AuthenticationResult;
 import org.wso2.andes.server.security.auth.AuthenticationResult.AuthenticationStatus;
 import org.wso2.andes.server.security.auth.database.PrincipalDatabase;
-import org.wso2.andes.server.security.auth.management.AMQUserManagementMBean;
 import org.wso2.andes.server.security.auth.sasl.AuthenticationProviderInitialiser;
 import org.wso2.andes.server.security.auth.sasl.JCAProvider;
 import org.wso2.andes.server.security.auth.sasl.UsernamePrincipal;
@@ -93,8 +92,6 @@ public class PrincipalDatabaseAuthenticationManager implements AuthenticationMan
     private final Map<String, Map<String, ?>> _serverCreationProperties = new HashMap<String, Map<String, ?>>();
 
     protected PrincipalDatabase _principalDatabase = null;
-
-    protected AMQUserManagementMBean _mbean = null;
 
     public static final AuthenticationManagerPluginFactory<PrincipalDatabaseAuthenticationManager> FACTORY = new AuthenticationManagerPluginFactory<PrincipalDatabaseAuthenticationManager>()
     {
@@ -204,8 +201,6 @@ public class PrincipalDatabaseAuthenticationManager implements AuthenticationMan
         {
             _logger.warn("No additional SASL providers registered.");
         }
-
-        registerManagement();
     }
 
     private void initialiseAuthenticationMechanisms(Map<String, Class<? extends SaslServerFactory>> providerMap, PrincipalDatabase database) 
@@ -325,8 +320,6 @@ public class PrincipalDatabaseAuthenticationManager implements AuthenticationMan
     {
         _mechanisms = null;
         Security.removeProvider(PROVIDER_NAME);
-
-        unregisterManagement();
     }
 
     private PrincipalDatabase createPrincipalDatabaseImpl(final String pdClazz) throws ConfigurationException
@@ -419,42 +412,5 @@ public class PrincipalDatabaseAuthenticationManager implements AuthenticationMan
     protected void setPrincipalDatabase(final PrincipalDatabase principalDatabase)
     {
         _principalDatabase = principalDatabase;
-    }
-
-    protected void registerManagement()
-    {
-        try
-        {
-            _logger.info("Registering UserManagementMBean");
-
-            _mbean = new AMQUserManagementMBean();
-            _mbean.setPrincipalDatabase(_principalDatabase);
-            _mbean.register();
-        }
-        catch (Exception e)
-        {
-            _logger.warn("User management disabled as unable to create MBean:", e);
-            _mbean = null;
-        }
-    }
-
-    protected void unregisterManagement()
-    {
-        try
-        {
-            if (_mbean != null)
-            {
-                _logger.info("Unregistering UserManagementMBean");
-                _mbean.unregister();
-            }
-        }
-        catch (Exception e)
-        {
-            _logger.warn("Failed to unregister User management MBean:", e);
-        }
-        finally
-        {
-            _mbean = null;
-        }
     }
 }

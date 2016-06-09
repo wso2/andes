@@ -23,15 +23,20 @@ import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.configuration.qpid.*;
+import org.wso2.andes.configuration.qpid.ConfigStore;
+import org.wso2.andes.configuration.qpid.ConfiguredObject;
+import org.wso2.andes.configuration.qpid.QueueConfigType;
+import org.wso2.andes.configuration.qpid.QueueConfiguration;
+import org.wso2.andes.configuration.qpid.SessionConfig;
+import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 import org.wso2.andes.framing.AMQShortString;
+import org.wso2.andes.kernel.AndesConstants;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.pool.ReadWriteRunnable;
 import org.wso2.andes.pool.ReferenceCountingExecutorService;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.binding.Binding;
-import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.logging.LogActor;
 import org.wso2.andes.server.logging.LogSubject;
@@ -39,7 +44,6 @@ import org.wso2.andes.server.logging.actors.CurrentActor;
 import org.wso2.andes.server.logging.actors.QueueActor;
 import org.wso2.andes.server.logging.messages.QueueMessages;
 import org.wso2.andes.server.logging.subjects.QueueLogSubject;
-import org.wso2.andes.server.management.ManagedObject;
 import org.wso2.andes.server.message.ServerMessage;
 import org.wso2.andes.server.protocol.AMQSessionModel;
 import org.wso2.andes.server.registry.ApplicationRegistry;
@@ -50,11 +54,15 @@ import org.wso2.andes.server.subscription.SubscriptionList;
 import org.wso2.andes.server.txn.AutoCommitTransaction;
 import org.wso2.andes.server.txn.LocalTransaction;
 import org.wso2.andes.server.txn.ServerTransaction;
-import org.wso2.andes.kernel.AndesConstants;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 
-import javax.management.JMException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -171,7 +179,6 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
     private LogSubject _logSubject;
     private LogActor _logActor;
 
-    private AMQQueueMBean _managedObject;
     private static final String SUB_FLUSH_RUNNER = "SUB_FLUSH_RUNNER";
     private boolean _nolocal;
 
@@ -260,16 +267,6 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
                                                           priorities > 0));
 
         getConfigStore().addConfiguredObject(this);
-
-        try
-        {
-            _managedObject = new AMQQueueMBean(this);
-            _managedObject.register();
-        }
-        catch (JMException e)
-        {
-            _logger.error("AMQQueue MBean creation has failed ", e);
-        }
 
         resetNotifications();
 
@@ -684,11 +681,6 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
             checkSubscriptionsNotAheadOfDelivery(entry);
 
             deliverAsync();
-        }
-
-        if(_managedObject != null)
-        {
-            _managedObject.checkForNotification(entry.getMessage());
         }
 
         if(action != null)
@@ -1517,12 +1509,6 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
 
             txn.commit();
 
-
-            if(_managedObject!=null)
-            {
-                _managedObject.unregister();
-            }
-
             for (Task task : _deleteTaskList)
             {
                 task.doTask(this);
@@ -1943,20 +1929,6 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
                     // Then dequeue it.
                     dequeueEntry(node);
                 }
-                else
-                {
-                    if (_managedObject != null)
-                    {
-                        // There is a chance that the node could be deleted by
-                        // the time the check actually occurs. So verify we
-                        // can actually get the message to perform the check.
-                        ServerMessage msg = node.getMessage();
-                        if (msg != null)
-                        {
-                            _managedObject.checkForNotification(msg);
-                        }
-                    }
-                }
             }
         }
 
@@ -2077,11 +2049,6 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
     public Set<NotificationCheck> getNotificationChecks()
     {
         return _notificationChecks;
-    }
-
-    public ManagedObject getManagedObject()
-    {
-        return _managedObject;
     }
 
     private final class QueueEntryListener implements QueueEntry.StateChangeListener

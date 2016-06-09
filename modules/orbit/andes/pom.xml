@@ -53,12 +53,6 @@
             <optional>true</optional>
         </dependency>
         <dependency>
-            <groupId>org.wso2.andes</groupId>
-            <artifactId>andes-management-common</artifactId>
-            <version>${andes.version}</version>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
             <groupId>commons-logging</groupId>
             <artifactId>commons-logging</artifactId>
             <optional>true</optional>

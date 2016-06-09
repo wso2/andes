@@ -20,26 +20,19 @@
  */
 package org.wso2.andes.extras.exchanges.diagnostic;
 
-import java.util.ArrayList;
-import java.util.Map;
-
-import javax.management.JMException;
-import javax.management.openmbean.OpenDataException;
-import javax.management.openmbean.TabularData;
-
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
-import org.wso2.andes.management.common.mbeans.annotations.MBeanConstructor;
-import org.wso2.andes.management.common.mbeans.annotations.MBeanDescription;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.exchange.AbstractExchange;
-import org.wso2.andes.server.exchange.AbstractExchangeMBean;
 import org.wso2.andes.server.exchange.ExchangeType;
 import org.wso2.andes.server.message.InboundMessage;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.virtualhost.VirtualHost;
+
+import java.util.ArrayList;
+import java.util.Map;
 
 /**
  * This is a special diagnostic exchange type which doesn't actually do anything
@@ -56,65 +49,6 @@ public class DiagnosticExchange extends AbstractExchange
 
     /** The logger */
     //private static final Logger _logger = Logger.getLogger(DiagnosticExchange.class);
-
-    /**
-     * MBean class implementing the management interfaces.
-     */
-    @MBeanDescription("Management Bean for Diagnostic Exchange")
-    private final class DiagnosticExchangeMBean extends AbstractExchangeMBean<DiagnosticExchange>
-    {
-        /**
-         * Usual constructor.
-         *
-         * @throws JMException
-         */
-        @MBeanConstructor("Creates an MBean for AMQ Diagnostic exchange")
-        public DiagnosticExchangeMBean() throws JMException
-        {
-            super(DiagnosticExchange.this);
-
-            init();
-        }
-
-        /**
-         * Returns nothing, there can be no tabular data for this...
-         *
-         * @throws OpenDataException
-         * @returns null
-         * TODO or can there? Could this actually return all the information in one easy to read table?
-         */
-        @Override
-        public TabularData bindings() throws OpenDataException
-        {
-            return null;
-        }
-
-        /**
-         * This exchange type doesn't support queues, so this method does
-         * nothing.
-         *
-         * @param queueName the queue you'll fail to create
-         * @param binding the binding you'll fail to create
-         * @throws JMException an exception that will never be thrown
-         */
-        @Override
-        public void createNewBinding(String queueName, String binding) throws JMException
-        {
-            // No Op
-        }
-
-        /**
-         * This exchange type doesn't support queues.
-         * 
-         * @see #createNewBinding(String, String)
-         */
-        @Override
-        public void removeBinding(String queueName, String binding) throws JMException
-        {
-            // No Op
-        }
-    }
-
 
     public static final ExchangeType<DiagnosticExchange> TYPE = new ExchangeType<DiagnosticExchange>()
     {
@@ -149,18 +83,6 @@ public class DiagnosticExchange extends AbstractExchange
     public DiagnosticExchange()
     {
         super(TYPE);
-    }
-
-    /**
-     * Creates a new MBean instance
-     *
-     * @return the newly created MBean
-     * @throws AMQException
-     *             if something goes wrong
-     */
-    protected AbstractExchangeMBean createMBean() throws JMException
-    {
-        return new DiagnosticExchange.DiagnosticExchangeMBean();
     }
 
     public Logger getLogger()

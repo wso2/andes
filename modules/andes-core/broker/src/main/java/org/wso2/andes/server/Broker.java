@@ -27,13 +27,11 @@ import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.configuration.modules.JKSStore;
 import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.configuration.qpid.ServerNetworkTransportConfiguration;
-import org.wso2.andes.configuration.qpid.management.ConfigurationManagementMBean;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesKernelBoot;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
-import org.wso2.andes.server.information.management.ServerInformationMBean;
 import org.wso2.andes.server.logging.SystemOutMessageLogger;
 import org.wso2.andes.server.logging.actors.BrokerActor;
 import org.wso2.andes.server.logging.actors.CurrentActor;
@@ -125,11 +123,6 @@ public class Broker
             serverConfig) throws AndesException {
         try {
             if (AndesConfigurationManager.<Boolean>readValue(AndesConfiguration.TRANSPORTS_AMQP_ENABLED)) {
-                ConfigurationManagementMBean configMBean = new ConfigurationManagementMBean();
-                configMBean.register();
-
-                ServerInformationMBean sysInfoMBean = new ServerInformationMBean(config);
-                sysInfoMBean.register();
 
                 Set<Integer> ports = new HashSet<Integer>(options.getPorts());
                 if (ports.isEmpty()) {
@@ -239,8 +232,6 @@ public class Broker
             } else {
                 log.warn("AMQP Transport is disabled as per configuration.");
             }
-        } catch (JMException e) {
-            throw new AndesException("Unable to register an MBean", e);
         } catch (UnknownHostException e) {
             throw new AndesException("Unable to get bind address", e);
         }

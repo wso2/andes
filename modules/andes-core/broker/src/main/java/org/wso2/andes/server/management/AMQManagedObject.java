@@ -49,8 +49,6 @@ public abstract class AMQManagedObject extends DefaultManagedObject
      */
     protected long _notificationSequenceNumber = 0;
 
-    protected MBeanInfo _mbeanInfo;
-
     protected LogActor _logActor;
 
     protected AMQManagedObject(Class<?> managementInterface, String typeName)
@@ -60,26 +58,7 @@ public abstract class AMQManagedObject extends DefaultManagedObject
         // CurrentActor will be defined as these objects are created during
         // broker startup.
         _logActor = new ManagementActor(CurrentActor.get().getRootMessageLogger());
-        buildMBeanInfo();
     }
-
-    @Override
-    public MBeanInfo getMBeanInfo()
-    {
-        return _mbeanInfo;
-    }
-    
-    private void buildMBeanInfo() throws NotCompliantMBeanException
-    {
-        _mbeanInfo = new MBeanInfo(this.getClass().getName(),
-                      MBeanIntrospector.getMBeanDescription(this.getClass()),
-                      MBeanIntrospector.getMBeanAttributesInfo(getManagementInterface()),
-                      MBeanIntrospector.getMBeanConstructorsInfo(this.getClass()),
-                      MBeanIntrospector.getMBeanOperationsInfo(getManagementInterface()),
-                      this.getNotificationInfo());
-    }
-
-
 
     // notification broadcaster implementation
 

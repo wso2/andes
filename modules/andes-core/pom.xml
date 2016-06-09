@@ -484,21 +484,6 @@
                             <generatePom>true</generatePom>
                         </configuration>
                     </execution>
-                    <execution>
-                        <id>install-management-common</id>
-                        <phase>install</phase>
-                        <goals>
-                            <goal>install-file</goal>
-                        </goals>
-                        <configuration>
-                            <groupId>org.wso2.andes</groupId>
-                            <artifactId>andes-management-common</artifactId>
-                            <version>${andes.version}</version>
-                            <packaging>jar</packaging>
-                            <file>build/lib/qpid-management-common-${andes.version}.jar</file>
-                            <generatePom>true</generatePom>
-                        </configuration>
-                    </execution>
                 </executions>
             </plugin>
             <plugin>

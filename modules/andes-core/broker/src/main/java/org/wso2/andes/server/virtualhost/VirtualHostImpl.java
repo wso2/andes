@@ -23,27 +23,30 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQStoreException;
 import org.wso2.andes.amqp.QpidAndesBridge;
-import org.wso2.andes.configuration.qpid.*;
+import org.wso2.andes.configuration.qpid.BrokerConfig;
+import org.wso2.andes.configuration.qpid.ConfigStore;
+import org.wso2.andes.configuration.qpid.ConfiguredObject;
+import org.wso2.andes.configuration.qpid.ExchangeConfiguration;
+import org.wso2.andes.configuration.qpid.QueueConfiguration;
+import org.wso2.andes.configuration.qpid.VirtualHostConfigType;
+import org.wso2.andes.configuration.qpid.VirtualHostConfiguration;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
-import org.wso2.andes.kernel.*;
-import org.wso2.andes.server.AMQBrokerManagerMBean;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.QpidDataHolder;
 import org.wso2.andes.server.binding.BindingFactory;
 import org.wso2.andes.server.connection.ConnectionRegistry;
 import org.wso2.andes.server.connection.IConnectionRegistry;
-import org.wso2.andes.server.exchange.*;
+import org.wso2.andes.server.exchange.DefaultExchangeFactory;
+import org.wso2.andes.server.exchange.DefaultExchangeRegistry;
+import org.wso2.andes.server.exchange.Exchange;
+import org.wso2.andes.server.exchange.ExchangeFactory;
+import org.wso2.andes.server.exchange.ExchangeRegistry;
 import org.wso2.andes.server.federation.BrokerLink;
-import org.wso2.andes.server.information.management.DestinationManagementInformationMBean;
-import org.wso2.andes.server.information.management.MessageManagementInformationMBean;
-import org.wso2.andes.server.information.management.QueueManagementInformationMBean;
 import org.wso2.andes.server.logging.LogSubject;
 import org.wso2.andes.server.logging.actors.CurrentActor;
 import org.wso2.andes.server.logging.messages.VirtualHostMessages;
 import org.wso2.andes.server.logging.subjects.MessageStoreLogSubject;
-import org.wso2.andes.server.management.AMQManagedObject;
-import org.wso2.andes.server.management.ManagedObject;
 import org.wso2.andes.server.protocol.AMQConnectionModel;
 import org.wso2.andes.server.protocol.AMQSessionModel;
 import org.wso2.andes.server.queue.AMQQueue;
@@ -55,14 +58,19 @@ import org.wso2.andes.server.registry.IApplicationRegistry;
 import org.wso2.andes.server.security.SecurityManager;
 import org.wso2.andes.server.security.auth.manager.AuthenticationManager;
 import org.wso2.andes.server.stats.StatisticsCounter;
-import org.wso2.andes.server.store.*;
+import org.wso2.andes.server.store.ConfigurationRecoveryHandler;
+import org.wso2.andes.server.store.DurableConfigurationStore;
 import org.wso2.andes.server.store.MessageStore;
+import org.wso2.andes.server.store.QpidDeprecatedMessageStore;
+import org.wso2.andes.server.store.TransactionLog;
 import org.wso2.andes.server.virtualhost.plugins.VirtualHostPlugin;
 import org.wso2.andes.server.virtualhost.plugins.VirtualHostPluginFactory;
 
-import javax.management.NotCompliantMBeanException;
-import javax.management.ObjectName;
-import java.util.*;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -81,16 +89,6 @@ public class VirtualHostImpl implements VirtualHost {
     private ExchangeFactory exchangeFactory;
 
     private MessageStore messageStore;
-
-    protected VirtualHostMBean virtualHostMBean;
-
-    private AMQBrokerManagerMBean brokerMBean;
-
-    private QueueManagementInformationMBean queueManagementInformationMBean;
-
-    private DestinationManagementInformationMBean destinationManagementInformationMBean;
-
-    private MessageManagementInformationMBean messageManagementInformationMBean;
 
     private final AuthenticationManager authenticationManager;
 
@@ -135,30 +133,6 @@ public class VirtualHostImpl implements VirtualHost {
         return false;
     }
 
-    /**
-     * Virtual host JMX MBean class.
-     * <p/>
-     * This has some of the methods implemented from management intrerface for exchanges. Any
-     * implementaion of an Exchange MBean should extend this class.
-     */
-    public class VirtualHostMBean extends AMQManagedObject implements ManagedVirtualHost {
-        public VirtualHostMBean() throws NotCompliantMBeanException {
-            super(ManagedVirtualHost.class, ManagedVirtualHost.TYPE);
-        }
-
-        public String getObjectInstanceName() {
-            return ObjectName.quote(name);
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public VirtualHostImpl getVirtualHost() {
-            return VirtualHostImpl.this;
-        }
-    }
-
     public VirtualHostImpl(IApplicationRegistry appRegistry, VirtualHostConfiguration hostConfig) throws Exception {
         this(appRegistry, hostConfig, null);
     }
@@ -189,8 +163,6 @@ public class VirtualHostImpl implements VirtualHost {
         securityManager = new SecurityManager(this.appRegistry.getSecurityManager());
         securityManager.configureHostPlugins(configuration);
 
-        virtualHostMBean = new VirtualHostMBean();
-
         connectionRegistry = new ConnectionRegistry();
 
         houseKeepingTasks = new ScheduledThreadPoolExecutor(configuration.getHouseKeepingThreadCount());
@@ -220,18 +192,6 @@ public class VirtualHostImpl implements VirtualHost {
         exchangeRegistry.initialise();
 
         authenticationManager = ApplicationRegistry.getInstance().getAuthenticationManager();
-
-        brokerMBean = new AMQBrokerManagerMBean(virtualHostMBean);
-        brokerMBean.register();
-
-        queueManagementInformationMBean = new QueueManagementInformationMBean(virtualHostMBean);
-        queueManagementInformationMBean.register();
-
-        destinationManagementInformationMBean = new DestinationManagementInformationMBean(virtualHostMBean);
-        destinationManagementInformationMBean.register();
-
-        messageManagementInformationMBean = new MessageManagementInformationMBean(virtualHostMBean);
-        messageManagementInformationMBean.register();
 
         initialiseHouseKeeping(hostConfig.getHousekeepingExpiredMessageCheckPeriod());
 
@@ -555,14 +515,6 @@ public class VirtualHostImpl implements VirtualHost {
         CurrentActor.get().message(VirtualHostMessages.CLOSED());
     }
 
-    public ManagedObject getBrokerMBean() {
-        return brokerMBean;
-    }
-
-    public ManagedObject getManagedObject() {
-        return virtualHostMBean;
-    }
-
     public UUID getBrokerId() {
         return appRegistry.getBrokerId();
     }
@@ -668,18 +620,6 @@ public class VirtualHostImpl implements VirtualHost {
 
     public ConfigStore getConfigStore() {
         return getApplicationRegistry().getConfigStore();
-    }
-
-    public QueueManagementInformationMBean getQueueManagementInformationMBean() {
-        return queueManagementInformationMBean;
-    }
-
-    public DestinationManagementInformationMBean getDestinationManagementInformationMBean() {
-        return destinationManagementInformationMBean;
-    }
-
-    public MessageManagementInformationMBean getMessageManagementInformationMBean() {
-        return messageManagementInformationMBean;
     }
 
     /**

@@ -19,7 +19,6 @@ package org.wso2.andes.server.queue;
 
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
@@ -29,7 +28,6 @@ import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.configuration.qpid.QueueConfig;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.exchange.ExchangeReferrer;
-import org.wso2.andes.server.management.Managable;
 import org.wso2.andes.server.management.ManagedObject;
 import org.wso2.andes.server.security.AuthorizationHolder;
 import org.wso2.andes.server.store.TransactionLogResource;
@@ -41,8 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public interface AMQQueue extends Managable, Comparable<AMQQueue>, ExchangeReferrer, TransactionLogResource, BaseQueue,
-                                  QueueConfig
+public interface AMQQueue extends Comparable<AMQQueue>, ExchangeReferrer, TransactionLogResource, BaseQueue, QueueConfig
 {
     boolean getDeleteOnNoConsumers();
 
@@ -269,8 +266,6 @@ public interface AMQQueue extends Managable, Comparable<AMQQueue>, ExchangeRefer
     void configure(ConfigurationPlugin config);
 
     ConfigurationPlugin getConfiguration();
-
-    ManagedObject getManagedObject();
 
     void setExclusive(boolean exclusive) throws AMQException;
 
