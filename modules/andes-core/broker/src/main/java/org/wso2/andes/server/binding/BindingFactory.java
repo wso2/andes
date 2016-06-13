@@ -30,7 +30,6 @@ import org.wso2.andes.configuration.qpid.ConfigStore;
 import org.wso2.andes.configuration.qpid.ConfiguredObject;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
-import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.NameValidationUtils;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.exchange.TopicExchange;
@@ -40,6 +39,7 @@ import org.wso2.andes.server.logging.subjects.BindingLogSubject;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.store.DurableConfigurationStore;
 import org.wso2.andes.server.virtualhost.VirtualHost;
+import org.wso2.carbon.andes.core.AndesException;
 
 import java.util.Collections;
 import java.util.List;

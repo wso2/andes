@@ -17,7 +17,6 @@
  */
 package org.wso2.andes.server.virtualhost;
 
-import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.server.store.ConfigurationRecoveryHandler;
 import org.wso2.andes.server.store.MessageStore;
 import org.wso2.andes.server.store.MessageStoreRecoveryHandler;
@@ -40,6 +39,7 @@ import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.AMQException;
 
 import org.apache.log4j.Logger;
+import org.wso2.carbon.andes.core.ProtocolType;
 
 import java.nio.ByteBuffer;
 

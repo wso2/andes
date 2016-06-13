@@ -17,21 +17,21 @@
  */
 package org.wso2.andes.server.handler;
 
+import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.framing.BasicRejectBody;
-import org.wso2.andes.kernel.Andes;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesUtils;
-import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.message.AMQMessage;
-import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
+import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.state.AMQStateManager;
 import org.wso2.andes.server.state.StateAwareMethodListener;
-import org.apache.log4j.Logger;
+import org.wso2.carbon.andes.core.Andes;
+import org.wso2.carbon.andes.core.AndesException;
+import org.wso2.carbon.andes.core.AndesUtils;
+import org.wso2.carbon.andes.core.DeliverableAndesMetadata;
 
 public class BasicRejectMethodHandler implements StateAwareMethodListener<BasicRejectBody>
 {

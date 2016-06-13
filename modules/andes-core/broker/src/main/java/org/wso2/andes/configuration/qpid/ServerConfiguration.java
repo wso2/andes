@@ -18,25 +18,32 @@
 
 package org.wso2.andes.configuration.qpid;
 
-import org.apache.commons.configuration.*;
+import org.apache.commons.configuration.CompositeConfiguration;
 import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration.ConfigurationFactory;
+import org.apache.commons.configuration.HierarchicalConfiguration;
+import org.apache.commons.configuration.SystemConfiguration;
+import org.apache.commons.configuration.XMLConfiguration;
 import org.apache.log4j.Logger;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.configuration.modules.JKSStore;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
-import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostRegistry;
+import org.wso2.carbon.andes.core.internal.configuration.AndesConfigurationManager;
+import org.wso2.carbon.andes.core.internal.configuration.enums.AndesConfiguration;
+import org.wso2.carbon.andes.core.internal.configuration.modules.JKSStore;
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
 
 import java.io.File;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Map.Entry;
-
-import static org.wso2.andes.transport.ConnectionSettings.WILDCARD_ADDRESS;
 
 public class ServerConfiguration extends ConfigurationPlugin implements SignalHandler {
     protected static final Logger _logger = Logger.getLogger(ServerConfiguration.class);
@@ -563,7 +570,7 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
     }
 
     public boolean getSSLOnly() {
-        return (Boolean)AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_SSL_CONNECTION_ENABLED) &&
+        return (Boolean) AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_SSL_CONNECTION_ENABLED) &&
                 !(Boolean)AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_DEFAULT_CONNECTION_ENABLED);
     }
 
@@ -612,6 +619,7 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
                 getLongValue("housekeeping.expiredMessageCheckPeriod",
                         DEFAULT_HOUSEKEEPING_PERIOD));
     }
+
 
     public boolean isStatisticsGenerationBrokerEnabled() {
         return getConfig().getBoolean("statistics.generation.broker", false);

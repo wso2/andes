@@ -17,9 +17,9 @@
  */
 package org.wso2.andes.server.store;
 
-import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.server.message.MessageMetaData;
 import org.wso2.andes.server.message.MessageMetaData_0_10;
+import org.wso2.carbon.andes.core.AndesMessageMetadata;
 
 public enum MessageMetaDataType
     /* TODO: Need to remove this class and implement this using the ProtocolType and separate database columns

@@ -27,13 +27,20 @@ import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
-import org.wso2.andes.kernel.*;
-import org.wso2.andes.kernel.transport.ConfigSynchronizer;
 import org.wso2.andes.server.binding.BindingFactory;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.AMQQueueFactory;
 import org.wso2.andes.server.store.ConfigurationRecoveryHandler;
+import org.wso2.carbon.andes.core.Andes;
+import org.wso2.carbon.andes.core.AndesBinding;
+import org.wso2.carbon.andes.core.AndesException;
+import org.wso2.carbon.andes.core.AndesExchange;
+import org.wso2.carbon.andes.core.AndesQueue;
+import org.wso2.carbon.andes.core.MessagingEngine;
+import org.wso2.carbon.andes.core.ProtocolType;
+import org.wso2.carbon.andes.core.internal.AndesContext;
+import org.wso2.carbon.andes.core.internal.transport.ConfigSynchronizer;
 
 import java.nio.ByteBuffer;
 import java.util.Map;
@@ -77,7 +84,7 @@ public class VirtualHostConfigSynchronizer implements
     public void clusterExchangeAdded(AndesExchange exchange) throws AndesException {
         try {
             exchange(exchange.exchangeName, exchange.type, exchange.autoDelete);
-            AndesContext.getInstance().getAMQPConstructStore().addExchange(exchange, false);
+            AndesContext.getInstance().getAmqpConstructStore().addExchange(exchange, false);
         } catch (Exception e) {
             log.error("could not add cluster exchange", e);
             throw new AndesException("could not add cluster exchange", e);
@@ -106,7 +113,7 @@ public class VirtualHostConfigSynchronizer implements
     public void clusterQueueAdded(AndesQueue queue) throws AndesException {
         try {
             queue(queue.queueName, queue.queueOwner, queue.isExclusive, null, queue.getProtocolType());
-            AndesContext.getInstance().getAMQPConstructStore().addQueue(queue, false);
+            AndesContext.getInstance().getAmqpConstructStore().addQueue(queue, false);
         } catch (Exception e) {
             log.error("could not add cluster queue", e);
             throw new AndesException("could not add cluster queue : " + queue.toString(), e);
@@ -123,7 +130,7 @@ public class VirtualHostConfigSynchronizer implements
         try {
             log.info("Queue removal request received queue= " + queue.queueName);
             removeQueue(queue.queueName);
-            AndesContext.getInstance().getAMQPConstructStore().removeLocalQueueData(queue.queueName);
+            AndesContext.getInstance().getAmqpConstructStore().removeLocalQueueData(queue.queueName);
         } catch (Exception e) {
             log.error("could not remove cluster queue", e);
             throw new AndesException("could not remove cluster queue : " + queue.toString(), e);
@@ -170,7 +177,7 @@ public class VirtualHostConfigSynchronizer implements
     public void clusterBindingAdded(AndesBinding binding) throws AndesException {
         try {
             binding(binding.boundExchangeName, binding.boundQueue.queueName, binding.routingKey, null);
-            AndesContext.getInstance().getAMQPConstructStore().addBinding(binding, false);
+            AndesContext.getInstance().getAmqpConstructStore().addBinding(binding, false);
         } catch (Exception e) {
             log.error("could not add cluster binding + " + binding.toString(), e);
             throw new AndesException("could not add cluster binding : " + binding.toString(), e);

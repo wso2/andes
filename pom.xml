@@ -374,6 +374,11 @@
                 <artifactId>ant</artifactId>
                 <version>${ant.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.wso2.carbon.mb</groupId>
+                <artifactId>andes</artifactId>
+                <version>${mb.core.version}</version>
+            </dependency>
             <!--MQTT Dependencies-->
             <dependency>
                 <groupId>io.netty.wso2</groupId>
@@ -552,6 +557,7 @@
         <carbon.kernel.version>5.1.0</carbon.kernel.version>
         <project.scm.id>wso2-scm-server</project.scm.id>
         <andes.version>3.1.1</andes.version>
+        <mb.core.version>3.5.0-SNAPSHOT</mb.core.version>
         <commons-cli.version>1.0</commons-cli.version>
         <commons-configuration.version>1.10</commons-configuration.version>
         <commons-lang.version>2.6</commons-lang.version>

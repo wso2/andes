@@ -19,13 +19,13 @@ package org.wso2.andes.amqp;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.queue.QueueEntry;
+import org.wso2.carbon.andes.core.AndesException;
+import org.wso2.carbon.andes.core.ProtocolMessage;
+import org.wso2.carbon.andes.core.internal.configuration.AndesConfigurationManager;
+import org.wso2.carbon.andes.core.internal.configuration.enums.AndesConfiguration;
 
 import java.util.UUID;
 

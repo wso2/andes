@@ -26,17 +26,16 @@ import org.wso2.andes.framing.QueueDeleteBody;
 import org.wso2.andes.framing.QueueDeleteOkBody;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
-import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.QpidDataHolder;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.protocol.AMQSessionModel;
 import org.wso2.andes.server.queue.AMQQueue;
-import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.server.queue.QueueRegistry;
 import org.wso2.andes.server.state.AMQStateManager;
 import org.wso2.andes.server.state.StateAwareMethodListener;
 import org.wso2.andes.server.store.DurableConfigurationStore;
 import org.wso2.andes.server.virtualhost.VirtualHost;
+import org.wso2.carbon.andes.core.util.DLCQueueUtils;
 
 public class QueueDeleteHandler implements StateAwareMethodListener<QueueDeleteBody>
 {

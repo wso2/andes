@@ -30,9 +30,6 @@ import org.wso2.andes.configuration.qpid.SubscriptionConfig;
 import org.wso2.andes.configuration.qpid.SubscriptionConfigType;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
-import org.wso2.andes.kernel.AndesUtils;
-import org.wso2.andes.kernel.ProtocolDeliveryFailureException;
-import org.wso2.andes.kernel.SubscriptionAlreadyClosedException;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.filter.FilterManager;
@@ -49,6 +46,8 @@ import org.wso2.andes.server.output.ProtocolOutputConverter;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.QueueEntry;
+import org.wso2.carbon.andes.core.AndesUtils;
+import org.wso2.carbon.andes.core.SubscriptionAlreadyClosedException;
 
 import java.util.Map;
 import java.util.UUID;

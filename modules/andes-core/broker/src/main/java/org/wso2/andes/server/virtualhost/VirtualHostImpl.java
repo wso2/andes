@@ -32,7 +32,6 @@ import org.wso2.andes.configuration.qpid.VirtualHostConfigType;
 import org.wso2.andes.configuration.qpid.VirtualHostConfiguration;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
-import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.QpidDataHolder;
 import org.wso2.andes.server.binding.BindingFactory;
 import org.wso2.andes.server.connection.ConnectionRegistry;
@@ -65,6 +64,7 @@ import org.wso2.andes.server.store.QpidDeprecatedMessageStore;
 import org.wso2.andes.server.store.TransactionLog;
 import org.wso2.andes.server.virtualhost.plugins.VirtualHostPlugin;
 import org.wso2.andes.server.virtualhost.plugins.VirtualHostPluginFactory;
+import org.wso2.carbon.andes.core.internal.cluster.ClusterResourceHolder;
 
 import java.util.Collections;
 import java.util.LinkedList;

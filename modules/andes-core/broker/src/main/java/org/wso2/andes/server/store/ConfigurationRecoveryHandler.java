@@ -18,7 +18,7 @@
 package org.wso2.andes.server.store;
 
 import org.wso2.andes.framing.FieldTable;
-import org.wso2.andes.kernel.ProtocolType;
+import org.wso2.carbon.andes.core.ProtocolType;
 
 import java.nio.ByteBuffer;
 

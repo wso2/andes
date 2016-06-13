@@ -18,8 +18,8 @@
 package org.wso2.andes.amqp;
 
 
-import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.queue.QueueEntry;
+import org.wso2.carbon.andes.core.AndesException;
 
 /**
  * This interface have methods to implement to evaluate AMQP specific
