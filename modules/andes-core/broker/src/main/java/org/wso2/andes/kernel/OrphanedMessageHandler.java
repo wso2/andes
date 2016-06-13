@@ -64,7 +64,7 @@ public class OrphanedMessageHandler implements SubscriptionListener {
              */
             case DISCONNECTED:
                 if (localSubscription.getTargetQueueBoundExchangeName()
-                                     .equals(AndesUtils.TOPIC_EXCHANGE_NAME) && !localSubscription
+                                     .equals(AndesUtils.TOPIC_DELIVERY_STRATEGY) && !localSubscription
                                       .isDurable()) {
                     String subscribedDestination = localSubscription.getSubscribedDestination();
                     if(!subscriptionManager.checkIfActiveNonDurableLocalSubscriptionExistsForTopic

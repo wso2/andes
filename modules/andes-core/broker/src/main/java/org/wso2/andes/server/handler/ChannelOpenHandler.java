@@ -33,21 +33,19 @@ import org.wso2.andes.server.state.AMQStateManager;
 import org.wso2.andes.server.state.StateAwareMethodListener;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 
-import javax.management.MBeanServer;
-import javax.management.MBeanServerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 
+/**
+ * Handles channel open event for AMQP connection
+ */
 public class ChannelOpenHandler implements StateAwareMethodListener<ChannelOpenBody>
 {
     private static final Logger _logger = Logger.getLogger(ChannelOpenHandler.class);
     
     private static ChannelOpenHandler _instance = new ChannelOpenHandler();
-
-    private final MBeanServer server;
 
     public static ChannelOpenHandler getInstance()
     {
@@ -56,8 +54,6 @@ public class ChannelOpenHandler implements StateAwareMethodListener<ChannelOpenB
 
     private ChannelOpenHandler()
     {
-        List<MBeanServer> servers = MBeanServerFactory.findMBeanServer(null);
-        this.server = servers.iterator().next();
     }
 
     public void methodReceived(AMQStateManager stateManager, ChannelOpenBody body, int channelId) throws AMQException
@@ -76,11 +72,7 @@ public class ChannelOpenHandler implements StateAwareMethodListener<ChannelOpenB
 
         session.addChannel(channel);
 
-        /* Registering the AMQChannel MBean upon creation */
-//        this.registerAMQChannelMBean(channel, channel.getId());
-
         ChannelOpenOkBody response;
-
         ProtocolVersion pv = session.getProtocolVersion();
 
         if(pv.equals(ProtocolVersion.v8_0))
@@ -145,20 +137,4 @@ public class ChannelOpenHandler implements StateAwareMethodListener<ChannelOpenB
 
         session.writeFrame(response.generateFrame(channelId));
     }
-
-//    private void registerAMQChannelMBean(AMQChannel channel, UUID channelId) throws AMQException {
-//        try {
-//            this.getMBeanServer().registerMBean(channel,
-//                    new ObjectName("amqchannel:name=amqpchannel" + channelId));
-//        } catch (Exception e) {
-//            String msg = "Error occurred : " + e.getMessage();
-//            _logger.error(msg);
-//            throw new AMQException(msg, e);
-//        }
-//    }
-
-    private MBeanServer getMBeanServer() {
-        return server;
-    }
-
 }

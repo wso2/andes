@@ -17,6 +17,7 @@
  */
 package org.wso2.andes.server.message;
 
+import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.server.store.StorableMessageMetaData;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.transport.MessageTransfer;
@@ -176,12 +177,6 @@ public class MessageMetaData_0_10 implements StorableMessageMetaData
         return null;
     }
 
-    @Override
-    public boolean isCompressed() {
-        return false;
-    }
-
-
     public String getRoutingKey()
     {
         return _deliveryProps == null ? null : _deliveryProps.getRoutingKey();
@@ -231,10 +226,10 @@ public class MessageMetaData_0_10 implements StorableMessageMetaData
 
     private static class MetaDataFactory implements MessageMetaDataType.Factory<MessageMetaData_0_10>
     {
-        public MessageMetaData_0_10 createMetaData(ByteBuffer buf)
+        public MessageMetaData_0_10 createMetaData(AndesMessageMetadata andesMessageMetadata)
         {
             BBDecoder decoder = new BBDecoder();
-            decoder.init(buf);
+            decoder.init(ByteBuffer.wrap(andesMessageMetadata.getProtocolMetadata()));
 
             long arrivalTime = decoder.readInt64();
             int bodySize = decoder.readInt32();

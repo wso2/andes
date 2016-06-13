@@ -244,9 +244,7 @@ public class ContentChunkHandler implements EventHandler<InboundEventContainer> 
             AndesMessagePart compressedMessagePart = lz4CompressionHelper.getCompressedMessage(partList, originalContentLength);
 
             // Update metadata to indicate the message is a compressed one
-            metadata.updateMetadata(true);
-            message.setMetadata(metadata);
-
+            metadata.setCompressed(true);
             contentLength = compressedMessagePart.getDataLength();
 
             partList.clear();

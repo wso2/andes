@@ -128,7 +128,7 @@ public class SlotMessageCounter {
      * @param metadata AndesMessageMetadata
      */
     private void recordMetadataCountInSlot(AndesMessageMetadata metadata) {
-        String storageQueueName = metadata.getStorageQueueName();
+        String storageQueueName = metadata.getStorageDestination();
         Slot currentSlot = updateQueueToSlotMap(metadata);
 
         if (checkMessageLimitReached(currentSlot)) {
@@ -155,7 +155,7 @@ public class SlotMessageCounter {
      * @return Current slot which this metadata belongs to
      */
     private Slot updateQueueToSlotMap(AndesMessageMetadata metadata) {
-        String storageQueueName = metadata.getStorageQueueName();
+        String storageQueueName = metadata.getStorageDestination();
         Slot currentSlot = queueToSlotMap.get(storageQueueName);
         if (currentSlot == null) {
             currentSlot = new Slot();

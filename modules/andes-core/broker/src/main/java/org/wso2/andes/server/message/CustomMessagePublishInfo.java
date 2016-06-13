@@ -45,44 +45,20 @@ public class CustomMessagePublishInfo implements org.wso2.andes.framing.abstract
         StorableMessageMetaData metaData = message.getMessageMetaData();
 
         //convert metadata to bytes
-        final int bodySize = 1 + metaData.getStorableSize();
-        byte[] underlying = new byte[bodySize];
-        underlying[0] = (byte) metaData.getType().ordinal();
-        ByteBuffer buf = ByteBuffer.wrap(underlying);
-        buf.position(1);
-        buf = buf.slice();
-
+        ByteBuffer buf = ByteBuffer.allocate(metaData.getStorableSize());
         metaData.writeToBuffer(0, buf);
-
-        ByteBuffer bufNew = ByteBuffer.wrap(underlying);
-        bufNew.position(1);
-        bufNew = bufNew.slice();
-
-        //read the buffer
-        MessageMetaDataType type = MessageMetaDataType.values()[underlying[0]];
-        createMetaData(bufNew);
+        buf.rewind();
+        createMetaData(buf);
 
     }
 
     public CustomMessagePublishInfo(StorableMessageMetaData metaData) {
 
         //convert metadata to bytes
-        final int bodySize = 1 + metaData.getStorableSize();
-        byte[] underlying = new byte[bodySize];
-        underlying[0] = (byte) metaData.getType().ordinal();
-        ByteBuffer buf = ByteBuffer.wrap(underlying);
-        buf.position(1);
-        buf = buf.slice();
-
+        ByteBuffer buf = ByteBuffer.allocate(metaData.getStorableSize());
         metaData.writeToBuffer(0, buf);
-
-        ByteBuffer bufNew = ByteBuffer.wrap(underlying);
-        bufNew.position(1);
-        bufNew = bufNew.slice();
-
-        //read the buffer
-        MessageMetaDataType type = MessageMetaDataType.values()[underlying[0]];
-        createMetaData(bufNew);
+        buf.rewind();
+        createMetaData(buf);
     }
 
     private void createMetaData(ByteBuffer buf) {

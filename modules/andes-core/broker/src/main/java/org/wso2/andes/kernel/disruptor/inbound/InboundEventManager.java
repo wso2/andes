@@ -173,6 +173,9 @@ public class InboundEventManager {
      * @param pubAckHandler PubAckHandler
      */
     public void messageReceived(AndesMessage message, AndesChannel andesChannel, PubAckHandler pubAckHandler) {
+        if(message.getMetadata().getArrivalTime() == 0) {
+            message.getMetadata().setArrivalTime(System.currentTimeMillis());
+        }
         // Publishers claim events in sequence
         long sequence = ringBuffer.next();
         InboundEventContainer event = ringBuffer.get(sequence);

@@ -42,6 +42,7 @@ import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.FlowControlListener;
+import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.ack.UnacknowledgedMessageMap;
@@ -83,7 +84,6 @@ import org.wso2.andes.server.txn.ServerTransaction;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.amqp.StoredAMQPMessage;
 
-import javax.management.JMException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -102,6 +102,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class AMQChannel implements SessionConfig, AMQSessionModel
 {
     public static final int DEFAULT_PREFETCH = 5000;
+
+    private static final String PROTOCOL_NAME = "AMQP";
 
     private static final Logger _logger = Logger.getLogger(AMQChannel.class);
 
@@ -199,6 +201,8 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     private final UUID _id;
     private long _createTime = System.currentTimeMillis();
 
+    private final ProtocolType protocolType;
+
     public AMQChannel(AMQProtocolSession session, int channelId, MessageStore messageStore)
             throws AMQException {
         _session = session;
@@ -208,6 +212,11 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         _logSubject = new ChannelLogSubject(this);
         _id = getConfigStore().createId();
         _actor.message(ChannelMessages.CREATE());
+        try {
+            protocolType = new ProtocolType(PROTOCOL_NAME, session.getProtocolVersion().toString());
+        } catch (AndesException e) {
+            throw new AMQInternalException("Error occurred while creating Andes protocol type ", e);
+        }
 
         // message tracking related to this channel is initialised
         Andes.getInstance().clientConnectionCreated(_id);
@@ -249,8 +258,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         try {
             andesChannel = Andes.getInstance().createChannel(andesChannelId, flowControlListener);
         } catch (Exception ex) {
-            throw new AMQInternalException("unable to create channel due to internal server error",
-                                           ex);
+            throw new AMQInternalException("unable to create channel due to internal server error", ex);
         }
         
         
@@ -467,7 +475,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                                 beginPublisherTransaction = false;
                             }
                             QpidAndesBridge.messageReceived(incomingMessage, getId(), andesChannel,
-                                    andesTransactionEvent);
+                                    andesTransactionEvent, protocolType);
 
                         } catch (Throwable e) {
                             _logger.error(

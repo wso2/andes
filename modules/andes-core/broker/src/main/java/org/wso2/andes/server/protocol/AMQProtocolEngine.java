@@ -451,13 +451,8 @@ public class AMQProtocolEngine implements ProtocolEngine, AMQProtocolSession, Co
 
     public void contentHeaderReceived(int channelId, ContentHeaderBody body) throws AMQException
     {
-
         AMQChannel channel = getAndAssertChannel(channelId);
-
         channel.publishContentHeader(body);
-
-        //if blockingStarted = true has started set the blocking parameter to true
-
     }
 
     public void contentBodyReceived(int channelId, ContentBody body) throws AMQException
