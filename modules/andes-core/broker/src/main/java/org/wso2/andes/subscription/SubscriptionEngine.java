@@ -510,21 +510,14 @@ public class SubscriptionEngine {
      * Gauge will return total number of queue subscriptions for current node
      */
     private class QueueSubscriberGauge implements Gauge<Integer> {
-        private List<ProtocolType> protocolTypes;
-
-        public QueueSubscriberGauge() throws AndesException {
-            protocolTypes = new ArrayList<>();
-            protocolTypes.add(new ProtocolType("AMQP", ProtocolVersion.v8_0.toString()));
-            protocolTypes.add(new ProtocolType("AMQP", ProtocolVersion.v0_9.toString()));
-            protocolTypes.add(new ProtocolType("AMQP", ProtocolVersion.v0_91.toString()));
-            protocolTypes.add(new ProtocolType("AMQP", ProtocolVersion.v0_10.toString()));
-        }
-
         public Integer getValue() {
+            Set<ProtocolType> protocols = AndesContext.getInstance().getAndesContextStore().getProtocols();
             int queueSubscriberCount = 0;
-            for (ProtocolType protocolType : protocolTypes) {
-                queueSubscriberCount = queueSubscriberCount + localSubscriptionProcessor
-                        .getAllSubscriptionsForDestinationType(protocolType, DestinationType.QUEUE).size();
+            for (ProtocolType protocolType : protocols) {
+                if (!protocolType.getProtocolName().startsWith("MQTT")) {
+                    queueSubscriberCount = queueSubscriberCount + localSubscriptionProcessor
+                            .getAllSubscriptionsForDestinationType(protocolType, DestinationType.QUEUE).size();
+                }
             }
             return queueSubscriberCount;
         }
@@ -534,19 +527,10 @@ public class SubscriptionEngine {
      * Gauge will return total number of topic subscriptions current node
      */
     private class TopicSubscriberGauge implements Gauge {
-        private List<ProtocolType> protocolTypes;
-
-        public TopicSubscriberGauge() throws AndesException {
-            protocolTypes = new ArrayList<>();
-            protocolTypes.add(new ProtocolType("AMQP", ProtocolVersion.v8_0.toString()));
-            protocolTypes.add(new ProtocolType("AMQP", ProtocolVersion.v0_9.toString()));
-            protocolTypes.add(new ProtocolType("AMQP", ProtocolVersion.v0_91.toString()));
-            protocolTypes.add(new ProtocolType("AMQP", ProtocolVersion.v0_10.toString()));
-        }
-
         public Integer getValue() {
+            Set<ProtocolType> protocols = AndesContext.getInstance().getAndesContextStore().getProtocols();
             int topicSubscriberCount = 0;
-            for (ProtocolType protocolType : protocolTypes) {
+            for (ProtocolType protocolType : protocols) {
                 topicSubscriberCount = topicSubscriberCount + localSubscriptionProcessor
                         .getAllSubscriptionsForDestinationType(protocolType, DestinationType.TOPIC).size();
             }
