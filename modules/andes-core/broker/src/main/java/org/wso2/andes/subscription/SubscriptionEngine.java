@@ -32,13 +32,16 @@ import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.SubscriptionListener.SubscriptionChange;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.framing.ProtocolVersion;
 import org.wso2.carbon.metrics.core.Gauge;
 import org.wso2.carbon.metrics.core.Level;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -507,16 +510,23 @@ public class SubscriptionEngine {
      * Gauge will return total number of queue subscriptions for current node
      */
     private class QueueSubscriberGauge implements Gauge<Integer> {
-        private final ProtocolType protocolType;
+        private List<ProtocolType> protocolTypes;
 
-        public QueueSubscriberGauge(ProtocolType protocolType) {
-            this.protocolType = protocolType;
+        public QueueSubscriberGauge() throws AndesException {
+            protocolTypes = new ArrayList<>();
+            protocolTypes.add(new ProtocolType("AMQP", ProtocolVersion.v8_0.toString()));
+            protocolTypes.add(new ProtocolType("AMQP", ProtocolVersion.v0_9.toString()));
+            protocolTypes.add(new ProtocolType("AMQP", ProtocolVersion.v0_91.toString()));
+            protocolTypes.add(new ProtocolType("AMQP", ProtocolVersion.v0_10.toString()));
         }
 
         public Integer getValue() {
-            return localSubscriptionProcessor.getAllSubscriptionsForDestinationType(protocolType,
-                    DestinationType.QUEUE).size();
-
+            int queueSubscriberCount = 0;
+            for (ProtocolType protocolType : protocolTypes) {
+                queueSubscriberCount = queueSubscriberCount + localSubscriptionProcessor
+                        .getAllSubscriptionsForDestinationType(protocolType, DestinationType.QUEUE).size();
+            }
+            return queueSubscriberCount;
         }
     }
 
@@ -524,15 +534,23 @@ public class SubscriptionEngine {
      * Gauge will return total number of topic subscriptions current node
      */
     private class TopicSubscriberGauge implements Gauge {
-        private final ProtocolType protocolType;
+        private List<ProtocolType> protocolTypes;
 
-        public TopicSubscriberGauge(ProtocolType protocolType) {
-            this.protocolType = protocolType;
+        public TopicSubscriberGauge() throws AndesException {
+            protocolTypes = new ArrayList<>();
+            protocolTypes.add(new ProtocolType("AMQP", ProtocolVersion.v8_0.toString()));
+            protocolTypes.add(new ProtocolType("AMQP", ProtocolVersion.v0_9.toString()));
+            protocolTypes.add(new ProtocolType("AMQP", ProtocolVersion.v0_91.toString()));
+            protocolTypes.add(new ProtocolType("AMQP", ProtocolVersion.v0_10.toString()));
         }
 
         public Integer getValue() {
-            return localSubscriptionProcessor.getAllSubscriptionsForDestinationType(protocolType,
-                    DestinationType.TOPIC).size();
+            int topicSubscriberCount = 0;
+            for (ProtocolType protocolType : protocolTypes) {
+                topicSubscriberCount = topicSubscriberCount + localSubscriptionProcessor
+                        .getAllSubscriptionsForDestinationType(protocolType, DestinationType.TOPIC).size();
+            }
+            return topicSubscriberCount;
         }
     }
 
@@ -541,13 +559,15 @@ public class SubscriptionEngine {
      *
      * @param protocolInfo The protocol information containing the subscription store information
      */
-    public void addSubscriptionHandlersForProtocol(ProtocolInfo protocolInfo) {
+    public void addSubscriptionHandlersForProtocol(ProtocolInfo protocolInfo) throws AndesException {
         final ProtocolType protocolType = protocolInfo.getProtocolType();
 
         //Add subscribers gauge to metrics manager
-        AndesContext.getInstance().getMetricService().gauge(MetricsConstants.QUEUE_SUBSCRIBERS, Level.INFO, new QueueSubscriberGauge(protocolType));
+        AndesContext.getInstance().getMetricService().gauge(MetricsConstants.QUEUE_SUBSCRIBERS, Level.INFO,
+                new QueueSubscriberGauge());
         //Add topic gauge to metrics manager
-        AndesContext.getInstance().getMetricService().gauge(MetricsConstants.TOPIC_SUBSCRIBERS, Level.INFO, new TopicSubscriberGauge(protocolType));
+        AndesContext.getInstance().getMetricService().gauge(MetricsConstants.TOPIC_SUBSCRIBERS, Level.INFO,
+                new TopicSubscriberGauge());
 
         protocolInfo.getClusterSubscriptionStores().entrySet().stream().forEach(
                 entry -> clusterSubscriptionProcessor.addHandler(protocolType, entry.getKey(), entry.getValue()));
