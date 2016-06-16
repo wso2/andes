@@ -146,6 +146,7 @@ public class InboundEventManager {
         }
 
         MessagePreProcessor preProcessor = new MessagePreProcessor(subscriptionEngine);
+        StateEventHandler stateEventHandler = new StateEventHandler();
 
         // Order in which handlers run in Disruptor
         // - ContentChunkHandlers
@@ -155,9 +156,10 @@ public class InboundEventManager {
         disruptor.handleEventsWith(chunkHandlers).then(preProcessor);
         disruptor.after(preProcessor).handleEventsWith(concurrentBatchEventHandlers);
 
-        // State event handler should run at last.
         // State event handler update the state of Andes after other handlers work is done.
-        disruptor.after(concurrentBatchEventHandlers).handleEventsWith(new StateEventHandler());
+        // State event handler will execute last. This handler will clear the event container.
+        disruptor.after(concurrentBatchEventHandlers).handleEventsWith(stateEventHandler);
+
         ringBuffer = disruptor.start();
 
         //Will add the gauge to metrics manager
@@ -176,11 +178,11 @@ public class InboundEventManager {
         // Publishers claim events in sequence
         long sequence = ringBuffer.next();
         InboundEventContainer event = ringBuffer.get(sequence);
-
         event.setEventType(MESSAGE_EVENT);
-        event.getMessageList().add(message);
-        event.pubAckHandler = pubAckHandler;
         event.setChannel(andesChannel);
+        event.addMessage(message,andesChannel);
+        event.pubAckHandler = pubAckHandler;
+
         // make the event available to EventProcessors
         ringBuffer.publish(sequence);
 
@@ -298,9 +300,10 @@ public class InboundEventManager {
         try {
             eventContainer.setEventType(TRANSACTION_ENQUEUE_EVENT);
             eventContainer.setTransactionEvent(transactionEvent);
-            eventContainer.addMessage(message);
-            eventContainer.pubAckHandler = disablePubAck;
             eventContainer.setChannel(channel);
+            eventContainer.addMessage(message, channel);
+            eventContainer.pubAckHandler = disablePubAck;
+
         } finally {
             ringBuffer.publish(sequence);
             if (log.isDebugEnabled()) {

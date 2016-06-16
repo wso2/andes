@@ -67,7 +67,11 @@ public class ContentChunkHandler implements EventHandler<InboundEventContainer> 
 
         switch (event.getEventType()) {
             case MESSAGE_EVENT:
-                resizeContentChunks(event.getMessageList(), sequence);
+                // Since there's only one message in inbound message list it can be retrieved without iterate through
+                // the list.
+                AndesMessage message = resizeContentChunks(event.popMessage(), sequence);
+                // Modified andes message(with chunk resize) will be added back to inbound message list.
+                event.addMessage(message);
                 break;
             case TRANSACTION_ENQUEUE_EVENT:
                 handleTransaction(event, sequence);
@@ -88,33 +92,35 @@ public class ContentChunkHandler implements EventHandler<InboundEventContainer> 
      * @param sequence Disruptor sequence number
      */
     private void handleTransaction(InboundEventContainer event, long sequence) {
-        resizeContentChunks(event.getMessageList(), sequence);
+        AndesMessage message = resizeContentChunks(event.popMessage(), sequence);
+        event.addMessage(message);
         event.getTransactionEvent().addMessages(event.getMessageList());
     }
 
     /**
      * Resize the content of the messages provided into chunks that can be stored in DB
-     * @param messageList messages to be processed
-     * @param sequence    sequence number of the ring buffer
+     *
+     * @param message messages to be processed
+     * @param sequence sequence number of the ring buffer
+     * @return andes message
      */
-    private void resizeContentChunks(List<AndesMessage> messageList, long sequence) {
+    private AndesMessage resizeContentChunks(AndesMessage message, long sequence) {
         if (log.isDebugEnabled()) {
-            log.debug("[ " + sequence + " ] Content chunk resize for " + messageList.size() +
-                    " messages ");
+            log.debug("[ " + sequence + " ] Content chunk resize for " + message.getContentChunkList().size() +
+                    " message ");
         }
 
         if (lz4CompressionHelper.isCompressionEnabled()) {
-            for (AndesMessage message : messageList) {
-                // Getting the compressed and resized message
-                message = compressAndResizeChunks(message);
-            }
+            // Get compressed and resized message
+            message = compressAndResizeChunks(message);
         } else {
-            for (AndesMessage message : messageList) {
-                message.setChunkList(
-                        resizeChunks(message.getContentChunkList(), message.getMetadata().getMessageContentLength())
-                );
-            }
+            // Resize chunks and setChunkList on message.
+            message.setChunkList(
+                    resizeChunks(message.getContentChunkList(), message.getMetadata().getMessageContentLength())
+            );
+
         }
+        return message;
     }
 
     /**
