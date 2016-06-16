@@ -149,7 +149,7 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                     + message.getMetadata().getMessageID());
         }
 
-        if (message.getMetadata().isTopic()) {
+        if (message.getMetadata().getDeliveryStrategy().equalsIgnoreCase(AndesUtils.TOPIC_DELIVERY_STRATEGY)) {
             handleTopicRoutine(event, message, andesChannel);
         } else {
             andesChannel.recordAdditionToBuffer(message.getContentChunkList().size());
