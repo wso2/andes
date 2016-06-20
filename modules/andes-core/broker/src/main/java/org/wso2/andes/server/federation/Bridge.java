@@ -19,12 +19,11 @@ package org.wso2.andes.server.federation;
 
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.framing.ProtocolVersion;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.configuration.qpid.BridgeConfig;
 import org.wso2.andes.configuration.qpid.BridgeConfigType;
 import org.wso2.andes.configuration.qpid.ConfiguredObject;
+import org.wso2.andes.framing.ProtocolVersion;
+import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.exchange.ExchangeRegistry;
 import org.wso2.andes.server.flow.FlowCreditManager_0_10;
@@ -56,6 +55,7 @@ import org.wso2.andes.transport.RangeSet;
 import org.wso2.andes.transport.Session;
 import org.wso2.andes.transport.SessionException;
 import org.wso2.andes.transport.SessionListener;
+import org.wso2.carbon.andes.core.AndesException;
 
 import java.util.ArrayList;
 import java.util.Arrays;

@@ -21,17 +21,17 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.configuration.qpid.QueueConfiguration;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.framing.ProtocolVersion;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.server.NameValidationUtils;
 import org.wso2.andes.server.virtualhost.VirtualHost;
-import org.wso2.andes.configuration.qpid.QueueConfiguration;
+import org.wso2.carbon.andes.core.AndesException;
+import org.wso2.carbon.andes.core.ProtocolType;
 
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Map;
 
 public class AMQQueueFactory
 {

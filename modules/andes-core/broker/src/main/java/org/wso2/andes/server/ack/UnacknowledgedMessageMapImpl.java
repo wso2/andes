@@ -18,11 +18,11 @@
 package org.wso2.andes.server.ack;
 
 import org.wso2.andes.AMQException;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.configuration.util.TopicMessageDeliveryStrategy;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.queue.QueueEntry;
+import org.wso2.carbon.andes.core.internal.configuration.AndesConfigurationManager;
+import org.wso2.carbon.andes.core.internal.configuration.enums.AndesConfiguration;
+import org.wso2.carbon.andes.core.internal.configuration.util.TopicMessageDeliveryStrategy;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;

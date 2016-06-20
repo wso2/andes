@@ -18,9 +18,9 @@
 
 package org.wso2.andes.server;
 
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.AndesConstants;
+import org.wso2.carbon.andes.core.AndesConstants;
+import org.wso2.carbon.andes.core.internal.configuration.AndesConfigurationManager;
+import org.wso2.carbon.andes.core.internal.configuration.enums.AndesConfiguration;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;

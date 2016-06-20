@@ -18,22 +18,21 @@
 package org.wso2.andes.server.queue;
 
 import org.wso2.andes.AMQException;
-import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.kernel.ProtocolType;
-import org.wso2.andes.server.AMQChannel;
-import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
-import org.wso2.andes.server.logging.LogSubject;
-import org.wso2.andes.server.protocol.AMQSessionModel;
-import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.configuration.qpid.QueueConfig;
+import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
+import org.wso2.andes.framing.AMQShortString;
+import org.wso2.andes.server.AMQChannel;
+import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.exchange.ExchangeReferrer;
-import org.wso2.andes.server.management.ManagedObject;
+import org.wso2.andes.server.logging.LogSubject;
+import org.wso2.andes.server.protocol.AMQSessionModel;
 import org.wso2.andes.server.security.AuthorizationHolder;
 import org.wso2.andes.server.store.TransactionLogResource;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.txn.ServerTransaction;
 import org.wso2.andes.server.virtualhost.VirtualHost;
+import org.wso2.carbon.andes.core.ProtocolType;
 
 import java.util.List;
 import java.util.Map;

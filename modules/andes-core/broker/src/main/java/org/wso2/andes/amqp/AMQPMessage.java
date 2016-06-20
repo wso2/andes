@@ -18,8 +18,8 @@
 
 package org.wso2.andes.amqp;
 
-import org.wso2.andes.kernel.AndesMessage;
-import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.carbon.andes.core.AndesMessage;
+import org.wso2.carbon.andes.core.AndesMessageMetadata;
 
 /**
  * This is a sub class of AndesMessage which contains AMQP protocol specific implementations

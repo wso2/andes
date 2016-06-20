@@ -18,12 +18,7 @@
 package org.wso2.andes.server.queue;
 
 import org.apache.log4j.Logger;
-
 import org.wso2.andes.AMQException;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.AndesContext;
-import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.message.AMQMessageHeader;
 import org.wso2.andes.server.message.MessageReference;
@@ -31,6 +26,7 @@ import org.wso2.andes.server.message.ServerMessage;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.txn.AutoCommitTransaction;
 import org.wso2.andes.server.txn.ServerTransaction;
+import org.wso2.carbon.andes.core.internal.AndesContext;
 
 import java.util.HashSet;
 import java.util.List;

@@ -17,20 +17,20 @@
  */
 package org.wso2.andes.server.message;
 
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.server.store.StorableMessageMetaData;
 import org.wso2.andes.server.store.MessageMetaDataType;
-import org.wso2.andes.transport.MessageTransfer;
+import org.wso2.andes.server.store.StorableMessageMetaData;
 import org.wso2.andes.transport.DeliveryProperties;
-import org.wso2.andes.transport.MessageProperties;
 import org.wso2.andes.transport.Header;
 import org.wso2.andes.transport.MessageDeliveryMode;
+import org.wso2.andes.transport.MessageProperties;
+import org.wso2.andes.transport.MessageTransfer;
 import org.wso2.andes.transport.Struct;
-import org.wso2.andes.transport.codec.BBEncoder;
 import org.wso2.andes.transport.codec.BBDecoder;
+import org.wso2.andes.transport.codec.BBEncoder;
+import org.wso2.carbon.andes.core.AndesMessageMetadata;
 
-import java.nio.ByteBuffer;
 import java.lang.ref.SoftReference;
+import java.nio.ByteBuffer;
 
 public class MessageMetaData_0_10 implements StorableMessageMetaData
 {

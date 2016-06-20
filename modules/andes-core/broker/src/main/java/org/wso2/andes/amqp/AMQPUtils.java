@@ -19,23 +19,10 @@ package org.wso2.andes.amqp;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.ProtocolVersion;
-import org.wso2.andes.kernel.AndesContent;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.AndesUtils;
-import org.wso2.andes.kernel.DestinationType;
-import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.kernel.ProtocolMessage;
-import org.wso2.andes.kernel.ProtocolType;
-import org.wso2.andes.kernel.disruptor.inbound.InboundBindingEvent;
-import org.wso2.andes.kernel.disruptor.inbound.InboundExchangeEvent;
-import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
-import org.wso2.andes.server.ClusterResourceHolder;
+
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.exchange.DirectExchange;
 import org.wso2.andes.server.exchange.Exchange;
@@ -45,12 +32,26 @@ import org.wso2.andes.server.message.MessageMetaData;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.queue.SimpleQueueEntryList;
-import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.server.store.StorableMessageMetaData;
 import org.wso2.andes.server.store.StoredMessage;
 import org.wso2.andes.server.subscription.Subscription;
-import org.wso2.andes.subscription.LocalSubscription;
-import org.wso2.andes.subscription.OutboundSubscription;
+import org.wso2.carbon.andes.core.AndesContent;
+import org.wso2.carbon.andes.core.AndesException;
+import org.wso2.carbon.andes.core.AndesMessageMetadata;
+import org.wso2.carbon.andes.core.AndesMessagePart;
+import org.wso2.carbon.andes.core.AndesUtils;
+import org.wso2.carbon.andes.core.DestinationType;
+import org.wso2.carbon.andes.core.MessagingEngine;
+import org.wso2.carbon.andes.core.ProtocolMessage;
+import org.wso2.carbon.andes.core.ProtocolType;
+import org.wso2.carbon.andes.core.internal.cluster.ClusterResourceHolder;
+import org.wso2.carbon.andes.core.internal.configuration.AndesConfigurationManager;
+import org.wso2.carbon.andes.core.internal.configuration.enums.AndesConfiguration;
+import org.wso2.carbon.andes.core.internal.inbound.InboundBindingEvent;
+import org.wso2.carbon.andes.core.internal.inbound.InboundExchangeEvent;
+import org.wso2.carbon.andes.core.internal.inbound.InboundQueueEvent;
+import org.wso2.carbon.andes.core.subscription.LocalSubscription;
+import org.wso2.carbon.andes.core.subscription.OutboundSubscription;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -84,7 +85,7 @@ public class AMQPUtils {
 
     /* Store previously queried message part as a cache so when the same part was required
      for the next chunk it can be retrieved without accessing the database */
-    private static Map<Long, AndesMessagePart> messagePartCache = new HashMap<Long, AndesMessagePart>();
+    private static Map<Long, AndesMessagePart> messagePartCache = new HashMap<>();
 
     /**
      * Mapping from {@link ProtocolVersion} to {@link ProtocolType}
@@ -98,7 +99,8 @@ public class AMQPUtils {
      * @param metadataList Andes metadata list
      * @return Queue Entry list
      */
-    public static List<QueueEntry> getQueueEntryListFromAndesMetaDataList(AMQQueue queue, List<AndesMessageMetadata> metadataList) {
+    public static List<QueueEntry> getQueueEntryListFromAndesMetaDataList(
+            AMQQueue queue, List<AndesMessageMetadata> metadataList) {
         List<QueueEntry> messages = new ArrayList<QueueEntry>();
         SimpleQueueEntryList list = new SimpleQueueEntryList(queue);
         List<AMQMessage> amqMessageList = getEntryAMQMessageListFromAndesMetaDataList(metadataList);
@@ -124,6 +126,12 @@ public class AMQPUtils {
             messages.add(amqMessage);
         }
         return messages;
+    }
+
+    public static String printAMQMessage(QueueEntry message) {
+        ByteBuffer buf = ByteBuffer.allocate(100);
+        int readCount = message.getMessage().getContent(buf, 0);
+        return "(" + message.getMessage().getMessageNumber() + ")" + new String(buf.array(), 0, readCount);
     }
 
     /**
@@ -203,7 +211,8 @@ public class AMQPUtils {
      * @return andes message metadata
      * @throws AndesException
      */
-    public static AndesMessageMetadata convertAMQMessageToAndesMetadata(AMQMessage amqMessage, ProtocolType protocolType) throws AndesException {
+    public static AndesMessageMetadata convertAMQMessageToAndesMetadata(
+            AMQMessage amqMessage, ProtocolType protocolType) throws AndesException {
         MessageMetaData amqMetadata = amqMessage.getMessageMetaData();
         String destination = amqMetadata.getMessagePublishInfo().getRoutingKey().toString();
         String exchange = amqMetadata.getMessagePublishInfo().getExchange().toString();

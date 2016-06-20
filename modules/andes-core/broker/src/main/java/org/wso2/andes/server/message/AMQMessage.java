@@ -19,19 +19,18 @@ package org.wso2.andes.server.message;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
+import org.wso2.andes.configuration.qpid.SessionConfig;
 import org.wso2.andes.framing.ContentHeaderBody;
 import org.wso2.andes.framing.abstraction.MessagePublishInfo;
-import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.server.AMQChannel;
-import org.wso2.andes.kernel.slot.Slot;
-import org.wso2.andes.server.store.StoredMessage;
-import org.wso2.andes.configuration.qpid.SessionConfig;
 import org.wso2.andes.server.queue.AMQQueue;
+import org.wso2.andes.server.store.StoredMessage;
+import org.wso2.carbon.andes.core.ProtocolMessage;
+import org.wso2.carbon.andes.core.internal.slot.Slot;
 
-
-import java.util.concurrent.atomic.AtomicInteger;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A deliverable message.

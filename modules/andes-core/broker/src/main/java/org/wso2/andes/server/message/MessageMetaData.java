@@ -25,9 +25,9 @@ import org.wso2.andes.framing.ContentHeaderBody;
 import org.wso2.andes.framing.EncodingUtils;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.framing.abstraction.MessagePublishInfo;
-import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.server.store.StorableMessageMetaData;
+import org.wso2.carbon.andes.core.AndesMessageMetadata;
 
 import java.nio.ByteBuffer;
 import java.util.Set;

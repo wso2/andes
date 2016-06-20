@@ -19,11 +19,11 @@
 package org.wso2.andes.amqp;
 
 import org.apache.log4j.Logger;
-import org.wso2.andes.kernel.AndesContent;
-import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.store.ForwardingStoredMessage;
 import org.wso2.andes.server.store.StorableMessageMetaData;
 import org.wso2.andes.server.store.StoredMessage;
+import org.wso2.carbon.andes.core.AndesContent;
+import org.wso2.carbon.andes.core.AndesException;
 
 import java.nio.ByteBuffer;
 

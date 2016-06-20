@@ -21,11 +21,11 @@ package org.wso2.andes.amqp;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.server.store.StorableMessageMetaData;
 import org.wso2.andes.server.store.StoredMessage;
 import org.wso2.andes.server.store.TransactionLog;
+import org.wso2.carbon.andes.core.AndesException;
+import org.wso2.carbon.andes.core.internal.slot.Slot;
 
 import java.nio.ByteBuffer;
 

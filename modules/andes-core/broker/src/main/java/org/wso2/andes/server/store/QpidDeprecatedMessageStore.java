@@ -17,25 +17,25 @@
  */
 package org.wso2.andes.server.store;
 
-import java.util.List;
-
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQStoreException;
+import org.wso2.andes.amqp.StoredAMQPMessage;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
-import org.wso2.andes.kernel.*;
-import org.wso2.andes.amqp.StoredAMQPMessage;
-import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.logging.LogSubject;
 import org.wso2.andes.server.queue.AMQQueue;
-import org.wso2.andes.subscription.SubscriptionEngine;
+import org.wso2.carbon.andes.core.MessagingEngine;
+import org.wso2.carbon.andes.core.internal.AndesContext;
+import org.wso2.carbon.andes.core.subscription.SubscriptionEngine;
+
+import java.util.List;
 
 /**
- * Implementations of {#{@link org.wso2.andes.kernel.MessageStore} replaces the functionality provided by this class
+ * Implementations of {#{@link MessageStore} replaces the functionality provided by this class
  */
 @Deprecated
 public class QpidDeprecatedMessageStore implements MessageStore {
@@ -49,7 +49,6 @@ public class QpidDeprecatedMessageStore implements MessageStore {
      * Set CassandraMessageStore at ClusterResourceHolder
      */
     public QpidDeprecatedMessageStore() {
-        ClusterResourceHolder.getInstance().setQpidDeprecatedMessageStore(this);
     }
 
     @Override

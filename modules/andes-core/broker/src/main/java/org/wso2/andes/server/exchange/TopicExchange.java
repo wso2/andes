@@ -24,7 +24,6 @@ import org.wso2.andes.common.AMQPFilterTypes;
 import org.wso2.andes.exchange.ExchangeDefaults;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
-import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.exchange.topic.TopicExchangeResult;
 import org.wso2.andes.server.exchange.topic.TopicMatcherResult;
@@ -35,8 +34,8 @@ import org.wso2.andes.server.message.InboundMessage;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.BaseQueue;
 import org.wso2.andes.server.virtualhost.VirtualHost;
+import org.wso2.carbon.andes.core.internal.AndesContext;
 
-import javax.management.JMException;
 import java.lang.ref.WeakReference;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
