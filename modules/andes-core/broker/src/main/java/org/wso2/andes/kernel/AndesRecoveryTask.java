@@ -26,9 +26,12 @@ import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
+import org.wso2.andes.subscription.SubscriptionEngine;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -42,10 +45,11 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 	private List<ExchangeListener> exchangeListeners = new ArrayList<>();
 	private List<BindingListener> bindingListeners = new ArrayList<>();
 
-	AndesContextStore andesContextStore;
-	AMQPConstructStore amqpConstructStore;
+	private AndesContextStore andesContextStore;
+	private AMQPConstructStore amqpConstructStore;
+	private SubscriptionEngine subscriptionEngine;
 
-    AtomicBoolean isRunning;
+    private AtomicBoolean isRunning;
 
 	// set storeOperational to true since it can be assumed that the store is operational at startup
 	// if it is non-operational, the value will be updated immediately
@@ -64,6 +68,7 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 
 		andesContextStore = AndesContext.getInstance().getAndesContextStore();
 		amqpConstructStore = AndesContext.getInstance().getAMQPConstructStore();
+        subscriptionEngine = AndesContext.getInstance().getSubscriptionEngine();
         isRunning = new AtomicBoolean(false);
 	}
 
@@ -77,6 +82,8 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
             if (isContextStoreOperational.get()) {
                 log.info("Running DB sync task.");
 
+                Set<AndesSubscription> subList = subscriptionEngine.getActiveLocalSubscribersForNode();
+                notifyLocalSubscriptionListToMembers(subList);
                 reloadExchangesFromDB();
                 reloadQueuesFromDB();
                 reloadBindingsFromDB();
@@ -111,6 +118,19 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 			log.warn("AndesRecoveryTask was paused due to non-operational context store.");
 		}
 	}
+
+    /**
+     * Notify cluster members a merge
+     *
+     * @param subscriptionList
+     * @throws AndesException
+     */
+    private void notifyLocalSubscriptionListToMembers(Collection<AndesSubscription> subscriptionList)
+            throws AndesException {
+        for (AndesSubscription localSubscription : subscriptionList) {
+            andesContextStore.updateOrInsertDurableSubscription(localSubscription);
+        }
+    }
 
 	private void reloadExchangesFromDB() throws AndesException {
 		if (isContextStoreOperational.get()) {

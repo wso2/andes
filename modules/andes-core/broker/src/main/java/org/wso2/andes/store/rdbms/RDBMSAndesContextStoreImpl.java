@@ -232,7 +232,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public void updateDurableSubscription(AndesSubscription subscription) throws AndesException {
+    public int updateDurableSubscription(AndesSubscription subscription) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
@@ -249,9 +249,10 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             preparedStatement.setString(1, subscription.encodeAsStr());
             preparedStatement.setString(2, destinationIdentifier);
             preparedStatement.setString(3, subscriptionID);
-            preparedStatement.executeUpdate();
 
+            int updateCount = preparedStatement.executeUpdate();
             connection.commit();
+            return updateCount;
 
         } catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_UPDATING_DURABLE_SUBSCRIPTION);
@@ -291,6 +292,17 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             contextWrite.stop();
             close(preparedStatement, RDBMSConstants.TASK_UPDATING_DURABLE_SUBSCRIPTIONS);
             close(connection, RDBMSConstants.TASK_UPDATING_DURABLE_SUBSCRIPTIONS);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void updateOrInsertDurableSubscription(AndesSubscription subscription) throws AndesException {
+        int updateCount = updateDurableSubscription(subscription);
+        if (0 == updateCount) {
+            storeDurableSubscription(subscription);
         }
     }
 
