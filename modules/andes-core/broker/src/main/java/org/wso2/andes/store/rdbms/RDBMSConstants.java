@@ -110,6 +110,7 @@ public class RDBMSConstants {
     protected static final String BINDINGS_TABLE = "MB_BINDING";
     protected static final String QUEUE_INFO_TABLE = "MB_QUEUE";
     protected static final String QUEUE_COUNTER_TABLE = "MB_QUEUE_COUNTER";
+    protected static final String LOCK_TABLE = "MB_LOCK";
     // Slot related tables
     protected static final String SLOT_TABLE = "MB_SLOT";
     protected static final String SLOT_MESSAGE_ID_TABLE = "MB_SLOT_MESSAGE_ID";
@@ -144,6 +145,10 @@ public class RDBMSConstants {
     protected static final String ASSIGNED_NODE_ID = "ASSIGNED_NODE_ID";
     protected static final String ASSIGNED_QUEUE_NAME = "ASSIGNED_QUEUE_NAME";
 
+    //Heart beat column names
+    protected static final String NODE_ORDER = "NODE_ORDER";
+    protected static final String MASTER_SLAVE_NODE_ID = "NODE_ID";
+    protected static final String HEARTBEAT = "HEART_BEAT";
 
     // prepared statements for Message Store
     protected static final String PS_INSERT_MESSAGE_PART =
@@ -826,6 +831,44 @@ public class RDBMSConstants {
             + " SET " + DLC_QUEUE_ID + "=?"
             + " WHERE " + MESSAGE_ID + "=?";
 
+    /**
+     * Prepared statement to lock table
+     */
+    protected static final String PS_LOCK_TABLE =
+            "SELECT * FROM " + LOCK_TABLE
+            + " FOR UPDATE";
+
+    /**
+     * Prepared statement to insert heartbeat value to table
+     */
+    protected static final String PS_INSERT_HEARTBEAT =
+            "INSERT INTO " + LOCK_TABLE
+            + "(" + MASTER_SLAVE_NODE_ID + ","
+            + HEARTBEAT + ")"
+            + " VALUES (?,?)";
+
+    /**
+     * Prepared statement to update the heartbeat value
+     */
+    protected static final String PS_UPDATE_HEARTBEAT =
+            "UPDATE " + LOCK_TABLE
+            + " SET " + HEARTBEAT + "=?"
+            + " WHERE " + MASTER_SLAVE_NODE_ID + "=?";
+
+    /**
+     * Prepared statement to retrieve all the heartbeat values
+     */
+    protected static final String PS_GET_HEARTBEAT =
+            "SELECT " + MASTER_SLAVE_NODE_ID + ", " + HEARTBEAT
+            + " FROM " + LOCK_TABLE;
+
+    /**
+     * Prepared statement to retrieve all the nodes with the order they were added
+     */
+    protected static final String PS_GET_NODES =
+            "SELECT " + MASTER_SLAVE_NODE_ID + ", " + NODE_ORDER
+            + " FROM " + LOCK_TABLE;
+
     // Message Store related jdbc tasks executed
     protected static final String TASK_STORING_MESSAGE_PARTS = "storing message parts.";
     protected static final String TASK_DELETING_MESSAGE_PARTS = "deleting message parts.";
@@ -928,6 +971,12 @@ public class RDBMSConstants {
     protected static final String TASK_GET_OVERLAPPED_SLOT = "getting overlapped slot";
     protected static final String TASK_GET_ALL_QUEUES = "getting all queues";
     protected static final String TASK_CLEAR_SLOT_TABLES = "clearing slot tables";
+
+    //Task related to inserting, updating and reading heart beat value
+    protected static final String TASK_INSERT_HEARBEAT = "Adding heartbeat";
+    protected static final String TASK_UPDATE_HEARBEAT = "Updating heartbeat";
+    protected static final String TASK_RETRIEVE_HEARBEAT = "Retrieving heartbeat values";
+    protected static final String TASK_RETRIEVE_NODE_ORDER = "Retrieving master slave nodes";
 
     /**
      * Messages related to checking message store is operational.

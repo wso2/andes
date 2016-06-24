@@ -445,4 +445,45 @@ public interface AndesContextStore extends HealthAwareStore{
      */
     void close();
 
+    /**
+     * Method to acquire database lock.
+     *
+     * @return true if the lock was acquired, else return false
+     */
+    boolean acquireLock();
+
+    /**
+     * Method to insert record indicating the addition of this node to the deplyment.
+     *
+     * @param nodeId   The nodeID configured in broker.xml
+     * @param hearBeat A heartbeat value indicating this node is alive
+     * @throws AndesException
+     */
+    void insertHeartBeat(String nodeId, int hearBeat) throws AndesException;
+
+    /**
+     * Read all the nodes heartBeats registered in the store.
+     *
+     * @return a map which relates the node id to its heartbeat
+     * @throws AndesException
+     */
+    Map<String, Integer> readHeartBeat() throws AndesException;
+
+    /**
+     * Read all the nodes registered in the store.
+     *
+     * @return A map of nodes with the order they were added
+     * @throws AndesException
+     */
+    Map<String, Integer> readNodes() throws AndesException;
+
+    /**
+     * Update the heartbeat value stored in the database with the new value.
+     *
+     * @param nodeId
+     * @param heartBeat
+     * @throws AndesException
+     */
+    void updateHeartBeat(String nodeId, int heartBeat) throws AndesException;
+
 }

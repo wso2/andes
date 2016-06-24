@@ -18,7 +18,6 @@
 
 package org.wso2.andes.kernel;
 
-import org.apache.axis2.clustering.ClusteringAgent;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.StoreConfiguration;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
@@ -35,12 +34,12 @@ public class AndesContext {
     private SubscriptionEngine subscriptionEngine;
     private AndesContextStore andesContextStore;
     private StoreConfiguration storeConfiguration;
-    private ClusteringAgent clusteringAgent;
     private boolean isClusteringEnabled;
     private AMQPConstructStore AMQPConstructStore;
     private static AndesContext instance = new AndesContext();
     private MessageStore messageStore;
     private int deliveryTimeoutForMessage;
+    private boolean isMasterSlaveEnabled;
 
     /**
      * This is mainly used by Cluster Manager to manger cluster communication
@@ -237,4 +236,16 @@ public class AndesContext {
     public void setMessageStore(MessageStore messageStore) {
         this.messageStore = messageStore;
     }
+
+    /**
+     * Set if master slave is enabled or not
+     */
+    public void setMasterSlaveEnabled(boolean isEnabled) {
+        this.isMasterSlaveEnabled = isEnabled;
+    }
+
+    public boolean isMasterSlaveEnabled() {
+        return this.isMasterSlaveEnabled;
+    }
+
 }

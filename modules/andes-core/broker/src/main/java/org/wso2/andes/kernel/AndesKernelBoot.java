@@ -19,7 +19,6 @@
 package org.wso2.andes.kernel;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.hazelcast.util.executor.NamedThreadPoolExecutor;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -217,7 +216,7 @@ public class AndesKernelBoot {
         
         return contextStoreInstance;
     }
-    
+
     /**
      * A factory method (/util) to create user specified
      * {@link MessageStore} in broker.xml
@@ -252,7 +251,7 @@ public class AndesKernelBoot {
         
         AndesKernelBoot.contextStore =  new FailureObservingAndesContextStore(contextStoreInConfig) ;
         AndesContext.getInstance().setAndesContextStore(contextStore);
-        
+
         //create subscription store
         SubscriptionEngine subscriptionEngine = new SubscriptionEngine();
         AndesContext.getInstance().setSubscriptionEngine(subscriptionEngine);
@@ -302,28 +301,31 @@ public class AndesKernelBoot {
      */
     public static void syncNodeWithClusterState() throws AndesException {
 
-        // Mark all the existing durable subscriptions as inactive when starting a standalone node or the coordinator
-        // node since there can be no active durable subscribers when starting the first node of the cluster.
-        // Having existing active durable subscribers causes them to not be able to reconnect to the broker
-        // The deactivation should not be performed by just any node but the first node to start
-        boolean isClusteringEnabled = AndesContext.getInstance().isClusteringEnabled();
-        if (!(isClusteringEnabled)
+        if (!AndesContext.getInstance().isMasterSlaveEnabled()) {
+            // Mark all the existing durable subscriptions as inactive when starting a standalone node or the coordinator
+
+            // node since there can be no active durable subscribers when starting the first node of the cluster.
+            // Having existing active durable subscribers causes them to not be able to reconnect to the broker
+            // The deactivation should not be performed by just any node but the first node to start
+            boolean isClusteringEnabled = AndesContext.getInstance().isClusteringEnabled();
+            if (!(isClusteringEnabled)
                 || (isClusteringEnabled && AndesContext.getInstance().getClusterAgent().isCoordinator())) {
-            ClusterResourceHolder.getInstance().getSubscriptionManager().deactivateAllActiveSubscriptions();
+                ClusterResourceHolder.getInstance().getSubscriptionManager().deactivateAllActiveSubscriptions();
+            }
+
+            //at the startup reload exchanges/queues/bindings and subscriptions
+            log.info("Syncing exchanges, queues, bindings and subscriptions");
+            ClusterResourceHolder.getInstance().getAndesRecoveryTask()
+                    .recoverExchangesQueuesBindingsSubscriptions();
+
+            // All non-durable subscriptions subscribed from this node will be deleted since, there
+            // can't be any non-durable subscriptions as node just started.
+            // closeAllClusterSubscriptionsOfNode() should only be called after
+            // recoverExchangesQueuesBindingsSubscriptions() executed.
+            String myNodeId = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
+            ClusterResourceHolder.getInstance().getSubscriptionManager()
+                    .closeAllLocalSubscriptionsOfNode(myNodeId);
         }
-
-        //at the startup reload exchanges/queues/bindings and subscriptions
-        log.info("Syncing exchanges, queues, bindings and subscriptions");
-        ClusterResourceHolder.getInstance().getAndesRecoveryTask()
-                .recoverExchangesQueuesBindingsSubscriptions();
-
-        // All non-durable subscriptions subscribed from this node will be deleted since, there
-        // can't be any non-durable subscriptions as node just started.
-        // closeAllClusterSubscriptionsOfNode() should only be called after
-        // recoverExchangesQueuesBindingsSubscriptions() executed.
-        String myNodeId = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
-        ClusterResourceHolder.getInstance().getSubscriptionManager()
-                .closeAllLocalSubscriptionsOfNode(myNodeId);
     }
 
     /**
@@ -340,6 +342,11 @@ public class AndesKernelBoot {
         andesRecoveryTaskScheduler.scheduleAtFixedRate(andesRecoveryTask, scheduledPeriod,
                                                        scheduledPeriod, TimeUnit.SECONDS);
         ClusterResourceHolder.getInstance().setAndesRecoveryTask(andesRecoveryTask);
+
+        //Start Master/Slave task if enabled in broker.xml
+        if (AndesContext.getInstance().isMasterSlaveEnabled()) {
+            MasterSlaveStateManager.createTask();
+        }
     }
 
     /**
@@ -352,6 +359,7 @@ public class AndesKernelBoot {
             andesRecoveryTaskScheduler.shutdown();
             andesRecoveryTaskScheduler
                     .awaitTermination(threadTerminationTimePerod, TimeUnit.SECONDS);
+            MasterSlaveStateManager.shutDownTask();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             andesRecoveryTaskScheduler.shutdownNow();
@@ -391,6 +399,11 @@ public class AndesKernelBoot {
      */
     public static void startAndesComponents() throws AndesException {
 
+        boolean isMasterSlaveEnabled = AndesConfigurationManager.readValue(AndesConfiguration.MASTER_SLAVE_ENABLED);
+        if (isMasterSlaveEnabled) {
+            AndesContext.getInstance().setMasterSlaveEnabled(true);
+            AndesContext.getInstance().setClusteringEnabled(false);
+        }
         /**
          * initialize cluster manager for managing nodes in MB cluster
          */

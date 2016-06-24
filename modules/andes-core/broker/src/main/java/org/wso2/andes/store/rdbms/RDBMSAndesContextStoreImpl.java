@@ -1933,4 +1933,155 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         return subscription.getSubscribedNode() + "_" + subscription.getSubscribedDestination() + "_" + subscription
                 .getSubscriptionID();
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean acquireLock() {
+        PreparedStatement statement = null;
+        Connection connection;
+        logger.info("Attempting to acquire the exclusive lock to become the Master broker");
+        try {
+            connection = getConnection();
+            connection.setAutoCommit(false);
+
+            //This statement will lock all the rows in the database.
+            String sql = RDBMSConstants.PS_LOCK_TABLE;
+            statement = connection.prepareStatement(sql);
+            statement.execute();
+            //The lock is acquired. Hence retrun true.
+            return true;
+        } catch (SQLException e) {
+            logger.warn("Failed to acquire lock: " + e, e);
+
+        } finally {
+            if (null != statement) {
+                try {
+                    statement.close();
+                } catch (SQLException e1) {
+                    logger.warn("Caught while closing statement: " + e1, e1);
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void insertHeartBeat(String nodeId, int heartBeat) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+
+        try {
+            connection = getConnection();
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_INSERT_HEARTBEAT);
+            preparedStatement.setString(1, nodeId);
+            preparedStatement.setLong(2, heartBeat);
+
+            preparedStatement.execute();
+            connection.commit();
+        } catch (SQLException e) {
+            String errMsg =
+                    RDBMSConstants.TASK_INSERT_HEARBEAT + " nodeID: " + nodeId + " heartBeat: " + heartBeat;
+            rollback(connection, RDBMSConstants.TASK_INSERT_HEARBEAT);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
+        } finally {
+            close(preparedStatement, RDBMSConstants.TASK_INSERT_HEARBEAT);
+            close(connection, RDBMSConstants.TASK_INSERT_HEARBEAT);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<String, Integer> readHeartBeat() throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        Map<String, Integer> heartBeats = new HashMap<>();
+
+        try {
+            connection = getConnection();
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_GET_HEARTBEAT);
+            resultSet = preparedStatement.executeQuery();
+
+            while (resultSet.next()) {
+                heartBeats.put(resultSet.getString(RDBMSConstants.MASTER_SLAVE_NODE_ID),
+                        resultSet.getInt(RDBMSConstants.HEARTBEAT));
+            }
+            return heartBeats;
+
+        } catch (SQLException e) {
+            String errMsg =
+                    RDBMSConstants.TASK_RETRIEVE_HEARBEAT;
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
+        } finally {
+            close(resultSet, RDBMSConstants.TASK_RETRIEVE_HEARBEAT);
+            close(preparedStatement, RDBMSConstants.TASK_RETRIEVE_HEARBEAT);
+            close(connection, RDBMSConstants.TASK_RETRIEVE_HEARBEAT);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<String, Integer> readNodes() throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        Map<String, Integer> heartBeats = new HashMap<>();
+
+        try {
+            connection = getConnection();
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_GET_NODES);
+            resultSet = preparedStatement.executeQuery();
+
+            while (resultSet.next()) {
+                heartBeats.put(resultSet.getString(RDBMSConstants.MASTER_SLAVE_NODE_ID),
+                        resultSet.getInt(RDBMSConstants.NODE_ORDER));
+            }
+            return heartBeats;
+
+        } catch (SQLException e) {
+            String errMsg =
+                    RDBMSConstants.TASK_RETRIEVE_NODE_ORDER;
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
+        } finally {
+            close(resultSet, RDBMSConstants.TASK_RETRIEVE_NODE_ORDER);
+            close(preparedStatement, RDBMSConstants.TASK_RETRIEVE_NODE_ORDER);
+            close(connection, RDBMSConstants.TASK_RETRIEVE_NODE_ORDER);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void updateHeartBeat(String nodeId, int heartBeat) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+
+        try {
+            connection = getConnection();
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_UPDATE_HEARTBEAT);
+            preparedStatement.setInt(1, heartBeat);
+            preparedStatement.setString(2, nodeId);
+
+            preparedStatement.execute();
+            connection.commit();
+        } catch (SQLException e) {
+            String errMsg =
+                    RDBMSConstants.TASK_UPDATE_HEARBEAT + " nodeID: " + nodeId + " heartBeat: " + heartBeat;
+            rollback(connection, RDBMSConstants.TASK_UPDATE_HEARBEAT);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
+        } finally {
+            close(preparedStatement, RDBMSConstants.TASK_UPDATE_HEARBEAT);
+            close(connection, RDBMSConstants.TASK_UPDATE_HEARBEAT);
+        }
+    }
 }

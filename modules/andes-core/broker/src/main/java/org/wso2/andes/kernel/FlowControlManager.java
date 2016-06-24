@@ -44,7 +44,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Flow control is typically employed in controlling fast producers from overloading slow consumers in
  * producer-consumer scenarios. Flow control manager handles flow controlling by blocking and unblocking channels.
  */
-public class FlowControlManager  implements StoreHealthListener, NetworkPartitionListener {
+public class FlowControlManager  implements StoreHealthListener, NetworkPartitionListener, MasterSlaveStateChangeListener {
     /**
      * Class logger
      */
@@ -134,6 +134,7 @@ public class FlowControlManager  implements StoreHealthListener, NetworkPartitio
         if ( AndesContext.getInstance().isClusteringEnabled()){ // network partition detection works only when clustered.
             AndesContext.getInstance().getClusterAgent().addNetworkPartitionListener(this);
         }
+        MasterSlaveStateManager.addMasterSlaveStateListener(this);
         // Initialize executor service for state validity checking
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("AndesScheduledTaskManager-FlowControl")
                                                                      .build();
@@ -416,7 +417,7 @@ public class FlowControlManager  implements StoreHealthListener, NetworkPartitio
         log.warn("Clustering outage, activating error based flow control");
         blockListenersOnErrorBasedFlowControl(true);
     }
-    
+
     /**
      * {@inheritDoc}
      * <p>
@@ -457,4 +458,21 @@ public class FlowControlManager  implements StoreHealthListener, NetworkPartitio
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void electedAsMaster() {
+        log.info("This node is elected as master, deactivating error based flow control");
+        unblockListenersOnErrorBasedFlowControl();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void electedAsSlave() {
+        log.info("This node is elected as a slave, activating error based flow control");
+        blockListenersOnErrorBasedFlowControl(true);
+    }
 }
