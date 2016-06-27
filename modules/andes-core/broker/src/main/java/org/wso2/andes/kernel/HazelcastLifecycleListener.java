@@ -26,9 +26,7 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.cluster.error.detection.NetworkPartitionDetector;
 
-import com.hazelcast.core.LifecycleEvent;
 import com.hazelcast.core.LifecycleEvent.LifecycleState;
-import com.hazelcast.core.LifecycleListener;
 
 /**
  * Hazelcast Lifecycle events are monitored through this listener. MB state and Hazelcast data structures are updated
@@ -78,13 +76,13 @@ public class HazelcastLifecycleListener implements LifecycleListener {
                 }
                 
                 // Notify that network partition has occurred.
-                networkPartitionDetector.networkPatitionMerged();
-                
+                networkPartitionDetector.networkPartitionMerged();
+
             } else if (lifecycleEvent.getState() == LifecycleState.SHUTDOWN){
-                networkPartitionDetector.clusterOutageOccured();
+                networkPartitionDetector.clusterOutageOccurred();
             }
-            
-            
+
+
         } catch (Throwable e) {
             log.error("Error occurred while handling Hazelcast state change event " + lifecycleEvent.getState(), e);
         }
