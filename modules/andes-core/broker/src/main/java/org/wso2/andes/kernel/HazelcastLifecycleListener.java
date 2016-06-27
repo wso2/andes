@@ -77,7 +77,7 @@ public class HazelcastLifecycleListener implements LifecycleListener {
                 }
                 
                 // Notify that network partition has occurred.
-                networkPartitionDetector.networkPatitionMerged();
+                networkPartitionDetector.networkPartitionMerged();
             }
         } catch (Throwable e) {
             log.error("Error occurred while handling Hazelcast state change event " + lifecycleEvent.getState(), e);

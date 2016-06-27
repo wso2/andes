@@ -31,25 +31,27 @@ public interface NetworkPartitionDetector {
 
     /**
      * Invoked when a member/node joins the cluster.
-     * 
+     *
      * @param member
      *            information about newly added node.
+     * @param clusterSize The number of members after member has been added.
      */
-    void memberAdded(Object member);
+    void memberAdded(Object member, int clusterSize);
 
     /**
      * Invoked when a member/node leaves the cluster.
-     * 
+     *
      * @param member
      *            information about disconnected node.
+     * @param clusterSize The number of members after member has been removed.
      */
-    void memberRemoved(Object member);
+    void memberRemoved(Object member, int clusterSize);
 
     /**
      * Invoked when clustering mechanism ( / library, i.e. Hazelcast) detects
      * that network partition(s) have been resolved.
      */
-    void networkPatitionMerged();
+    void networkPartitionMerged();
 
     /**
      * Registers a {@link NetworkPartitionListener} with the scheme.

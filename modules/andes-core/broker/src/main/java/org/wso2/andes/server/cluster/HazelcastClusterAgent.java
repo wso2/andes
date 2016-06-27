@@ -144,9 +144,10 @@ public class HazelcastClusterAgent implements ClusterAgent {
      *
      * @param member
      *            New member
+     * @param clusterSize The number of members in the cluster.
      */
-    public void memberAdded(Member member) {
-        networkPartitionDetector.memberAdded(member);
+    public void memberAdded(Member member, int clusterSize) {
+        networkPartitionDetector.memberAdded(member, clusterSize);
         checkAndNotifyCoordinatorChange();
         manager.memberAdded(CoordinationConstants.NODE_NAME_PREFIX + member.getSocketAddress());
     }
@@ -156,17 +157,18 @@ public class HazelcastClusterAgent implements ClusterAgent {
      *
      * @param member
      *            member who left
+     * @param clusterSize The number of members in the cluster.
      * @throws AndesException
      */
-    public void memberRemoved(Member member) throws AndesException {
-        networkPartitionDetector.memberRemoved(member);
+    public void memberRemoved(Member member, int clusterSize) throws AndesException {
+        networkPartitionDetector.memberRemoved(member, clusterSize);
         checkAndNotifyCoordinatorChange();
         manager.memberRemoved(getIdOfNode(member));
     }
 
     
     public void networkPatitionMerged(){
-    	networkPartitionDetector.networkPatitionMerged();
+    	networkPartitionDetector.networkPartitionMerged();
     }
     
     /**
@@ -230,7 +232,7 @@ public class HazelcastClusterAgent implements ClusterAgent {
         }
 
         networkPartitionDetector.start();
-        memberAdded(hazelcastInstance.getCluster().getLocalMember());
+        memberAdded(hazelcastInstance.getCluster().getLocalMember(), hazelcastInstance.getCluster().getMembers().size());
     }
 
     /**

@@ -70,7 +70,8 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
      * @param hazelcastInstance hazelcast instance
      */
     public HazelcastBasedNetworkPartitionDetector(HazelcastInstance hazelcastInstance) {
-        this.minimumClusterSize = AndesConfigurationManager.readValue(AndesConfiguration.RECOVERY_NETWORK_PARTITIONS_MINIMUM_CLUSTER_SIZE);
+        this.minimumClusterSize =
+            AndesConfigurationManager.readValue(AndesConfiguration.RECOVERY_NETWORK_PARTITIONS_MINIMUM_CLUSTER_SIZE);
         this.hazelcastInstance = hazelcastInstance;
         this.isNetworkPartitioned = false;
     }
@@ -81,42 +82,41 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
      * <li>Type of hazelcast events and the order of which they happened</li>
      * <li>current size of the hazelcast cluster ( node count)</li>
      * </ul>
-     * 
+     *
      * @param eventType
      *            Type of network partition even
+     * @param clusterSize The number of members in the cluster.
      */
-    private synchronized void detectNetworkPartitions(PartitionEventType eventType) {
+    private synchronized void detectNetworkPartitions(PartitionEventType eventType, int clusterSize) {
 
-        int currentClusterSize = hazelcastInstance.getCluster().getMembers().size();
-        log.info("Network partition event recieved: " + eventType +  " current cluster size: " +
-                 currentClusterSize);
+        log.info("Network partition event received: " + eventType +  " current cluster size: " + clusterSize);
 
         if (eventType == PartitionEventType.START_UP) {
             
-           if (currentClusterSize < minimumClusterSize) {
+           if (clusterSize < minimumClusterSize) {
                this.isNetworkPartitioned = true; 
-               minimumNodeCountNotFulfilled(currentClusterSize);
+               minimumNodeCountNotFulfilled(clusterSize);
                 
             } else {
-               minimumNodeCountFulfilled(currentClusterSize);
+               minimumNodeCountFulfilled(clusterSize);
             }
 
-        } else if ((isNetworkPartitioned == false) && (currentClusterSize < minimumClusterSize)) {
+        } else if ((isNetworkPartitioned == false) && (clusterSize < minimumClusterSize)) {
 
-            log.info("Current cluster size has reduced below minimum cluster size, current cluster size: " + currentClusterSize);
+            log.info("Current cluster size has reduced below minimum cluster size, current cluster size: "
+                                                                                                        + clusterSize);
             
             this.isNetworkPartitioned = true;
             
-            minimumNodeCountNotFulfilled(currentClusterSize);
+            minimumNodeCountNotFulfilled(clusterSize);
 
-        } else if ((isNetworkPartitioned == true) && (currentClusterSize >= minimumClusterSize)) {
+        } else if ((isNetworkPartitioned == true) && (clusterSize >= minimumClusterSize)) {
 
-            log.info("Current cluster size satisfies minimum required. current cluster size: " +
-                     currentClusterSize);
+            log.info("Current cluster size satisfies minimum required. current cluster size: " + clusterSize);
 
             this.isNetworkPartitioned = false;
             
-            minimumNodeCountFulfilled(currentClusterSize);
+            minimumNodeCountFulfilled(clusterSize);
         }
     }
 
@@ -141,29 +141,54 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
 
     }
 
-    
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void start() {
-        detectNetworkPartitions(PartitionEventType.START_UP);
+        detectNetworkPartitions(PartitionEventType.START_UP, hazelcastInstance.getCluster().getMembers().size());
     }
 
-    public void memberAdded(Object member) {
-        detectNetworkPartitions(PartitionEventType.MEMBER_ADDED);
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void memberAdded(Object member, int clusterSize) {
+        detectNetworkPartitions(PartitionEventType.MEMBER_ADDED, clusterSize);
     }
 
-    public void memberRemoved(Object member) {
-        detectNetworkPartitions(PartitionEventType.MEMBER_REMOVED);
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void memberRemoved(Object member, int clusterSize) {
+        detectNetworkPartitions(PartitionEventType.MEMBER_REMOVED, clusterSize);
     }
 
-    public void networkPatitionMerged() {
-        detectNetworkPartitions(PartitionEventType.CLUSTER_MERGED);
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void networkPartitionMerged() {
+        detectNetworkPartitions(PartitionEventType.CLUSTER_MERGED, hazelcastInstance.getCluster().getMembers().size());
     }
 
+    /**
+     * Notifying listeners that minimum number of node count is not fulfilled.
+     *
+     * @param currentClusterSize The size of the cluster(The number of members).
+     */
     private void minimumNodeCountNotFulfilled(int currentClusterSize) {
         for (NetworkPartitionListener listener : networkPartitionListeners) {
             listener.minimumNodeCountNotFulfilled(currentClusterSize);
         }
     }
 
+    /**
+     * Notifying listeners that minimum number of node count is fulfilled.
+     *
+     * @param currentClusterSize The size of the cluster(The number of members).
+     */
     private void minimumNodeCountFulfilled(int currentClusterSize) {
         for (NetworkPartitionListener listener : networkPartitionListeners) {
             listener.minimumNodeCountFulfilled(currentClusterSize);
@@ -171,7 +196,7 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
     }
 
     /**
-     * Convenient enum indicating possible network event types that occurs. 
+     * Convenient enum indicating possible network event types that occurs.
      */
     private enum PartitionEventType {
         /**
