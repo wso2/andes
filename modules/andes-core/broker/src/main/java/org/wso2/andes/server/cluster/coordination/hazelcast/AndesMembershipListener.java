@@ -59,7 +59,7 @@ public class AndesMembershipListener implements MembershipListener {
         log.info("Handling cluster gossip: New member joined to the cluster. Member Socket Address:"
                  + member.getSocketAddress() + " UUID:" + member.getUuid());
 
-        hazelcastAgent.memberAdded(membershipEvent.getMember());
+        hazelcastAgent.memberAdded(membershipEvent.getMember(), membershipEvent.getMembers().size());
     }
 
     /**
@@ -86,7 +86,7 @@ public class AndesMembershipListener implements MembershipListener {
                  + member.getSocketAddress() + " UUID:" + member.getUuid());
 
         try {
-            hazelcastAgent.memberRemoved(member);
+            hazelcastAgent.memberRemoved(member, membershipEvent.getMembers().size());
         } catch (Exception e) {
             log.error("Error while handling node removal, NodeID:" + hazelcastAgent.getIdOfNode(member), e);
         }

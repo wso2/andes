@@ -21,7 +21,6 @@ package org.wso2.andes.server.cluster.error.detection;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -46,7 +45,7 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
      * events.
      */
     private Collection<NetworkPartitionListener> networkPartitionListeners 
-                            = Collections.synchronizedCollection(new ArrayList<NetworkPartitionListener>());
+                                        = Collections.synchronizedCollection(new ArrayList<NetworkPartitionListener>());
 
     /**
      * Minimum number of nodes in the cluster ( or in a particular network
@@ -71,7 +70,8 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
      * @param hazelcastInstance hazelcast instance
      */
     public HazelcastBasedNetworkPartitionDetector(HazelcastInstance hazelcastInstance) {
-        this.minimumClusterSize = AndesConfigurationManager.readValue(AndesConfiguration.RECOVERY_NETWORK_PARTITIONS_MINIMUM_CLUSTER_SIZE);
+        this.minimumClusterSize =
+            AndesConfigurationManager.readValue(AndesConfiguration.RECOVERY_NETWORK_PARTITIONS_MINIMUM_CLUSTER_SIZE);
         this.hazelcastInstance = hazelcastInstance;
         this.isNetworkPartitioned = false;
     }
@@ -82,24 +82,25 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
      * <li>Type of hazelcast events and the order of which they happened</li>
      * <li>current size of the hazelcast cluster ( node count)</li>
      * </ul>
-     * 
+     *
      * @param eventType
      *            Type of network partition even
+     * @param clusterSize The number of members in the cluster.
      */
-    private synchronized void detectNetworkPartitions(PartitionEventType eventType) {
+    private synchronized void detectNetworkPartitions(PartitionEventType eventType, int clusterSize) {
 
         int currentClusterSize = -1;
-                
-                
+
+
         if (eventType != PartitionEventType.CLUSTERING_OUTAGE) {
-            currentClusterSize = hazelcastInstance.getCluster().getMembers().size();
-      
+            currentClusterSize = clusterSize;
+
         }
-      
-        log.info("Network partition event recieved: " + eventType + " current cluster size: " +
+
+        log.info("Network partition event received: " + eventType + " current cluster size: " +
                 currentClusterSize);
-        
-        
+
+
         if (eventType == PartitionEventType.START_UP) {
             
            if (currentClusterSize < minimumClusterSize) {
@@ -110,12 +111,12 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
                minimumNodeCountFulfilled(currentClusterSize);
             }
 
-        } else if (eventType == PartitionEventType.CLUSTERING_OUTAGE){ 
-            // If the network is not partitioned before 
+        } else if (eventType == PartitionEventType.CLUSTERING_OUTAGE){
+            // If the network is not partitioned before
             log.fatal("Cluster outage detected.");
             clusteringOutage();
-            
-            
+
+
         } else if ((isNetworkPartitioned == false) && (currentClusterSize < minimumClusterSize)) {
 
             log.info("Current cluster size has reduced below minimum cluster size, current cluster size: " + currentClusterSize);
@@ -157,48 +158,53 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
     }
 
     /**
-     *A Convenient method meant to be invoked during server startup.
+     * A Convenient method meant to be invoked during server startup.
      */
+    @Override
     public void start() {
-        detectNetworkPartitions(PartitionEventType.START_UP);
+        detectNetworkPartitions(PartitionEventType.START_UP, hazelcastInstance.getCluster().getMembers().size());
     }
 
     /**
      * A Convenient method meant to be invoked when clustering framework detects
      * that a new broker node joined the cluster.
      */
-    public void memberAdded(Object member) {
-        detectNetworkPartitions(PartitionEventType.MEMBER_ADDED);
+    @Override
+    public void memberAdded(Object member, int clusterSize) {
+        detectNetworkPartitions(PartitionEventType.MEMBER_ADDED, clusterSize);
     }
 
     /**
      * A Convenient method meant to be invoked when clustering framework detects
      * that a broker node left the cluster.
      */
-    public void memberRemoved(Object member) {
-        detectNetworkPartitions(PartitionEventType.MEMBER_REMOVED);
+    @Override
+    public void memberRemoved(Object member, int clusterSize) {
+        detectNetworkPartitions(PartitionEventType.MEMBER_REMOVED, clusterSize);
     }
 
     /**
      * A Convenient method meant to be invoked when clustering framework detects
      * that a network partition merged.
      */
-    public void networkPatitionMerged() {
-        detectNetworkPartitions(PartitionEventType.CLUSTER_MERGED);
+    @Override
+    public void networkPartitionMerged() {
+        detectNetworkPartitions(PartitionEventType.CLUSTER_MERGED, hazelcastInstance.getCluster().getMembers().size());
     }
 
     /**
      * A Convenient method meant to be invoked broker detects clustering
      * framework failed/shutdown
      */
-    public void clusterOutageOccured() {
-        detectNetworkPartitions(PartitionEventType.CLUSTERING_OUTAGE);
-        
+    @Override
+    public void clusterOutageOccurred() {
+        detectNetworkPartitions(PartitionEventType.CLUSTERING_OUTAGE,
+                                                                    hazelcastInstance.getCluster().getMembers().size());
     }
 
     /**
      * Broadcasts size of the cluster reduced below the minimum node count
-     * 
+     *
      * @param currentClusterSize
      *            current size of the cluster
      */
@@ -209,9 +215,14 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
     }
 
     /**
+     * Notifying listeners that minimum number of node count is fulfilled.
+     *
+     * @param currentClusterSize The size of the cluster(The number of members).
+     */
+    /**
      * Broadcasts size of the cluster become equal to minimum node count
      * configured
-     * 
+     *
      * @param currentClusterSize
      *            current size of the cluster
      */
@@ -223,7 +234,6 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
 
     /**
      * Broadcasts that clustering framework failed/shutdown
-     * 
      */
     private void clusteringOutage() {
         for (NetworkPartitionListener listener : networkPartitionListeners) {
@@ -231,9 +241,9 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
         }
     }
 
-    
+
     /**
-     * Convenient enum indicating possible network event types that occurs. 
+     * Convenient enum indicating possible network event types that occurs.
      */
     private enum PartitionEventType {
         /**
@@ -253,11 +263,11 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
          * Indicates a cluster merged network partitions and recovered from a split brain.
          */
         CLUSTER_MERGED,
-        
+
         /**
-         * Indicates outage in clustering framework (may be due to an error 
+         * Indicates outage in clustering framework (may be due to an error
          * that can't be recovered). Node restart is required.
          */
         CLUSTERING_OUTAGE;
-    }    
+    }
 }
