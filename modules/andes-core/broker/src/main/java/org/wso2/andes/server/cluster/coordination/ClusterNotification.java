@@ -25,21 +25,55 @@ import java.io.Serializable;
  */
 public class ClusterNotification implements Serializable {
 
-    private String changeType;
-    private String encodedObjectAsString;
-    private String description;
+    public static final String QUEUE_ADDED = "QUEUE_ADDED";
+    public static final String QUEUE_DELETED = "QUEUE_DELETED";
+    public static final String QUEUE_PURGED = "QUEUE_PURGED";
+    public static final String BINDING_ADDED = "BINDING_ADDED";
+    public static final String BINDING_DELETED = "BINDING_DELETED";
+    public static final String EXCHANGE_ADDED = "EXCHANGE_ADDED";
+    public static final String EXCHANGE_DELETED = "EXCHANGE_DELETED";
+    public static final String SUBSCRIPTION_ADDED = "SUBSCRIPTION_ADDED";
+    public static final String SUBSCRIPTION_DELETED = "SUBSCRIPTION_DELETED";
+    public static final String SUBSCRIPTION_DISCONNECTED = "SUBSCRIPTION_DISCONNECTED";
+    public static final String SUBSCRIPTION_MERGED = "SUBSCRIPTION_MERGED";
 
     /**
-     * create an instance of cluster notification
+     * The type of change represented by the notification.
+     */
+    private String changeType;
+
+    /**
+     * The notification encoded as a string.
+     */
+    private String encodedObjectAsString;
+
+    /**
+     * The node by which the cluster notification was originally sent.
+     */
+    private String originatedNode;
+
+    /**
+     * Create an instance of cluster notification given the notification and the change type.
      *
      * @param encodedAsString encoded string to transfer thro
      * @param changeType      change happened (added/deleted etc)
-     * @param description     description what this notification is
      */
-    public ClusterNotification(String encodedAsString, String changeType, String description) {
+    public ClusterNotification(String encodedAsString, String changeType) {
         this.encodedObjectAsString = encodedAsString;
         this.changeType = changeType;
-        this.description = description;
+    }
+
+    /**
+     * Create an instance of cluster notification given the notification, the change type and the node from which the
+     * cluster notification originated.
+     *
+     * @param encodedAsString encoded string to transfer thro
+     * @param changeType      change happened (added/deleted etc)
+     */
+    public ClusterNotification(String encodedAsString, String changeType, String originatedNode) {
+        this.encodedObjectAsString = encodedAsString;
+        this.changeType = changeType;
+        this.originatedNode = originatedNode;
     }
 
     /**
@@ -52,20 +86,20 @@ public class ClusterNotification implements Serializable {
     }
 
     /**
-     * get the change notification carries
+     * Get the change notification carries
      *
-     * @return change
+     * @return change the type of the change
      */
     public String getChangeType() {
         return changeType;
     }
 
     /**
-     * get notification description
+     * Get the node from which the notification was originated.
      *
-     * @return description
+     * @return the originated node
      */
-    public String getDescription() {
-        return description;
+    public String getOriginatedNode() {
+        return originatedNode;
     }
 }

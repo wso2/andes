@@ -20,43 +20,34 @@ package org.wso2.andes.server.cluster.coordination.hazelcast;
 
 import com.hazelcast.core.Message;
 import com.hazelcast.core.MessageListener;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.server.cluster.coordination.ClusterNotificationHandler;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * This listener class is triggered when exchange change happened in cluster via HazelCast.
  */
-public class ClusterExchangeChangedListener implements MessageListener {
-
-    private static Log log = LogFactory.getLog(ClusterExchangeChangedListener.class);
-    private List<ExchangeListener> exchangeListeners = new ArrayList<ExchangeListener>();
+public class HazelcastBasedClusterExchangeChangedListener implements MessageListener {
 
     /**
-     * Register a listener interested in queue changes in cluster
+     * Listener to handle cluster event.
+     */
+    private ClusterNotificationHandler eventListener = new ClusterNotificationHandler();
+
+    /**
+     * Register a listener interested in queue changes in cluster.
      *
      * @param listener listener to be registered
      */
     public void addExchangeListener(ExchangeListener listener) {
-        exchangeListeners.add(listener);
+        eventListener.addExchangeListener(listener);
     }
 
     @Override
     public void onMessage(Message message) {
         ClusterNotification clusterNotification = (ClusterNotification) message.getMessageObject();
-        log.debug("Handling cluster gossip: received a exchange change notification " + clusterNotification.getDescription());
-        AndesExchange andesExchange = new AndesExchange(clusterNotification.getEncodedObjectAsString());
-        ExchangeListener.ExchangeChange change = ExchangeListener.ExchangeChange.valueOf(clusterNotification.getChangeType());
-        try {
-            for (ExchangeListener exchangeListener : exchangeListeners) {
-                exchangeListener.handleClusterExchangesChanged(andesExchange, change);
-            }
-        } catch (AndesException e) {
-            log.error("error while handling cluster exchange change notification", e);
-        }
+        eventListener.handleClusterExchangesChanged(clusterNotification.getEncodedObjectAsString(),
+                ExchangeListener.ExchangeChange.valueOf(clusterNotification.getChangeType()));
     }
 }

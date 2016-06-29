@@ -153,7 +153,7 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
     public String getIdOfNode(Member node) {
         String nodeId = nodeIdMap.get(node.getSocketAddress().toString());
         if(StringUtils.isEmpty(nodeId)) {
-            nodeId = node.getSocketAddress().toString();
+            return null;
         }
         return nodeId;
     }
@@ -231,7 +231,7 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
              Node ID can be null if the node has not initialized yet. Therefore try to read the node id
              MAX_NODE_ID_READ_ATTEMPTS times before failing.
               */
-            while ((nodeIdOfMember == null) && (nodeIdReadAttempts <= MAX_NODE_ID_READ_ATTEMPTS)) {
+            while ((null == nodeIdOfMember) && (nodeIdReadAttempts <= MAX_NODE_ID_READ_ATTEMPTS)) {
 
                 // Exponentially increase waiting time,
                 long sleepTime = Math.round(Math.pow(2, nodeIdReadAttempts));

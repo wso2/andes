@@ -66,7 +66,7 @@ public class HazelcastLifecycleListener implements LifecycleListener {
             log.info("Hazelcast instance lifecycle changed state to " + lifecycleEvent.getState());
             if (lifecycleEvent.getState() == LifecycleEvent.LifecycleState.MERGED) {
                 log.info("Hazelcast cluster merge detected after a split brain. Updating unmerged data structures");
-                HazelcastAgent.getInstance().addTopicListeners();
+                HazelcastAgent.getInstance().reInitializeTopicListeners();
                 AndesSubscriptionManager andesSubscriptionManager = ClusterResourceHolder.getInstance()
                         .getSubscriptionManager();
                 if(null != andesSubscriptionManager) {

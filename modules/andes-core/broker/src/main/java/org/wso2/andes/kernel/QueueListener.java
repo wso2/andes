@@ -18,30 +18,90 @@
 
 package org.wso2.andes.kernel;
 
-/**
- * Listener listening for queue changes local and cluster
- */
-public interface QueueListener {
+import org.apache.log4j.Logger;
+import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.server.cluster.coordination.ClusterNotificationPublisher;
+import org.wso2.andes.server.cluster.coordination.ClusterNotification;
+import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
 
-    public static enum QueueEvent {
+/**
+ * QueueListener listens and handles queue changes that have occurred locally and cluster-wide.
+ */
+public class QueueListener {
+
+    private static final Logger log = Logger.getLogger(QueueListener.class);
+
+    /**
+     * Queue event types that could be present in the cluster.
+     */
+    public enum QueueEvent {
         ADDED,
         DELETED,
         PURGED
     }
 
     /**
-     * Handle queue has changed in the cluster
-     *
-     * @param andesQueue changed queue
-     * @param changeType what type of change has happened
+     * Local event handler is used to notify local queue changes to the cluster.
      */
-    public void handleClusterQueuesChanged(AndesQueue andesQueue, QueueEvent changeType) throws AndesException;
+    private ClusterNotificationPublisher clusterNotificationPublisher;
 
     /**
-     * Handle the event where a queue has changed in another node
+     * VirtualHostConfigSynchronizer is used to synchronize cluster events received with Qpid.
+     */
+    VirtualHostConfigSynchronizer virtualHostConfigSynchronizer;
+
+    /**
+     * Creates a listener for queue changes given a publisher to notify the changes that are received to the cluster.
+     *
+     * @param publisher Hazelcast/RDBMS based or standalone publisher to publish cluster notifications.
+     */
+    public QueueListener(ClusterNotificationPublisher publisher) {
+        clusterNotificationPublisher = publisher;
+        virtualHostConfigSynchronizer = ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer();
+    }
+
+    /**
+     * Handle when a queue has changed in the cluster.
      *
      * @param andesQueue changed queue
      * @param changeType what type of change has happened
      */
-    public void handleLocalQueuesChanged(AndesQueue andesQueue, QueueEvent changeType) throws AndesException;
+    public void handleClusterQueuesChanged(AndesQueue andesQueue, QueueEvent changeType) throws AndesException {
+        if (log.isDebugEnabled()) {
+            log.debug("Cluster event received: " + andesQueue.encodeAsString());
+        }
+        switch (changeType) {
+            case ADDED:
+                //create a queue
+                virtualHostConfigSynchronizer.clusterQueueAdded(andesQueue);
+                break;
+            case DELETED:
+                //Delete remaining subscriptions from the local and cluster subscription maps
+                ClusterResourceHolder.getInstance().getSubscriptionManager().deleteAllLocalSubscriptionsOfBoundQueue(
+                        andesQueue.queueName, andesQueue.getProtocolType(), andesQueue.getDestinationType());
+                ClusterResourceHolder.getInstance().getSubscriptionManager().deleteAllClusterSubscriptionsOfBoundQueue(
+                        andesQueue.queueName, andesQueue.getProtocolType(), andesQueue.getDestinationType());
+
+                //delete queue
+                virtualHostConfigSynchronizer.clusterQueueRemoved(andesQueue);
+                break;
+            case PURGED:
+                //purge queue
+                virtualHostConfigSynchronizer.clusterQueuePurged(andesQueue);
+                break;
+        }
+    }
+
+    /**
+     * Handle when a queue has changed in the node.
+     *
+     * @param andesQueue changed queue
+     * @param changeType what type of change has happened
+     */
+    public void handleLocalQueuesChanged(AndesQueue andesQueue, QueueEvent changeType) throws AndesException {
+        ClusterNotification clusterNotification
+                = new ClusterNotification(andesQueue.encodeAsString(), changeType.toString());
+        clusterNotificationPublisher.publishClusterNotification(clusterNotification);
+
+    }
 }

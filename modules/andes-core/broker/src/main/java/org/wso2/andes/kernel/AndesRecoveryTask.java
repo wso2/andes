@@ -21,8 +21,7 @@ package org.wso2.andes.kernel;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
-import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
+import org.wso2.andes.server.cluster.coordination.EventListenerCreator;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
@@ -41,9 +40,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 
-	private List<QueueListener> queueListeners = new ArrayList<>();
-	private List<ExchangeListener> exchangeListeners = new ArrayList<>();
-	private List<BindingListener> bindingListeners = new ArrayList<>();
+	private QueueListener queueListener;
+	private ExchangeListener exchangeListener;
+	private BindingListener bindingListener;
 
 	private AndesContextStore andesContextStore;
 	private AMQPConstructStore amqpConstructStore;
@@ -57,14 +56,14 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 
 	private static final Log log = LogFactory.getLog(AndesRecoveryTask.class);
 
-	public AndesRecoveryTask() {
+	public AndesRecoveryTask(EventListenerCreator listenerCreator) {
 
 		// Register AndesRecoveryTask class as a StoreHealthListener
 		FailureObservingStoreManager.registerStoreHealthListener(this);
 
-		queueListeners.add(new ClusterCoordinationHandler(HazelcastAgent.getInstance()));
-		exchangeListeners.add(new ClusterCoordinationHandler(HazelcastAgent.getInstance()));
-		bindingListeners.add(new ClusterCoordinationHandler(HazelcastAgent.getInstance()));
+		queueListener = listenerCreator.getQueueListener();
+		exchangeListener = listenerCreator.getExchangeListener();
+		bindingListener = listenerCreator.getBindingListener();
 
 		subscriptionEngine = AndesContext.getInstance().getSubscriptionEngine();
 		andesContextStore = AndesContext.getInstance().getAndesContextStore();
@@ -100,6 +99,7 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
     public void executeNow() {
         run();
     }
+
 	/**
 	 * reload and recover exchanges,
 	 * Queues, Bindings and Subscriptions
@@ -141,20 +141,14 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 
 			exchangesStored.removeAll(exchangeList);
 			for (AndesExchange exchange : exchangesStored) {
-				for (ExchangeListener listener : exchangeListeners) {
-					log.warn("Recovering node. Adding exchange " + exchange.toString());
-					listener.handleClusterExchangesChanged(exchange,
-					                                       ExchangeListener.ExchangeChange.Added);
-				}
+				log.warn("Recovering node. Adding exchange " + exchange.toString());
+				exchangeListener.handleClusterExchangesChanged(exchange, ExchangeListener.ExchangeChange.ADDED);
 			}
 
 			exchangeList.removeAll(duplicatedExchanges);
 			for (AndesExchange exchange : exchangeList) {
-				for (ExchangeListener listener : exchangeListeners) {
-					log.warn("Recovering node. Removing exchange " + exchange.toString());
-					listener.handleClusterExchangesChanged(exchange,
-					                                       ExchangeListener.ExchangeChange.Deleted);
-				}
+				log.warn("Recovering node. Removing exchange " + exchange.toString());
+				exchangeListener.handleClusterExchangesChanged(exchange, ExchangeListener.ExchangeChange.DELETED);
 			}
 		} else {
 			log.warn("Failed to recover exchanges from database due to non-operational context store.");
@@ -169,23 +163,19 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 
 			queuesStored.removeAll(queueList);
 			for (AndesQueue queue : queuesStored) {
-				for (QueueListener listener : queueListeners) {
-					log.warn("Recovering node. Adding queue " + queue.toString());
-					/**
-					 * Ignoring MQTT queues when recovering as they are already stored in the database. 
-					 */
-					if (queue.getProtocolType() != ProtocolType.MQTT) {
-						listener.handleClusterQueuesChanged(queue, QueueListener.QueueEvent.ADDED);
-					}
+				log.warn("Recovering node. Adding queue " + queue.toString());
+				/**
+				 * Ignoring MQTT queues when recovering as they are already stored in the database.
+				 */
+				if (queue.getProtocolType() != ProtocolType.MQTT) {
+					queueListener.handleClusterQueuesChanged(queue, QueueListener.QueueEvent.ADDED);
 				}
 			}
 
 			queueList.removeAll(duplicatedQueues);
 			for (AndesQueue queue : queueList) {
-				for (QueueListener listener : queueListeners) {
-					log.warn("Recovering node. Removing queue " + queue.toString());
-					listener.handleClusterQueuesChanged(queue, QueueListener.QueueEvent.DELETED);
-				}
+				log.warn("Recovering node. Removing queue " + queue.toString());
+				queueListener.handleClusterQueuesChanged(queue, QueueListener.QueueEvent.DELETED);
 			}
 		} else {
 			log.warn("Failed to recover queues from database due to non-operational context store.");
@@ -203,20 +193,14 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 				List<AndesBinding> duplicatedBindings = new ArrayList<>(bindingsStored);
 				bindingsStored.removeAll(bindingsForExchange);
 				for (AndesBinding binding : bindingsStored) {
-					for (BindingListener listener : bindingListeners) {
-						log.warn("Recovering node. Adding binding " + binding.toString());
-						listener.handleClusterBindingsChanged(binding,
-						                                      BindingListener.BindingEvent.ADDED);
-					}
+					log.warn("Recovering node. Adding binding " + binding.toString());
+					bindingListener.handleClusterBindingsChanged(binding, BindingListener.BindingEvent.ADDED);
 				}
 
 				bindingsForExchange.removeAll(duplicatedBindings);
 				for (AndesBinding binding : bindingsForExchange) {
-					for (BindingListener listener : bindingListeners) {
-						log.warn("Recovering node. removing binding " + binding.toString());
-						listener.handleClusterBindingsChanged(binding,
-						                                      BindingListener.BindingEvent.DELETED);
-					}
+					log.warn("Recovering node. removing binding " + binding.toString());
+					bindingListener.handleClusterBindingsChanged(binding, BindingListener.BindingEvent.DELETED);
 				}
 			}
 		} else {

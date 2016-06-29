@@ -31,7 +31,13 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.ClusterAgent;
 import org.wso2.andes.server.cluster.ClusterManagementInformationMBean;
 import org.wso2.andes.server.cluster.ClusterManager;
+import org.wso2.andes.server.cluster.coordination.ClusterNotificationListenerManager;
+import org.wso2.andes.server.cluster.coordination.EventListenerCreator;
+import org.wso2.andes.server.cluster.coordination.StandaloneEventListenerCreator;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
+import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastBasedEventListenerCreator;
+import org.wso2.andes.server.cluster.coordination.rdbms.RDBMSBasedEventListenerCreator;
+import org.wso2.andes.server.cluster.coordination.rdbms.RDBMSClusterNotificationListenerManager;
 import org.wso2.andes.server.information.management.MessageStatusInformationMBean;
 import org.wso2.andes.server.information.management.SubscriptionManagementInformationMBean;
 import org.wso2.andes.server.queue.DLCQueueUtils;
@@ -60,24 +66,39 @@ import javax.management.JMException;
  */
 public class AndesKernelBoot {
     private static Log log = LogFactory.getLog(AndesKernelBoot.class);
-    private static VirtualHost virtualHost;
     private static MessageStore messageStore;
+
     /**
      * Scheduled thread pool executor to run periodic andes recovery task
      */
     private static ScheduledExecutorService andesRecoveryTaskScheduler;
+
     /**
      * Scheduled thread pool executor to run periodic expiry message deletion task
      */
     private static ScheduledExecutorService expiryMessageDeletionTaskScheduler;
+
     /**
      * Used to get information from context store
      */
     private static AndesContextStore contextStore;
+
     /**
      * This is used by independent worker threads to identify if the kernel is performing shutdown operations.
      */
     private static boolean isKernelShuttingDown = false;
+
+    /**
+     * This enables creating cluster event listeners depending on whether cluster communication happens through
+     * Hazelcast or RDBMS or whether it is running in the standalone mode.
+     */
+    private static EventListenerCreator eventListenerCreator;
+
+    /**
+     * Used to initialize cluster notifications listners.
+     */
+    private static ClusterNotificationListenerManager clusterNotificationListenerManager;
+
     /**
      * This will boot up all the components in Andes kernel and bring the server to working state
      */
@@ -90,7 +111,6 @@ public class AndesKernelBoot {
                 .setNameFormat("AndesRecoveryTask-%d").build();
         andesRecoveryTaskScheduler = Executors.newScheduledThreadPool(threadPoolCount);
         expiryMessageDeletionTaskScheduler = Executors.newScheduledThreadPool(threadPoolCount);
-        startAndesComponents();
         startHouseKeepingThreads();
         syncNodeWithClusterState();
         registerMBeans();
@@ -122,6 +142,7 @@ public class AndesKernelBoot {
                 hazelcastAgent.acquireInitializationLock();
                 if (!hazelcastAgent.isClusterInitializedSuccessfully()) {
                     contextStore.clearMembershipEvents();
+                    clusterNotificationListenerManager.clearAllClusterNotifications();
                     clearSlotStorage();
 
                     // Initialize current node's last published ID
@@ -171,12 +192,16 @@ public class AndesKernelBoot {
     }
 
     /**
-     * Set the default virtual host. Andes operates
-     * this virtual host only
+     * Initialize the VirtualHostConfigSynchronizaer based on the provide virtual host. Andes operates on this virtual
+     * host only
+     *
      * @param defaultVirtualHost virtual host to set
      */
-    public static void setVirtualHost(VirtualHost defaultVirtualHost) {
-        virtualHost = defaultVirtualHost;
+    public static void initVirtualHostConfigSynchronizer(VirtualHost defaultVirtualHost) {
+        // initialize amqp constructs syncing into Qpid
+        VirtualHostConfigSynchronizer _VirtualHostConfigSynchronizer = new VirtualHostConfigSynchronizer
+                (defaultVirtualHost);
+        ClusterResourceHolder.getInstance().setVirtualHostConfigSynchronizer(_VirtualHostConfigSynchronizer);
     }
 
     /**
@@ -238,37 +263,28 @@ public class AndesKernelBoot {
         log.info("Andes MessageStore initialised with " + messageStoreClassName);
         return messageStoreInConfig;
     }
-    
+
     /**
-     * start all andes stores message store/context store and AMQP construct store
+     * Starts all andes components such as the subscription engine, messaging engine, cluster event sync tasks, etc.
+     *
      * @throws Exception
      */
-    public static void startAndesStores() throws Exception {
+    private static void startAndesComponents() throws Exception {
 
-        //whether expiry check is enabled / disabled for DLC
-        boolean isExpiryCheckEnabledInDLC = AndesConfigurationManager.readValue
-                (AndesConfiguration.PERFORMANCE_TUNING_EXPIRE_MESSAGES_IN_DLC);
-
-        //Create a andes context store and register
-        AndesContextStore contextStoreInConfig = createAndesContextStoreFromConfig();
-        
-        AndesKernelBoot.contextStore =  new FailureObservingAndesContextStore(contextStoreInConfig) ;
-        AndesContext.getInstance().setAndesContextStore(contextStore);
-        
         //create subscription store
         SubscriptionEngine subscriptionEngine = new SubscriptionEngine();
         AndesContext.getInstance().setSubscriptionEngine(subscriptionEngine);
-        
+
         /**
          * initialize subscription managing
          */
         AndesSubscriptionManager subscriptionManager = new AndesSubscriptionManager();
         ClusterResourceHolder.getInstance().setSubscriptionManager(subscriptionManager);
-        subscriptionManager.init();
+        subscriptionManager.init(eventListenerCreator);
 
-        // directly wire the instance without wrapped instance
-        messageStore = new FailureObservingMessageStore(createMessageStoreFromConfig(contextStoreInConfig));
-        MessagingEngine messagingEngine = MessagingEngine.getInstance();
+        // Whether expiry check is enabled/disabled for DLC
+        boolean isExpiryCheckEnabledInDLC
+                = AndesConfigurationManager.readValue(AndesConfiguration.PERFORMANCE_TUNING_EXPIRE_MESSAGES_IN_DLC);
         MessageExpiryManager messageExpiryManager;
         //depends on the configuration bind the appropriate expiry manger with the messaging engine
         if (isExpiryCheckEnabledInDLC) {
@@ -276,32 +292,93 @@ public class AndesKernelBoot {
         } else {
             messageExpiryManager = new DefaultMessageExpiryManager(messageStore);
         }
-        messagingEngine.initialise(messageStore, subscriptionEngine, messageExpiryManager);
 
+        MessagingEngine messagingEngine = MessagingEngine.getInstance();
+        messagingEngine.initialise(messageStore, subscriptionEngine, messageExpiryManager, eventListenerCreator);
+
+        // initialise Andes context information related manager class
+        AndesContextInformationManager contextInformationManager =
+                new AndesContextInformationManager(AndesContext.getInstance().getAMQPConstructStore(),
+                        subscriptionEngine, contextStore, eventListenerCreator);
+
+        // When message stores are initialised initialise Andes as well.
+        Andes.getInstance().initialise(subscriptionEngine, messagingEngine,
+                contextInformationManager, subscriptionManager);
+    }
+
+    /**
+     * Start all andes stores message store/context store and AMQP construct store
+     *
+     * @throws Exception
+     */
+    public static void startAndesStores() throws Exception {
+
+        //Create a andes context store and register
+        AndesContextStore contextStoreInConfig = createAndesContextStoreFromConfig();
+        AndesKernelBoot.contextStore = new FailureObservingAndesContextStore(contextStoreInConfig);
+        AndesContext.getInstance().setAndesContextStore(contextStore);
+
+        // directly wire the instance without wrapped instance
+        messageStore = new FailureObservingMessageStore(createMessageStoreFromConfig(contextStoreInConfig));
         // Setting the message store in the context store
         AndesContext.getInstance().setMessageStore(messageStore);
 
         //create AMQP Constructs store
         AMQPConstructStore amqpConstructStore = new AMQPConstructStore(contextStore, messageStore);
         AndesContext.getInstance().setAMQPConstructStore(amqpConstructStore);
-
-        // initialise Andes context information related manager class
-        AndesContextInformationManager contextInformationManager = 
-                new AndesContextInformationManager(amqpConstructStore, subscriptionEngine,
-                                                   contextStore, messageStore);
-        
-        // When message stores are initialised initialise Andes as well.
-        Andes.getInstance().initialise(subscriptionEngine, messagingEngine,
-                contextInformationManager, subscriptionManager);
-
-        // initialize amqp constructs syncing into Qpid
-        VirtualHostConfigSynchronizer _VirtualHostConfigSynchronizer = new
-                VirtualHostConfigSynchronizer(
-                virtualHost);
-        ClusterResourceHolder.getInstance()
-                             .setVirtualHostConfigSynchronizer(_VirtualHostConfigSynchronizer);
     }
 
+    /**
+     * Initialize mode of cluster event synchronization depending on configurations and start listeners.
+     */
+    private static void initClusterEventSynchronizationMode() throws AndesException {
+
+        if (ClusterResourceHolder.getInstance().getClusterManager().isClusteringEnabled()) {
+            if (AndesConfigurationManager.readValue(AndesConfiguration.CLUSTER_EVENT_SYNC_MODE_RDBMS_ENABLED)) {
+                eventListenerCreator = new RDBMSBasedEventListenerCreator();
+                log.info("Broker is initialized with RDBMS based cluster event synchronization.");
+                clusterNotificationListenerManager = new RDBMSClusterNotificationListenerManager();
+            } else {
+                eventListenerCreator = new HazelcastBasedEventListenerCreator();
+                log.info("Broker is initialized with HAZELCAST based cluster event synchronization.");
+                clusterNotificationListenerManager = HazelcastAgent.getInstance();
+            }
+        } else {
+            eventListenerCreator = new StandaloneEventListenerCreator();
+        }
+    }
+
+    /**
+     * Starts the andes cluster.
+     */
+    public static void startAndesCluster() throws Exception {
+
+        // Initialize cluster manager
+        initClusterManager();
+
+        // Initialize the cluster communication mode whether it is HAZELCAST or RDBMS.
+        initClusterEventSynchronizationMode();
+
+        // Clear all slots and cluster notifications at a cluster startup
+        clearMembershipEventsAndRecoverDistributedSlotMap();
+
+        //Start components such as the subscription manager, subscription engine, messaging engine, etc.
+        startAndesComponents();
+
+        // Initialize listener to be notified of cluster events.
+        if (ClusterResourceHolder.getInstance().getClusterManager().isClusteringEnabled()) {
+            clusterNotificationListenerManager.initializeListener();
+        }
+    }
+
+    /**
+     * Stops tasks for cluster event synchronization.
+     */
+    public static void shutDownAndesClusterEventSynchronization() throws AndesException {
+        if (ClusterResourceHolder.getInstance().getClusterManager().isClusteringEnabled()) {
+            clusterNotificationListenerManager.stopListener();
+        }
+    }
 
     /**
      * Bring the node to the state of the cluster. If this is the coordinator, disconnect all active durable
@@ -343,7 +420,7 @@ public class AndesKernelBoot {
     public static void startHouseKeepingThreads() throws AndesException {
 
         //reload exchanges/queues/bindings and subscriptions
-        AndesRecoveryTask andesRecoveryTask = new AndesRecoveryTask();
+        AndesRecoveryTask andesRecoveryTask = new AndesRecoveryTask(eventListenerCreator);
         //deleted the expired message from db
         PeriodicExpiryMessageDeletionTask periodicExpiryMessageDeletionTask = null;
 
@@ -424,7 +501,7 @@ public class AndesKernelBoot {
      *
      * @throws AndesException
      */
-    public static void startAndesComponents() throws AndesException {
+    private static void initClusterManager() throws AndesException {
 
         /**
          * initialize cluster manager for managing nodes in MB cluster

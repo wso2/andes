@@ -23,6 +23,7 @@ import org.wso2.andes.configuration.util.ConfigurationProperty;
 import org.wso2.andes.configuration.util.ImmutableMetaProperties;
 import org.wso2.andes.configuration.util.MetaProperties;
 import org.wso2.andes.configuration.util.TopicMessageDeliveryStrategy;
+
 import java.util.List;
 
 /**
@@ -31,6 +32,21 @@ import java.util.List;
  * If this is getting crowded, please break into multiple purposeful enums for ease of use. Kept in one class for now.
  */
 public enum AndesConfiguration implements ConfigurationProperty {
+
+    /**
+     * Enabling this will make the cluster notifications such as Queue changes(additions and deletions), Subscription
+     * changes, etc. sent within the cluster be synchronized using RDBMS. If set to false, Hazelcast will be used for
+     * this purpose.
+     */
+    CLUSTER_EVENT_SYNC_MODE_RDBMS_ENABLED("coordination/RDBMSBasedClusterEventSynchronization/@enabled", "false",
+            Boolean.class),
+
+    /**
+     * The interval at which, the cluster events will be read from the database. Specified in milliseconds.
+     * Setting this to a very low value could have an impact on the performance since the number of DB calls will be
+     * high. Setting this to a large value increases the time taken for a cluster event to be synchronized.
+     */
+    CLUSTER_EVENT_SYNC_INTERVAL("coordination/clusterEventSyncMode/RDBMS/eventSyncInterval", "1000", Integer.class),
 
     /**
      * The host IP to be used by the Thrift server. Thrift is used to coordinate message slots between MB nodes.
@@ -43,7 +59,6 @@ public enum AndesConfiguration implements ConfigurationProperty {
      */
     COORDINATION_THRIFT_SERVER_PORT
             ("coordination/thriftServerPort", "7611", Integer.class),
-
             
     /**
      * Socket timeout for thrift connection.

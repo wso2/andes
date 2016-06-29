@@ -183,7 +183,7 @@ public class MBThriftClient {
             log.error("Error occurred while receiving coordinator details from map", e);
             handleCoordinatorChanges();
         }
-
+        
         return deleteSuccess;
     }
 

@@ -20,46 +20,34 @@ package org.wso2.andes.server.cluster.coordination.hazelcast;
 
 import com.hazelcast.core.Message;
 import com.hazelcast.core.MessageListener;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.AndesBinding;
-import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.BindingListener;
+import org.wso2.andes.server.cluster.coordination.ClusterNotificationHandler;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * This listener class is triggered when binding change happened in cluster via HazelCast.
  */
-public class ClusterBindingChangedListener implements MessageListener {
-
-    private static Log log = LogFactory.getLog(ClusterBindingChangedListener.class);
-    private List<BindingListener> bindingListeners = new ArrayList<BindingListener>();
+public class HazelcastBasedClusterBindingChangedListener implements MessageListener {
 
     /**
-     * Register a listener interested on binding changes in cluster
+     * Listener to handle cluster event.
+     */
+    private ClusterNotificationHandler eventListener = new ClusterNotificationHandler();
+
+    /**
+     * Register a listener interested on binding changes in cluster.
      *
      * @param listener listener to be registered
      */
     public void addBindingListener(BindingListener listener) {
-        bindingListeners.add(listener);
+        eventListener.addBindingListener(listener);
     }
 
     @Override
     public void onMessage(Message message) {
         ClusterNotification clusterNotification = (ClusterNotification) message.getMessageObject();
-        log.debug("Handling cluster gossip: received a binding change notification " + clusterNotification.getDescription());
-        AndesBinding andesBinding = new AndesBinding(clusterNotification.getEncodedObjectAsString());
-        BindingListener.BindingEvent change = BindingListener.BindingEvent
-                .valueOf(clusterNotification.getChangeType());
-        try {
-            for (BindingListener bindingListener : bindingListeners) {
-                bindingListener.handleClusterBindingsChanged(andesBinding, change);
-            }
-        } catch (AndesException e) {
-            log.error("error while handling cluster binding change notification", e);
-        }
+        eventListener.handleClusterBindingsChanged(clusterNotification.getEncodedObjectAsString(),
+                BindingListener.BindingEvent.valueOf(clusterNotification.getChangeType()));
     }
 }

@@ -34,27 +34,25 @@ public class PurgedMessageHandler extends DeliveryResponsibility {
      */
     @Override
     protected boolean performResponsibility(LocalSubscription subscription,
-                                            DeliverableAndesMetadata message) throws AndesException {
-        boolean isOkayToProceed = false;
+            DeliverableAndesMetadata message) throws AndesException {
         // Get last purged timestamp of the destination queue.
-        long lastPurgedTimestampOfQueue =
-                MessageFlusher.getInstance().getMessageDeliveryInfo(message.getDestination(),
-                        subscription.getProtocolType(), subscription.getDestinationType())
-                        .getLastPurgedTimestamp();
-
-        if (message.getArrivalTime() <= lastPurgedTimestampOfQueue) {
-
-            log.warn("Message was sent at " + message.getArrivalTime()
-                    + " before last purge event at " + lastPurgedTimestampOfQueue
-                    + ". Therefore, it will not be sent. id= "
-                    + message.getMessageID());
-            if(!message.isPurgedOrDeletedOrExpired()) {
-                message.markAsPurgedMessage();
+        MessageDeliveryInfo deliveryInfo = MessageFlusher.getInstance().getMessageDeliveryInfo(message.getDestination(),
+                subscription.getDestinationType());
+        //This check is done as a temporary fix. This method should not at all be called if delivery information is
+        // not there.
+        if (null != deliveryInfo) {
+            long lastPurgedTimestampOfQueue = deliveryInfo.getLastPurgedTimestamp();
+            if (message.getArrivalTime() <= lastPurgedTimestampOfQueue) {
+                log.warn("Message was sent at " + message.getArrivalTime()
+                         + " before last purge event at " + lastPurgedTimestampOfQueue
+                         + ". Therefore, it will not be sent. id= "
+                         + message.getMessageID());
+                if (!message.isPurgedOrDeletedOrExpired()) {
+                    message.markAsPurgedMessage();
+                }
+                return false;
             }
-        } else {
-            isOkayToProceed = true;
         }
-
-        return isOkayToProceed;
+        return true;
     }
 }

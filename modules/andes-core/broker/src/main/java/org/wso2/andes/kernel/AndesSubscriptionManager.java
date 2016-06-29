@@ -24,8 +24,8 @@ import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.slot.OrphanedSlotHandler;
 import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
+import org.wso2.andes.server.cluster.coordination.EventListenerCreator;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.cluster.error.detection.NetworkPartitionListener;
 import org.wso2.andes.subscription.BasicSubscription;
@@ -54,7 +54,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
     /**
      * listeners who are interested in local subscription changes
      */
-    private List<SubscriptionListener> subscriptionListeners = new ArrayList<>();
+    private List<LocalSubscriptionChangedListener> localSubscriptionListeners = new ArrayList<>();
 
     /**
      * this lock is to ensure that there is no concurrent cluster subscription
@@ -64,29 +64,29 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
      */
     private final ReadWriteLock clusterSubscriptionModifyLock = new ReentrantReadWriteLock();
 
-    public void init() {
+    public void init(EventListenerCreator listenerCreator) throws AndesException {
         isNetworkPartitioned = false;
         subscriptionEngine = AndesContext.getInstance().getSubscriptionEngine();
         //adding subscription listeners
-        addSubscriptionListener(new OrphanedMessageHandler());
-        addSubscriptionListener(new ClusterCoordinationHandler(HazelcastAgent.getInstance()));
-        addSubscriptionListener(new OrphanedSlotHandler());
-        
-         //register subscription manager to listen to network partition events.
+        addLocalSubscriptionListener(new OrphanedMessageHandler());
+        addLocalSubscriptionListener(listenerCreator.getSubscriptionListener());
+        addLocalSubscriptionListener(new OrphanedSlotHandler());
+
+        //register subscription manager to listen to network partition events.
          if (AndesContext.getInstance().isClusteringEnabled()){
              // network partition detection works only when clustered.
            AndesContext.getInstance().getClusterAgent().addNetworkPartitionListener(10, this);
         }
+        closeAllClusterSubscriptionsOfNode(ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID());
     }
 
     /**
-     * Register a subscription lister
-     * It will be notified when a subscription change happened
+     * Register a subscription listener to be notified when a local subscription change has happened.
      *
-     * @param listener subscription listener
+     * @param listener a local subscription listener
      */
-    public void addSubscriptionListener(SubscriptionListener listener) {
-        subscriptionListeners.add(listener);
+    public void addLocalSubscriptionListener(LocalSubscriptionChangedListener listener) {
+        localSubscriptionListeners.add(listener);
     }
 
     /**
@@ -103,7 +103,6 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
         if (isNetworkPartitioned) {
             throw new AndesException("Cannot add new subscription due to network partition");
         }
-
         boolean durableTopicSubFoundAndUpdated = false;
         boolean hasActiveSubscriptions= false;
         List<LocalSubscription> mockSubscriptionList = new ArrayList<>();
@@ -241,8 +240,8 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
                         LocalSubscription mockSubscription = convertClusterSubscriptionToMockLocalSubscription(sub);
                         mockSubscription.close();
                         subscriptionEngine.removeSubscriptionDirectly(sub);
-                        notifyClusterSubscriptionHasChanged(sub,
-                                                                    SubscriptionListener.SubscriptionChange.DELETED);
+                        notifyLocalSubscriptionHasChanged(mockSubscription, SubscriptionListener.SubscriptionChange
+                                .DELETED);
                     }
                 }
             }
@@ -265,7 +264,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
     public void forcefullyDisconnectAllLocalSubscriptionsOfNode() {
 
         Set<AndesSubscription> activeSubscriptions = subscriptionEngine.getActiveLocalSubscribersForNode();
-       
+
 
         if (!activeSubscriptions.isEmpty()) {
             for (AndesSubscription sub : activeSubscriptions) {
@@ -273,7 +272,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
                     if ( sub instanceof LocalSubscription ){
                         ((LocalSubscription) sub).forcefullyDisconnect();
                     }
-                    
+
                 } catch (AndesException disconnectError) {
                     log.error("error occurred while forcefullly disconnecting subscription: " +
                               sub.toString(), disconnectError);
@@ -283,9 +282,6 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
 
     }
     
- 
-
-
     /**
      * check if any local active non durable subscription exists for a given topic consider
      * hierarchical subscription case as well
@@ -518,15 +514,17 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
         return updatedDBSubscriptions;
     }
 
-    private void notifyLocalSubscriptionHasChanged(final LocalSubscription subscription, final SubscriptionListener.SubscriptionChange change) throws AndesException {
-        for (final SubscriptionListener listener : subscriptionListeners) {
+    /**
+     * Notify all the subscription listeners that a subscription has been added, disconnected or removed.
+     *
+     * @param subscription the subscription that has changed
+     * @param change       the change type
+     * @throws AndesException
+     */
+    private void notifyLocalSubscriptionHasChanged(final LocalSubscription subscription,
+            final SubscriptionListener.SubscriptionChange change) throws AndesException {
+        for (final LocalSubscriptionChangedListener listener : localSubscriptionListeners) {
             listener.handleLocalSubscriptionsChanged(subscription, change);
-        }
-    }
-
-    private void notifyClusterSubscriptionHasChanged(final AndesSubscription subscription, final SubscriptionListener.SubscriptionChange change) throws AndesException {
-        for (final SubscriptionListener listener : subscriptionListeners) {
-            listener.handleClusterSubscriptionsChanged(subscription, change);
         }
     }
 
@@ -535,7 +533,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
      * @throws AndesException
      */
     public void updateSubscriptionsAfterClusterMerge() throws AndesException {
-        HazelcastAgent.getInstance().notifyDBSyncEvent(new ClusterNotification("", "", ""));
+        HazelcastAgent.getInstance().notifyDBSyncEvent(new ClusterNotification("", ""));
     }
 
     /**
@@ -635,7 +633,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
         log.info("Clustering outage, forcefully disconnecting all subscribers");
         forcefullyDisconnectAllLocalSubscriptionsOfNode();
     }
-    
+
     /**
      * {@inheritDoc}
      * No action required.

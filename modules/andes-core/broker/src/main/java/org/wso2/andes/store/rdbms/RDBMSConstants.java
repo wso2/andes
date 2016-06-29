@@ -117,9 +117,10 @@ public class RDBMSConstants {
     // Coordination related tables
     protected static final String CLUSTER_COORDINATOR_HEARTBEAT_TABLE = "MB_CLUSTER_COORDINATOR_HEARTBEAT";
     protected static final String CLUSTER_NODE_HEARTBEAT_TABLE = "MB_CLUSTER_NODE_HEARTBEAT";
-
     //Cluster membership table
     protected static final String MEMBERSHIP_TABLE = "MB_MEMBERSHIP";
+    // Tables for cluster communication
+    protected static final String CLUSTER_EVENT_TABLE = "MB_CLUSTER_EVENT";
     /**
      * This dataset maps to the nodeID - localSafeZone association within the broker.
      */
@@ -161,6 +162,11 @@ public class RDBMSConstants {
     //columns for cluster membership communication
     protected static final String MEMBERSHIP_CHANGE_TYPE = "CHANGE_TYPE";
     protected static final String MEMBERSHIP_CHANGED_MEMBER_ID = "CHANGED_MEMBER_ID";
+    // Columns for cluster communication
+    protected static final String EVENT_TYPE = "EVENT_TYPE";
+    protected static final String EVENT_DETAILS = "EVENT_DETAILS";
+    protected static final String DESTINED_MEMBER_ID = "DESTINED_NODE_ID";
+    protected static final String ORIGINATED_MEMBER_ID = "ORIGINATED_NODE_ID";
     protected static final String EVENT_ID = "EVENT_ID";
 
     // prepared statements for Message Store
@@ -390,6 +396,39 @@ public class RDBMSConstants {
             + NODE_ID + ","
             + NODE_INFO + ")"
             + " VALUES (?,?)";
+
+    /**
+     * Prepared statement to insert cluster notification.
+     */
+    protected static final String PS_INSERT_CLUSTER_NOTIFICATION =
+            "INSERT INTO " + CLUSTER_EVENT_TABLE + " ("
+            + DESTINED_MEMBER_ID + ","
+            + ORIGINATED_MEMBER_ID + ","
+            + EVENT_TYPE + ","
+            + EVENT_DETAILS + ")"
+            + " VALUES (?,?,?,?)";
+
+    /**
+     * Prepared statement to select cluster notification destined to a particular member.
+     */
+    protected static final String PS_SELECT_CLUSTER_NOTIFICATION_FOR_NODE =
+            "SELECT " + ORIGINATED_MEMBER_ID + ", " + EVENT_TYPE + ", " + EVENT_DETAILS
+            + " FROM " + CLUSTER_EVENT_TABLE
+            + " WHERE " + DESTINED_MEMBER_ID + "=?"
+            + " ORDER BY " + EVENT_ID;
+
+    /**
+     * Prepared statement to clear all cluster notifications.
+     */
+    protected static final String PS_CLEAR_ALL_CLUSTER_NOTIFICATIONS =
+            "DELETE FROM " + CLUSTER_EVENT_TABLE;
+
+    /**
+     * Prepared statement to clear cluster notifications destined to a particular member.
+     */
+    protected static final String PS_CLEAR_CLUSTER_NOTIFICATIONS_FOR_NODE =
+            "DELETE FROM " + CLUSTER_EVENT_TABLE
+            + " WHERE " + DESTINED_MEMBER_ID + "=?";
 
     protected static final String PS_SELECT_ALL_NODE_INFO =
             "SELECT " + NODE_ID + "," + NODE_INFO
@@ -1039,6 +1078,8 @@ public class RDBMSConstants {
 
     protected static final String TASK_REMOVING_DURABLE_SUBSCRIPTION = "removing durable subscription. ";
     protected static final String TASK_STORING_NODE_INFORMATION = "storing node information";
+    protected static final String TASK_STORING_CLUSTER_EVENT = "storing cluster event";
+    protected static final String TASK_RETRIEVING_CLUSTER_EVENTS = "retrieving cluster events";
     protected static final String TASK_RETRIEVING_ALL_NODE_DETAILS = "retrieving all node information. ";
     protected static final String TASK_REMOVING_NODE_INFORMATION = "removing node information";
     protected static final String TASK_STORING_EXCHANGE_INFORMATION = "storing exchange information";

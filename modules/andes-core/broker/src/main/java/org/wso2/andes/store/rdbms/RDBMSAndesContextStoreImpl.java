@@ -33,6 +33,7 @@ import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.cluster.NodeHeartBeatData;
 import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEvent;
 import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEventType;
+import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 import org.wso2.andes.store.AndesDataIntegrityViolationException;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
@@ -404,10 +405,10 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
                         resultSet.getString(RDBMSConstants.NODE_INFO)
                 );
             }
-
             return nodeInfoMap;
         } catch (SQLException e) {
-            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + RDBMSConstants.TASK_RETRIEVING_ALL_NODE_DETAILS, e);
+            throw rdbmsStoreUtils.convertSQLException(
+                    "Error occurred while " + RDBMSConstants.TASK_RETRIEVING_ALL_NODE_DETAILS, e);
         } finally {
             contextRead.stop();
             close(resultSet, RDBMSConstants.TASK_RETRIEVING_ALL_NODE_DETAILS);
@@ -2467,6 +2468,127 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         try {
             connection = getConnection();
             clearMembershipEvents = connection.prepareStatement(RDBMSConstants.PS_CLEAN_MEMBERSHIP_EVENTS_FOR_NODE);
+            clearMembershipEvents.setString(1, nodeID);
+            clearMembershipEvents.executeUpdate();
+            connection.commit();
+        } catch (SQLException e) {
+            rollback(connection, task);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + task, e);
+        } finally {
+            close(clearMembershipEvents, task);
+            close(connection, task);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void storeClusterNotification(List<String> clusterNodes, String originatedNode, String
+            clusterNotificationType, String notification) throws AndesException {
+
+        Connection connection = null;
+        PreparedStatement storeMembershipEventPreparedStatement = null;
+        String task = "Storing cluster notification: " + notification + " of type: " + clusterNotificationType;
+        try {
+            connection = getConnection();
+            storeMembershipEventPreparedStatement =
+                    connection.prepareStatement(RDBMSConstants.PS_INSERT_CLUSTER_NOTIFICATION);
+
+            for (String destinedNode : clusterNodes) {
+                storeMembershipEventPreparedStatement.setString(1, destinedNode);
+                storeMembershipEventPreparedStatement.setString(2, originatedNode);
+                storeMembershipEventPreparedStatement.setString(3, clusterNotificationType);
+                storeMembershipEventPreparedStatement.setString(4, notification);
+                storeMembershipEventPreparedStatement.addBatch();
+            }
+            storeMembershipEventPreparedStatement.executeBatch();
+            connection.commit();
+        } catch (SQLException e) {
+            rollback(connection, task);
+            throw rdbmsStoreUtils.convertSQLException(
+                    "Error cluster notification: " + notification + " with change type: " + clusterNotificationType, e);
+        } finally {
+            close(storeMembershipEventPreparedStatement, task);
+            close(connection, task);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<ClusterNotification> readClusterNotifications(String nodeID) throws AndesException {
+
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        PreparedStatement clearMembershipEvents = null;
+        ResultSet resultSet = null;
+        List<ClusterNotification> clusterNotifications = new ArrayList<>();
+        String task = "retrieving cluster notifications destined to: " + nodeID;
+        try {
+            connection = getConnection();
+
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_CLUSTER_NOTIFICATION_FOR_NODE);
+            preparedStatement.setString(1, nodeID);
+            resultSet = preparedStatement.executeQuery();
+
+            while (resultSet.next()) {
+                ClusterNotification notification = new ClusterNotification(
+                        resultSet.getString(RDBMSConstants.EVENT_DETAILS),
+                        resultSet.getString(RDBMSConstants.EVENT_TYPE),
+                        resultSet.getString(RDBMSConstants.ORIGINATED_MEMBER_ID));
+                clusterNotifications.add(notification);
+            }
+
+            clearMembershipEvents = connection.prepareStatement(RDBMSConstants.PS_CLEAR_CLUSTER_NOTIFICATIONS_FOR_NODE);
+            clearMembershipEvents.setString(1, nodeID);
+            clearMembershipEvents.executeUpdate();
+            connection.commit();
+            return clusterNotifications;
+        } catch (SQLException e) {
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + task, e);
+        } finally {
+            close(resultSet, task);
+            close(preparedStatement, task);
+            close(clearMembershipEvents, task);
+            close(connection, task);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void clearClusterNotifications() throws AndesException {
+        Connection connection = null;
+        PreparedStatement clearMembershipEvents = null;
+        String task = "Clearing all cluster notifications";
+        try {
+            connection = getConnection();
+            clearMembershipEvents = connection.prepareStatement(RDBMSConstants.PS_CLEAR_ALL_CLUSTER_NOTIFICATIONS);
+            clearMembershipEvents.executeUpdate();
+            connection.commit();
+        } catch (SQLException e) {
+            rollback(connection, task);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + task, e);
+        } finally {
+            close(clearMembershipEvents, task);
+            close(connection, task);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void clearClusterNotifications(String nodeID) throws AndesException {
+        Connection connection = null;
+        PreparedStatement clearMembershipEvents = null;
+        String task = "Clearing all membership events for node: " + nodeID;
+        try {
+            connection = getConnection();
+            clearMembershipEvents = connection.prepareStatement(RDBMSConstants.PS_CLEAR_CLUSTER_NOTIFICATIONS_FOR_NODE);
             clearMembershipEvents.setString(1, nodeID);
             clearMembershipEvents.executeUpdate();
             connection.commit();

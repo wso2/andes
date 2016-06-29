@@ -117,5 +117,4 @@ public class ClusterResourceHolder {
     public void setAndesRecoveryTask(AndesRecoveryTask andesRecoveryTask) {
         this.andesRecoveryTask = andesRecoveryTask;
     }
-
 }

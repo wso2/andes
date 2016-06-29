@@ -26,6 +26,7 @@ import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.DestinationType;
+import org.wso2.andes.kernel.LocalSubscriptionChangedListener;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.SubscriptionListener;
 import org.wso2.andes.subscription.LocalSubscription;
@@ -40,7 +41,7 @@ import java.util.concurrent.ThreadFactory;
 /**
  * This class will reassign the slots own by this node when its last subscriber leaves
  */
-public class OrphanedSlotHandler implements SubscriptionListener {
+public class OrphanedSlotHandler implements LocalSubscriptionChangedListener {
 
     private static Log log = LogFactory.getLog(OrphanedSlotHandler.class);
 
@@ -69,14 +70,8 @@ public class OrphanedSlotHandler implements SubscriptionListener {
     }
 
     @Override
-    public void handleClusterSubscriptionsChanged(AndesSubscription subscription, SubscriptionChange changeType)
-            throws AndesException {
-        //Cluster wise changes are not necessary
-    }
-
-    @Override
-    public void handleLocalSubscriptionsChanged(LocalSubscription subscription, SubscriptionChange changeType)
-            throws AndesException {
+    public void handleLocalSubscriptionsChanged(LocalSubscription subscription,
+            SubscriptionListener.SubscriptionChange changeType) throws AndesException {
         switch (changeType) {
         case ADDED:
             if (log.isDebugEnabled()) {

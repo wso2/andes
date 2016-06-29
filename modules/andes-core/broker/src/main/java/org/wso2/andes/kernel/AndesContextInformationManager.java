@@ -21,11 +21,9 @@ package org.wso2.andes.kernel;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
-import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.subscription.SubscriptionEngine;
+import org.wso2.andes.server.cluster.coordination.EventListenerCreator;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -40,20 +38,17 @@ public class AndesContextInformationManager {
      */
     private static final Log log = LogFactory.getLog(AndesContextInformationManager.class);
 
-    //keep listeners that should be triggered when constructs are updated
-    private List<QueueListener> queueListeners = new ArrayList<QueueListener>();
-    private List<ExchangeListener> exchangeListeners = new ArrayList<ExchangeListener>();
-    private List<BindingListener> bindingListeners = new ArrayList<BindingListener>();
+    /**
+     * keep listeners that should be triggered when constructs are updated
+     */
+    private QueueListener queueListener;
+    private ExchangeListener exchangeListener;
+    private BindingListener bindingListener;
 
     /**
      * Reference to AndesContextStore to manage exchanges/bindings and queues in persistence storage 
      */
     private AndesContextStore contextStore;
-
-    /**
-     * Reference to message store to be used from message count related functionality 
-     */
-    private MessageStore messageStore;
 
     /**
      * To manage exchanges bindings and queues
@@ -75,24 +70,18 @@ public class AndesContextInformationManager {
      *
      * @param subscriptionEngine The subscriptions store
      */
-    public AndesContextInformationManager(AMQPConstructStore constructStore,
-                                          SubscriptionEngine subscriptionEngine,
-                                          AndesContextStore contextStore,
-                                          MessageStore messageStore) {
+    public AndesContextInformationManager(AMQPConstructStore constructStore, SubscriptionEngine subscriptionEngine,
+                                          AndesContextStore contextStore, EventListenerCreator listenerCreator) {
 
         this.subscriptionManager = ClusterResourceHolder.getInstance().getSubscriptionManager();
         this.subscriptionEngine = subscriptionEngine;
-        this.messageStore = messageStore;
         this.contextStore = contextStore;
         this.constructStore = constructStore;
-        //register listeners for queue changes
-        addQueueListener(new ClusterCoordinationHandler(HazelcastAgent.getInstance()));
 
-        //register listeners for exchange changes
-        addExchangeListener(new ClusterCoordinationHandler(HazelcastAgent.getInstance()));
-
-        //register listeners for binding changes
-        addBindingListener(new ClusterCoordinationHandler(HazelcastAgent.getInstance()));
+        //register listeners for queue, binding and exchange changes
+        addQueueListener(listenerCreator.getQueueListener());
+        addExchangeListener(listenerCreator.getExchangeListener());
+        addBindingListener(listenerCreator.getBindingListener());
     }
 
     /**
@@ -100,8 +89,8 @@ public class AndesContextInformationManager {
      *
      * @param listener listener to register
      */
-    public void addBindingListener(BindingListener listener) {
-        bindingListeners.add(listener);
+    private void addBindingListener(BindingListener listener) {
+        bindingListener = listener;
     }
 
     /**
@@ -109,8 +98,8 @@ public class AndesContextInformationManager {
      *
      * @param listener listener to be registered
      */
-    public void addQueueListener(QueueListener listener) {
-        queueListeners.add(listener);
+    private void addQueueListener(QueueListener listener) {
+        queueListener = listener;
     }
 
     /**
@@ -118,8 +107,8 @@ public class AndesContextInformationManager {
      *
      * @param listener listener to be registered
      */
-    public void addExchangeListener(ExchangeListener listener) {
-        exchangeListeners.add(listener);
+    private void addExchangeListener(ExchangeListener listener) {
+        exchangeListener = listener;
     }
 
     /**
@@ -130,7 +119,7 @@ public class AndesContextInformationManager {
      */
     public void createExchange(AndesExchange exchange) throws AndesException {
         constructStore.addExchange(exchange, true);
-        notifyExchangeListeners(exchange, ExchangeListener.ExchangeChange.Added);
+        notifyExchangeListeners(exchange, ExchangeListener.ExchangeChange.ADDED);
     }
 
     /**
@@ -141,7 +130,7 @@ public class AndesContextInformationManager {
      */
     public void deleteExchange(AndesExchange exchange) throws AndesException {
         constructStore.removeExchange(exchange.exchangeName, true);
-        notifyExchangeListeners(exchange, ExchangeListener.ExchangeChange.Deleted);
+        notifyExchangeListeners(exchange, ExchangeListener.ExchangeChange.DELETED);
     }
 
     /**
@@ -243,12 +232,9 @@ public class AndesContextInformationManager {
      * @param change   The change that is being occurred
      * @throws AndesException
      */
-    private void notifyExchangeListeners(AndesExchange exchange,
-                                         ExchangeListener.ExchangeChange change)
+    private void notifyExchangeListeners(AndesExchange exchange, ExchangeListener.ExchangeChange change)
             throws AndesException {
-        for (ExchangeListener listener : exchangeListeners) {
-            listener.handleLocalExchangesChanged(exchange, change);
-        }
+        exchangeListener.handleLocalExchangesChanged(exchange, change);
     }
 
     /**
@@ -262,9 +248,7 @@ public class AndesContextInformationManager {
      */
     private void notifyQueueListeners(AndesQueue queue, QueueListener.QueueEvent change)
             throws AndesException {
-        for (QueueListener listener : queueListeners) {
-            listener.handleLocalQueuesChanged(queue, change);
-        }
+        queueListener.handleLocalQueuesChanged(queue, change);
     }
 
     /**
@@ -280,8 +264,6 @@ public class AndesContextInformationManager {
      */
     private void notifyBindingListeners(AndesBinding binding, BindingListener.BindingEvent change)
             throws AndesException {
-        for (BindingListener listener : bindingListeners) {
-            listener.handleLocalBindingsChanged(binding, change);
-        }
+        bindingListener.handleLocalBindingsChanged(binding, change);
     }
 }

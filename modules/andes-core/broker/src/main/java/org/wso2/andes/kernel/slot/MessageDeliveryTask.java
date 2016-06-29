@@ -92,7 +92,7 @@ final class MessageDeliveryTask extends Task {
                         String storageQueueName,
                         DestinationType destinationType,
                         SlotCoordinator slotCoordinator,
-                        MessageFlusher messageFlusher) {
+                        MessageFlusher messageFlusher) throws AndesException {
 
         this.destinationName = destination;
         this.destinationType = destinationType;
@@ -101,7 +101,7 @@ final class MessageDeliveryTask extends Task {
         this.slotCoordinator = slotCoordinator;
         this.messageFlusher = messageFlusher;
         slotTrackerMap = new HashMap<>();
-
+        messageFlusher.updateMessageDeliveryInfo(destination, protocolType, destinationType);
     }
 
     /**
@@ -113,7 +113,7 @@ final class MessageDeliveryTask extends Task {
 
         TaskHint taskHint = TaskHint.ACTIVE;
         MessageDeliveryInfo messageDeliveryInfo =
-                messageFlusher.getMessageDeliveryInfo(destinationName, protocolType, destinationType);
+                messageFlusher.getMessageDeliveryInfo(destinationName, destinationType);
 
         // Check in memory buffer in MessageFlusher has room
         if (messageDeliveryInfo.messageBufferHasRoom()) {

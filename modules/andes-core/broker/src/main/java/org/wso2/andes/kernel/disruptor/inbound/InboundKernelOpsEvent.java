@@ -224,6 +224,9 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
                 AndesContext.getInstance().getClusterAgent().stop();
             }
 
+            // Stop tasks that are listening for cluster events.
+            AndesKernelBoot.shutDownAndesClusterEventSynchronization();
+
             // We need this until ApplicationRegistry is done.
             AndesContext.getInstance().getAndesContextStore().close();
 

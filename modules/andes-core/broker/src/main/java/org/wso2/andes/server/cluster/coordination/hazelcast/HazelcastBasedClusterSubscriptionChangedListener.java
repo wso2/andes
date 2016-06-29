@@ -20,25 +20,20 @@ package org.wso2.andes.server.cluster.coordination.hazelcast;
 
 import com.hazelcast.core.Message;
 import com.hazelcast.core.MessageListener;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.SubscriptionListener;
+import org.wso2.andes.server.cluster.coordination.ClusterNotificationHandler;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
-import org.wso2.andes.subscription.BasicSubscription;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * This listener class is triggered when any subscription change (Subscriber added, subscriber deleted
  * or subscriber disconnected) is happened in cluster via Hazelcast.
  */
-public class ClusterSubscriptionChangedListener implements MessageListener {
+public class HazelcastBasedClusterSubscriptionChangedListener implements MessageListener {
 
-    private static Log log = LogFactory.getLog(ClusterSubscriptionChangedListener.class);
-    private List<SubscriptionListener> subscriptionListeners = new ArrayList<SubscriptionListener>();
+    /**
+     * Listener to handle cluster event.
+     */
+    private ClusterNotificationHandler eventListener = new ClusterNotificationHandler();
 
     /**
      * Register a listener interested in cluster subscription changes
@@ -46,7 +41,7 @@ public class ClusterSubscriptionChangedListener implements MessageListener {
      * @param listener listener to be registered
      */
     public void addSubscriptionListener(SubscriptionListener listener) {
-        subscriptionListeners.add(listener);
+        eventListener.addSubscriptionListener(listener);
     }
 
     /**
@@ -56,16 +51,12 @@ public class ClusterSubscriptionChangedListener implements MessageListener {
      */
     @Override
     public void onMessage(Message message) {
-        ClusterNotification clusterNotification = (ClusterNotification) message.getMessageObject();
-        log.debug("Handling cluster gossip: received a subscription change notification " + clusterNotification.getDescription());
-        AndesSubscription andesSubscription = new BasicSubscription(clusterNotification.getEncodedObjectAsString());
-        SubscriptionListener.SubscriptionChange change = SubscriptionListener.SubscriptionChange.valueOf(clusterNotification.getChangeType());
-        try {
-            for (SubscriptionListener subscriptionListener : subscriptionListeners) {
-                subscriptionListener.handleClusterSubscriptionsChanged(andesSubscription, change);
-            }
-        } catch (AndesException e) {
-            log.error("error while handling cluster subscription change notification", e);
+        // We need to skip the cluster notifications that are orignated from the same node since they are already
+        // processed.
+        if (!message.getPublishingMember().localMember()) {
+            ClusterNotification clusterNotification = (ClusterNotification) message.getMessageObject();
+            eventListener.handleClusterSubscriptionsChanged(clusterNotification.getEncodedObjectAsString(),
+                    SubscriptionListener.SubscriptionChange.valueOf(clusterNotification.getChangeType()));
         }
     }
 }

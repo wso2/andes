@@ -37,8 +37,8 @@ import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
 import org.wso2.andes.kernel.slot.SlotUtils;
 import org.wso2.andes.server.cluster.CoordinationConfigurableClusterAgent;
-import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
+import org.wso2.andes.server.cluster.coordination.ClusterNotificationListenerManager;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.server.cluster.coordination.SlotAgent;
 import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.HashmapStringTreeSetWrapper;
@@ -55,8 +55,9 @@ import java.util.TreeSet;
 /**
  * This is a singleton class, which contains all Hazelcast related operations.
  */
-public class HazelcastAgent implements SlotAgent {
-    private static Log log = LogFactory.getLog(HazelcastAgent.class);
+public class HazelcastAgent implements SlotAgent, ClusterNotificationListenerManager {
+
+    private static final Log log = LogFactory.getLog(HazelcastAgent.class);
 
     /**
      * Value used to indicate the cluster initialization success state
@@ -203,7 +204,6 @@ public class HazelcastAgent implements SlotAgent {
         // Set cluster agent in Andes Context
         CoordinationConfigurableClusterAgent clusterAgent = new CoordinationConfigurableClusterAgent(hazelcastInstance);
         AndesContext.getInstance().setClusterAgent(clusterAgent);
-        addTopicListeners();
 
         /**
          * Initialize hazelcast maps for slots
@@ -222,10 +222,12 @@ public class HazelcastAgent implements SlotAgent {
         initializationDoneIndicator = hazelcastInstance
                 .getAtomicLong(CoordinationConstants.INITIALIZATION_DONE_INDICATOR);
 
+        addTopics();
+
         log.info("Successfully initialized Hazelcast Agent");
     }
 
-    public void addTopicListeners() {
+    private void addTopics() {
         // Defines the time it takes for a message published to a Hazelcast reliable topic to be expired.
         // The messages that are published to these topics should ideally be read at the same time. One instance
         // where this would not happen is when a node gets disconnected. Since all the messages that are published
@@ -247,13 +249,7 @@ public class HazelcastAgent implements SlotAgent {
         //add listener for subscription changes
         this.subscriptionChangedNotifierChannel = this.hazelcastInstance.getReliableTopic(
                 CoordinationConstants.HAZELCAST_SUBSCRIPTION_CHANGED_NOTIFIER_TOPIC_NAME);
-        ClusterSubscriptionChangedListener clusterSubscriptionChangedListener = new
-                ClusterSubscriptionChangedListener();
-        clusterSubscriptionChangedListener.addSubscriptionListener(new ClusterCoordinationHandler(this));
-        if (StringUtils.isNotEmpty(subscriptionListenerId)) {
-            this.subscriptionChangedNotifierChannel.removeMessageListener(subscriptionListenerId);
-        }
-        subscriptionListenerId = this.subscriptionChangedNotifierChannel.addMessageListener(clusterSubscriptionChangedListener);
+        HazelcastBasedEventListenerCreator.setSubscriptionChannel(subscriptionChangedNotifierChannel);
 
         /**
          * exchange changes
@@ -268,12 +264,7 @@ public class HazelcastAgent implements SlotAgent {
         //add listener for exchange changes
         this.exchangeChangeNotifierChannel = this.hazelcastInstance.getReliableTopic(
                 CoordinationConstants.HAZELCAST_EXCHANGE_CHANGED_NOTIFIER_TOPIC_NAME);
-        ClusterExchangeChangedListener clusterExchangeChangedListener = new ClusterExchangeChangedListener();
-        clusterExchangeChangedListener.addExchangeListener(new ClusterCoordinationHandler(this));
-        if (StringUtils.isNotEmpty(exchangeListenerId)) {
-            this.exchangeChangeNotifierChannel.removeMessageListener(exchangeListenerId);
-        }
-        exchangeListenerId = this.exchangeChangeNotifierChannel.addMessageListener(clusterExchangeChangedListener);
+        HazelcastBasedEventListenerCreator.setExchangeChannel(exchangeChangeNotifierChannel);
 
         /**
          * queue changes
@@ -288,12 +279,7 @@ public class HazelcastAgent implements SlotAgent {
         //add listener for queue changes
         this.queueChangedNotifierChannel = this.hazelcastInstance.getReliableTopic(
                 CoordinationConstants.HAZELCAST_QUEUE_CHANGED_NOTIFIER_TOPIC_NAME);
-        ClusterQueueChangedListener clusterQueueChangedListener = new ClusterQueueChangedListener();
-        clusterQueueChangedListener.addQueueListener(new ClusterCoordinationHandler(this));
-        if (StringUtils.isNotEmpty(queueListenerId)) {
-            this.queueChangedNotifierChannel.removeMessageListener(queueListenerId);
-        }
-        queueListenerId = this.queueChangedNotifierChannel.addMessageListener(clusterQueueChangedListener);
+        HazelcastBasedEventListenerCreator.setQueueChannel(queueChangedNotifierChannel);
 
         /**
          * binding changes
@@ -308,12 +294,7 @@ public class HazelcastAgent implements SlotAgent {
         //add listener for binding changes
         this.bindingChangeNotifierChannel = this.hazelcastInstance.getReliableTopic(
                 CoordinationConstants.HAZELCAST_BINDING_CHANGED_NOTIFIER_TOPIC_NAME);
-        ClusterBindingChangedListener clusterBindingChangedListener = new ClusterBindingChangedListener();
-        clusterBindingChangedListener.addBindingListener(new ClusterCoordinationHandler(this));
-        if (StringUtils.isNotEmpty(bindingListenerId)) {
-            this.bindingChangeNotifierChannel.removeMessageListener(bindingListenerId);
-        }
-        bindingListenerId = this.bindingChangeNotifierChannel.addMessageListener(clusterBindingChangedListener);
+        HazelcastBasedEventListenerCreator.setBindingChannel(bindingChangeNotifierChannel);
 
         /**
          * Adding database sync notification to run andes recovery task
@@ -327,6 +308,52 @@ public class HazelcastAgent implements SlotAgent {
         //add listener for DB sync notification
         this.dbSyncNotifierChannel = this.hazelcastInstance.getReliableTopic(
                 CoordinationConstants.HAZELCAST_DB_SYNC_NOTIFICATION_TOPIC_NAME);
+    }
+
+    private void addTopicListeners() {
+
+        HazelcastBasedEventListenerCreator hazelcastBasedEventListenerCreator
+                = new HazelcastBasedEventListenerCreator();
+
+        // Add listener for subscription changes
+        HazelcastBasedClusterSubscriptionChangedListener clusterSubscriptionChangedListener = new
+                HazelcastBasedClusterSubscriptionChangedListener();
+        clusterSubscriptionChangedListener.addSubscriptionListener(hazelcastBasedEventListenerCreator
+                .getSubscriptionListener());
+        if (StringUtils.isNotEmpty(subscriptionListenerId)) {
+            this.subscriptionChangedNotifierChannel.removeMessageListener(subscriptionListenerId);
+        }
+        subscriptionListenerId = this.subscriptionChangedNotifierChannel.addMessageListener
+                (clusterSubscriptionChangedListener);
+
+        // Add listener for exchange changes
+        HazelcastBasedClusterExchangeChangedListener clusterExchangeChangedListener = new
+                HazelcastBasedClusterExchangeChangedListener();
+        clusterExchangeChangedListener.addExchangeListener(hazelcastBasedEventListenerCreator.getExchangeListener());
+        if (StringUtils.isNotEmpty(exchangeListenerId)) {
+            this.exchangeChangeNotifierChannel.removeMessageListener(exchangeListenerId);
+        }
+        exchangeListenerId = this.exchangeChangeNotifierChannel.addMessageListener(clusterExchangeChangedListener);
+
+        // Add listener for queue changes
+        HazelcastBasedClusterQueueChangedListener clusterQueueChangedListener = new
+                HazelcastBasedClusterQueueChangedListener();
+        clusterQueueChangedListener.addQueueListener(hazelcastBasedEventListenerCreator.getQueueListener());
+        if (StringUtils.isNotEmpty(queueListenerId)) {
+            this.queueChangedNotifierChannel.removeMessageListener(queueListenerId);
+        }
+        queueListenerId = this.queueChangedNotifierChannel.addMessageListener(clusterQueueChangedListener);
+
+        // Add listener for binding changes
+        HazelcastBasedClusterBindingChangedListener clusterBindingChangedListener = new
+                HazelcastBasedClusterBindingChangedListener();
+        clusterBindingChangedListener.addBindingListener(hazelcastBasedEventListenerCreator.getBindingListener());
+        if (StringUtils.isNotEmpty(bindingListenerId)) {
+            this.bindingChangeNotifierChannel.removeMessageListener(bindingListenerId);
+        }
+        bindingListenerId = this.bindingChangeNotifierChannel.addMessageListener(clusterBindingChangedListener);
+
+        // Add listener for DB sync notification
         DatabaseSyncNotificationListener databaseSyncNotificationListener = new DatabaseSyncNotificationListener();
         if (StringUtils.isNotEmpty(dbSyncNotificationListenerId)) {
             this.dbSyncNotifierChannel.removeMessageListener(dbSyncNotificationListenerId);
@@ -335,70 +362,12 @@ public class HazelcastAgent implements SlotAgent {
 
     }
 
-    public void notifySubscriptionsChanged(ClusterNotification clusterNotification) throws AndesException {
-        if (log.isDebugEnabled()) {
-            log.debug("Sending GOSSIP: " + clusterNotification.getDescription());
-        }
-        try {
-            this.subscriptionChangedNotifierChannel.publish(clusterNotification);
-        } catch (Exception ex) {
-            log.error("Error while sending subscription change notification : "
-                      + clusterNotification.getEncodedObjectAsString(), ex);
-            throw new AndesException("Error while sending queue change notification : "
-                                     + clusterNotification.getEncodedObjectAsString(), ex);
-        }
-
-    }
-
-    public void notifyQueuesChanged(ClusterNotification clusterNotification) throws AndesException {
-
-        if (log.isDebugEnabled()) {
-            log.debug("Sending GOSSIP: " + clusterNotification.getDescription());
-        }
-        try {
-            this.queueChangedNotifierChannel.publish(clusterNotification);
-        } catch (Exception e) {
-            log.error("Error while sending queue change notification : "
-                      + clusterNotification.getEncodedObjectAsString(), e);
-            throw new AndesException("Error while sending queue change notification : "
-                                     + clusterNotification.getEncodedObjectAsString(), e);
-        }
-    }
-
-    public void notifyExchangesChanged(ClusterNotification clusterNotification) throws AndesException {
-        if (log.isDebugEnabled()) {
-            log.debug("Sending GOSSIP: " + clusterNotification.getDescription());
-        }
-        try {
-            this.exchangeChangeNotifierChannel.publish(clusterNotification);
-        } catch (Exception e) {
-            log.error("Error while sending exchange change notification"
-                      + clusterNotification.getEncodedObjectAsString(), e);
-            throw new AndesException("Error while sending exchange change notification"
-                                     + clusterNotification.getEncodedObjectAsString(), e);
-        }
-    }
-
-    public void notifyBindingsChanged(ClusterNotification clusterNotification) throws AndesException {
-        if (log.isDebugEnabled()) {
-            log.debug("GOSSIP: " + clusterNotification.getDescription());
-        }
-        try {
-            this.bindingChangeNotifierChannel.publish(clusterNotification);
-        } catch (Exception e) {
-            log.error("Error while sending binding change notification"
-                      + clusterNotification.getEncodedObjectAsString(), e);
-            throw new AndesException("Error while sending binding change notification"
-                                     + clusterNotification.getEncodedObjectAsString(), e);
-        }
-    }
-
     public void notifyDBSyncEvent(ClusterNotification clusterNotification) throws AndesException {
-        if (log.isDebugEnabled()) {
-            log.debug("GOSSIP: " + clusterNotification.getDescription());
-        }
         try {
             this.dbSyncNotifierChannel.publish(clusterNotification);
+            if (log.isDebugEnabled()) {
+                log.debug("Requested for DB sync across the cluster.");
+            }
         } catch (Exception e) {
             log.error("Error while sending db sync notification"
                       + clusterNotification.getEncodedObjectAsString(), e);
@@ -807,28 +776,30 @@ public class HazelcastAgent implements SlotAgent {
             List<String> nodeIDs = AndesContext.getInstance().getClusterAgent().getAllNodeIdentifiers();
 
             for (String nodeID : nodeIDs) {
-                HashmapStringTreeSetWrapper wrapper = slotAssignmentMap.get(nodeID);
-                HashMap<String, TreeSet<Slot>> queueToSlotMap = null;
-                if (null != wrapper) {
-                    queueToSlotMap = wrapper.getStringListHashMap();
-                }
-                if (null != queueToSlotMap) {
-                    queueToSlotMap.remove(queueName);
-                    wrapper.setStringListHashMap(queueToSlotMap);
-                    slotAssignmentMap.set(nodeID, wrapper);
-                }
-
-                //clear overlapped slot map
-                HashmapStringTreeSetWrapper overlappedSlotsWrapper = overlappedSlotMap.get(nodeID);
-                if (null != overlappedSlotsWrapper) {
-                    HashMap<String, TreeSet<Slot>> queueToOverlappedSlotMap = null;
+                if (null != nodeID) {
+                    HashmapStringTreeSetWrapper wrapper = slotAssignmentMap.get(nodeID);
+                    HashMap<String, TreeSet<Slot>> queueToSlotMap = null;
                     if (null != wrapper) {
-                        queueToOverlappedSlotMap = overlappedSlotsWrapper.getStringListHashMap();
+                        queueToSlotMap = wrapper.getStringListHashMap();
                     }
                     if (null != queueToSlotMap) {
-                        queueToOverlappedSlotMap.remove(queueName);
-                        overlappedSlotsWrapper.setStringListHashMap(queueToOverlappedSlotMap);
-                        overlappedSlotMap.set(nodeID, overlappedSlotsWrapper);
+                        queueToSlotMap.remove(queueName);
+                        wrapper.setStringListHashMap(queueToSlotMap);
+                        slotAssignmentMap.set(nodeID, wrapper);
+                    }
+
+                    //clear overlapped slot map
+                    HashmapStringTreeSetWrapper overlappedSlotsWrapper = overlappedSlotMap.get(nodeID);
+                    if (null != overlappedSlotsWrapper) {
+                        HashMap<String, TreeSet<Slot>> queueToOverlappedSlotMap = null;
+                        if (null != wrapper) {
+                            queueToOverlappedSlotMap = overlappedSlotsWrapper.getStringListHashMap();
+                        }
+                        if (null != queueToSlotMap) {
+                            queueToOverlappedSlotMap.remove(queueName);
+                            overlappedSlotsWrapper.setStringListHashMap(queueToOverlappedSlotMap);
+                            overlappedSlotMap.set(nodeID, overlappedSlotsWrapper);
+                        }
                     }
                 }
             }
@@ -1061,5 +1032,37 @@ public class HazelcastAgent implements SlotAgent {
 
         // Add the current ring buffer configuration to the configurations of the Hazelcast instance
         config.addRingBufferConfig(ringConfig);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void initializeListener() {
+        addTopicListeners();
+    }
+
+    /**
+     * Recreate Hazelcast topics and add listeners.
+     */
+    public void reInitializeTopicListeners() {
+        addTopics();
+        addTopicListeners();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void clearAllClusterNotifications() throws AndesException {
+        //Do nothing since this is handle by hazelcast itself
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void stopListener() throws AndesException {
+        //Do nothing, this will be handled by shutting down the hazelcast instance.
     }
 }
