@@ -33,6 +33,7 @@ import org.wso2.andes.kernel.DisablePubAckImpl;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.disruptor.ConcurrentBatchEventHandler;
 import org.wso2.andes.kernel.disruptor.LogExceptionHandler;
+import org.wso2.andes.kernel.disruptor.compression.LZ4CompressionHelper;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.subscription.SubscriptionEngine;
 import org.wso2.andes.tools.utils.MessageTracer;
@@ -76,6 +77,7 @@ public class InboundEventManager {
     private AtomicInteger ackedMessageCount = new AtomicInteger();
     private Disruptor<InboundEventContainer> disruptor;
     private final DisablePubAckImpl disablePubAck;
+    private LZ4CompressionHelper lz4CompressionHelper;
 
     public InboundEventManager(SubscriptionEngine subscriptionEngine,
                                MessagingEngine messagingEngine) {
@@ -117,9 +119,16 @@ public class InboundEventManager {
         ConcurrentBatchEventHandler[] concurrentBatchEventHandlers =
                 new ConcurrentBatchEventHandler[writeHandlerCount + ackHandlerCount + transactionHandlerCount];
 
+        lz4CompressionHelper = new LZ4CompressionHelper();
+
         ContentChunkHandler[] chunkHandlers = new ContentChunkHandler[contentChunkHandlerCount];
         for (int i = 0; i < contentChunkHandlerCount; i++) {
-            chunkHandlers[i] = new ContentChunkHandler(maxContentChunkSize);
+            if(lz4CompressionHelper.isCompressionEnabled()) {
+                chunkHandlers[i] = new ContentChunkHandler(maxContentChunkSize,
+                            new LZ4ContentCompressionStrategy(lz4CompressionHelper));
+            } else {
+                chunkHandlers[i] = new ContentChunkHandler(maxContentChunkSize, new DisabledContentCompressionStrategy());
+            }
         }
 
         for (int turn = 0; turn < writeHandlerCount; turn++) {
