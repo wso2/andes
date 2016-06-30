@@ -659,9 +659,16 @@ public enum AndesConfiguration implements ConfigurationProperty {
             "1", Integer.class),
 
     /**
-     * Set deployment mode relevant to the setup. There are 2 predefine values for mode - 'default' and 'standalone'.
-     * In 'default' mode broker will make decision to run as HA or distributed based on clustering enable or disable
-     * in axis2.xml. 'standalone' mode allow the user to run broker instance as an individual instance.
+     * Specifies the deployment mode for the broker node (and cluster). Possible values {default, standalone}.
+     *
+     * default - Broker node will decide to run HA (master/slave) or fully distributed mode. Decision is taken based
+     * on the node has a clustering mechanism enabled or not. If the node is not configured to join a cluster it
+     * will run in HA mode (refer to axis2.xml for more information). If the node can join a cluster it will
+     * start in fully clustered mode.
+     *
+     * standalone - This is the simplest mode a broker can be started. Node will assume datastore is not shared with
+     * another node. Therefore it will not try to coordinate with other nodes (possibly non-existent) to
+     * provide HA or clustering.
      */
     DEPLOYMENT_MODE("deployment/mode","default", String.class);
 
