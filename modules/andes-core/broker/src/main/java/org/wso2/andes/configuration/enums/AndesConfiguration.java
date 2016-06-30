@@ -656,7 +656,14 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * subscriptions) etc.
      */
     RECOVERY_NETWORK_PARTITIONS_MINIMUM_CLUSTER_SIZE("recovery/networkPartitionsDetection/minimumClusterSize",
-                                                     "1", Integer.class);
+            "1", Integer.class),
+
+    /**
+     * Set deployment mode relevant to the setup. There are 2 predefine values for mode - 'default' and 'standalone'.
+     * In 'default' mode broker will make decision to run as HA or distributed based on clustering enable or disable
+     * in axis2.xml. 'standalone' mode allow the user to run broker instance as an individual instance.
+     */
+    DEPLOYMENT_MODE("deployment/mode","default", String.class);
 
     /**
      * Meta data about configuration.
