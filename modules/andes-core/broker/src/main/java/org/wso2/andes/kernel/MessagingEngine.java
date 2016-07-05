@@ -18,6 +18,7 @@
 
 package org.wso2.andes.kernel;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.apache.log4j.Logger;
@@ -49,6 +50,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 
 /**
  * This class will handle all message related functions of WSO2 Message Broker
@@ -92,9 +97,39 @@ public class MessagingEngine {
     private SlotCoordinator slotCoordinator;
 
     /**
+     * The task for delivering delayed messages.
+     */
+    private DelayedDeliveryTask delayedDeliveryTask;
+
+    /**
+     * The scheduler service for delivering delayed messages.
+     */
+    private ScheduledExecutorService delayedDeliveryTaskScheduler;
+
+    /**
+     * The delivery delay value for rejected/recovered messages.
+     */
+    private Long deliveryDelay = 0L;
+
+    /**
      * private constructor for singleton pattern
      */
     private MessagingEngine() {
+        // Get delivery delay.
+        deliveryDelay = AndesConfigurationManager.readValue(AndesConfiguration.MESSAGE_REDELIVERY_DELAY);
+
+        // Use delayed delivery scheduler only if delivery delay value is greater than 0.
+        if (deliveryDelay > 0L) {
+            Long executionInterval =
+                        AndesConfigurationManager.readValue(AndesConfiguration.MESSAGE_REDELIVERY_EXECUTION_INTERVAL);
+            delayedDeliveryTask = new DelayedDeliveryTask();
+            ThreadFactory delayedDeliveryThreadFactory =
+                                    new ThreadFactoryBuilder().setNameFormat("Delayed Delivery Task-%d").build();
+            // Have only 1 scheduler
+            delayedDeliveryTaskScheduler = Executors.newScheduledThreadPool(1, delayedDeliveryThreadFactory);
+            delayedDeliveryTaskScheduler.scheduleAtFixedRate(delayedDeliveryTask, 0, executionInterval,
+                                                                                                TimeUnit.MILLISECONDS);
+        }
     }
 
     /**
@@ -233,11 +268,28 @@ public class MessagingEngine {
      */
     public void reQueueMessageToSubscriber(DeliverableAndesMetadata messageMetadata, LocalSubscription subscription)
             throws AndesException {
+        try {
+            if (!messageMetadata.isOKToDispose()) {
+                if (null != delayedDeliveryTask) {
+                    // Use delayed delivery task for requeueing rejected messages.
+                    RejectedMessage rejectedMessage = new RejectedMessage(deliveryDelay, messageMetadata);
+                    subscription.getRejectedMessages().put(rejectedMessage);
 
-        if (!messageMetadata.isOKToDispose()) {
-            MessageFlusher.getInstance().scheduleMessageForSubscription(subscription, messageMetadata);
-            //Tracing message activity
-            MessageTracer.trace(messageMetadata, MessageTracer.MESSAGE_REQUEUED_SUBSCRIBER);
+                    delayedDeliveryTask.addSubscription(subscription);
+                    //Tracing message activity
+                    MessageTracer.trace(messageMetadata,
+                                            String.format(MessageTracer.MESSAGE_DELAYED_FOR_DELIVERY, deliveryDelay));
+                } else {
+                    // Directly requeue messages.
+                    MessageFlusher.getInstance().scheduleMessageForSubscription(subscription, messageMetadata);
+                    //Tracing message activity
+                    MessageTracer.trace(messageMetadata, MessageTracer.MESSAGE_REQUEUED_SUBSCRIBER);
+                }
+
+            }
+        } catch (InterruptedException e) {
+            throw new AndesException("Error occurred when getting rejected messages for subscription : " +
+                                 subscription.getSubscriptionID() + ", messageID : " + messageMetadata.getMessageID());
         }
     }
 
@@ -727,6 +779,8 @@ public class MessagingEngine {
         stopMessageExpirationWorker();
 
         completePendingStoreOperations();
+
+        delayedDeliveryTaskScheduler.shutdown();
     }
 
     public void completePendingStoreOperations() {

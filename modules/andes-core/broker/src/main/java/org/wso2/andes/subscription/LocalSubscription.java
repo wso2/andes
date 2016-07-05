@@ -18,6 +18,7 @@
 package org.wso2.andes.subscription;
 
 import com.gs.collections.impl.map.mutable.ConcurrentHashMap;
+import org.apache.commons.lang.builder.CompareToBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -33,11 +34,14 @@ import org.wso2.andes.kernel.MessageStatus;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.kernel.ProtocolType;
+import org.wso2.andes.kernel.RejectedMessage;
 import org.wso2.andes.mqtt.MQTTLocalSubscription;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.DelayQueue;
 
 /**
  * This is the class that represents a subscription in andes kernel. It is responsible
@@ -45,7 +49,7 @@ import java.util.UUID;
  * events. For handling outbound events it keeps a OutboundSubscription object and forward
  * requests
  */
-public class LocalSubscription extends BasicSubscription implements InboundSubscription {
+public class LocalSubscription extends BasicSubscription implements InboundSubscription, Comparable {
 
     private static Log log = LogFactory.getLog(LocalSubscription.class);
 
@@ -60,6 +64,11 @@ public class LocalSubscription extends BasicSubscription implements InboundSubsc
      * reference at kernel side
      */
     private final ConcurrentHashMap<Long, DeliverableAndesMetadata> messageSendingTracker = new ConcurrentHashMap<>();
+
+    /**
+     * Stores rejected messages to be delayed for delivery
+     */
+    private BlockingQueue<RejectedMessage> rejectedMessages = new DelayQueue<>();
 
     private Integer maxNumberOfUnAcknowledgedMessages = 100000;
 
@@ -212,6 +221,11 @@ public class LocalSubscription extends BasicSubscription implements InboundSubsc
      * @return true if able to accept messages
      */
     public boolean hasRoomToAcceptMessages() {
+        // Return hasRoom = false when there are rejected messages.
+        if (!rejectedMessages.isEmpty()) {
+            return false;
+        }
+
         int notAcknowledgedMsgCount = messageSendingTracker.size();
         if (notAcknowledgedMsgCount < maxNumberOfUnAcknowledgedMessages) {
             return true;
@@ -323,4 +337,21 @@ public class LocalSubscription extends BasicSubscription implements InboundSubsc
         return subscription;
     }
 
+    public BlockingQueue<RejectedMessage> getRejectedMessages() {
+        return rejectedMessages;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int compareTo(Object o) {
+        LocalSubscription localSubscription = (LocalSubscription) o;
+        return new CompareToBuilder()
+                .append(this.subscriptionID, localSubscription.subscriptionID)
+                .append(this.getSubscribedNode(), localSubscription.getSubscribedNode())
+                .append(this.targetQueue, localSubscription.targetQueue)
+                .append(this.targetQueueBoundExchange, localSubscription.targetQueueBoundExchange)
+                .toComparison();
+    }
 }

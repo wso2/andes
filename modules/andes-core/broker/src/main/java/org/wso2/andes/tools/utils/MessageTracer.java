@@ -44,6 +44,7 @@ public class MessageTracer {
     public static final String DISPATCHED_TO_PROTOCOL ="dispatched to protocol level for delivery";
     public static final String MESSAGE_REJECTED = "message rejected";
     public static final String MESSAGE_REQUEUED_SUBSCRIBER = "message re-queued to subscriber";
+    public static final String MESSAGE_DELAYED_FOR_DELIVERY = "message sent to delayed delivery scheduler,delay: %dms.";
     public static final String MOVED_TO_DLC = "message moved to DLC";
     public static final String MESSAGE_DELETED = "message deleted";
     public static final String ACK_RECEIVED_FROM_PROTOCOL = "ACK received from protocol";

@@ -68,6 +68,20 @@ public enum AndesConfiguration implements ConfigurationProperty {
     COORDINATION_NODE_ID("coordination/nodeID", "default", String.class),
 
     /**
+     * By default, when a message is rejected, MB will resend the message with 0ms delay.
+     * This delay value can be configured by the following value. The configuration applied for all requeued messages.
+     * Value is in milliseconds.
+     */
+    MESSAGE_REDELIVERY_DELAY("redeliveryDelay/messageRedeliveryDelay", "0", Long.class),
+
+    /**
+     * This value will only be taken into account when "redeliveryDelay/messageRedeliveryDelay" value is greater
+     * than 0ms. This time interval represents the interval between the tasks of redelivering requeued messages.
+     * Value is in milliseconds.
+     */
+    MESSAGE_REDELIVERY_EXECUTION_INTERVAL("redeliveryDelay/executionInterval", "100", Long.class),
+
+    /**
      * The IP address to which mqtt/amqp channels should be bound.
      */
     TRANSPORTS_BIND_ADDRESS("transports/bindAddress", "*", String.class),
