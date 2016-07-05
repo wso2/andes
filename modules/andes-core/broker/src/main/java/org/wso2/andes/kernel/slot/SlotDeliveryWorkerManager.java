@@ -154,13 +154,7 @@ public class SlotDeliveryWorkerManager {
                 log.debug("Stopping delivery for storage queue " + storageQueueName +
                         " with SlotDeliveryWorker : " + slotWorker.getId());
             }
-
-            /* synchronizing so that while stopDelivery is completing, startDelivery will be waiting if called.
-              If, stop delivery is to stop the delivery worker since no subscribers, it has to be completed
-              before calling the start delivery again for the same SlotDeliveryWorker */
-            synchronized (this) {
-                slotWorker.stopDeliveryForQueue(storageQueueName);
-            }
+            slotWorker.stopDeliveryForQueue(storageQueueName);
         }
     }
 
