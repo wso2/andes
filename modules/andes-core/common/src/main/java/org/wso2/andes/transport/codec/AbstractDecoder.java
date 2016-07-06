@@ -165,6 +165,14 @@ abstract class AbstractDecoder implements Decoder
         return decode(bytes, "UTF-8");
     }
 
+    public String readStr32()
+    {
+        int size = (int) readUint32();
+        byte[] bytes = new byte[size];
+        get(bytes);
+        return decode(bytes, "UTF-8");
+    }
+
     public byte[] readVbin8()
     {
         int size = readUint8();
@@ -442,6 +450,8 @@ abstract class AbstractDecoder implements Decoder
         case STR16:
             return readStr16();
 
+        case STR32:
+            return readStr32();
         case STR8_LATIN:
         case STR8_UTF16:
         case STR16_LATIN:

@@ -115,6 +115,7 @@ TYPES = {
   "byte-ranges": "RangeSet", # XXX
   "str8": "String",
   "str16": "String",
+  "str32": "String",
   "vbin8": "byte[]",
   "vbin16": "byte[]",
   "vbin32": "byte[]",
