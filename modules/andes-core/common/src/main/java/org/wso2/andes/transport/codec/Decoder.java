@@ -119,6 +119,17 @@ public interface Decoder
     String readStr16();
 
 	/**
+	 * The str32 type encodes up to 128K octets worth of UTF-8 unicode.
+	 * The number of octets is first encoded as a 32-bit unsigned integral value in network byte order.
+	 * This is followed by the actual UTF-8 unicode.
+	 * Note that the encoded size refers to the number of octets of unicode, not necessarily the number of unicode
+	 * characters since the UTF-8 unicode may include multi-byte character sequences.
+	 *
+	 * return a string.
+	 */
+	String readStr32();
+
+	/**
 	 * The vbin8 type encodes up to 255 octets of opaque binary data. 
 	 * 
 	 * return a byte array.
