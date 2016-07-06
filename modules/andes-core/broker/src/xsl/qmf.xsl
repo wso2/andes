@@ -778,6 +778,7 @@ public class <xsl:value-of select="$ClassName"/> extends QMFPackage
 <xsl:when test="$type='objId'">OBJECTREFERENCE</xsl:when>
 <xsl:when test="$type='sstr'">STR8</xsl:when>
 <xsl:when test="$type='lstr'">STR16</xsl:when>
+<xsl:when test="$type='lstr32'">STR32</xsl:when>
 <xsl:when test="$type='uint16'">UINT16</xsl:when>
 <xsl:when test="$type='uint32'">UINT32</xsl:when>
 <xsl:when test="$type='uint64'">UINT64</xsl:when>
@@ -797,6 +798,7 @@ public class <xsl:value-of select="$ClassName"/> extends QMFPackage
             <xsl:when test="$type='objId'"><xsl:value-of select="$referenceType"/>Object</xsl:when>
             <xsl:when test="$type='sstr'">String</xsl:when>
             <xsl:when test="$type='lstr'">String</xsl:when>
+            <xsl:when test="$type='lstr32'">String</xsl:when>
             <xsl:when test="$type='uint16'">Integer</xsl:when>
             <xsl:when test="$type='uint32'">Long</xsl:when>
             <xsl:when test="$type='uint64'">Long</xsl:when>
@@ -815,6 +817,7 @@ public class <xsl:value-of select="$ClassName"/> extends QMFPackage
             <xsl:when test="$type='objId'">writeBin128( <xsl:value-of select="$var"/>.getId() )</xsl:when>
             <xsl:when test="$type='sstr'">writeStr8( <xsl:value-of select="$var"/> )</xsl:when>
             <xsl:when test="$type='lstr'">writeStr16( <xsl:value-of select="$var"/> )</xsl:when>
+            <xsl:when test="$type='lstr32'">writeStr32( <xsl:value-of select="$var"/> )</xsl:when>
             <xsl:when test="$type='uint16'">writeUint16( <xsl:value-of select="$var"/> )</xsl:when>
             <xsl:when test="$type='uint32'">writeUint32( <xsl:value-of select="$var"/> )</xsl:when>
             <xsl:when test="$type='uint64'">writeUint64( <xsl:value-of select="$var"/> )</xsl:when>
@@ -833,6 +836,7 @@ public class <xsl:value-of select="$ClassName"/> extends QMFPackage
             <xsl:when test="$type='objId'">readBin128()</xsl:when>
             <xsl:when test="$type='sstr'">readStr8()</xsl:when>
             <xsl:when test="$type='lstr'">readStr16()</xsl:when>
+            <xsl:when test="$type='lstr32'">readStr32()</xsl:when>
             <xsl:when test="$type='uint16'">readUint16()</xsl:when>
             <xsl:when test="$type='uint32'">readUint32()</xsl:when>
             <xsl:when test="$type='uint64'">readUint64()</xsl:when>

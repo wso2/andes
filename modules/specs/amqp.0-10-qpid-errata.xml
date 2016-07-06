@@ -823,6 +823,56 @@
     </doc>
   </type>
 
+  <type name="str32" code="0x98" variable-width="4"
+        label="up to 128K octets worth of UTF-8 unicode">
+    <doc>
+      The str16 type encodes up to 128K octets worth of UTF-8 unicode. The number of octets is
+      first encoded as a 16-bit unsigned integral value in network byte order. This is followed by
+      the actual UTF-8 unicode. Note that the encoded size refers to the number of octets of
+      unicode, not necessarily the number of unicode characters since the UTF-8 unicode may include
+      multi-byte character sequences.
+    </doc>
+
+    <doc type="picture" title="Wire Format">
+      4 OCTETs   size OCTETs
+      +----------+--------------+
+      |   size   | utf8-unicode |
+      +----------+--------------+
+      uint32
+    </doc>
+
+    <doc type="bnf">
+      str32 = size utf8-unicode
+      size = uint32
+      utf8-unicode = 0*131071 OCTET ; size OCTETs
+    </doc>
+  </type>
+
+  <type name="str32-utf16" code="0x97" variable-width="4"
+        label="up to 128K octets worth of UTF-16 unicode">
+    <doc>
+      The str16-utf16 type encodes up to 128K octets worth of UTF-16 unicode. The number of octets
+      is first encoded as a 32-bit unsigned integral value in network byte order. This is followed
+      by the actual UTF-16 unicode. Note that the encoded size refers to the number of octets of
+      unicode, not the number of unicode characters since the UTF-16 unicode will include at least
+      two octets per unicode character.
+    </doc>
+
+    <doc type="picture" title="Wire Format">
+      4 OCTETs    size OCTETs
+      +----------+---------------+
+      |   size   | utf16-unicode |
+      +----------+---------------+
+      uint32
+    </doc>
+
+    <doc type="bnf">
+      str32-utf16 = size utf16-unicode
+      size = uint32
+      utf16-unicode = 0*131071 OCTET ; size OCTETs
+    </doc>
+  </type>
+
   <type name="byte-ranges" variable-width="2" label="byte ranges within a 64-bit payload">
     <doc>
       The byte-ranges type encodes up to 65535 octets worth of non-overlapping, non-touching,

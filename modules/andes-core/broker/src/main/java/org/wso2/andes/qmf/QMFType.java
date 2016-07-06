@@ -27,6 +27,7 @@ public enum QMFType
     UNKNOWN,
     STR8,
     STR16,
+    STR32,
     ABSTIME,
     DELTATIME,
     OBJECTREFERENCE,

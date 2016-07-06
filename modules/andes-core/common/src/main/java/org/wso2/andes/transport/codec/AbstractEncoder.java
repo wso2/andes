@@ -51,7 +51,7 @@ abstract class AbstractEncoder implements Encoder
     static
     {
         ENCODINGS.put(Boolean.class, Type.BOOLEAN);
-        ENCODINGS.put(String.class, Type.STR16);
+        ENCODINGS.put(String.class, Type.STR32);
         ENCODINGS.put(Long.class, Type.INT64);
         ENCODINGS.put(Integer.class, Type.INT32);
         ENCODINGS.put(Short.class, Type.INT16);
@@ -183,6 +183,18 @@ abstract class AbstractEncoder implements Encoder
 
         byte[] bytes = encode(s, "UTF-8");
         writeUint16(bytes.length);
+        put(bytes);
+    }
+
+    public void writeStr32(String s)
+    {
+        if (s == null)
+        {
+            s = "";
+        }
+
+        byte[] bytes = encode(s, "UTF-8");
+        writeUint32(bytes.length);
         put(bytes);
     }
 
@@ -577,6 +589,10 @@ abstract class AbstractEncoder implements Encoder
 
         case STR16:
             writeStr16(coerce(String.class, value));
+            break;
+
+        case STR32:
+            writeStr32(coerce(String.class, value));
             break;
 
         case STR8_LATIN:
