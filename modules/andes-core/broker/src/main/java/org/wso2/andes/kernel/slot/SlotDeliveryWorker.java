@@ -73,7 +73,6 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
      * This map contains slotId to slot hash map against queue name
      */
     private volatile boolean running;
-    private volatile boolean threadCompleted;
     private MessageFlusher messageFlusher;
     private SlotCoordinator slotCoordinator;
 
@@ -129,7 +128,6 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
          * deliver them
          */
         running = true;
-        threadCompleted = false;
         while (running) {
 
             //Iterate through all the queues registered in this thread
@@ -246,8 +244,6 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
         }
 
         log.info("SlotDeliveryWorker stopped. Thread name " + Thread.currentThread().getName() + " with Thread Id : " + this.getId());
-
-        threadCompleted = true;
     }
 
     /**
@@ -453,27 +449,6 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
      */
     public void setRunning(boolean running) {
         this.running = running;
-
-        /* If running is false, we have to wait until thread finishes
-
-          Below function works similar to thread.join() but due to following reason we cannot use thread.join() here.
-
-          1. Since this thread is invoked from a thread pool executor, this.join() will not invoke the real running
-              threads' join() method. For this we have to get Thread.currentThread() from inside run method and
-              keep a reference to allow access from outside.
-          2. Although we can get the thread reference as above, threadReference.join() will wait indefinitely since
-             thread pool executor does not terminate the threads when the processing is finished, it keeps the threads
-             in WAITING state to be executed again if asked to.
-         */
-        if (!running) {
-            while (!threadCompleted) {
-                try {
-                    Thread.sleep(100L);
-                } catch (InterruptedException e) {
-                    log.warn("Error waiting for SlotDeliveryWorker to complete", e);
-                }
-            }
-        }
     }
 
 
