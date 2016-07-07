@@ -59,7 +59,8 @@ public class ContentChunkHandlerTest {
         this.originalChunkSize = originalChunkSize;
         this.originalChunkCount = originalChunkCount;
         this.messageId = messageId;
-        contentChunkHandler = new ContentChunkHandler(maxChunkSize);
+        DisabledContentCompressionStrategy contentChunkStrategy = new DisabledContentCompressionStrategy();
+        contentChunkHandler = new ContentChunkHandler(maxChunkSize, contentChunkStrategy);
     }
 
     /**

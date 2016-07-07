@@ -21,7 +21,6 @@ package org.wso2.andes.kernel;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -302,19 +301,6 @@ public class AndesChannel {
                 unblockLocalChannel();
             }
         }
-    }
-
-    /**
-     * Get total number of content chunks present in provided message list
-     * @param messages AndesMessage list
-     * @return total message chunks
-     */
-    public static int getTotalChunkCount(List<AndesMessage> messages) {
-        int count = 0;
-        for (AndesMessage message : messages) {
-            count = count + message.getContentChunkList().size();
-        }
-        return count;
     }
 
 	/**

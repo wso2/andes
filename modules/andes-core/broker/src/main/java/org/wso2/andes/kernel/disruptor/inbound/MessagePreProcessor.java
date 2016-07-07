@@ -66,7 +66,7 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                 // NOTE: This is the MESSAGE_EVENT and this is the first processing event for this message
                 // published to ring. Therefore there should be exactly one message in the list.
                 // NO NEED TO CHECK FOR LIST SIZE
-                AndesMessage message = inboundEvent.getMessageList().remove(0);
+                AndesMessage message = inboundEvent.popMessage();
                 updateRoutingInformation(inboundEvent, message, sequence);
                 break;
             case TRANSACTION_COMMIT_EVENT:
@@ -106,12 +106,6 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
         // actually written to DB
         eventContainer.getTransactionEvent().clearMessages();
         eventContainer.getTransactionEvent().addMessages(eventContainer.getMessageList());
-
-        int size = 0;
-        for (AndesMessage message : eventContainer.getMessageList()) {
-            size = size + message.getContentChunkList().size();
-        }
-        eventContainer.getChannel().recordRemovalFromBuffer(size);
     }
 
     /**
@@ -153,7 +147,6 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
         if (message.getMetadata().isTopic()) {
             handleTopicRoutine(event, message, andesChannel);
         } else {
-            andesChannel.recordAdditionToBuffer(message.getContentChunkList().size());
             AndesMessageMetadata messageMetadata = message.getMetadata();
             messageMetadata.setStorageQueueName(messageMetadata.getDestination());
             event.addMessage(message);
@@ -228,7 +221,6 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                     // add the topic wise cloned message to the events list. Message writers will pick that and
                     // write it.
                     event.addMessage(clonedMessage);
-                    andesChannel.recordAdditionToBuffer(clonedMessage.getContentChunkList().size());
                     isMessageRouted = true;
                     alreadyStoredQueueNames.add(subscription.getStorageQueueName());
                 }
@@ -250,7 +242,8 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                 Meter ackMeter = MetricManager.meter(Level.INFO, MetricsConstants.ACK_SENT_RATE);
                 ackMeter.mark();
 
-                event.clearMessageList();
+                // since inbound message has no routes, inbound message list will be cleared.
+                event.clearMessageList(andesChannel);
                 log.info("Message routing key: " + message.getMetadata().getDestination() + " No routes in " +
                              "cluster. Ignoring Message id " + message.getMetadata().getMessageID());
             }

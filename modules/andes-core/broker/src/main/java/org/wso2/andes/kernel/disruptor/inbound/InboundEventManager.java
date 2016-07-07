@@ -33,6 +33,7 @@ import org.wso2.andes.kernel.DisablePubAckImpl;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.disruptor.ConcurrentBatchEventHandler;
 import org.wso2.andes.kernel.disruptor.LogExceptionHandler;
+import org.wso2.andes.kernel.disruptor.compression.LZ4CompressionHelper;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.subscription.SubscriptionEngine;
 import org.wso2.andes.tools.utils.MessageTracer;
@@ -76,6 +77,7 @@ public class InboundEventManager {
     private AtomicInteger ackedMessageCount = new AtomicInteger();
     private Disruptor<InboundEventContainer> disruptor;
     private final DisablePubAckImpl disablePubAck;
+    private LZ4CompressionHelper lz4CompressionHelper;
 
     public InboundEventManager(SubscriptionEngine subscriptionEngine,
                                MessagingEngine messagingEngine) {
@@ -117,9 +119,16 @@ public class InboundEventManager {
         ConcurrentBatchEventHandler[] concurrentBatchEventHandlers =
                 new ConcurrentBatchEventHandler[writeHandlerCount + ackHandlerCount + transactionHandlerCount];
 
+        lz4CompressionHelper = new LZ4CompressionHelper();
+
         ContentChunkHandler[] chunkHandlers = new ContentChunkHandler[contentChunkHandlerCount];
         for (int i = 0; i < contentChunkHandlerCount; i++) {
-            chunkHandlers[i] = new ContentChunkHandler(maxContentChunkSize);
+            if(lz4CompressionHelper.isCompressionEnabled()) {
+                chunkHandlers[i] = new ContentChunkHandler(maxContentChunkSize,
+                            new LZ4ContentCompressionStrategy(lz4CompressionHelper));
+            } else {
+                chunkHandlers[i] = new ContentChunkHandler(maxContentChunkSize, new DisabledContentCompressionStrategy());
+            }
         }
 
         for (int turn = 0; turn < writeHandlerCount; turn++) {
@@ -146,6 +155,7 @@ public class InboundEventManager {
         }
 
         MessagePreProcessor preProcessor = new MessagePreProcessor(subscriptionEngine);
+        StateEventHandler stateEventHandler = new StateEventHandler();
 
         // Order in which handlers run in Disruptor
         // - ContentChunkHandlers
@@ -155,9 +165,10 @@ public class InboundEventManager {
         disruptor.handleEventsWith(chunkHandlers).then(preProcessor);
         disruptor.after(preProcessor).handleEventsWith(concurrentBatchEventHandlers);
 
-        // State event handler should run at last.
         // State event handler update the state of Andes after other handlers work is done.
-        disruptor.after(concurrentBatchEventHandlers).handleEventsWith(new StateEventHandler());
+        // State event handler will execute last. This handler will clear the event container.
+        disruptor.after(concurrentBatchEventHandlers).handleEventsWith(stateEventHandler);
+
         ringBuffer = disruptor.start();
 
         //Will add the gauge to metrics manager
@@ -176,11 +187,11 @@ public class InboundEventManager {
         // Publishers claim events in sequence
         long sequence = ringBuffer.next();
         InboundEventContainer event = ringBuffer.get(sequence);
-
         event.setEventType(MESSAGE_EVENT);
-        event.getMessageList().add(message);
-        event.pubAckHandler = pubAckHandler;
         event.setChannel(andesChannel);
+        event.addMessage(message,andesChannel);
+        event.pubAckHandler = pubAckHandler;
+
         // make the event available to EventProcessors
         ringBuffer.publish(sequence);
 
@@ -298,9 +309,10 @@ public class InboundEventManager {
         try {
             eventContainer.setEventType(TRANSACTION_ENQUEUE_EVENT);
             eventContainer.setTransactionEvent(transactionEvent);
-            eventContainer.addMessage(message);
-            eventContainer.pubAckHandler = disablePubAck;
             eventContainer.setChannel(channel);
+            eventContainer.addMessage(message, channel);
+            eventContainer.pubAckHandler = disablePubAck;
+
         } finally {
             ringBuffer.publish(sequence);
             if (log.isDebugEnabled()) {
