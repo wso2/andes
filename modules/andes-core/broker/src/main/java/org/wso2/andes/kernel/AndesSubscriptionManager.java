@@ -23,6 +23,7 @@ import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.slot.OrphanedSlotHandler;
 import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
+import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
@@ -410,6 +411,10 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
                     BasicSubscription subscription = new BasicSubscription(subscriptionAsStr);
                     dbSubscriptions.add(subscription);
 
+                }
+            }
+            dbSubscriptions = removeInvalidLocalSubscriptionsFromDB(dbSubscriptions);
+            for (AndesSubscription subscription : dbSubscriptions) {
                     if (subscriptionEngine.isSubscriptionAvailable(subscription)) {
                         // Remove from list of memory subscriptions since this subscription is verified
                         memorySubscriptions.remove(subscription);
@@ -427,7 +432,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
                                 .SubscriptionChange.ADDED);
                     }
                 }
-            }
+
 
             // Iterate through all remaining subscriptions in memory and remove if not available in db
             for (AndesSubscription memorySubscription : memorySubscriptions) {
@@ -443,13 +448,63 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
         }
     }
 
-    private void notifyLocalSubscriptionHasChanged(final LocalSubscription subscription, final SubscriptionListener.SubscriptionChange change) throws AndesException {
+    /**
+     * Remove the local subscriptions that are not present in the local subscriptions map but are present in the
+     * database from the db. If there's a conflict between the active status of a subscription in the DB and in the
+     * memory, update the DB with the one in the memory.
+     *
+     * @param dbSubscriptions The list of subscriptions in the db
+     * @return The filtered list of DB subscriptions
+     */
+    private Set<AndesSubscription> removeInvalidLocalSubscriptionsFromDB(Set<AndesSubscription> dbSubscriptions)
+            throws AndesException {
+        String myNodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
+        Set<AndesSubscription> localSubscriptions = subscriptionEngine.getActiveLocalSubscribersForNode();
+        Set<AndesSubscription> updatedDBSubscriptions = new HashSet<>();
+        for (AndesSubscription subscription : dbSubscriptions) {
+            //In the case of queue subscriptions and non-durable topic subscriptions, the subscription will be removed
+            // if it does not exist in the local subscriptions map
+            if (!(DestinationType.DURABLE_TOPIC == subscription.getDestinationType())) {
+                boolean subscriptionFound = true;
+                if (myNodeID.equals(subscription.getSubscribedNode())) {
+                    if (!localSubscriptions.contains(subscription)) {
+                        subscriptionEngine.removeSubscriptionDirectly(subscription);
+                        log.info("Local Subscriptions are not in sync. Subscriptions exist in db that are not "
+                                 + "available in memory. Thus removing from db " + subscription);
+                        subscriptionFound = false;
+                    }
+                }
+                if (subscriptionFound) {
+                    updatedDBSubscriptions.add(subscription);
+                }
+            } else {
+                //In the case of durable topic subscriptions, the subscription in the database will be modified with
+                // hasExternalSubscribers = false when met with any conflict with the local subscriptions map
+                if (myNodeID.equals(subscription.getSubscribedNode())) {
+                    if (subscription.hasExternalSubscriptions()) {
+                        if (!localSubscriptions.contains(subscription)) {
+                            subscription.setHasExternalSubscriptions(false);
+                            subscriptionEngine.updateLocalSubscriptionInDB(subscription);
+                            log.info("Local Subscriptions are not in sync. Subscriptions exist in db that are not "
+                                     + "available in memory. Thus updating the active status of " + subscription);
+                        }
+                    }
+                }
+                updatedDBSubscriptions.add(subscription);
+            }
+        }
+        return updatedDBSubscriptions;
+    }
+
+    private void notifyLocalSubscriptionHasChanged(final LocalSubscription subscription, final SubscriptionListener
+            .SubscriptionChange change) throws AndesException {
         for (final SubscriptionListener listener : subscriptionListeners) {
             listener.handleLocalSubscriptionsChanged(subscription, change);
         }
     }
 
-    private void notifyClusterSubscriptionHasChanged(final AndesSubscription subscription, final SubscriptionListener.SubscriptionChange change) throws AndesException {
+    private void notifyClusterSubscriptionHasChanged(final AndesSubscription subscription, final SubscriptionListener
+            .SubscriptionChange change) throws AndesException {
         for (final SubscriptionListener listener : subscriptionListeners) {
             listener.handleClusterSubscriptionsChanged(subscription, change);
         }

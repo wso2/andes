@@ -333,6 +333,16 @@ public class SubscriptionEngine {
     }
 
     /**
+     * Update the subscription in the database with the give subscription.
+     *
+     * @param subscription
+     * @throws AndesException
+     */
+    public void updateLocalSubscriptionInDB(AndesSubscription subscription) throws AndesException {
+        andesContextStore.updateDurableSubscription(subscription);
+    }
+
+    /**
      * Update the subscription in the database with the give subscription. If such a subscription is not present in the
      * database, add the subscription.
      *
