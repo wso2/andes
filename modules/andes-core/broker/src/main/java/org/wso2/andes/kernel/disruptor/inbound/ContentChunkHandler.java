@@ -22,9 +22,7 @@ import com.lmax.disruptor.EventHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesMessage;
-import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.disruptor.compression.LZ4CompressionHelper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,18 +37,15 @@ public class ContentChunkHandler implements EventHandler<InboundEventContainer> 
 
     private final int maxChunkSize;
 
-    /**
-     * Used to get configuration values related to compression and used to compress message content
-     */
-    LZ4CompressionHelper lz4CompressionHelper;
+    private ContentCompressionStrategy chunkStrategy;
 
     /**
      * Creates a {@link ContentChunkHandler} object
      * @param maxChunkSize maximum allowed chunk size to be stored in DB
      */
-    ContentChunkHandler(int maxChunkSize) {
+    ContentChunkHandler(int maxChunkSize, ContentCompressionStrategy chunkStrategy) {
         this.maxChunkSize = maxChunkSize;
-        lz4CompressionHelper = new LZ4CompressionHelper();
+        this.chunkStrategy = chunkStrategy;
     }
 
     /**
@@ -67,7 +62,11 @@ public class ContentChunkHandler implements EventHandler<InboundEventContainer> 
 
         switch (event.getEventType()) {
             case MESSAGE_EVENT:
-                resizeContentChunks(event.getMessageList(), sequence);
+                // Since there's only one message in inbound message list it can be retrieved without iterate through
+                // the list.
+                AndesMessage message = resizeContentChunks(event.popMessage(), sequence);
+                // Modified andes message(with chunk resize) will be added back to inbound message list.
+                event.addMessage(message);
                 break;
             case TRANSACTION_ENQUEUE_EVENT:
                 handleTransaction(event, sequence);
@@ -88,33 +87,30 @@ public class ContentChunkHandler implements EventHandler<InboundEventContainer> 
      * @param sequence Disruptor sequence number
      */
     private void handleTransaction(InboundEventContainer event, long sequence) {
-        resizeContentChunks(event.getMessageList(), sequence);
+        AndesMessage message = resizeContentChunks(event.popMessage(), sequence);
+        event.addMessage(message);
         event.getTransactionEvent().addMessages(event.getMessageList());
     }
 
     /**
      * Resize the content of the messages provided into chunks that can be stored in DB
-     * @param messageList messages to be processed
-     * @param sequence    sequence number of the ring buffer
+     *
+     * @param message messages to be processed
+     * @param sequence sequence number of the ring buffer
+     * @return andes message
      */
-    private void resizeContentChunks(List<AndesMessage> messageList, long sequence) {
+    private AndesMessage resizeContentChunks(AndesMessage message, long sequence) {
         if (log.isDebugEnabled()) {
-            log.debug("[ " + sequence + " ] Content chunk resize for " + messageList.size() +
-                    " messages ");
+            log.debug("[ " + sequence + " ] Content chunk resize for " + message.getContentChunkList().size() +
+                    " message ");
         }
 
-        if (lz4CompressionHelper.isCompressionEnabled()) {
-            for (AndesMessage message : messageList) {
-                // Getting the compressed and resized message
-                message = compressAndResizeChunks(message);
-            }
-        } else {
-            for (AndesMessage message : messageList) {
-                message.setChunkList(
-                        resizeChunks(message.getContentChunkList(), message.getMetadata().getMessageContentLength())
-                );
-            }
-        }
+        // andes message chunks will be handled based on configured chunk strategy.
+        ContentPartHolder contentChunkPair = chunkStrategy.ContentChunkStrategy(message);
+        message.setChunkList(
+                resizeChunks(contentChunkPair.getAndesMessagePartList(),contentChunkPair.getContentLength()));
+
+        return message;
     }
 
     /**
@@ -224,40 +220,6 @@ public class ContentChunkHandler implements EventHandler<InboundEventContainer> 
             }
         }
         return chunkList;
-    }
-
-    /**
-     * Compress the content of the message and resize content chunks of the compressed message. Resized chunks
-     * will have a maximum length of maxChunkSize
-     *
-     * @param message Original AndesMessage before compress and resize
-     * @return Compressed and resized message
-     */
-    AndesMessage compressAndResizeChunks(AndesMessage message) {
-        List<AndesMessagePart> partList = message.getContentChunkList();
-        AndesMessageMetadata metadata = message.getMetadata();
-        int contentLength = metadata.getMessageContentLength();
-        int originalContentLength = contentLength;
-
-        if (originalContentLength > lz4CompressionHelper.getContentCompressionThreshold()) {
-            // Compress message
-            AndesMessagePart compressedMessagePart = lz4CompressionHelper.getCompressedMessage(partList, originalContentLength);
-
-            // Update metadata to indicate the message is a compressed one
-            metadata.updateMetadata(true);
-            message.setMetadata(metadata);
-
-            contentLength = compressedMessagePart.getDataLength();
-
-            partList.clear();
-            partList.add(compressedMessagePart);
-        }
-
-        // Resize the compressed message content
-        partList = resizeChunks(partList, contentLength);
-        // Set the new chunk list
-        message.setChunkList(partList);
-        return message;
     }
 
 }

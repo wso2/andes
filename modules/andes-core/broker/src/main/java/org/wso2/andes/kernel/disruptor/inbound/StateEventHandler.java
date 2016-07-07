@@ -21,7 +21,6 @@ package org.wso2.andes.kernel.disruptor.inbound;
 import com.lmax.disruptor.EventHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
@@ -50,12 +49,13 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
             log.debug("[ sequence " + sequence + " ] Event received from disruptor. Event type: "
                     + event.eventInfo());
         }
-        
+
         try {
             switch (event.getEventType()) {
                 case MESSAGE_EVENT:
                     updateSlotsAndQueueCounts(event);
-                    event.getChannel().recordRemovalFromBuffer(AndesChannel.getTotalChunkCount(event.getMessageList()));
+                    // Since this is the final handler to be executed, message list needs to be cleared on message event.
+                    event.clearMessageList(event.getChannel());
                     break;
                 case ACKNOWLEDGEMENT_EVENT:
                     updateTrackerWithAck(event);
@@ -74,6 +74,7 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
             // previous iterations.
             event.clear();
         }
+
     }
 
     private void updateTrackerWithAck(InboundEventContainer event) throws AndesException {
