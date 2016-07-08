@@ -75,7 +75,12 @@ public class MessageFlusher {
      * List of delivery rules to evaluate. Before scheduling message to protocol for
      * delivery we evaluate these and if failed we take necessary actions
      */
-    private List<CommonDeliveryRule> DeliveryRulesList = new ArrayList<>();
+    private List<CommonDeliveryRule> deliveryRulesList = new ArrayList<>();
+
+    /**
+     * Head of the delivery message responsibility chain
+     */
+    private DeliveryResponsibility deliveryResponsibilityHead;
 
 
 
@@ -101,29 +106,44 @@ public class MessageFlusher {
         } else if(topicMessageDeliveryStrategy.equals(TopicMessageDeliveryStrategy.SLOWEST_SUB_RATE)) {
             this.topicMessageFlusher = new SlowestSubscriberTopicMessageDeliveryImpl(subscriptionEngine);
         }
-
+        //TODO:Remove
         initializeDeliveryRules();
+
+        initializeDeliveryResponsibilityChain();
 
     }
 
     public Integer getMaxNumberOfReadButUndeliveredMessages() {
         return maxNumberOfReadButUndeliveredMessages;
     }
-
+    //TODO:Remove
     /**
      * Initialize common delivery rules. These delivery rules apply
      * irrespective of the protocol
      */
     private void initializeDeliveryRules() {
 
-/*        // NOTE: Feature Message Expiration moved to a future release
         //checking message expiration deliver rule
-        deliveryRulesList.add(new MessageExpiredRule());*/
+        deliveryRulesList.add(new MessageExpiredRule());
 
         //checking message purged delivery rule
-        DeliveryRulesList.add(new MessagePurgeRule());
+        deliveryRulesList.add(new MessagePurgeRule());
     }
 
+    /**
+     * Initialize the delivery filter chain
+     */
+    private void initializeDeliveryResponsibilityChain(){
+        //assign the head of the handler chain
+        deliveryResponsibilityHead = new PurgedMessageHandler();
+        ExpiredMessageHandler expiredMessageHandler =  new ExpiredMessageHandler();
+        //link the second handler to the head
+        deliveryResponsibilityHead.setNextDeliveryFilter(expiredMessageHandler);
+        //link the third handler
+        expiredMessageHandler.setNextDeliveryFilter(new DeliveryMessageHandler());
+
+    }
+    //TODO:Remove
     /**
      * Evaluating Delivery rules before sending the messages
      *
@@ -137,7 +157,7 @@ public class MessageFlusher {
                                           DestinationType destinationType) throws AndesException {
         boolean isOKToDelivery = true;
 
-        for (CommonDeliveryRule rule : DeliveryRulesList) {
+        for (CommonDeliveryRule rule : deliveryRulesList) {
             if (!rule.evaluate(message, protocolType, destinationType)) {
                 isOKToDelivery = false;
                 break;
@@ -356,6 +376,8 @@ public class MessageFlusher {
         deliverMessageAsynchronously(subscription, message);
     }
 
+
+    //TODO:REMOVE the commented parts
     /**
      * Submit the messages to a thread pool to deliver asynchronously
      *
@@ -365,20 +387,22 @@ public class MessageFlusher {
     public void deliverMessageAsynchronously(LocalSubscription subscription, DeliverableAndesMetadata message)
             throws AndesException {
 
-        if(evaluateDeliveryRules(message, subscription.getProtocolType(), subscription.getDestinationType())) {
-            if(log.isDebugEnabled()) {
-                log.debug("Scheduled message id= " + message.getMessageID() + " to be sent to subscription= " + subscription);
-            }
-            //mark message as came into the subscription for deliver
+          deliveryResponsibilityHead.handleDeliveryMessage(subscription,message);
 
-            message.markAsDispatchedToDeliver(subscription.getChannelID());
-
-            ProtocolMessage protocolMessage = message.generateProtocolDeliverableMessage(subscription.getChannelID());
-            flusherExecutor.submit(subscription, protocolMessage);
-        } else {
-            log.warn("Common delivery rules failed for message id " + message.getMessageID()
-                    + " Hence not delivered.");
-        }
+//        if(evaluateDeliveryRules(message, subscription.getProtocolType(), subscription.getDestinationType())) {
+//            if(log.isDebugEnabled()) {
+//                log.debug("Scheduled message id= " + message.getMessageID() + " to be sent to subscription= " + subscription);
+//            }
+//            //mark message as came into the subscription for deliver
+//
+//            message.markAsDispatchedToDeliver(subscription.getChannelID());
+//
+//            ProtocolMessage protocolMessage = message.generateProtocolDeliverableMessage(subscription.getChannelID());
+//            flusherExecutor.submit(subscription, protocolMessage);
+//        } else {
+//            log.warn("Common delivery rules failed for message id " + message.getMessageID()
+//                    + " Hence not delivered.");
+//        }
     }
 
     /**

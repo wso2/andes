@@ -21,8 +21,15 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * This thread will keep looking for expired messages within the broker and remove them.
@@ -31,9 +38,19 @@ public class MessageExpirationWorker extends Thread {
 
     private static Log log = LogFactory.getLog(MessageExpirationWorker.class);
     private volatile boolean working = false;
+    /**
+     * hold the expired messages detected in the message flusher delivery rule check for batch delete
+     */
+    public static Set<DeliverableAndesMetadata> expiredMessageSet = new HashSet<>();
+
+    /**
+     * Used to perform database operations on the context store.
+     */
+    private AndesContextStore andesContextStore = AndesContext.getInstance().getAndesContextStore();
 
     //configurations
     private final Integer workerWaitInterval;
+    private final Integer safetySlotCount;
     private final Integer messageBatchSize;
     private final Boolean saveExpiredToDLC;
 
@@ -45,15 +62,16 @@ public class MessageExpirationWorker extends Thread {
                 (AndesConfiguration.PERFORMANCE_TUNING_MESSAGE_EXPIRATION_BATCH_SIZE);
         saveExpiredToDLC = AndesConfigurationManager.readValue
                 (AndesConfiguration.TRANSPORTS_AMQP_SEND_EXPIRED_MESSAGES_TO_DLC);
+        safetySlotCount = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_SAFE_DELETE_REGION_SLOT_COUNT);
 
         this.start();
-        this.startWorking();
     }
 
     @Override
     public void run() {
 
-        int failureCount = 0;
+        //int failureCount = 0;
 
         // The purpose of the "while true" loop here is to ensure that once the worker is started, it will verify the "working" volatile variable by itself
         // and be able to wake up if the working state is changed to "false" and then "true".
@@ -62,8 +80,71 @@ public class MessageExpirationWorker extends Thread {
         while (true) {
             if (working) {
                 try {
+
+                    //delete the accumulated messages in the list that are filtered out from the message flusher expiration rule
+                    //should be run in all the nodes
+                    if (!expiredMessageSet.isEmpty()) {
+                        MessagingEngine.getInstance().deleteMessages(new ArrayList<AndesMessageMetadata>(expiredMessageSet));
+                    }
+
+                    if (AndesContext.getInstance().getClusterAgent().isCoordinator()) {
+                        //only run in coordinator node
+                        Set<String> queues = andesContextStore.getAllQueues();
+
+                        for (String queueName : queues) {
+                            //get the upper bound messageID for each unassigned slots as a set for the specific queue
+                            TreeSet<Long> messageIDSet = andesContextStore.getMessageIds(queueName);
+
+                            /**
+                             * deletion task run only if there are more messages than the safety slot count upper bound
+                             * otherwise deletion task is not run
+                             * minimum safetySlotCount is 1
+                             */
+                            if (safetySlotCount >= 1 && messageIDSet.size() >= safetySlotCount) {
+
+                                //set the lower bound Id for safety delete region as the safety slot count interval upper bound id + 1
+                                long currentDeletionRangeLowerBoundId = messageIDSet.
+                                        toArray(new Long[messageIDSet.size()])[safetySlotCount - 1] + 1;
+
+                                //get the expired messages for that queue in the range of message ID starting form the lower bound ID
+                                List<AndesMessageMetadata> expiredMessages = MessagingEngine.getInstance()
+                                        .getExpiredMessages(currentDeletionRangeLowerBoundId, queueName);
+
+                                if (null != expiredMessages && !expiredMessages.isEmpty()) {
+
+                                    //in order to stop the slot delivery worker to this queue in the deletion range
+                                    SlotManagerClusterMode.setCurrentDeletionQueue(queueName);
+                                    SlotManagerClusterMode.setCurrentDeletionRangelowerboundID(currentDeletionRangeLowerBoundId);
+
+                                    //delete message metadata, content from the db
+                                    MessagingEngine.getInstance().deleteMessagesFromExpiryQueue(expiredMessages);
+
+                                    //since the deletion task is finished that queue no need to hold the slot delivery worker for that queue
+                                    SlotManagerClusterMode.setCurrentDeletionQueue("");
+                                    SlotManagerClusterMode.setCurrentDeletionRangelowerboundID(0L);
+
+                                    //delete the message entry from the expiry table
+                                    MessagingEngine.getInstance().deleteMessages(expiredMessages);
+
+                                    if (log.isDebugEnabled()) {
+                                        log.debug("Expired message count for queue : " + queueName + "is" + expiredMessages.size());
+                                    }
+
+
+                                }
+
+
+                            }
+
+
+                        }
+                    }
+                    //sleep the message expiration worker for specified amount of time
+                    sleepForWaitInterval(workerWaitInterval);
+
+                    /*
                     //Get Expired message IDs from the database with the massageBatchSize as the limit
-                    // we cannot delegate a cascaded delete to cassandra since it doesn't maintain associations between columnfamilies.
+                    // we cannot delegate a cascaded delete to cassandra since it doesn't maintain associations between column families.
                     List<AndesMessageMetadata> expiredMessages = MessagingEngine.getInstance().getExpiredMessages(messageBatchSize);
 
                     if (expiredMessages == null || expiredMessages.size() == 0 )  {
@@ -90,14 +171,15 @@ public class MessageExpirationWorker extends Thread {
                         // Note : We had a different alternative to employ cassandra column level TTLs to automatically handle
                         // deletion of expired message references. But since we need to abstract database specific logic to
                         // support different data models (like RDBMC) in future, the above approach is followed.
-                    }
+                    } */
 
-                } catch (Throwable e) {
+                } catch (AndesException e) {
                     log.error("Error running Message Expiration Checker " + e.getMessage(), e);
                     // The wait time here is designed to increase per failure to avoid unnecessary attempts to wake up the thread.
                     // However, given that the most probable error here could be a timeout during the database call, it could recover in the next few attempts.
                     // Therefore, no need to keep on delaying the worker.
                     // So the maximum interval between the startup attempt will be 5 * regular wait time.
+                    /*
                     long waitTime = workerWaitInterval;
                     failureCount++;
                     long faultWaitTime = Math.max(waitTime * 5, failureCount * waitTime);
@@ -105,7 +187,7 @@ public class MessageExpirationWorker extends Thread {
                         Thread.sleep(faultWaitTime);
                     } catch (InterruptedException ignore) {
                         //silently ignore
-                    }
+                    } */
 
                 }
             } else {
@@ -143,6 +225,10 @@ public class MessageExpirationWorker extends Thread {
         working = false;
     }
 
+    /**
+     * To sleep the the worker for specified interval of time
+     * @param sleepInterval
+     */
     private void sleepForWaitInterval(int sleepInterval) {
         try {
             Thread.sleep(sleepInterval);
@@ -151,11 +237,12 @@ public class MessageExpirationWorker extends Thread {
         }
     }
 
+    /*
     public static boolean isExpired(Long msgExpiration) {
         if (msgExpiration > 0) {
-            return (System.currentTimeMillis() > msgExpiration) ;
+            return (System.currentTimeMillis() > msgExpiration);
         } else {
             return false;
         }
-    }
+    } */
 }

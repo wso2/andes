@@ -453,6 +453,10 @@ public class MessagingEngine {
 
     }
 
+    public void deleteMessagesFromExpiryQueue (List<AndesMessageMetadata> messagesToRemove) throws AndesException{
+        messageStore.deleteMessagesFromExpiryQueue(messagesToRemove);
+    }
+
     public void moveMessageToDeadLetterChannel(List<DeliverableAndesMetadata> messagesToMove) throws AndesException {
         Map<String, List<AndesMessageMetadata>> storageSeparatedMessages = new HashMap<>();
         for (DeliverableAndesMetadata message : messagesToMove) {
@@ -630,12 +634,13 @@ public class MessagingEngine {
     /**
      * Get expired but not yet deleted messages from message store
      *
-     * @param limit upper bound for number of messages to be returned
+     * @param lowerBoundMessageID lower bound message Id of the safe zone for delete
+     * @param  queueName Queue name
      * @return AndesRemovableMetadata
      * @throws AndesException
      */
-    public List<AndesMessageMetadata> getExpiredMessages(int limit) throws AndesException {
-        return messageStore.getExpiredMessages(limit);
+    public List<AndesMessageMetadata> getExpiredMessages(long lowerBoundMessageID, String queueName) throws AndesException {
+        return messageStore.getExpiredMessages(lowerBoundMessageID, queueName);
     }
 
     /**

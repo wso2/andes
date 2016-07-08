@@ -427,4 +427,20 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
     public Object getProperty(String key) {
         return propertyMap.get(key);
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof AndesMessageMetadata)) return false;
+
+        AndesMessageMetadata that = (AndesMessageMetadata) o;
+
+        return getMessageID() == that.getMessageID();
+
+    }
+
+    @Override
+    public int hashCode() {
+        return (int) (getMessageID() ^ (getMessageID() >>> 32));
+    }
 }

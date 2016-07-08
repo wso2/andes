@@ -70,6 +70,12 @@ public class AndesKernelBoot {
     private static ScheduledExecutorService andesRecoveryTaskScheduler;
 
     /**
+     * Message Expiration worker task
+     */
+    private static MessageExpirationWorker messageExpirationWorker;
+
+
+    /**
      * Used to get information from context store
      */
     private static AndesContextStore contextStore;
@@ -91,6 +97,7 @@ public class AndesKernelBoot {
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
                 .setNameFormat("AndesRecoveryTask-%d").build();
         andesRecoveryTaskScheduler = Executors.newScheduledThreadPool(threadPoolCount);
+        messageExpirationWorker = new MessageExpirationWorker();
         startAndesComponents();
         startHouseKeepingThreads();
         syncNodeWithClusterState();
@@ -339,6 +346,8 @@ public class AndesKernelBoot {
                 (AndesConfiguration.PERFORMANCE_TUNING_FAILOVER_VHOST_SYNC_TASK_INTERVAL);
         andesRecoveryTaskScheduler.scheduleAtFixedRate(andesRecoveryTask, scheduledPeriod,
                                                        scheduledPeriod, TimeUnit.SECONDS);
+        //start the message expiration worker task
+        messageExpirationWorker.startWorking();
         ClusterResourceHolder.getInstance().setAndesRecoveryTask(andesRecoveryTask);
     }
 
@@ -352,6 +361,8 @@ public class AndesKernelBoot {
             andesRecoveryTaskScheduler.shutdown();
             andesRecoveryTaskScheduler
                     .awaitTermination(threadTerminationTimePerod, TimeUnit.SECONDS);
+            //stop message expiration worker
+            messageExpirationWorker.stopWorking();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             andesRecoveryTaskScheduler.shutdownNow();

@@ -560,7 +560,12 @@ public enum AndesConfiguration implements ConfigurationProperty {
      */
     PERFORMANCE_TUNING_MESSAGE_EXPIRATION_BATCH_SIZE
             ("performanceTuning/messageExpiration/messageBatchSize", "1000", Integer.class),
-
+    /**
+     * The range of message Ids which mabe be allocated for a slot in near future. Because of that the deletion task
+     * should not execute on that range
+     */
+    PERFORMANCE_TUNING_SAFE_DELETE_REGION_SLOT_COUNT
+            ("performanceTuning/messageExpiration/safetySlotCount", "1", Integer.class),
     /**
      * Maximum batch size (Messages) for a transaction. Exceeding this limit will result in a failure in the subsequent
      * commit request. Default is set to 10MB. Limit is calculated considering the payload of messages

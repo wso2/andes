@@ -331,9 +331,9 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public List<AndesMessageMetadata> getExpiredMessages(int limit) throws AndesException {
+    public List<AndesMessageMetadata> getExpiredMessages(long lowerBoundMessageID, String queueName) throws AndesException {
         try {
-            return wrappedInstance.getExpiredMessages(limit);
+            return wrappedInstance.getExpiredMessages(lowerBoundMessageID,queueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -344,7 +344,7 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void deleteMessagesFromExpiryQueue(LongArrayList messagesToRemove) throws AndesException {
+    public void deleteMessagesFromExpiryQueue(List<AndesMessageMetadata> messagesToRemove) throws AndesException {
         try {
             wrappedInstance.deleteMessagesFromExpiryQueue(messagesToRemove);
         } catch (AndesStoreUnavailableException exception) {

@@ -235,19 +235,20 @@ public interface MessageStore extends HealthAwareStore {
     /**
      * get expired messages from store
      *
-     * @param limit max num of messages to read
+     * @param lowerBoundMessageID starting message Id of deletion safe zone
+     * @param  queueName Queue name
      * @return AndesRemovableMetadata
      * @throws AndesException
      */
-    List<AndesMessageMetadata> getExpiredMessages(int limit) throws AndesException;
+    List<AndesMessageMetadata> getExpiredMessages(long lowerBoundMessageID, String queueName) throws AndesException;
 
     /**
      * delete messages from expiry queue
      *
-     * @param messagesToRemove message IDs to remove
+     * @param messagesToRemove list of messages to remove
      * @throws AndesException
      */
-    void deleteMessagesFromExpiryQueue(LongArrayList messagesToRemove) throws AndesException;
+    void deleteMessagesFromExpiryQueue(List<AndesMessageMetadata> messagesToRemove) throws AndesException;
 
     /**
      * add messages to expiry queue
