@@ -28,6 +28,7 @@ import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
+import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEvent;
 import org.wso2.andes.server.cluster.NodeHeartBeatData;
 
 import java.util.List;
@@ -980,6 +981,60 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     public void markNodeAsNotNew(String nodeId) throws AndesException{
         try {
             wrappedAndesContextStoreInstance.markNodeAsNotNew(nodeId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void storeMembershipEvent(List<String> clusterNodes, int membershipEventType, String changedMember)
+            throws AndesException {
+        try {
+            wrappedAndesContextStoreInstance.storeMembershipEvent(clusterNodes, membershipEventType, changedMember);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<MembershipEvent> readMemberShipEvents(String nodeID) throws AndesException {
+        try {
+            return wrappedAndesContextStoreInstance.readMemberShipEvents(nodeID);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void clearMembershipEvents() throws AndesException {
+        try {
+            wrappedAndesContextStoreInstance.clearMembershipEvents();
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void clearMembershipEvents(String nodeID) throws AndesException {
+        try {
+            wrappedAndesContextStoreInstance.clearMembershipEvents(nodeID);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

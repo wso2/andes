@@ -118,6 +118,8 @@ public class RDBMSConstants {
     protected static final String CLUSTER_COORDINATOR_HEARTBEAT_TABLE = "MB_CLUSTER_COORDINATOR_HEARTBEAT";
     protected static final String CLUSTER_NODE_HEARTBEAT_TABLE = "MB_CLUSTER_NODE_HEARTBEAT";
 
+    //Cluster membership table
+    protected static final String MEMBERSHIP_TABLE = "MB_MEMBERSHIP";
     /**
      * This dataset maps to the nodeID - localSafeZone association within the broker.
      */
@@ -154,6 +156,10 @@ public class RDBMSConstants {
     // Constants
     protected static final int COORDINATOR_ANCHOR = 1;
 
+    //columns for cluster membership communication
+    protected static final String MEMBERSHIP_DESTINED_NODE_ID = "DESTINED_NODE_ID";
+    protected static final String MEMBERSHIP_CHANGE_TYPE = "CHANGE_TYPE";
+    protected static final String MEMBERSHIP_CHANGED_MEMBER_ID = "CHANGED_MEMBER_ID";
 
     // prepared statements for Message Store
     protected static final String PS_INSERT_MESSAGE_PART =
@@ -930,6 +936,37 @@ public class RDBMSConstants {
             "UPDATE " + EXPIRATION_TABLE
                     + " SET " + DLC_QUEUE_ID + "=?"
                     + " WHERE " + MESSAGE_ID + "=?";
+
+    /**
+     * Prepared statement to insert membership change event.
+     */
+    protected static final String PS_INSERT_MEMBERSHIP_EVENT =
+            "INSERT INTO " + MEMBERSHIP_TABLE + " ("
+            + MEMBERSHIP_DESTINED_NODE_ID + ","
+            + MEMBERSHIP_CHANGE_TYPE + ","
+            + MEMBERSHIP_CHANGED_MEMBER_ID + ")"
+            + " VALUES ( ?,?,?, )";
+
+    /**
+     * Prepared statement to select membership change event destined to a particular member.
+     */
+    protected static final String PS_SELECT_MEMBERSHIP_EVENT =
+            "SELECT " + MEMBERSHIP_CHANGE_TYPE + ", " + MEMBERSHIP_CHANGED_MEMBER_ID
+            + " FROM " + MEMBERSHIP_TABLE
+            + " WHERE " + MEMBERSHIP_DESTINED_NODE_ID + "=?";
+
+    /**
+     * Prepared statement to clear the membership event table.
+     */
+    protected static final String PS_CLEAR_ALL_MEMBERSHIP_EVENTS =
+            "DELETE FROM " + MEMBERSHIP_TABLE;
+
+    /**
+     * Prepared statement to slear membership change events destined to a particular member.
+     */
+    protected static final String PS_CLEAN_MEMBERSHIP_EVENTS_FOR_NODE =
+            "DELETE FROM " + MEMBERSHIP_TABLE
+            + " WHERE " + MEMBERSHIP_DESTINED_NODE_ID + "=?";
 
     // Message Store related jdbc tasks executed
     protected static final String TASK_STORING_MESSAGE_PARTS = "storing message parts.";

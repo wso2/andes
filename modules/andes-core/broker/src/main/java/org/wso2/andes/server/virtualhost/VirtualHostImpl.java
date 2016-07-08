@@ -207,7 +207,7 @@ public class VirtualHostImpl implements VirtualHost {
             initialiseAndesStores(hostConfig);
         }
 
-        AndesKernelBoot.recoverDistributedSlotMap();
+        AndesKernelBoot.clearMembershipEventsAndRecoverDistributedSlotMap();
 
         // This needs to be after the RT has been defined as it creates the default durable exchanges.
         initialiseModel(configuration);

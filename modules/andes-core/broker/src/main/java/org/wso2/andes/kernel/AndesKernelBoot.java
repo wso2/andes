@@ -115,12 +115,13 @@ public class AndesKernelBoot {
      *
      * @throws AndesException
      */
-    public static void recoverDistributedSlotMap() throws AndesException {
+    public static void clearMembershipEventsAndRecoverDistributedSlotMap() throws AndesException {
         if (AndesContext.getInstance().isClusteringEnabled()) {
             HazelcastAgent hazelcastAgent = HazelcastAgent.getInstance();
             try {
                 hazelcastAgent.acquireInitializationLock();
                 if (!hazelcastAgent.isClusterInitializedSuccessfully()) {
+                    contextStore.clearMembershipEvents();
                     clearSlotStorage();
 
                     // Initialize current node's last published ID

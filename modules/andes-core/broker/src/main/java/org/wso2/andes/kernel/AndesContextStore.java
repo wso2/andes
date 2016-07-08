@@ -22,6 +22,7 @@ import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
 import org.wso2.andes.server.cluster.NodeHeartBeatData;
+import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEvent;
 import org.wso2.andes.store.HealthAwareStore;
 
 import java.util.List;
@@ -536,4 +537,32 @@ public interface AndesContextStore extends HealthAwareStore {
      * @param nodeId Local node ID
      */
     void markNodeAsNotNew(String nodeId) throws AndesException;
+
+    /*
+     * ============================ Membership related methods =======================================
+     */
+    /**
+     * Method to store cluster membership based event.
+     * @param clusterNodes      the node by which the event is destined to be read
+     * @param membershipEventType the membership change type
+     * @param changedMember       member for which the event was triggered
+     */
+    void storeMembershipEvent(List<String> clusterNodes, int membershipEventType, String changedMember)
+            throws AndesException;
+
+    /**
+     * Method to read cluster membership changed events for a nodeID.
+     */
+    List<MembershipEvent> readMemberShipEvents(String nodeID) throws AndesException;
+
+    /**
+     * Method to remove all membership events from the store.
+     */
+    void clearMembershipEvents() throws AndesException;
+
+    /**
+     * Method to remove all membership events from the store for a particular node.
+     */
+    void clearMembershipEvents(String nodeID) throws AndesException;
+
 }

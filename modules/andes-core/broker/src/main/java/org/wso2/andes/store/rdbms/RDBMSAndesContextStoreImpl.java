@@ -31,6 +31,8 @@ import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.cluster.NodeHeartBeatData;
+import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEvent;
+import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEventType;
 import org.wso2.andes.store.AndesDataIntegrityViolationException;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
@@ -2302,5 +2304,116 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     private String generateSubscriptionID(AndesSubscription subscription) {
         return subscription.getSubscribedNode() + "_" + subscription.getSubscribedDestination() + "_" + subscription
                 .getSubscriptionID();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void storeMembershipEvent(List<String> clusterNodes, int membershipEventType, String changedMember)
+            throws AndesException {
+
+        Connection connection = null;
+        PreparedStatement storeMembershipEventPreparedStatement = null;
+        String task = "Storing membership event: " + membershipEventType + " for member: " + changedMember;
+        try {
+            connection = getConnection();
+            storeMembershipEventPreparedStatement =
+                    connection.prepareStatement(RDBMSConstants.PS_INSERT_MEMBERSHIP_EVENT);
+
+            for (String clusterNode : clusterNodes) {
+
+                storeMembershipEventPreparedStatement.setString(1, clusterNode);
+                storeMembershipEventPreparedStatement.setInt(2, membershipEventType);
+                storeMembershipEventPreparedStatement.setString(3, changedMember);
+                storeMembershipEventPreparedStatement.addBatch();
+            }
+            storeMembershipEventPreparedStatement.executeBatch();
+            connection.commit();
+        } catch (SQLException e) {
+            rollback(connection, task);
+            throw rdbmsStoreUtils.convertSQLException(
+                    "Error storing membership change: " + membershipEventType + " for member: " + changedMember, e);
+        } finally {
+            close(storeMembershipEventPreparedStatement, task);
+            close(connection, task);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<MembershipEvent> readMemberShipEvents(String nodeID) throws AndesException {
+
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        List<MembershipEvent> membershipEvents = new ArrayList<>();
+        String task = "retrieving membership events destined to: " + nodeID;
+        try {
+            connection = getConnection();
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_MEMBERSHIP_EVENT);
+            preparedStatement.setString(1, nodeID);
+            resultSet = preparedStatement.executeQuery();
+
+            while (resultSet.next()) {
+                MembershipEvent membershipEvent = new MembershipEvent(
+                        MembershipEventType.getTypeFromInt(resultSet.getInt(RDBMSConstants.MEMBERSHIP_CHANGE_TYPE)),
+                        resultSet.getString(RDBMSConstants.MEMBERSHIP_CHANGED_MEMBER_ID));
+                membershipEvents.add(membershipEvent);
+            }
+            return membershipEvents;
+        } catch (SQLException e) {
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + task, e);
+        } finally {
+            close(resultSet, task);
+            close(preparedStatement, task);
+            close(connection, task);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void clearMembershipEvents() throws AndesException {
+        Connection connection = null;
+        PreparedStatement clearMembershipEvents = null;
+        String task = "Clearing all membership events";
+        try {
+            connection = getConnection();
+            clearMembershipEvents = connection.prepareStatement(RDBMSConstants.PS_CLEAR_ALL_MEMBERSHIP_EVENTS);
+            clearMembershipEvents.executeUpdate();
+            connection.commit();
+        } catch (SQLException e) {
+            rollback(connection, task);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + task, e);
+        } finally {
+            close(clearMembershipEvents, task);
+            close(connection, task);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void clearMembershipEvents(String nodeID) throws AndesException {
+        Connection connection = null;
+        PreparedStatement clearMembershipEvents = null;
+        String task = "Clearing all membership events for node: " + nodeID;
+        try {
+            connection = getConnection();
+            clearMembershipEvents = connection.prepareStatement(RDBMSConstants.PS_CLEAN_MEMBERSHIP_EVENTS_FOR_NODE);
+            clearMembershipEvents.executeUpdate();
+            connection.commit();
+        } catch (SQLException e) {
+            rollback(connection, task);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + task, e);
+        } finally {
+            close(clearMembershipEvents, task);
+            close(connection, task);
+        }
     }
 }
