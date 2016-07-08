@@ -36,23 +36,7 @@ public class DisabledNetworkPartitionDetector implements NetworkPartitionDetecto
      * {@inheritDoc}
      */
     @Override
-    public void memberAdded(Object member, int clusterSize) {
-        // Do nothing
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void memberRemoved(Object member, int clusterSize) {
-        // Do nothing
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void networkPartitionMerged() {
+    public void stop() {
         // Do nothing
     }
 

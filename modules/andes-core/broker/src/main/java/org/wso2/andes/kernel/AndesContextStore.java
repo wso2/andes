@@ -21,6 +21,7 @@ package org.wso2.andes.kernel;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
+import org.wso2.andes.server.cluster.NodeHeartBeatData;
 import org.wso2.andes.store.HealthAwareStore;
 
 import java.util.List;
@@ -32,16 +33,16 @@ import java.util.TreeSet;
  * AndesContextStore is an abstraction of underlying data base to store information related to
  * exchanges, queues, bindings, durable subscriptions and queue message counts.
  */
-public interface AndesContextStore extends HealthAwareStore{
+public interface AndesContextStore extends HealthAwareStore {
 
     /**
      * Initialize the storage and makes a connection to the database.
+     *
      * @param connectionProperties ConfigurationProperties
      * @return returns the created DurableStoreConnection object created
      * @throws AndesException
      */
-    DurableStoreConnection init(ConfigurationProperties connectionProperties) throws
-                                                                                     AndesException;
+    DurableStoreConnection init(ConfigurationProperties connectionProperties) throws AndesException;
 
     /**
      * Get all durable encoded subscriptions as strings.
@@ -57,6 +58,7 @@ public interface AndesContextStore extends HealthAwareStore{
 
     /**
      * Check if a subscription present in database
+     *
      * @return True if subscription present, false otherwise
      * @throws AndesException
      */
@@ -70,7 +72,6 @@ public interface AndesContextStore extends HealthAwareStore{
      */
     void storeDurableSubscription(AndesSubscription subscription)
 		    throws AndesException;
-
 
     /**
      * Update already existing subscription.
@@ -129,10 +130,10 @@ public interface AndesContextStore extends HealthAwareStore{
     /**
      * Add message counting entry for queue. queue count is initialised to zero. The counter for
      * created queue can then be incremented and decremented.
-     * @see this.removeMessageCounterForQueue this.incrementMessageCountForQueue,
-     * this.decrementMessageCountForQueue
      *
      * @param destinationQueueName name of queue
+     * @see this.removeMessageCounterForQueue this.incrementMessageCountForQueue,
+     * this.decrementMessageCountForQueue
      */
     void addMessageCounterForQueue(String destinationQueueName) throws AndesException;
 
@@ -146,6 +147,7 @@ public interface AndesContextStore extends HealthAwareStore{
 
     /**
      * Store level method to reset the message counter of a given queue to 0.
+     *
      * @param storageQueueName name of the queue being purged
      * @throws AndesException
      */
@@ -158,15 +160,14 @@ public interface AndesContextStore extends HealthAwareStore{
      */
     void removeMessageCounterForQueue(String destinationQueueName) throws AndesException;
 
-
     /**
      * Increment message counter for a queue by a given incrementBy value.
+     *
      * @param destinationQueueName name of the queue
-     * @param incrementBy  increment counter by
+     * @param incrementBy          increment counter by
      * @throws AndesException
      */
     void incrementMessageCountForQueue(String destinationQueueName, long incrementBy) throws AndesException;
-
 
     /**
      * Decrement message counter for a queue.
@@ -192,14 +193,12 @@ public interface AndesContextStore extends HealthAwareStore{
      */
     List<AndesExchange> getAllExchangesStored() throws AndesException;
 
-
     /**
      * Delete all exchange information.
      *
      * @param exchangeName name of exchange
      */
     void deleteExchangeInformation(String exchangeName) throws AndesException;
-
 
     /**
      * Store a queue.
@@ -231,7 +230,7 @@ public interface AndesContextStore extends HealthAwareStore{
      *
      * @param exchange       name of the exchange binding represent
      * @param boundQueueName target queue binding is done
-     * @param bindingInfo     binding information as a string
+     * @param bindingInfo    binding information as a string
      * @throws AndesException
      */
     void storeBindingInformation(String exchange, String boundQueueName, String bindingInfo) throws AndesException;
@@ -255,20 +254,21 @@ public interface AndesContextStore extends HealthAwareStore{
 
     /**
      * Create a new slot in store.
-
-     * @param startMessageId start message id of slot
-     * @param endMessageId end message id of slot
+     *
+     * @param startMessageId   start message id of slot
+     * @param endMessageId     end message id of slot
      * @param storageQueueName name of storage queue name
-     * @param assignedNodeId id of assigned node
+     * @param assignedNodeId   id of assigned node
      * @throws AndesException
      */
     void createSlot(long startMessageId, long endMessageId, String storageQueueName, String assignedNodeId)
-		    throws AndesException;
+            throws AndesException;
 
     /**
      * Delete a slot from store.
+     *
      * @param startMessageId start message id of slot
-     * @param endMessageId end message id of slot
+     * @param endMessageId   end message id of slot
      * @return True if slot deletion successful
      * @throws AndesException
      */
@@ -276,6 +276,7 @@ public interface AndesContextStore extends HealthAwareStore{
 
     /**
      * Delete all slots by queue name.
+     *
      * @param queueName name of queue
      * @throws AndesException
      */
@@ -283,6 +284,7 @@ public interface AndesContextStore extends HealthAwareStore{
 
     /**
      * Delete message ids by queue name.
+     *
      * @param queueName name of queue
      * @throws AndesException
      */
@@ -290,34 +292,36 @@ public interface AndesContextStore extends HealthAwareStore{
 
     /**
      * Unassign and return slot.
+     *
      * @param startMessageId start message id of slot
-     * @param endMessageId end message id of slot
+     * @param endMessageId   end message id of slot
      * @throws AndesException
      */
     void deleteSlotAssignment(long startMessageId, long endMessageId) throws AndesException;
 
     /**
      * Unassign slots by queue name.
-     * @param nodeId id of node
+     *
+     * @param nodeId    id of node
      * @param queueName name of queue
      * @throws AndesException
      */
-    void deleteSlotAssignmentByQueueName(String nodeId, String queueName)
-            throws AndesException;
+    void deleteSlotAssignmentByQueueName(String nodeId, String queueName) throws AndesException;
 
     /**
      * Update assignment information in slot store.
-     * @param nodeId id of node
-     * @param queueName name of queue
+     *
+     * @param nodeId     id of node
+     * @param queueName  name of queue
      * @param startMsgId start message id of slot
-     * @param endMsgId end message id of slot
+     * @param endMsgId   end message id of slot
      * @throws AndesException
      */
-    void createSlotAssignment(String nodeId, String queueName, long startMsgId, long endMsgId)
-            throws AndesException;
+    void createSlotAssignment(String nodeId, String queueName, long startMsgId, long endMsgId) throws AndesException;
 
     /**
      * Select unassigned slots for a given queue name.
+     *
      * @param queueName name of queue
      * @return unassigned slot object if found
      * @throws AndesException
@@ -326,6 +330,7 @@ public interface AndesContextStore extends HealthAwareStore{
 
     /**
      * Get last assigned id for a queue.
+     *
      * @param queueName name of queue
      * @return last assigned id of queue
      * @throws AndesException
@@ -334,6 +339,7 @@ public interface AndesContextStore extends HealthAwareStore{
 
     /**
      * Set last assigned id for a given queue.
+     *
      * @param queueName name of queue
      * @param messageId id of message
      * @throws AndesException
@@ -342,6 +348,7 @@ public interface AndesContextStore extends HealthAwareStore{
 
     /**
      * Get local safe zone for a given node.
+     *
      * @param nodeId id of node
      * @return local safe zone of node
      * @throws AndesException
@@ -350,7 +357,8 @@ public interface AndesContextStore extends HealthAwareStore{
 
     /**
      * Set local safe zone for a given node.
-     * @param nodeId id of node
+     *
+     * @param nodeId    id of node
      * @param messageId id of message
      * @throws AndesException
      */
@@ -358,12 +366,14 @@ public interface AndesContextStore extends HealthAwareStore{
 
     /**
      * Remove entries for a given publishing node ID.
+     *
      * @param nodeId id of the leaving node
      */
     void removePublisherNodeId(String nodeId) throws AndesException;
 
     /**
      * Get all message published nodes.
+     *
      * @return set of published nodes
      * @throws AndesException
      */
@@ -371,17 +381,18 @@ public interface AndesContextStore extends HealthAwareStore{
 
     /**
      * Set slots states.
+     *
      * @param startMessageId start message id of slot
-     * @param endMessageId end message id of slot
-     * @param slotState state of slot
+     * @param endMessageId   end message id of slot
+     * @param slotState      state of slot
      * @throws AndesException
      */
-    void setSlotState(long startMessageId, long endMessageId, SlotState slotState)
-            throws AndesException;
+    void setSlotState(long startMessageId, long endMessageId, SlotState slotState) throws AndesException;
 
     /**
      * Get overlapped slots for a given queue.
-     * @param nodeId Node identifier
+     *
+     * @param nodeId    Node identifier
      * @param queueName name of queue
      * @return overlapped slot object
      * @throws AndesException
@@ -390,6 +401,7 @@ public interface AndesContextStore extends HealthAwareStore{
 
     /**
      * Add message ids to store.
+     *
      * @param queueName name of queue
      * @param messageId id of message
      * @throws AndesException
@@ -398,6 +410,7 @@ public interface AndesContextStore extends HealthAwareStore{
 
     /**
      * Get message ids for a given queue.
+     *
      * @param queueName name of queue
      * @return set of message ids
      * @throws AndesException
@@ -406,6 +419,7 @@ public interface AndesContextStore extends HealthAwareStore{
 
     /**
      * Delete a message id.
+     *
      * @param messageId id of message
      * @throws AndesException
      */
@@ -413,6 +427,7 @@ public interface AndesContextStore extends HealthAwareStore{
 
     /**
      * Get all assigned slots for give node.
+     *
      * @param nodeId id of node
      * @return set of assigned slot objects
      * @throws AndesException
@@ -421,6 +436,7 @@ public interface AndesContextStore extends HealthAwareStore{
 
     /**
      * Get all slots for a give queue.
+     *
      * @param queueName name of queue
      * @return set of slot object for queue
      * @throws AndesException
@@ -429,6 +445,7 @@ public interface AndesContextStore extends HealthAwareStore{
 
     /**
      * Get all active queue names.
+     *
      * @return set of queue names
      * @throws AndesException
      */
@@ -443,6 +460,7 @@ public interface AndesContextStore extends HealthAwareStore{
 
     /**
      * Clear and reset slot storage
+     *
      * @throws AndesException
      */
     void clearSlotStorage() throws AndesException;
@@ -452,4 +470,70 @@ public interface AndesContextStore extends HealthAwareStore{
      */
     void close();
 
+    /*
+     * ============================ Coordination related methods =======================================
+     */
+
+    /**
+     * Try to create the coordinator row using local instance ID.
+     *
+     * @param nodeId Local nodes ID
+     * @return True if row was created, false otherwise
+     */
+    boolean createCoordinatorEntry(String nodeId) throws AndesException;
+
+    /**
+     * Check if local node is the coordinator
+     *
+     * @param nodeId Local node ID
+     * @return True if the given node is the coordinator, false otherwise
+     */
+    boolean checkIsCoordinator(String nodeId) throws AndesException;
+
+    /**
+     * Update coordinator heartbeat value to current time
+     *
+     * @param nodeId Local node ID
+     */
+    boolean updateCoordinatorHeartbeat(String nodeId) throws AndesException;
+
+    /**
+     * Check if the coordinator is timed out using the heart beat value
+     *
+     * @param age maximum relative age with respect to current time in seconds
+     * @return True if timed out, False otherwise
+     */
+    boolean checkIfCoordinatorValid(int age) throws AndesException;
+
+    /**
+     * Remove current Coordinator entry from database
+     */
+    void removeCoordinator() throws AndesException;
+
+    /**
+     * Update Node heartbeat value to current time
+     *
+     * @param nodeId Local node ID
+     */
+    void updateNodeHeartbeat(String nodeId) throws AndesException;
+
+    /**
+     * Get node heart beat status for all existing nodes
+     */
+    List<NodeHeartBeatData> getAllNodeInformation() throws AndesException;
+
+    /**
+     * Remove heartbeat entry for the given node. This is normally done when the coordinator detects that the node
+     * has left the
+     *
+     * @param nodeId Local node ID
+     */
+    void removeNodeHeartbeat(String nodeId) throws AndesException;
+
+    /**
+     * Use this method to indicate that the coordinator detected the node addition to cluster.
+     *
+     * @param nodeId Local node ID
+     */
+    void markNodeAsNotNew(String nodeId) throws AndesException;
 }

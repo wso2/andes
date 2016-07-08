@@ -656,6 +656,14 @@ public enum AndesConfiguration implements ConfigurationProperty {
     SLOT_MANAGEMENT_STORAGE("slotManagement/storage", "RDBMS", String.class),
 
     /**
+     * Configuration used to enable RDBMS based coordination
+     * <p>
+     * default value: false
+     * </p>
+     */
+    RDBMS_BASED_COORDINATION("coordination/rdbmsBasedCoordination/@enabled", "false", Boolean.class),
+
+    /**
      * Enable network partition detection ( and surrounding functionality, such
      * as disconnecting subscriptions, enabling error based flow control if the
      * minimal node count becomes less than configured value.
@@ -664,8 +672,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * </p>
      */
     RECOVERY_NETWORK_PARTITIONS_DETECTION("recovery/networkPartitionsDetection/@enabled", "false",
-                                          Boolean.class),
-
+            Boolean.class),
     /**
      * The minimum node count the cluster should maintain for this node to
      * operate. if cluster size becomes less that configured value

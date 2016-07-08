@@ -30,12 +30,12 @@ import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
 import org.wso2.andes.metrics.MetricsConstants;
+import org.wso2.andes.server.cluster.NodeHeartBeatData;
 import org.wso2.andes.store.AndesDataIntegrityViolationException;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
 import org.wso2.carbon.metrics.manager.Timer.Context;
 
-import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -46,6 +46,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.TimeUnit;
+import javax.sql.DataSource;
 
 /**
  * ANSI SQL based Andes Context Store implementation. This is used to persist information of
@@ -1936,6 +1938,344 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     /**
      * {@inheritDoc}
      */
+    public boolean createCoordinatorEntry(String nodeId) throws AndesException{
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+
+        try {
+            connection = getConnection();
+
+            preparedStatement =
+                    connection.prepareStatement(RDBMSConstants.PS_INSERT_COORDINATOR_ROW);
+
+            preparedStatement.setInt(1, RDBMSConstants.COORDINATOR_ANCHOR);
+            preparedStatement.setString(2, nodeId);
+            preparedStatement.setLong(3, System.currentTimeMillis());
+
+            int updateCount = preparedStatement.executeUpdate();
+            connection.commit();
+
+            return updateCount != 0;
+        } catch (SQLException e) {
+            String errMsg =
+                    RDBMSConstants.TASK_ADD_COORDINATOR_ROW + " instance ID: " + nodeId;
+            rollback(connection, RDBMSConstants.TASK_ADD_MESSAGE_ID);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
+        } finally {
+            close(preparedStatement, RDBMSConstants.TASK_ADD_MESSAGE_ID);
+            close(connection, RDBMSConstants.TASK_ADD_MESSAGE_ID);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public boolean checkIsCoordinator(String nodeId) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+
+        try {
+            connection = getConnection();
+
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_GET_COORDINATOR_ROW);
+            preparedStatement.setString(1, nodeId);
+            resultSet = preparedStatement.executeQuery();
+
+            boolean isCoordinator;
+
+            if (resultSet.next()) {
+                isCoordinator = true;
+            } else {
+                isCoordinator = false;
+            }
+
+            return isCoordinator;
+        } catch (SQLException e) {
+            String errMsg =
+                    RDBMSConstants.TASK_CHECK_COORDINATOR_VALIDITY + " instance id: " + nodeId;
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
+        } finally {
+            close(resultSet, RDBMSConstants.TASK_CHECK_COORDINATOR_VALIDITY);
+            close(preparedStatement, RDBMSConstants.TASK_CHECK_COORDINATOR_VALIDITY);
+            close(connection, RDBMSConstants.TASK_CHECK_COORDINATOR_VALIDITY);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public boolean updateCoordinatorHeartbeat(String nodeId) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatementForCoordinatorUpdate = null;
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
+        try {
+
+            connection = getConnection();
+
+            // update node heartbeat
+            updateNodeHeartbeat(connection, nodeId);
+
+            preparedStatementForCoordinatorUpdate = connection.prepareStatement(RDBMSConstants.PS_UPDATE_COORDINATOR_HEARTBEAT);
+
+            preparedStatementForCoordinatorUpdate.setLong(1, System.currentTimeMillis());
+            preparedStatementForCoordinatorUpdate.setString(2, nodeId);
+
+            int updateCount = preparedStatementForCoordinatorUpdate.executeUpdate();
+
+            connection.commit();
+
+            return updateCount != 0;
+
+        } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_UPDATE_COORDINATOR_HEARTBEAT);
+            throw rdbmsStoreUtils.convertSQLException(
+                    "Error occurred while " + RDBMSConstants.TASK_UPDATE_COORDINATOR_HEARTBEAT + ". instance ID: "
+                            + nodeId, e);
+        } finally {
+            contextWrite.stop();
+            close(preparedStatementForCoordinatorUpdate, RDBMSConstants.TASK_UPDATE_COORDINATOR_HEARTBEAT);
+            close(connection, RDBMSConstants.TASK_UPDATE_COORDINATOR_HEARTBEAT);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public boolean checkIfCoordinatorValid(int age) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+
+        try {
+            connection = getConnection();
+
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_GET_COORDINATOR_HEARTBEAT);
+            resultSet = preparedStatement.executeQuery();
+
+            boolean isCoordinator;
+
+            if (resultSet.next()) {
+                long coordinatorHeartbeat = resultSet.getLong(1);
+                long heartbeatAge = System.currentTimeMillis() - coordinatorHeartbeat;
+                isCoordinator = TimeUnit.MILLISECONDS.toSeconds(heartbeatAge) <= age;
+
+                if (logger.isDebugEnabled()) {
+                    logger.debug( "isCoordinator: " + isCoordinator + ", heartbeatAge: " + age
+                            + ", coordinatorHeartBeat: " + coordinatorHeartbeat
+                            + ", currentTime: " + System.currentTimeMillis());
+                }
+            } else {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("No coordinator present in database");
+                }
+                isCoordinator = false;
+            }
+
+            return isCoordinator;
+        } catch (SQLException e) {
+            String errMsg =
+                    RDBMSConstants.TASK_GET_ALL_QUEUES;
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
+        } finally {
+            close(resultSet, RDBMSConstants.TASK_GET_ALL_QUEUES);
+            close(preparedStatement, RDBMSConstants.TASK_GET_ALL_QUEUES);
+            close(connection, RDBMSConstants.TASK_GET_ALL_QUEUES);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public void removeCoordinator() throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+
+        try {
+            connection = getConnection();
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_COORDINATOR);
+            preparedStatement.executeUpdate();
+
+            connection.commit();
+
+        } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_REMOVE_COORDINATOR);
+            throw rdbmsStoreUtils.convertSQLException("error occurred while " + RDBMSConstants.TASK_REMOVE_COORDINATOR, e);
+        } finally {
+            close(preparedStatement, RDBMSConstants.TASK_REMOVE_COORDINATOR);
+            close(connection, RDBMSConstants.TASK_REMOVE_COORDINATOR);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void updateNodeHeartbeat(String nodeId) throws AndesException {
+        Connection connection = null;
+        try {
+
+            connection = getConnection();
+
+            updateNodeHeartbeat(connection, nodeId);
+
+            connection.commit();
+
+        } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_UPDATE_COORDINATOR_HEARTBEAT);
+            throw rdbmsStoreUtils.convertSQLException(
+                    "Error occurred while " + RDBMSConstants.TASK_UPDATE_COORDINATOR_HEARTBEAT + ". instance ID: "
+                            + nodeId, e);
+        } finally {
+            close(connection, RDBMSConstants.TASK_UPDATE_COORDINATOR_HEARTBEAT);
+        }
+    }
+
+    private void updateNodeHeartbeat(Connection connection, String localInstanceId) throws SQLException {
+        PreparedStatement preparedStatementForNodeUpdate = null;
+
+        try {
+            preparedStatementForNodeUpdate = connection.prepareStatement(RDBMSConstants.PS_UPDATE_NODE_HEARTBEAT);
+
+            preparedStatementForNodeUpdate.setLong(1, System.currentTimeMillis());
+            preparedStatementForNodeUpdate.setString(2, localInstanceId);
+
+            int updateCount = preparedStatementForNodeUpdate.executeUpdate();
+
+            if (updateCount == 0) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("No heartbeat entry for current node");
+                }
+
+                // Create new entry
+                createNewNodeHeartbeatEntry(connection, localInstanceId);
+            }
+        } finally {
+            close(preparedStatementForNodeUpdate, RDBMSConstants.TASK_UPDATE_COORDINATOR_HEARTBEAT);
+        }
+    }
+
+    private void createNewNodeHeartbeatEntry(Connection connection, String localInstanceId) throws SQLException {
+        PreparedStatement preparedStatement = null;
+        try {
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_INSERT_NODE_HEARTBEAT_ROW);
+
+            preparedStatement.setString(1, localInstanceId);
+            preparedStatement.setLong(2, System.currentTimeMillis());
+
+            preparedStatement.executeUpdate();
+        } finally {
+            close(preparedStatement, RDBMSConstants.TASK_UPDATE_COORDINATOR_HEARTBEAT);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public List<NodeHeartBeatData> getAllNodeInformation() throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+
+        try {
+            connection = getConnection();
+
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_GET_ALL_NODE_HEARTBEAT);
+            resultSet = preparedStatement.executeQuery();
+
+            ArrayList<NodeHeartBeatData> nodeDataList = new ArrayList<>();
+            while (resultSet.next()) {
+                String nodeId = resultSet.getString(1);
+                long lastHeartbeat = resultSet.getLong(2);
+                boolean isNewNode = convertIntToBoolean(resultSet.getInt(3));
+                NodeHeartBeatData heartBeatData = new NodeHeartBeatData(nodeId, lastHeartbeat, isNewNode);
+
+                nodeDataList.add(heartBeatData);
+            }
+
+            return nodeDataList;
+
+        } catch (SQLException e) {
+            String errMsg =
+                    RDBMSConstants.TASK_GET_ALL_QUEUES;
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
+        } finally {
+            close(resultSet, RDBMSConstants.TASK_GET_ALL_QUEUES);
+            close(preparedStatement, RDBMSConstants.TASK_GET_ALL_QUEUES);
+            close(connection, RDBMSConstants.TASK_GET_ALL_QUEUES);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void removeNodeHeartbeat(String nodeId) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+
+        try {
+            connection = getConnection();
+
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_NODE_HEARTBEAT);
+            preparedStatement.setString(1, nodeId);
+
+            preparedStatement.executeUpdate();
+
+            connection.commit();
+
+        } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_REMOVE_NODE_HEARTBEAT);
+            throw rdbmsStoreUtils.convertSQLException("error occurred while " + RDBMSConstants.TASK_REMOVE_NODE_HEARTBEAT, e);
+        } finally {
+            close(preparedStatement, RDBMSConstants.TASK_REMOVE_NODE_HEARTBEAT);
+            close(connection, RDBMSConstants.TASK_REMOVE_NODE_HEARTBEAT);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void markNodeAsNotNew(String nodeId) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+
+        try {
+            connection = getConnection();
+
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_MARK_NODE_NOT_NEW);
+
+            preparedStatement.setString(1, nodeId);
+
+            int updateCount = preparedStatement.executeUpdate();
+
+            if (updateCount == 0) {
+                logger.warn("No record was updated while marking node as not new");
+            }
+
+            connection.commit();
+        } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_MARK_NODE_NOT_NEW);
+            throw rdbmsStoreUtils.convertSQLException("error occurred while " + RDBMSConstants.TASK_MARK_NODE_NOT_NEW, e);
+        } finally {
+            close(preparedStatement, RDBMSConstants.TASK_MARK_NODE_NOT_NEW);
+        }
+    }
+
+    /**
+     * Convert Integer values to boolean. 0 is considered as boolean false, and all other values as true
+     *
+     * @param value Integer value
+     * @return False if value equal to 0, True otherwise
+     */
+    private boolean convertIntToBoolean(int value) {
+        return value != 0;
+    }
+
+    /**
+         * {@inheritDoc}
+         */
     @Override
     public boolean isOperational(String testString, long testTime) {
         try {

@@ -24,6 +24,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
+import org.wso2.andes.server.cluster.error.detection.HazelcastBasedNetworkPartitionDetector;
 import org.wso2.andes.server.cluster.error.detection.NetworkPartitionDetector;
 
 import com.hazelcast.core.LifecycleEvent.LifecycleState;
@@ -39,7 +40,7 @@ public class HazelcastLifecycleListener implements LifecycleListener {
     /**
      * {@link NetworkPartitionDetector} is required to know about clusters being merged.
      */
-    private NetworkPartitionDetector networkPartitionDetector;
+    private HazelcastBasedNetworkPartitionDetector networkPartitionDetector;
     
     /**
      * the constructor
@@ -48,7 +49,7 @@ public class HazelcastLifecycleListener implements LifecycleListener {
      *            an implementation of how the network partition hare being
      *            detected.
      */
-    public HazelcastLifecycleListener(NetworkPartitionDetector networkPartitionDetector) {
+    public HazelcastLifecycleListener(HazelcastBasedNetworkPartitionDetector networkPartitionDetector) {
 		this.networkPartitionDetector = networkPartitionDetector;
 	}
     

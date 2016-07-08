@@ -28,6 +28,7 @@ import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
+import org.wso2.andes.server.cluster.NodeHeartBeatData;
 
 import java.util.List;
 import java.util.Map;
@@ -861,6 +862,124 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     public void clearSlotStorage() throws AndesException {
         try {
             wrappedAndesContextStoreInstance.clearSlotStorage();
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean createCoordinatorEntry(String nodeId) throws AndesException {
+        try {
+            return wrappedAndesContextStoreInstance.createCoordinatorEntry(nodeId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean checkIsCoordinator(String nodeId) throws AndesException {
+        try {
+            return wrappedAndesContextStoreInstance.checkIsCoordinator(nodeId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean updateCoordinatorHeartbeat(String nodeId) throws AndesException {
+        try {
+            return wrappedAndesContextStoreInstance.updateCoordinatorHeartbeat(nodeId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean checkIfCoordinatorValid(int age) throws AndesException {
+        try {
+            return wrappedAndesContextStoreInstance.checkIfCoordinatorValid(age);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void removeCoordinator() throws AndesException {
+        try {
+            wrappedAndesContextStoreInstance.removeCoordinator();
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void updateNodeHeartbeat(String nodeId) throws AndesException {
+        try {
+            wrappedAndesContextStoreInstance.updateNodeHeartbeat(nodeId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<NodeHeartBeatData> getAllNodeInformation() throws AndesException {
+        try {
+            return wrappedAndesContextStoreInstance.getAllNodeInformation();
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void removeNodeHeartbeat(String nodeId) throws AndesException {
+        try {
+            wrappedAndesContextStoreInstance.removeNodeHeartbeat(nodeId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void markNodeAsNotNew(String nodeId) throws AndesException{
+        try {
+            wrappedAndesContextStoreInstance.markNodeAsNotNew(nodeId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
