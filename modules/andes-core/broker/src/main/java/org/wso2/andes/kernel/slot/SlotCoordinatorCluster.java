@@ -37,7 +37,7 @@ public class SlotCoordinatorCluster implements SlotCoordinator, NetworkPartition
     public SlotCoordinatorCluster(){
         nodeId = AndesContext.getInstance().getClusterAgent().getLocalNodeIdentifier();
         instance = new ThriftSlotCoordinator();
-        AndesContext.getInstance().getClusterAgent().addNetworkPartitionListener(this);
+        AndesContext.getInstance().getClusterAgent().addNetworkPartitionListener(30, this);
     }
 
 
