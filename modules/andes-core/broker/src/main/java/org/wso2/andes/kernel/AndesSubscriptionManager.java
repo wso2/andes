@@ -36,15 +36,6 @@ import java.util.*;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 public class AndesSubscriptionManager implements NetworkPartitionListener {
 
     private static Log log = LogFactory.getLog(AndesSubscriptionManager.class);
@@ -621,8 +612,10 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
      * </p>
      */
     @Override
-    public synchronized void minimumNodeCountNotFulfilled(int currentNodeCount) {
-        isNetworkPartitioned = true;
+    public void minimumNodeCountNotFulfilled(int currentNodeCount) {
+        synchronized (this) {
+            isNetworkPartitioned = true;
+        }
         log.warn("Minimum node count is below required, forcefully disconnecting all subscribers");
         forcefullyDisconnectAllLocalSubscriptionsOfNode();
     }
