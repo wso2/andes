@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * SlotDelivery worker is responsible of distributing messages to subscribers. Messages will be
@@ -89,6 +90,11 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
     private volatile SettableFuture<Boolean> networkOutageDetected;
 
     /**
+     * Used to generate a unique ID for each worker
+     */
+    private final static AtomicInteger ID_GENERATOR= new AtomicInteger();
+
+    /**
      * Maximum number to retries retrieve metadata list for a given storage
      * queue ( in the errors occur in message stores)
      */
@@ -102,9 +108,11 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
         messageStoresUnavailable = null;
         FailureObservingStoreManager.registerStoreHealthListener(this);
 
-        if (AndesContext.getInstance().isClusteringEnabled()) {
+        AndesContext andesContext = AndesContext.getInstance();
+
+        if (andesContext.isClusteringEnabled()) {
             // network partition detection works only when clustered.
-            AndesContext.getInstance().getClusterAgent().addNetworkPartitionListener(this);
+            andesContext.getClusterAgent().addNetworkPartitionListener(50 + ID_GENERATOR.incrementAndGet(), this);
         }
     }
 

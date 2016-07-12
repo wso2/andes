@@ -227,5 +227,5 @@ public interface AMQProtocolSession extends AMQVersionAwareProtocolSession, Auth
 
     List<AMQChannel> getChannels();
 
-    void mgmtCloseChannel(int channelId);
+    void mgmtCloseChannel(int channelId) throws AMQException;
 }

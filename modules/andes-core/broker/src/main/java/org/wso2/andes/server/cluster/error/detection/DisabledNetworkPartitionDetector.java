@@ -60,7 +60,7 @@ public class DisabledNetworkPartitionDetector implements NetworkPartitionDetecto
      * {@inheritDoc}
      */
     @Override
-    public void addNetworkPartitionListener(NetworkPartitionListener listner) {
+    public void addNetworkPartitionListener(int priority, NetworkPartitionListener listner) {
         // Do nothing
 
     }

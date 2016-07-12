@@ -18,16 +18,18 @@
 
 package org.wso2.andes.server.cluster.error.detection;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-
+import com.hazelcast.core.HazelcastInstance;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 
-import com.hazelcast.core.HazelcastInstance;
+import java.util.Collections;
+import java.util.SortedMap;
+import java.util.TreeMap;
+import java.util.ArrayList;
+import java.util.Collection;
+
 
 /**
  * Detects network partitions (and minimum node count is not being in the
@@ -44,8 +46,8 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
      * Keeps track of entities who are interested in network-partitions related
      * events.
      */
-    private Collection<NetworkPartitionListener> networkPartitionListeners 
-                                        = Collections.synchronizedCollection(new ArrayList<NetworkPartitionListener>());
+    private SortedMap<Integer, NetworkPartitionListener> networkPartitionListeners
+                            = Collections.synchronizedSortedMap(new TreeMap<Integer, NetworkPartitionListener>());
 
     /**
      * Minimum number of nodes in the cluster ( or in a particular network
@@ -145,14 +147,22 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
      * <p>
      */
     @Override
-    public synchronized void addNetworkPartitionListener(NetworkPartitionListener listner) {
-        networkPartitionListeners.add(listner);
+    public synchronized void addNetworkPartitionListener(int priority, NetworkPartitionListener listener) {
+        NetworkPartitionListener previous = networkPartitionListeners.put(priority, listener);
+
+        // Throwing a RuntimeException when the same priority level is used twice. No need to replace the previous
+        // value in the map since server is unusable after this exception thrown. Exception type is chosen as
+        // RuntimeException since this is an error from the developer.
+        if (null != previous) {
+            throw new IllegalArgumentException("Priority value is already used. Please use a different priority level"
+                                               + " for " + listener);
+        }
 
         if (isNetworkPartitioned) {
             log.warn("network partition listener added while in cluster nodes doesn't meet minimum node count: " +
-                     minimumClusterSize + " listener : " + listner.toString());
+                     minimumClusterSize + " listener : " + listener.toString());
 
-            listner.minimumNodeCountNotFulfilled(-1);
+            listener.minimumNodeCountNotFulfilled(-1);
         }
 
     }
@@ -209,8 +219,12 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
      *            current size of the cluster
      */
     private void minimumNodeCountNotFulfilled(int currentClusterSize) {
-        for (NetworkPartitionListener listener : networkPartitionListeners) {
-            listener.minimumNodeCountNotFulfilled(currentClusterSize);
+        for (NetworkPartitionListener listener : networkPartitionListeners.values()) {
+            try {
+                listener.minimumNodeCountNotFulfilled(currentClusterSize);
+            } catch (Throwable e) {
+                log.warn("Error while updating minimum node count not fulfilled for listener: " + listener, e);
+            }
         }
     }
 
@@ -227,8 +241,12 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
      *            current size of the cluster
      */
     private void minimumNodeCountFulfilled(int currentClusterSize) {
-        for (NetworkPartitionListener listener : networkPartitionListeners) {
-            listener.minimumNodeCountFulfilled(currentClusterSize);
+        for (NetworkPartitionListener listener : networkPartitionListeners.values()) {
+            try {
+                listener.minimumNodeCountFulfilled(currentClusterSize);
+            } catch (Throwable e) {
+                log.warn("Error while updating minimum node count fulfilled for listener: " + listener, e);
+            }
         }
     }
 
@@ -236,7 +254,7 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
      * Broadcasts that clustering framework failed/shutdown
      */
     private void clusteringOutage() {
-        for (NetworkPartitionListener listener : networkPartitionListeners) {
+        for (NetworkPartitionListener listener : networkPartitionListeners.values()) {
             listener.clusteringOutage();
         }
     }

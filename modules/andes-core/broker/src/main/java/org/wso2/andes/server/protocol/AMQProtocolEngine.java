@@ -641,7 +641,7 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
         final AMQChannel channel = getChannel(channelId);
         if (channel == null)
         {
-            throw new IllegalArgumentException("Unknown channel id");
+            throw new AMQException("Unknown channel id " + channelId);
         }
         else
         {
@@ -1221,8 +1221,7 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
         }
     }
 
-    public void mgmtCloseChannel(int channelId)
-    {
+    public void mgmtCloseChannel(int channelId) throws AMQException {
         MethodRegistry methodRegistry = getMethodRegistry();
         ChannelCloseBody responseBody =
                 methodRegistry.createChannelCloseBody(
@@ -1245,14 +1244,7 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
         {
             writeFrame(responseBody.generateFrame(channelId));
 
-            try
-            {
-                closeChannel(channelId);
-            }
-            catch (AMQException ex)
-            {
-                throw new RuntimeException(ex);
-            }
+            closeChannel(channelId);
         }
         finally
         {
