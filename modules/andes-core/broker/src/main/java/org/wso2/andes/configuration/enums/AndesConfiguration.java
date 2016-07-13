@@ -546,24 +546,42 @@ public enum AndesConfiguration implements ConfigurationProperty {
     PERFORMANCE_TUNING_FAILOVER_VHOST_SYNC_TASK_INTERVAL("recovery" +
             "/vHostSyncTaskInterval", "900", Integer.class),
 
+    /**
+     * Enable/ Disable expiry check in the DLC
+     */
+    PERFORMANCE_TUNING_ALLOW_EXPIRATION_CHECK_IN_DLC
+            ("performanceTuning/messageExpiration/allowExpiryCheckInDLC", "false", Boolean.class),
 
      /**
      * Since server startup, whenever this interval elapses, the expired messages will be cleared from the store.
-      * This messageExpiration configuration was disabled in the broker.xml configuration file. This is for future use.
+      * specified in seconds.
      */
     PERFORMANCE_TUNING_MESSAGE_EXPIRATION_CHECK_INTERVAL
-            ("performanceTuning/messageExpiration/checkInterval", "10000", Integer.class),
+            ("performanceTuning/messageExpiration/checkInterval", "900", Integer.class),
+
+    /**
+     * In order to have a batch delete for the expired messages captured at the message flusher, accumulate them
+     * in to a set and delete them periodically as a batch. specified in seconds
+     *
+     */
+    PERFORMANCE_TUNING_EXPIRED_MESSAGE_DELETION_INTERVAL
+            ("performanceTuning/messageExpiration/checkInterval", "900", Integer.class),
 
     /**
      * The number of expired messages to be cleared in one store operation.
-     * This messageExpiration configuration was disabled in the broker.xml configuration file. This is for future use.
+     *
      */
     PERFORMANCE_TUNING_MESSAGE_EXPIRATION_BATCH_SIZE
             ("performanceTuning/messageExpiration/messageBatchSize", "1000", Integer.class),
-
+    /**
+     * The number of slots for one queue which may be be allocated for slot delivery worker in near future.
+     * Because of that the deletion task should not execute on those slots. specified in slot counts.
+     */
+    PERFORMANCE_TUNING_SAFE_DELETE_REGION_SLOT_COUNT
+            ("performanceTuning/messageExpiration/safetySlotCount", "3", Integer.class),
     /**
      * Maximum batch size (Messages) for a transaction. Exceeding this limit will result in a failure in the subsequent
-     * commit request. Default is set to 10MB. Limit is calculated considering the payload of messages
+     * commit request. Default is set to 10MB. Limit is calculated considering the payload of messages.
      */
     MAX_TRANSACTION_BATCH_SIZE ("transaction/maxBatchSizeInBytes", "10000000", Integer.class),
 

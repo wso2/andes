@@ -34,6 +34,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 
 /**
@@ -70,12 +73,10 @@ public class MessageFlusher {
      */
     private MessageDeliveryStrategy topicMessageFlusher;
 
-
     /**
-     * List of delivery rules to evaluate. Before scheduling message to protocol for
-     * delivery we evaluate these and if failed we take necessary actions
+     * Head of the delivery message responsibility chain
      */
-    private List<CommonDeliveryRule> DeliveryRulesList = new ArrayList<>();
+    private DeliveryResponsibility deliveryResponsibilityHead;
 
 
 
@@ -102,48 +103,43 @@ public class MessageFlusher {
             this.topicMessageFlusher = new SlowestSubscriberTopicMessageDeliveryImpl(subscriptionEngine);
         }
 
-        initializeDeliveryRules();
+        initializeDeliveryResponsibilityComponents();
 
     }
 
     public Integer getMaxNumberOfReadButUndeliveredMessages() {
         return maxNumberOfReadButUndeliveredMessages;
     }
-
     /**
-     * Initialize common delivery rules. These delivery rules apply
-     * irrespective of the protocol
+     * Initialize the delivery filter chain
      */
-    private void initializeDeliveryRules() {
+    private void initializeDeliveryResponsibilityComponents(){
+        //assign the head of the handler chain
+        deliveryResponsibilityHead = new PurgedMessageHandler();
+        ExpiredMessageHandler expiredMessageHandler =  new ExpiredMessageHandler();
+        //link the second handler to the head
+        deliveryResponsibilityHead.setNextDeliveryFilter(expiredMessageHandler);
+        //link the third handler
+        expiredMessageHandler.setNextDeliveryFilter(new DeliveryMessageHandler());
 
-/*        // NOTE: Feature Message Expiration moved to a future release
-        //checking message expiration deliver rule
-        deliveryRulesList.add(new MessageExpiredRule());*/
+        int threadPoolCount = 1;
+        int preDeliveryDeletionTaskScheduledPeriod = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_EXPIRED_MESSAGE_DELETION_INTERVAL);
+        //executor service for pre delivery deletion task
+        ScheduledExecutorService expiryMessageDeletionTaskScheduler = Executors.
+                newScheduledThreadPool(threadPoolCount);
+        //pre-delivery deletion task initialization
+        PreDeliveryExpiryMessageDeletionTask preDeliveryExpiryMessageDeletionTask =
+                                                        new PreDeliveryExpiryMessageDeletionTask();
+        //Set the expiry message deletion task to the expired message handler
+        expiredMessageHandler.setExpiryMessageDeletionTask(preDeliveryExpiryMessageDeletionTask);
+        //schedule the task at the specified intervals
+        expiryMessageDeletionTaskScheduler.scheduleAtFixedRate(preDeliveryExpiryMessageDeletionTask,
+                preDeliveryDeletionTaskScheduledPeriod, preDeliveryDeletionTaskScheduledPeriod
+                ,TimeUnit.SECONDS);
 
-        //checking message purged delivery rule
-        DeliveryRulesList.add(new MessagePurgeRule());
-    }
 
-    /**
-     * Evaluating Delivery rules before sending the messages
-     *
-     * @param message AMQ Message
-     * @param protocolType The protocol type of the message
-     * @param destinationType The destination type of the message
-     * @return IsOKToDelivery
-     * @throws AndesException
-     */
-    private boolean evaluateDeliveryRules(DeliverableAndesMetadata message, ProtocolType protocolType,
-                                          DestinationType destinationType) throws AndesException {
-        boolean isOKToDelivery = true;
 
-        for (CommonDeliveryRule rule : DeliveryRulesList) {
-            if (!rule.evaluate(message, protocolType, destinationType)) {
-                isOKToDelivery = false;
-                break;
-            }
-        }
-        return isOKToDelivery;
     }
 
     /**
@@ -356,6 +352,8 @@ public class MessageFlusher {
         deliverMessageAsynchronously(subscription, message);
     }
 
+
+
     /**
      * Submit the messages to a thread pool to deliver asynchronously
      *
@@ -365,20 +363,8 @@ public class MessageFlusher {
     public void deliverMessageAsynchronously(LocalSubscription subscription, DeliverableAndesMetadata message)
             throws AndesException {
 
-        if(evaluateDeliveryRules(message, subscription.getProtocolType(), subscription.getDestinationType())) {
-            if(log.isDebugEnabled()) {
-                log.debug("Scheduled message id= " + message.getMessageID() + " to be sent to subscription= " + subscription);
-            }
-            //mark message as came into the subscription for deliver
+          deliveryResponsibilityHead.handleDeliveryMessage(subscription,message);
 
-            message.markAsDispatchedToDeliver(subscription.getChannelID());
-
-            ProtocolMessage protocolMessage = message.generateProtocolDeliverableMessage(subscription.getChannelID());
-            flusherExecutor.submit(subscription, protocolMessage);
-        } else {
-            log.warn("Common delivery rules failed for message id " + message.getMessageID()
-                    + " Hence not delivered.");
-        }
     }
 
     /**

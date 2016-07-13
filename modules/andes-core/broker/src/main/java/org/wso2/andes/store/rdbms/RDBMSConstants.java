@@ -41,7 +41,7 @@ public class RDBMSConstants {
      * <li>persistence/contextStore/</li>
      * </ul>
      * </p>
-     * 
+     *
      */
     protected static final String STORE_UNAVAILABLE_SQL_STATE_CLASSES = "storeUnavailableSQLStateClasses";
 
@@ -58,10 +58,10 @@ public class RDBMSConstants {
      * <li>persistence/contextStore/</li>
      * </ul>
      * </p>
-     * 
+     *
      */
     protected static final String DATA_INTEGRITY_VIOLATION_SQL_STATE_CLASSES = "integrityViolationSQLStateClasses";
-    
+
     /**
      * Configuration name used to specify SQL state code classes (i.e first two
      * digits)
@@ -73,13 +73,13 @@ public class RDBMSConstants {
      * <li>persistence/contextStore/</li>
      * </ul>
      * </p>
-     * 
+     *
      */
     protected static final String DATA_ERROR_SQL_STATE_CLASSES = "dataErrorSQLStateClasses";
-    
-    
+
+
     protected static final String TRANSACTION_ROLLBACK_ERROR_SQL_STATE_CLASSES = "transactionRollbackSQLStateClasses";
-    
+
     // Message Store tables
     protected static final String CONTENT_TABLE = "MB_CONTENT";
     protected static final String METADATA_TABLE = "MB_METADATA";
@@ -89,7 +89,7 @@ public class RDBMSConstants {
     protected static final String RETAINED_METADATA_TABLE = "MB_RETAINED_METADATA";
     protected static final String RETAINED_CONTENT_TABLE = "MB_RETAINED_CONTENT";
 
-   
+
     // Message Store table columns
     protected static final String MESSAGE_ID = "MESSAGE_ID";
     protected static final String QUEUE_ID = "QUEUE_ID";
@@ -174,8 +174,9 @@ public class RDBMSConstants {
             "INSERT INTO " + EXPIRATION_TABLE + " ("
             + MESSAGE_ID + ","
             + EXPIRATION_TIME + ","
+            + DLC_QUEUE_ID + ","
             + DESTINATION_QUEUE + ")"
-            + " VALUES ( ?,?,? )";
+            + " VALUES ( ?,?,-1,? )";
 
     protected static final String PS_INSERT_QUEUE =
             "INSERT INTO " + QUEUES_TABLE + " ("
@@ -262,13 +263,13 @@ public class RDBMSConstants {
             + " ORDER BY " + MESSAGE_ID;
 
     protected static final String PS_SELECT_MESSAGE_IDS_FROM_QUEUE =
-            "SELECT " + MESSAGE_ID 
+            "SELECT " + MESSAGE_ID
             + " FROM " + METADATA_TABLE
             + " WHERE " + MESSAGE_ID + ">?"
             + " AND " + QUEUE_ID + "=?"
             + " AND " + DLC_QUEUE_ID + "=-1"
             + " ORDER BY " + MESSAGE_ID;
-    
+
     protected static final String PS_SELECT_METADATA_IN_DLC_FOR_QUEUE =
             "SELECT " + MESSAGE_ID + "," + METADATA
             + " FROM " + METADATA_TABLE
@@ -289,10 +290,6 @@ public class RDBMSConstants {
             + " FROM " + METADATA_TABLE
             + " WHERE " + QUEUE_ID + "=?"
             + " ORDER BY " + MESSAGE_ID ;
-
-    protected static final String PS_DELETE_EXPIRY_DATA =
-            "DELETE  FROM " + EXPIRATION_TABLE
-            + " WHERE " + MESSAGE_ID + "=?";
 
     protected static final String PS_DELETE_METADATA_FROM_QUEUE =
             "DELETE  FROM " + METADATA_TABLE
@@ -320,7 +317,15 @@ public class RDBMSConstants {
     protected static final String PS_SELECT_EXPIRED_MESSAGES =
             "SELECT " + MESSAGE_ID + "," + DESTINATION_QUEUE
             + " FROM " + EXPIRATION_TABLE
-            + " WHERE " + EXPIRATION_TIME + "<" + System.currentTimeMillis();
+            + " WHERE " + EXPIRATION_TIME + "<" + System.currentTimeMillis()
+            + " AND " + MESSAGE_ID + ">?"
+            + " AND " + DESTINATION_QUEUE + "=?";
+
+    protected static final String PS_SELECT_EXPIRED_MESSAGES_FROM_DLC =
+            "SELECT " + MESSAGE_ID + " FROM " + EXPIRATION_TABLE
+            + " WHERE " + EXPIRATION_TIME + "<" + System.currentTimeMillis()
+            + " AND " + DLC_QUEUE_ID + "!= -1";
+
 
     protected static final String PS_SELECT_QUEUE_ID =
             "SELECT " + QUEUE_ID
@@ -734,7 +739,7 @@ public class RDBMSConstants {
             + " FROM " + MSG_STORE_STATUS_TABLE
             + " WHERE " + NODE_ID +"=?"
             + " AND " + TIME_STAMP+ "=?";
-    
+
     /**
      * Prepared Statement to test deletes are working for message store
      */
@@ -825,6 +830,14 @@ public class RDBMSConstants {
             "UPDATE " + METADATA_TABLE
             + " SET " + DLC_QUEUE_ID + "=?"
             + " WHERE " + MESSAGE_ID + "=?";
+
+    /**
+     * Prepared statement to update DLC status in expiry table
+     */
+    protected static final String PS_UPDATE_DLC_STATUS_IN_EXPIRY_TABLE =
+            "UPDATE " + EXPIRATION_TABLE
+                    + " SET " + DLC_QUEUE_ID + "=?"
+                    + " WHERE " + MESSAGE_ID + "=?";
 
     // Message Store related jdbc tasks executed
     protected static final String TASK_STORING_MESSAGE_PARTS = "storing message parts.";

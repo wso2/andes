@@ -21,15 +21,22 @@ package org.wso2.andes.kernel.slot;
 import com.gs.collections.impl.map.mutable.ConcurrentHashMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.MessagingEngine;
 
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ExecutionException;
 
 /**
  * This class is  responsible of slot allocating, slot creating, slot re-assigning and slot
  * managing tasks in standalone mode
  */
-public class SlotManagerStandalone {
+public class SlotManagerStandalone extends SafeDeletion {
 
     /**
      * To keep message IDs against queues.
@@ -52,6 +59,7 @@ public class SlotManagerStandalone {
      * set of slots
      */
     private ConcurrentHashMap<String, TreeSet<Slot>> slotAssignmentMap;
+
 
     private static SlotManagerStandalone slotManagerStandalone = new SlotManagerStandalone();
 
@@ -119,25 +127,40 @@ public class SlotManagerStandalone {
      * @return Slot object
      */
     private Slot getFreshSlot(String queueName) {
+
         Slot slotToBeAssigned = null;
         TreeSet<Long> messageIDSet = slotIDMap.get(queueName);
-        if (null != messageIDSet && !messageIDSet.isEmpty()) {
-            slotToBeAssigned = new Slot();
-            Long lastAssignedId = queueToLastAssignedIDMap.get(queueName);
-            if (lastAssignedId != null) {
-                slotToBeAssigned.setStartMessageId(lastAssignedId + 1);
-            } else {
-                slotToBeAssigned.setStartMessageId(0L);
+        //start msgID will be last assigned ID + 1 so that slots are created with no
+        // message ID gaps in-between
+        Long lastAssignedId = queueToLastAssignedIDMap.get(queueName);
+        /**
+         * The slot is allocated only if the request is not for the queue in which current deletion task is running and message id range
+         * is not in the current deletion range. Otherwise slot will not be given
+         */
+        if (!currentDeletionQueue.equals(queueName) || currentDeletionRangeLowerBoundId != lastAssignedId + 1) {
+
+            if (null != messageIDSet && !messageIDSet.isEmpty()) {
+                slotToBeAssigned = new Slot();
+
+                if (lastAssignedId != null) {
+                    slotToBeAssigned.setStartMessageId(lastAssignedId + 1);
+                } else {
+                    slotToBeAssigned.setStartMessageId(0L);
+                }
+                slotToBeAssigned.setEndMessageId(messageIDSet.pollFirst());
+                slotToBeAssigned.setStorageQueueName(queueName);
+                slotIDMap.put(queueName, messageIDSet);
+                if (log.isDebugEnabled()) {
+                    log.debug(slotToBeAssigned.getEndMessageId() + " removed to slotIdMap. Current " +
+                            "values in " +
+                            "map " + messageIDSet);
+                }
+                queueToLastAssignedIDMap.put(queueName, slotToBeAssigned.getEndMessageId());
             }
-            slotToBeAssigned.setEndMessageId(messageIDSet.pollFirst());
-            slotToBeAssigned.setStorageQueueName(queueName);
-            slotIDMap.put(queueName, messageIDSet);
-            if (log.isDebugEnabled()) {
-                log.debug(slotToBeAssigned.getEndMessageId() + " removed to slotIdMap. Current " +
-                        "values in " +
-                        "map " + messageIDSet);
-            }
-            queueToLastAssignedIDMap.put(queueName, slotToBeAssigned.getEndMessageId());
+
+        } else {
+            log.warn("Slot delivery worker is requesting the messages which are currently in deletion range for " +
+                    "queue" + queueName);
         }
 
         return slotToBeAssigned;
@@ -274,4 +297,22 @@ public class SlotManagerStandalone {
         return slotIDMap.get(queueName).last();
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getSafeZoneLowerBoundId(String queueName) throws AndesException {
+
+        TreeSet<Long> messageIDSet = slotIDMap.get(queueName);
+        long lowerBoundId = -1;
+        //set the lower bound Id for safety delete region as the safety slot count interval upper bound id + 1
+        if (messageIDSet.size() >= safetySlotCount){
+            lowerBoundId = messageIDSet.
+                    toArray(new Long[messageIDSet.size()])[safetySlotCount - 1] + 1;
+        }
+        //set the deletion task specific state
+        setDeletionTaskState(queueName,lowerBoundId);
+        return lowerBoundId;
+
+    }
 }

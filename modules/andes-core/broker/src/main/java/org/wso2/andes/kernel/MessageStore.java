@@ -106,6 +106,25 @@ public interface MessageStore extends HealthAwareStore {
     void moveMetadataToDLC(List<AndesMessageMetadata> messages, String dlcQueueName) throws AndesException;
 
     /**
+     * Method to move a message to dead letter channel when the expiry check on DLC is enabled
+     * by configuration
+     * @param messageId    the message id to move
+     * @param dlcQueueName the dead letter channel queue name for the message to be moved
+     * @throws AndesException
+     */
+    void moveMetadataToDLCWhenExpiryCheckEnabled(long messageId, String dlcQueueName) throws AndesException;
+
+    /**
+     * Method to move a list of messages to a specified dead letter channel when the expiry check on
+     * DLC is enabled by configuration
+     * @param messages     the list of messages to move
+     * @param dlcQueueName the dead letter channel queue name for the message to be moved
+     * @throws AndesException
+     */
+    void moveMetadataToDLCWhenExpiryCheckEnabled(List<AndesMessageMetadata> messages, String dlcQueueName) throws AndesException;
+
+
+    /**
      * Update the meta data for the given message with the given information in the AndesMetaData. Update destination
      * and meta data bytes.
      *
@@ -225,6 +244,14 @@ public interface MessageStore extends HealthAwareStore {
             throws AndesException;
 
     /**
+     *  Delete a set of messages based on their message ids
+     * @param messagesToRemove list of message ids of messages that need to be removed
+     * @throws AndesException
+     */
+    void deleteMessages(List<Long> messagesToRemove)
+            throws AndesException;
+
+    /**
      * Method to delete a list of messages from the dead letter channel.
      *
      * @param messagesToRemove the list of messages to remove
@@ -235,19 +262,19 @@ public interface MessageStore extends HealthAwareStore {
     /**
      * get expired messages from store
      *
-     * @param limit max num of messages to read
-     * @return AndesRemovableMetadata
+     * @param lowerBoundMessageID starting message Id of deletion safe zone
+     * @param  queueName Queue name
+     * @return List of expired message Ids
      * @throws AndesException
      */
-    List<AndesMessageMetadata> getExpiredMessages(int limit) throws AndesException;
+    List<Long> getExpiredMessages(long lowerBoundMessageID, String queueName) throws AndesException;
 
     /**
-     * delete messages from expiry queue
-     *
-     * @param messagesToRemove message IDs to remove
+     * get expired messages from DLC
+     * @return List of expired message Ids
      * @throws AndesException
      */
-    void deleteMessagesFromExpiryQueue(LongArrayList messagesToRemove) throws AndesException;
+    List<Long> getExpiredMessagesFromDLC() throws AndesException;
 
     /**
      * add messages to expiry queue
