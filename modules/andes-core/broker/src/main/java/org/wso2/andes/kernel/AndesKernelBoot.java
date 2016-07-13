@@ -70,6 +70,11 @@ public class AndesKernelBoot {
     private static ScheduledExecutorService andesRecoveryTaskScheduler;
 
     /**
+     * Scheduled thread pool executor to run periodic expiry message deletion task
+     */
+    private static ScheduledExecutorService expiryMessageDeletionTaskScheduler;
+
+    /**
      * Message Expiration worker task
      */
     private static MessageExpirationWorker messageExpirationWorker;
@@ -97,7 +102,7 @@ public class AndesKernelBoot {
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
                 .setNameFormat("AndesRecoveryTask-%d").build();
         andesRecoveryTaskScheduler = Executors.newScheduledThreadPool(threadPoolCount);
-        messageExpirationWorker = new MessageExpirationWorker();
+        expiryMessageDeletionTaskScheduler = Executors.newScheduledThreadPool(threadPoolCount);
         startAndesComponents();
         startHouseKeepingThreads();
         syncNodeWithClusterState();
@@ -342,12 +347,25 @@ public class AndesKernelBoot {
 
         //reload exchanges/queues/bindings and subscriptions
         AndesRecoveryTask andesRecoveryTask = new AndesRecoveryTask();
-        Integer scheduledPeriod = AndesConfigurationManager.readValue
+        //deleted the expired message from db
+        DBBasedExpiryMessageDeletionTask dbBasedExpiryMessageDeletionTask = new DBBasedExpiryMessageDeletionTask();
+        //delete the expired messages captured from the flusher
+        SetBasedExpiryMessageDeletionTask setBasedExpiryMessageDeletionTask = new SetBasedExpiryMessageDeletionTask();
+
+        Integer recoveryTaskScheduledPeriod = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_FAILOVER_VHOST_SYNC_TASK_INTERVAL);
-        andesRecoveryTaskScheduler.scheduleAtFixedRate(andesRecoveryTask, scheduledPeriod,
-                                                       scheduledPeriod, TimeUnit.SECONDS);
-        //start the message expiration worker task
-        messageExpirationWorker.startWorking();
+        Integer dbBasedDeletionTaskScheduledPeriod = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_MESSAGE_EXPIRATION_CHECK_INTERVAL);
+        Integer setBasedDeletionTaskScheduledPeriod = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_EXPIRED_MESSAGE_DELETION_INTERVAL);
+
+        andesRecoveryTaskScheduler.scheduleAtFixedRate(andesRecoveryTask, recoveryTaskScheduledPeriod,
+                                                       recoveryTaskScheduledPeriod, TimeUnit.SECONDS);
+        expiryMessageDeletionTaskScheduler.scheduleAtFixedRate(dbBasedExpiryMessageDeletionTask,
+                dbBasedDeletionTaskScheduledPeriod, dbBasedDeletionTaskScheduledPeriod,TimeUnit.SECONDS);
+        expiryMessageDeletionTaskScheduler.scheduleAtFixedRate(setBasedExpiryMessageDeletionTask,
+                setBasedDeletionTaskScheduledPeriod,setBasedDeletionTaskScheduledPeriod,TimeUnit.SECONDS);
+
         ClusterResourceHolder.getInstance().setAndesRecoveryTask(andesRecoveryTask);
     }
 

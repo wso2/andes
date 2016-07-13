@@ -22,6 +22,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
+import org.wso2.andes.kernel.slot.SlotManagerStandalone;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -87,7 +88,9 @@ public class MessageExpirationWorker extends Thread {
                         MessagingEngine.getInstance().deleteMessages(new ArrayList<AndesMessageMetadata>(expiredMessageSet));
                     }
 
-                    if (AndesContext.getInstance().getClusterAgent().isCoordinator()) {
+                    boolean isClusterEnabled = AndesContext.getInstance().isClusteringEnabled();
+
+                    if ( isClusterEnabled && AndesContext.getInstance().getClusterAgent().isCoordinator()) {
                         //only run in coordinator node
                         Set<String> queues = andesContextStore.getAllQueues();
 
@@ -115,29 +118,28 @@ public class MessageExpirationWorker extends Thread {
                                     //in order to stop the slot delivery worker to this queue in the deletion range
                                     SlotManagerClusterMode.setCurrentDeletionQueue(queueName);
                                     SlotManagerClusterMode.setCurrentDeletionRangelowerboundID(currentDeletionRangeLowerBoundId);
+                                    SlotManagerStandalone.setCurrentDeletionQueue(queueName);
+                                    SlotManagerStandalone.setCurrentDeletionRangelowerboundID(currentDeletionRangeLowerBoundId);
 
                                     //delete message metadata, content from the db
-                                    MessagingEngine.getInstance().deleteMessagesFromExpiryQueue(expiredMessages);
+                                    MessagingEngine.getInstance().deleteMessages(expiredMessages);
 
                                     //since the deletion task is finished that queue no need to hold the slot delivery worker for that queue
                                     SlotManagerClusterMode.setCurrentDeletionQueue("");
                                     SlotManagerClusterMode.setCurrentDeletionRangelowerboundID(0L);
-
-                                    //delete the message entry from the expiry table
-                                    MessagingEngine.getInstance().deleteMessages(expiredMessages);
+                                    SlotManagerStandalone.setCurrentDeletionQueue("");
+                                    SlotManagerStandalone.setCurrentDeletionRangelowerboundID(0L);
 
                                     if (log.isDebugEnabled()) {
                                         log.debug("Expired message count for queue : " + queueName + "is" + expiredMessages.size());
                                     }
 
-
                                 }
-
 
                             }
 
-
                         }
+
                     }
                     //sleep the message expiration worker for specified amount of time
                     sleepForWaitInterval(workerWaitInterval);

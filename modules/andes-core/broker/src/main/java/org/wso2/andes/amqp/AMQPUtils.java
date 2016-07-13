@@ -217,7 +217,7 @@ public class AMQPUtils {
         AndesMessageMetadata metadata = new AndesMessageMetadata(amqMessage.getMessageId(),underlying,true);
         //In andes message set the expiry time as the addition of arrival time with the ttl
         long messageExpiryTime = 0L;
-        if(amqMessage.getExpiration() != 0L){
+        if( 0L != amqMessage.getExpiration()){
             messageExpiryTime = amqMessage.getArrivalTime() + amqMessage.getExpiration();
         }
         metadata.setExpirationTime(messageExpiryTime);

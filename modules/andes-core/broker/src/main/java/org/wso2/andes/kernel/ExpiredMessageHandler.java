@@ -20,6 +20,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.subscription.LocalSubscription;
 
+/**
+ * This class skips the expired messages from delivery and add them into a set for
+ * a batch delete
+ */
 public class ExpiredMessageHandler implements DeliveryResponsibility {
 
     private static Log log = LogFactory.getLog(ExpiredMessageHandler.class);
@@ -44,8 +48,11 @@ public class ExpiredMessageHandler implements DeliveryResponsibility {
         //Check if destination entry has expired. Any expired message will not be delivered
         if (message.isExpired()) {
             log.warn("Message is expired. Therefore, it will not be sent. : id= " + message.getMessageID());
+            //since this message is not going to be delivered, no point in wait for ack
+            message.getSlot().decrementPendingMessageCount();
             //add the expired messages to a list for a batch delete
-            MessageExpirationWorker.expiredMessageSet.add(message);
+            //TODO: Is it better to have a listener instead of task
+            SetBasedExpiryMessageDeletionTask.getExpiredMessageSet().add(message);
         } else {
             nextDeliveryResponsibility.handleDeliveryMessage(subscription, message);
         }

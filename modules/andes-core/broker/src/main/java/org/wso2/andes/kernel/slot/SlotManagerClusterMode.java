@@ -209,6 +209,9 @@ public class SlotManagerClusterMode {
                     log.debug("Giving a slot from fresh pool. Slot: " + slotToBeAssigned.getId());
                 }
             }
+        }else{
+            log.warn("Slot delivery worker is requesting the messages which are currently in deletion range for " +
+                    "queue" + queueName);
         }
 
         return slotToBeAssigned;

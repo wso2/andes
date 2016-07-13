@@ -20,6 +20,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.subscription.LocalSubscription;
 
+/**
+ * This class is for submit the messages to a thread pool to deliver asynchronously
+ */
 public class DeliveryMessageHandler implements DeliveryResponsibility {
 
     private static Log log = LogFactory.getLog(DeliveryMessageHandler.class);

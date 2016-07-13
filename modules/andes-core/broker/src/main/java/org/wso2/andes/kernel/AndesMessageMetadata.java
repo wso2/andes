@@ -430,8 +430,13 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof AndesMessageMetadata)) return false;
+
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof AndesMessageMetadata)){
+            return false;
+        }
 
         AndesMessageMetadata that = (AndesMessageMetadata) o;
 
