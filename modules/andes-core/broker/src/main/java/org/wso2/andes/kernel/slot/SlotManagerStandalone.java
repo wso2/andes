@@ -53,6 +53,10 @@ public class SlotManagerStandalone {
      */
     private ConcurrentHashMap<String, TreeSet<Slot>> slotAssignmentMap;
 
+    private static String currentDeletionQueue;
+
+    private static long currentDeletionRangelowerboundID;
+
     private static SlotManagerStandalone slotManagerStandalone = new SlotManagerStandalone();
 
     private static Log log = LogFactory.getLog(SlotManagerStandalone.class);
@@ -66,6 +70,22 @@ public class SlotManagerStandalone {
         queueToLastAssignedIDMap = new ConcurrentHashMap<>();
         slotAssignmentMap = new ConcurrentHashMap<>();
         unAssignedSlotMap = new ConcurrentHashMap<>();
+    }
+
+    public static String getCurrentDeletionQueue() {
+        return currentDeletionQueue;
+    }
+
+    public static void setCurrentDeletionQueue(String currentDeletionQueue) {
+        SlotManagerStandalone.currentDeletionQueue = currentDeletionQueue;
+    }
+
+    public static long getCurrentDeletionRangelowerboundID() {
+        return currentDeletionRangelowerboundID;
+    }
+
+    public static void setCurrentDeletionRangelowerboundID(long currentDeletionRangelowerboundID) {
+        SlotManagerStandalone.currentDeletionRangelowerboundID = currentDeletionRangelowerboundID;
     }
 
     /**
@@ -119,25 +139,40 @@ public class SlotManagerStandalone {
      * @return Slot object
      */
     private Slot getFreshSlot(String queueName) {
+
         Slot slotToBeAssigned = null;
         TreeSet<Long> messageIDSet = slotIDMap.get(queueName);
-        if (null != messageIDSet && !messageIDSet.isEmpty()) {
-            slotToBeAssigned = new Slot();
-            Long lastAssignedId = queueToLastAssignedIDMap.get(queueName);
-            if (lastAssignedId != null) {
-                slotToBeAssigned.setStartMessageId(lastAssignedId + 1);
-            } else {
-                slotToBeAssigned.setStartMessageId(0L);
+        //start msgID will be last assigned ID + 1 so that slots are created with no
+        // message ID gaps in-between
+        Long lastAssignedId = queueToLastAssignedIDMap.get(queueName);
+        /**
+         * The slot is allocated only if the request is not for the queue in which current deletion task is running and message id range
+         * is not in the current deletion range. Otherwise slot will not be given
+         */
+        if (!currentDeletionQueue.equals(queueName) || currentDeletionRangelowerboundID != lastAssignedId + 1) {
+
+            if (null != messageIDSet && !messageIDSet.isEmpty()) {
+                slotToBeAssigned = new Slot();
+
+                if (lastAssignedId != null) {
+                    slotToBeAssigned.setStartMessageId(lastAssignedId + 1);
+                } else {
+                    slotToBeAssigned.setStartMessageId(0L);
+                }
+                slotToBeAssigned.setEndMessageId(messageIDSet.pollFirst());
+                slotToBeAssigned.setStorageQueueName(queueName);
+                slotIDMap.put(queueName, messageIDSet);
+                if (log.isDebugEnabled()) {
+                    log.debug(slotToBeAssigned.getEndMessageId() + " removed to slotIdMap. Current " +
+                            "values in " +
+                            "map " + messageIDSet);
+                }
+                queueToLastAssignedIDMap.put(queueName, slotToBeAssigned.getEndMessageId());
             }
-            slotToBeAssigned.setEndMessageId(messageIDSet.pollFirst());
-            slotToBeAssigned.setStorageQueueName(queueName);
-            slotIDMap.put(queueName, messageIDSet);
-            if (log.isDebugEnabled()) {
-                log.debug(slotToBeAssigned.getEndMessageId() + " removed to slotIdMap. Current " +
-                        "values in " +
-                        "map " + messageIDSet);
-            }
-            queueToLastAssignedIDMap.put(queueName, slotToBeAssigned.getEndMessageId());
+
+        }else{
+            log.warn("Slot delivery worker is requesting the messages which are currently in deletion range for " +
+                    "queue" + queueName);
         }
 
         return slotToBeAssigned;

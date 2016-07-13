@@ -52,6 +52,10 @@ public class SlotManagerClusterMode {
 
     private static final int SAFE_ZONE_EVALUATION_INTERVAL = 5 * 1000;
 
+    private static String currentDeletionQueue;
+
+    private static long currentDeletionRangelowerboundID;
+
     //safe zone calculator
     private final SlotDeleteSafeZoneCalc slotDeleteSafeZoneCalc;
 
@@ -98,6 +102,22 @@ public class SlotManagerClusterMode {
      */
     public static SlotManagerClusterMode getInstance() {
         return slotManager;
+    }
+
+    public static String getCurrentDeletionQueue() {
+        return currentDeletionQueue;
+    }
+
+    public static void setCurrentDeletionQueue(String currentDeletionQueue) {
+        SlotManagerClusterMode.currentDeletionQueue = currentDeletionQueue;
+    }
+
+    public static long getCurrentDeletionRangelowerboundID() {
+        return currentDeletionRangelowerboundID;
+    }
+
+    public static void setCurrentDeletionRangelowerboundID(long currentDeletionRangelowerboundID) {
+        SlotManagerClusterMode.currentDeletionRangelowerboundID = currentDeletionRangelowerboundID;
     }
 
     /**
@@ -151,39 +171,49 @@ public class SlotManagerClusterMode {
         TreeSet<Long> messageIDSet;
         // Get message id set from database
         messageIDSet = slotAgent.getMessageIds(queueName);
+        //start msgID will be last assigned ID + 1 so that slots are created with no
+        // message ID gaps in-between
+        long lastAssignedId = slotAgent.getQueueToLastAssignedId(queueName);
+        /**
+         * The slot is allocated only if the request is not for the queue in which current deletion task is running and message id range
+         * is not in the current deletion range. Otherwise slot will not be given
+         */
+        if (!currentDeletionQueue.equals(queueName) || currentDeletionRangelowerboundID != lastAssignedId + 1) {
 
-        if (null != messageIDSet && !(messageIDSet.isEmpty())) {
+            if (null != messageIDSet && !(messageIDSet.isEmpty())) {
 
-            slotToBeAssigned = new Slot();
-            //start msgID will be last assigned ID + 1 so that slots are created with no
-            // message ID gaps in-between
-            long lastAssignedId = slotAgent.getQueueToLastAssignedId(queueName);
+                slotToBeAssigned = new Slot();
 
-            if (0L != lastAssignedId) {
-                slotToBeAssigned.setStartMessageId(lastAssignedId + 1);
-            } else {
-                slotToBeAssigned.setStartMessageId(0L);
+                if (0L != lastAssignedId) {
+                    slotToBeAssigned.setStartMessageId(lastAssignedId + 1);
+                } else {
+                    slotToBeAssigned.setStartMessageId(0L);
+                }
+
+                //end messageID will be the lowest in published message ID list. Get and remove
+                slotToBeAssigned.setEndMessageId(messageIDSet.pollFirst());
+
+                //remove polled message id from database
+                slotAgent.deleteMessageId(queueName, slotToBeAssigned.getEndMessageId());
+
+                //set storage queue name (db queue to read messages from)
+                slotToBeAssigned.setStorageQueueName(queueName);
+
+                //modify last assigned ID by queue to database
+                slotAgent.createSlot(slotToBeAssigned.getStartMessageId(), slotToBeAssigned.getEndMessageId(),
+                        slotToBeAssigned.getStorageQueueName(), nodeId);
+
+                slotAgent.setQueueToLastAssignedId(queueName, slotToBeAssigned.getEndMessageId());
+
+                if (log.isDebugEnabled()) {
+                    log.debug("Giving a slot from fresh pool. Slot: " + slotToBeAssigned.getId());
+                }
             }
-
-            //end messageID will be the lowest in published message ID list. Get and remove
-            slotToBeAssigned.setEndMessageId(messageIDSet.pollFirst());
-
-            //remove polled message id from database
-            slotAgent.deleteMessageId(queueName, slotToBeAssigned.getEndMessageId());
-
-            //set storage queue name (db queue to read messages from)
-            slotToBeAssigned.setStorageQueueName(queueName);
-
-            //modify last assigned ID by queue to database
-            slotAgent.createSlot(slotToBeAssigned.getStartMessageId(), slotToBeAssigned.getEndMessageId(),
-                    slotToBeAssigned.getStorageQueueName(), nodeId);
-
-            slotAgent.setQueueToLastAssignedId(queueName, slotToBeAssigned.getEndMessageId());
-
-            if (log.isDebugEnabled()) {
-                log.debug("Giving a slot from fresh pool. Slot: " + slotToBeAssigned.getId());
-            }
+        }else{
+            log.warn("Slot delivery worker is requesting the messages which are currently in deletion range for " +
+                    "queue" + queueName);
         }
+
         return slotToBeAssigned;
 
     }
@@ -260,7 +290,7 @@ public class SlotManagerClusterMode {
      * @param localSafeZone           Local safe zone of the requesting node.
      */
     public void updateMessageID(String queueName, String nodeId, long startMessageIdInTheSlot,
-            long lastMessageIdInTheSlot, long localSafeZone) throws AndesException {
+                                long lastMessageIdInTheSlot, long localSafeZone) throws AndesException {
 
         //setting up first message id of the slot
         if (firstMessageId > startMessageIdInTheSlot || firstMessageId == -1) {

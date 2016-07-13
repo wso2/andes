@@ -39,9 +39,12 @@ public class MessageExpiredRule implements CommonDeliveryRule {
         //Check if destination entry has expired. Any expired message will not be delivered
         if (message.isExpired()) {
             log.warn("Message is expired. Routing Message to DLC : id= " + messageID);
+            //add the expired messages to a list for a batch delete
+            MessageExpirationWorker.expiredMessageSet.add(message);
             return false;
         } else {
             return true;
         }
     }
+
 }

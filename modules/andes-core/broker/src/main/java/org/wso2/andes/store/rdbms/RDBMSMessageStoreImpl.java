@@ -61,6 +61,7 @@ import static org.wso2.andes.store.rdbms.RDBMSConstants.CONTENT_TABLE;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_CONTENT;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_ID;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.MSG_OFFSET;
+import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_EXPIRY_DATA;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_MESSAGE_PART;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_METADATA;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.TASK_RETRIEVING_CONTENT_FOR_MESSAGES;
@@ -372,16 +373,22 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Connection connection = null;
         PreparedStatement storeMetadataPS = null;
         PreparedStatement storeContentPS = null;
+        PreparedStatement storeExpiryMetadataPS = null;
 
         try {
 
             connection = getConnection();
             storeMetadataPS = connection.prepareStatement(PS_INSERT_METADATA);
             storeContentPS = connection.prepareStatement(PS_INSERT_MESSAGE_PART);
+            storeExpiryMetadataPS = connection.prepareStatement(PS_INSERT_EXPIRY_DATA);
 
             for (AndesMessage message : messageList) {
 
                 addMetadataToBatch(storeMetadataPS, message.getMetadata(), message.getMetadata().getStorageQueueName());
+                //if message has expiration time store it into expiration table
+                if (message.getMetadata().getExpirationTime() > 0) {
+                    addExpiryTableEntryToBatch(storeExpiryMetadataPS, message.getMetadata());
+                }
 
                 for (AndesMessagePart messagePart : message.getContentChunkList()) {
                     addContentToBatch(storeContentPS, messagePart);
@@ -408,6 +415,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             rollback(connection, RDBMSConstants.TASK_ADDING_METADATA);
             throw rdbmsStoreUtils.convertSQLException("Error occurred while inserting messages to queue ", e);
         } finally {
+            close(storeExpiryMetadataPS, RDBMSConstants.TASK_ADDING_MESSAGES);
             close(storeMetadataPS, RDBMSConstants.TASK_ADDING_MESSAGES);
             close(storeContentPS, RDBMSConstants.TASK_ADDING_MESSAGES);
             close(connection, RDBMSConstants.TASK_ADDING_MESSAGES);
@@ -424,10 +432,12 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Connection connection = null;
         PreparedStatement storeMetadataPS = null;
         PreparedStatement storeContentPS = null;
+        PreparedStatement storeExpiryMetadataPS = null;
 
         try {
             connection = getConnection();
             storeMetadataPS = connection.prepareStatement(PS_INSERT_METADATA);
+            storeExpiryMetadataPS = connection.prepareStatement(PS_INSERT_EXPIRY_DATA);
             storeContentPS = connection.prepareStatement(PS_INSERT_MESSAGE_PART);
 
             AndesMessageMetadata metadata = message.getMetadata();
@@ -435,9 +445,14 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             storeMetadataPS.setInt(2, getCachedQueueID(metadata.getStorageQueueName()));
             storeMetadataPS.setBytes(3, metadata.getMetadata());
 
+            storeExpiryMetadataPS.setLong(1, metadata.getMessageID());
+            storeExpiryMetadataPS.setLong(2, metadata.getExpirationTime());
+            storeExpiryMetadataPS.setString(3, metadata.getStorageQueueName());
+
             for (AndesMessagePart messagePart : message.getContentChunkList()) {
                 addContentToBatch(storeContentPS, messagePart);
             }
+            storeExpiryMetadataPS.execute();
             storeMetadataPS.execute();
             storeContentPS.executeBatch();
             connection.commit();
@@ -456,6 +471,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 throw andesException;
             }
         } finally {
+            close(storeExpiryMetadataPS,RDBMSConstants.TASK_ADDING_MESSAGE);
             close(storeMetadataPS, RDBMSConstants.TASK_ADDING_MESSAGE);
             close(storeContentPS, RDBMSConstants.TASK_ADDING_MESSAGE);
             close(connection, RDBMSConstants.TASK_ADDING_MESSAGE);
@@ -653,7 +669,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
         try {
             if (metadata.getExpirationTime() > 0) {
-                preparedStatement = connection.prepareStatement(RDBMSConstants.PS_INSERT_EXPIRY_DATA);
+                preparedStatement = connection.prepareStatement(PS_INSERT_EXPIRY_DATA);
                 addExpiryTableEntryToBatch(preparedStatement, metadata);
                 preparedStatement.executeBatch();
                 connection.commit();
@@ -676,7 +692,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         PreparedStatement preparedStatement = null;
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
         try {
-            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_INSERT_EXPIRY_DATA);
+            preparedStatement = connection.prepareStatement(PS_INSERT_EXPIRY_DATA);
 
             for (AndesMessageMetadata andesMessageMetadata : list) {
                 if (andesMessageMetadata.getExpirationTime() > 0) {
@@ -1157,11 +1173,11 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public List<AndesMessageMetadata> getExpiredMessages(int limit) throws AndesException {
+    public List<AndesMessageMetadata> getExpiredMessages(long lowerBoundMessageID, String queueName) throws AndesException {
 
         // todo: can't we just delete expired messages?
         Connection connection = null;
-        List<AndesMessageMetadata> list = new ArrayList<>(limit);
+        List<AndesMessageMetadata> list = new ArrayList<>();
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
 
@@ -1172,18 +1188,16 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
             // get expired message list
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_EXPIRED_MESSAGES);
+            preparedStatement.setLong(1, lowerBoundMessageID);
+            preparedStatement.setString(2, queueName);
             resultSet = preparedStatement.executeQuery();
-            int resultCount = 0;
+
             while (resultSet.next()) {
 
-                if (resultCount == limit) {
-                    break;
-                }
                 AndesMessageMetadata metadata = new AndesMessageMetadata(resultSet.getLong(RDBMSConstants.MESSAGE_ID),
                         resultSet.getBytes(RDBMSConstants.METADATA), true);
                 metadata.setStorageQueueName(null);
                 list.add(metadata);
-                resultCount++;
             }
             return list;
         } catch (SQLException e) {
@@ -1201,7 +1215,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     public void close() {
 
     }
-
+    //TODO: 7/7/16 Remove this
     /**
      * This method is expected to be used in a transaction based update.
      *
@@ -1225,12 +1239,12 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             close(preparedStatement, RDBMSConstants.TASK_DELETING_FROM_EXPIRY_TABLE);
         }
     }
-
+    // TODO: 7/7/16 remove this
     /**
      * {@inheritDoc}
      */
     @Override
-    public void deleteMessagesFromExpiryQueue(LongArrayList messagesToRemove) throws AndesException {
+    public void deleteMessagesFromExpiryQueue(List<AndesMessageMetadata> messagesToRemove) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
@@ -1239,10 +1253,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             connection = getConnection();
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_EXPIRY_DATA);
 
-            MutableLongIterator iterator = messagesToRemove.longIterator();
-            while (iterator.hasNext()) {
-                long mid = iterator.next();
-                preparedStatement.setLong(1, mid);
+            for (AndesMessageMetadata metadata : messagesToRemove) {
+                preparedStatement.setLong(1, metadata.getMessageID());
                 preparedStatement.addBatch();
             }
             preparedStatement.executeBatch();
@@ -1257,6 +1269,33 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             close(connection, preparedStatement, RDBMSConstants.TASK_DELETING_FROM_EXPIRY_TABLE);
         }
     }
+/*
+    @Override
+    public void deleteMessagesFromExpiryTable(String queueName, long lowerBoundMessageID) throws AndesException {
+
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
+
+        try {
+            connection = getConnection();
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_EXPIRY_DATA);
+            preparedStatement.setLong(1, lowerBoundMessageID);
+            preparedStatement.setString(2, queueName);
+            int deletedMessagecount = preparedStatement.executeUpdate();
+            connection.commit();
+            log.info( deletedMessagecount + "expired messages delted fro the queue named " + queueName);
+        } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_DELETING_FROM_EXPIRY_TABLE);
+            throw rdbmsStoreUtils
+                    .convertSQLException("error occurred while deleting message metadata " + "from expiration table ",
+                            e);
+        } finally {
+            contextWrite.stop();
+            close(connection, preparedStatement, RDBMSConstants.TASK_DELETING_FROM_EXPIRY_TABLE);
+        }
+    }*/
+
 
     /**
      * This method caches the queue ids for destination queue names. If queried destination queue is
