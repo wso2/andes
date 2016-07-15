@@ -34,17 +34,24 @@ import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.jms.MessageConsumer;
 import org.wso2.andes.jms.Session;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.SortedSet;
+import java.util.TreeSet;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.DelayQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageListener;
 import javax.jms.TextMessage;
-import java.util.*;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 public abstract class BasicMessageConsumer<U> extends Closeable implements MessageConsumer
 {
@@ -56,6 +63,12 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
     protected final String _messageSelector;
 
     private final boolean _noLocal;
+
+    /**
+     * The delay amount in milliseconds for redelivered messages. Value can be overwritten by setting
+     * "AndesRedeliveryDelay" property.
+     */
+    private long redeliveryDelay = 0L;
 
     protected AMQDestination _destination;
 
@@ -78,7 +91,7 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
      * Used in the blocking receive methods to receive a message from the Session thread. <p/> Or to notify of errors
      * <p/> Argument true indicates we want strict FIFO semantics
      */
-    protected final BlockingQueue _synchronousQueue;
+    protected final DelayQueue<DelayedObject> _synchronousQueue;
 
     protected final MessageFactoryRegistry _messageFactory;
 
@@ -171,7 +184,10 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
     private final boolean _noConsume;
     private List<StackTraceElement> _closedStack = null;
 
-
+    /**
+     * A lock required when using message listener for getting messages through dispatcher and through delayed queue.
+     */
+    private final Lock messageRedeliveryDeliveryLock = new ReentrantLock(true);
 
     protected BasicMessageConsumer(int channelId, AMQConnection connection, AMQDestination destination,
                                    String messageSelector, boolean noLocal, MessageFactoryRegistry messageFactory,
@@ -192,7 +208,7 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
         _prefetchLow = prefetchLow;
         _exclusive = exclusive;
         
-        _synchronousQueue = new LinkedBlockingQueue();
+        _synchronousQueue = new DelayQueue<>();
         _autoClose = autoClose;
         _noConsume = noConsume;
 
@@ -204,6 +220,16 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
         else
         {
             _acknowledgeMode = acknowledgeMode;
+        }
+
+        // Get the andes redelivery delay value from system properties. Value is milliseconds.
+        String andesDeliveryDelayString = System.getProperty("AndesRedeliveryDelay");
+        if (null != andesDeliveryDelayString && !andesDeliveryDelayString.isEmpty()) {
+            redeliveryDelay = Long.parseLong(andesDeliveryDelayString);
+            // Validating redelivery delay value.
+            if (redeliveryDelay < 0) {
+                throw new IllegalArgumentException("AndesRedeliveryDelay property should be greater than 0.");
+            }
         }
     }
 
@@ -285,14 +311,10 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
                     _messageListener.set(messageListener);
                     _session.setHasMessageListeners();
                     _session.startDispatcherIfNecessary();
-                    
-                    // If we already have messages on the queue, deliver them to the listener
-                    Object o = _synchronousQueue.poll();
-                    while (o != null)
-                    {
-                        notifyMessage((AbstractJMSMessage) o);
-                        o = _synchronousQueue.poll();
-                    }
+
+                    // Start publishing messages from the delayed queue to on message.
+                    Thread messagePublisherForDelayedMessages = new Thread(new MessageListenerForDelayedMessages());
+                    messagePublisherForDelayedMessages.start();
                 }
             }
         }
@@ -300,7 +322,8 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
 
     protected void preApplicationProcessing(AbstractJMSMessage jmsMsg) throws JMSException
     {
-        if (_session.getAcknowledgeMode() == Session.CLIENT_ACKNOWLEDGE)
+        if ((_session.getAcknowledgeMode() == Session.PER_MESSAGE_ACKNOWLEDGE)
+            || (_session.getAcknowledgeMode() == Session.CLIENT_ACKNOWLEDGE))
         {
             _session.addUnacknowledgedMessage(jmsMsg.getDeliveryTag());
         }
@@ -434,9 +457,9 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
         }
     }
 
-    public  Object getMessageFromQueue(long l) throws InterruptedException
+    public Object getMessageFromQueue(long l) throws InterruptedException
     {
-         Object o;
+         DelayedObject o;
          if (l > 0)
          {
              o = _synchronousQueue.poll(l, TimeUnit.MILLISECONDS);
@@ -453,17 +476,20 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
              _logger.debug("dest="+ _destination.getQueueName()+  " took message [" + _synchronousQueue.size() + "]");
 
              try {
-                 if (o instanceof AbstractJMSMessage) {
-                     lastDispatchedMessageTimestamp = ((AbstractJMSMessage) o).getJMSTimestamp();
+                 if (o.getObject() instanceof AbstractJMSMessage) {
+                     lastDispatchedMessageTimestamp = ((AbstractJMSMessage) o.getObject()).getJMSTimestamp();
                  }
              } catch (JMSException e) {
                 _logger.error("Error when reading the message at the point of dispatch from client buffer." + e);
              }
          }
 
+        if (null == o) {
+            return null;
+        } else {
+            return o.getObject();
+        }
 
-
-         return o;
     }
 
     abstract Message receiveBrowse() throws JMSException;
@@ -683,19 +709,11 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
         }
         else
         {
-            try
-            {
-                _logger.debug("dest="+ _destination.getQueueName()+  " added message in close [" + _synchronousQueue.size() + "]");
-                _synchronousQueue.put(closeMessage);
-            }
-            catch (InterruptedException e)
-            {
-                _logger.warn(" SynchronousQueue.put interupted. Usually result of connection closing,"
-                        + "but we shouldn't have close yet");
-            }
+            _logger.debug("dest=" + _destination.getQueueName() + " added message in close [" + _synchronousQueue
+                    .size() + "]");
+            _synchronousQueue.put(new DelayedObject(0, closeMessage));
         }
     }
-
     
     /**
      * Called from the AMQSession when a message has arrived for this consumer. This methods handles both the case of a
@@ -746,15 +764,24 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
         {
             if (isMessageListenerSet())
             {
-                preApplicationProcessing(jmsMessage);
-                getMessageListener().onMessage(jmsMessage);
-                postDeliver(jmsMessage);
+                // If message redelivery delay is set, redelivered messages are queued in delay queue. Else directly
+                // publish to the onMessage listener.
+                if (0 != redeliveryDelay && jmsMessage.getJMSRedelivered()) {
+                    _synchronousQueue.add(new DelayedObject(redeliveryDelay, jmsMessage));
+                } else {
+                    deliverMessagesToMessageListener(jmsMessage);
+                }
             }
             else
             {
-                // we should not be allowed to add a message is the
-                // consumer is closed
-                _synchronousQueue.put(jmsMessage);
+                // Redelivered messages will be added with the mentioned redelivery delay. If not mentioned, delay will
+                // be 0L. We should not be allowed to add a message is the
+                // consumer is closed.
+                if (jmsMessage.getJMSRedelivered()) {
+                    _synchronousQueue.put(new DelayedObject(redeliveryDelay, jmsMessage));
+                } else {
+                    _synchronousQueue.put(new DelayedObject(0, jmsMessage));
+                }
                 _logger.debug("dest="+ _destination.getQueueName()+  " added message " + _synchronousQueue.size() + "]");
             }
         }
@@ -771,6 +798,23 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
         }
     }
 
+    /**
+     * Delivers messages to the onMessage listener.
+     *
+     * @param jmsMessage The JMS message.
+     * @throws JMSException
+     */
+    private void deliverMessagesToMessageListener(AbstractJMSMessage jmsMessage) throws JMSException {
+        messageRedeliveryDeliveryLock.lock();
+        try {
+            preApplicationProcessing(jmsMessage);
+            getMessageListener().onMessage(jmsMessage);
+            postDeliver(jmsMessage);
+        } finally {
+            messageRedeliveryDeliveryLock.unlock();
+        }
+    }
+
     void preDeliver(AbstractJMSMessage msg)
     {
         switch (_acknowledgeMode)
@@ -780,6 +824,7 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
                 _session.acknowledgeMessage(msg.getDeliveryTag(), false);
                 break;
 
+            case Session.PER_MESSAGE_ACKNOWLEDGE:
             case Session.CLIENT_ACKNOWLEDGE:
                 // we set the session so that when the user calls acknowledge() it can call the method on session
                 // to send out the appropriate frame
@@ -806,6 +851,7 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
         switch (_acknowledgeMode)
         {
 
+            case Session.PER_MESSAGE_ACKNOWLEDGE:
             case Session.CLIENT_ACKNOWLEDGE:
                 if (isNoConsume())
                 {
@@ -935,7 +981,7 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
         if (!isMessageListenerSet())
         {
             // offer only succeeds if there is a thread waiting for an item from the queue
-            if (_synchronousQueue.offer(cause))
+            if (_synchronousQueue.offer(new DelayedObject(0, cause)))
             {
                 _logger.debug("Passed exception to synchronous queue for propagation to receive()");
             }
@@ -1009,7 +1055,7 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
                         .size() + ") in _syncQueue (PRQ)" + "for consumer with tag:" + _consumerTag);
             }
 
-            Iterator iterator = _synchronousQueue.iterator();
+            Iterator<DelayedObject> iterator = _synchronousQueue.iterator();
 
             int initialSize = _synchronousQueue.size();
 
@@ -1017,7 +1063,7 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
             while (iterator.hasNext())
             {
 
-                Object o = iterator.next();
+                Object o = iterator.next().getObject();
 
                 if (o instanceof AbstractJMSMessage)
                 {
@@ -1079,13 +1125,13 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
     
     public List<Long> drainReceiverQueueAndRetrieveDeliveryTags()
     {       
-        Iterator<AbstractJMSMessage> iterator = _synchronousQueue.iterator();
+        Iterator<DelayedObject> iterator = _synchronousQueue.iterator();
         List<Long> tags = new ArrayList<Long>(_synchronousQueue.size());
 
         while (iterator.hasNext())
         {
 
-            AbstractJMSMessage msg = iterator.next();
+            AbstractJMSMessage msg = (AbstractJMSMessage) iterator.next().getObject();
             tags.add(msg.getDeliveryTag()); 
             iterator.remove();
         }
@@ -1123,5 +1169,25 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
      */
     public void setLastRollbackedMessageTimestamp() {
         this.lastRollbackedMessageTimestamp = lastDispatchedMessageTimestamp;
+    }
+
+    /**
+     * A task which publishes delayed messages to the message listener.
+     */
+    public class MessageListenerForDelayedMessages implements Runnable {
+        @Override
+        public void run() {
+            while (true) {
+                try {
+                    DelayedObject poll = _synchronousQueue.take();
+                    deliverMessagesToMessageListener((AbstractJMSMessage) poll.getObject());
+                } catch (InterruptedException e) {
+                    _logger.error("Unexpected error occurred when getting messages to publish when using message listener.", e);
+                    break;
+                } catch (JMSException e) {
+                    _logger.error("Error occurred while delivery message to message listener.", e);
+                }
+            }
+        }
     }
 }

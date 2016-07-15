@@ -259,7 +259,9 @@ public final class AMQSession_0_8 extends AMQSession<BasicMessageConsumer_0_8, B
 
     public void rejectMessage(long deliveryTag, boolean requeue)
     {
-        if ((_acknowledgeMode == CLIENT_ACKNOWLEDGE) || (_acknowledgeMode == SESSION_TRANSACTED))
+        if ((_acknowledgeMode == PER_MESSAGE_ACKNOWLEDGE)
+            || (_acknowledgeMode == CLIENT_ACKNOWLEDGE)
+            || (_acknowledgeMode == SESSION_TRANSACTED))
         {
             if (_logger.isDebugEnabled())
             {

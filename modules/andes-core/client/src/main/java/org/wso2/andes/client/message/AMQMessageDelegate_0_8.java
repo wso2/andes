@@ -540,9 +540,13 @@ public class AMQMessageDelegate_0_8 extends AbstractAMQMessageDelegate
 
     public void acknowledge() throws JMSException
     {
-        if (_session != null && _session.getAcknowledgeMode() == Session.CLIENT_ACKNOWLEDGE)
+        if (_session != null)
         {
-            _session.acknowledge();
+            if (_session.getAcknowledgeMode() == Session.CLIENT_ACKNOWLEDGE) {
+                _session.acknowledge();
+            } else if (org.wso2.andes.jms.Session.PER_MESSAGE_ACKNOWLEDGE == _session.getAcknowledgeMode()) {
+                _session.acknowledgeMessage(_deliveryTag, false);
+            }
         }
     }
     
