@@ -19,23 +19,21 @@ package org.wso2.andes.server.information.management;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolType;
+import org.wso2.andes.kernel.subscription.AndesSubscription;
+import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.management.common.mbeans.SubscriptionManagementInformation;
+import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.management.AMQManagedObject;
-import org.wso2.andes.subscription.LocalSubscription;
-import org.wso2.andes.subscription.SubscriptionEngine;
-
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
 import javax.management.MBeanException;
 import javax.management.NotCompliantMBeanException;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Class to handle data for all subscription related UI functions.
@@ -49,7 +47,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
     /**
      * Subscription store used to query subscription related information
      */
-    private SubscriptionEngine subscriptionEngine;
+    private AndesSubscriptionManager subscriptionManager;
 
     /**
      * Instantiates the MBeans related to subscriptions.
@@ -59,7 +57,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
     public SubscriptionManagementInformationMBean() throws NotCompliantMBeanException {
         super(SubscriptionManagementInformation.class, SubscriptionManagementInformation.TYPE);
 
-        subscriptionEngine = AndesContext.getInstance().getSubscriptionEngine();
+        subscriptionManager = AndesContext.getInstance().getAndesSubscriptionManager();
     }
 
     /**
@@ -74,34 +72,32 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
      * {@inheritDoc}
      */
     @Override
-    public String[] getSubscriptions( String isDurable, String isActive, String protocolType,
-                                         String destinationType) throws MBeanException {
+    public String[] getSubscriptions(String isDurable, String isActive, String protocolType,
+                                     String destinationType) throws MBeanException {
         try {
 
-            ProtocolType protocolTypeArg = ProtocolType.valueOf(protocolType);
-            DestinationType destinationTypeArg = DestinationType.valueOf(destinationType);
+            //TODO: fix this method. isActive comes as *
+            boolean durableSubscriptionsReq = Boolean.parseBoolean(isDurable);
+            Set<AndesSubscription> subscriptionsToDisplay = getSubscriptionsOfBroker(durableSubscriptionsReq,
+                    true, protocolType, destinationType);
 
-            Set<AndesSubscription> subscriptions = AndesContext.getInstance().getSubscriptionEngine()
-                            .getAllClusterSubscriptionsForDestinationType(protocolTypeArg, destinationTypeArg);
-
-            Set<AndesSubscription> subscriptionsToDisplay;
-
-            if (DestinationType.TOPIC == destinationTypeArg || DestinationType.DURABLE_TOPIC == destinationTypeArg) {
-                subscriptionsToDisplay = filterTopicSubscriptions(isDurable, isActive, subscriptions);
-            } else {
-                subscriptionsToDisplay = filterQueueSubscriptions(isDurable, isActive, subscriptions);
-            }
+            Set<AndesSubscription> inactiveSubscriptions = getSubscriptionsOfBroker(durableSubscriptionsReq,
+                    false, protocolType, destinationType);
+            subscriptionsToDisplay.addAll(inactiveSubscriptions);
 
             String[] subscriptionArray = new String[subscriptionsToDisplay.size()];
 
             int index = 0;
             for (AndesSubscription subscription : subscriptionsToDisplay) {
-                Long pendingMessageCount
-                        = MessagingEngine.getInstance().getMessageCountOfQueue(subscription.getStorageQueueName());
+                Long pendingMessageCount = subscription.getStorageQueue().getMessageCount();
 
-                subscriptionArray[index] = renderSubscriptionForUI(subscription, pendingMessageCount.intValue());
+                subscriptionArray[index] = renderSubscriptionForUI(subscription.isActive(),
+                        destinationType,
+                        subscription,
+                        pendingMessageCount
+                                .intValue());
+
                 index++;
-
             }
             return subscriptionArray;
 
@@ -111,66 +107,59 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
         }
     }
 
-    private Set<AndesSubscription> filterQueueSubscriptions(String isDurable, String isActive,
-                                                            Set<AndesSubscription> subscriptions) {
-            Set<AndesSubscription> subscriptionsToDisplay = new HashSet<>();
+    private Set<AndesSubscription> getSubscriptionsOfBroker(boolean isDurable, boolean isActive, String protocolType,
+                                      String destinationType) throws AndesException {
 
-        for (AndesSubscription subscription : subscriptions) {
-            if (!isDurable.equals(ALL_WILDCARD)
-                    && (Boolean.parseBoolean(isDurable) != subscription.isDurable())) {
-                continue;
-            }
-            if (!isActive.equals(ALL_WILDCARD)
-                    && (Boolean.parseBoolean(isActive) != subscription.hasExternalSubscriptions())) {
-                continue;
-            }
+        AndesSubscriptionManager subscriptionManager =
+                AndesContext.getInstance().getAndesSubscriptionManager();
 
-            subscriptionsToDisplay.add(subscription);
+        Iterable<AndesSubscription> matchingSubscriptions;
+        Set<AndesSubscription> subscriptionsToDisplay = new HashSet<>(10);
+
+        if(!isDurable && !isActive){
+            return subscriptionsToDisplay;
         }
 
-        return subscriptionsToDisplay;
-    }
-
-    private Set<AndesSubscription> filterTopicSubscriptions(String isDurable, String isActive,
-                                                            Set<AndesSubscription> subscriptions) {
-        Set<AndesSubscription> subscriptionsToDisplay = new HashSet<>();
-
-        Map<String, AndesSubscription> inactiveSubscriptions = new HashMap<>();
-        Set<String> uniqueSubscriptionIDs = new HashSet<>();
-
-        for (AndesSubscription subscription : subscriptions) {
-            if (!isDurable.equals(ALL_WILDCARD)
-                    && (Boolean.parseBoolean(isDurable) != subscription.isDurable())) {
-                continue;
-            }
-            if (!isActive.equals(ALL_WILDCARD)
-                    && (Boolean.parseBoolean(isActive) != subscription.hasExternalSubscriptions())) {
-                continue;
-            }
-
-            if (subscription.isDurable()) {
-                if (subscription.hasExternalSubscriptions()) {
-                    uniqueSubscriptionIDs.add(subscription.getTargetQueue());
-                } else {
-                    // Since only one inactive shared subscription should be shown
-                    // we replace the existing value if any
-                    inactiveSubscriptions.put(subscription.getTargetQueue(), subscription);
-                    // Inactive subscriptions will be added later considering shared subscriptions
-                    continue;
-                }
+        ProtocolType protocolTypeArg = ProtocolType.valueOf(protocolType);
+        DestinationType destinationTypeArg = DestinationType.valueOf(destinationType);
+        if(isActive) {
+            String messageRouterName;
+            switch (destinationTypeArg){
+                case TOPIC:
+                    if(protocolTypeArg.equals(ProtocolType.AMQP)) {
+                        messageRouterName = AMQPUtils.TOPIC_EXCHANGE_NAME;
+                    } else {
+                        messageRouterName = MQTTUtils.MQTT_EXCHANGE_NAME;
+                    }
+                    break;
+                case QUEUE:
+                    messageRouterName = AMQPUtils.DIRECT_EXCHANGE_NAME;
+                    break;
+                case DURABLE_TOPIC:
+                    if(protocolTypeArg.equals(ProtocolType.AMQP)) {
+                        messageRouterName = AMQPUtils.TOPIC_EXCHANGE_NAME;
+                    } else {
+                        messageRouterName = MQTTUtils.MQTT_EXCHANGE_NAME;
+                    }
+                    break;
+                default:
+                    messageRouterName = AMQPUtils.DIRECT_EXCHANGE_NAME;
+                    break;
             }
 
-            subscriptionsToDisplay.add(subscription);
+            matchingSubscriptions = subscriptionManager.
+                    getAllSubscriptionsByMessageRouter(protocolTypeArg, messageRouterName);
+
+        } else {
+            matchingSubscriptions = subscriptionManager.
+                    getInactiveSubscriberRepresentations();
         }
 
-        // In UI only one inactive shared subscription should be shown if there are no active subscriptions.
-        for (Map.Entry<String, AndesSubscription> inactiveEntry : inactiveSubscriptions.entrySet()) {
-            // If there are active subscriptions with same target queue, we skip adding inactive subscriptions
-            if (!(uniqueSubscriptionIDs.contains(inactiveEntry.getKey()))) {
-                subscriptionsToDisplay.add(inactiveEntry.getValue());
+        for (AndesSubscription subscription : matchingSubscriptions) {
+            if (isDurable == subscription.isDurable()) {
+                subscriptionsToDisplay.add(subscription);
             }
         }
-
 
         return subscriptionsToDisplay;
     }
@@ -192,18 +181,12 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
     public void removeSubscription(String subscriptionId, String destinationName, String protocolType,
                                    String destinationType) {
         try {
-            Set<LocalSubscription> allSubscribersForDestination
-                    = subscriptionEngine.getActiveLocalSubscribers(destinationName, ProtocolType.valueOf(protocolType),
-                    DestinationType.valueOf(destinationType));
+            AndesSubscription subscriptionToRemove = subscriptionManager.getSubscriptionById(subscriptionId);
 
-            for (LocalSubscription andesSubscription : allSubscribersForDestination) {
-
-                String currentSubscriptionId = andesSubscription.getSubscriptionID();
-
-                if (currentSubscriptionId.equals(subscriptionId)) {
-                    andesSubscription.forcefullyDisconnect();
-                    break;
-                }
+            if (null != subscriptionToRemove) {
+                subscriptionToRemove.forcefullyDisconnectConnections();
+            } else {
+                throw new AndesException("Subscription to remove not found. Requested id = " + subscriptionId);
             }
         } catch (AndesException e) {
             throw new RuntimeException("Error in accessing subscription information", e);
@@ -212,33 +195,27 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
 
     /**
      * This method returns the formatted subscription string to be compatible with the UI processor.
-     * <p/>
-     * Format of the string : "subscriptionInfo =  subscriptionIdentifier |
-     * subscribedQueueOrTopicName (tenant domain appended destination) | subscriberQueueBoundExchange |
-     * subscriberQueueName |
-     * isDurable | isActive | numberOfMessagesRemainingForSubscriber | subscriberNodeAddress"
      *
      * @param subscription        AndesSubscription object that is to be translated to UI view
      * @param pendingMessageCount Number of pending messages of subscription
      * @return String representation of the subscription meta information and pending message count
      */
-    private static String renderSubscriptionForUI(AndesSubscription subscription,
-                                                  int pendingMessageCount) throws AndesException {
+    private static String renderSubscriptionForUI(Boolean isActive, String destinationType, AndesSubscription
+                                                  subscription, int pendingMessageCount) throws AndesException {
 
-        String subscriptionIdentifier = subscription.getSubscriptionID();
+        String subscriptionIdentifier = subscription.getSubscriptionId();
 
-        //in case of topic whats in v2 is : topicSubscriber.getDestination() + "@" +
-        // topicSubscriber.boundTopicName; --
         return subscriptionIdentifier
-                + "|" + subscription.getSubscribedDestination()
-                + "|" + subscription.getTargetQueueBoundExchangeName()
-                + "|" + subscription.getTargetQueue()
-                + "|" + subscription.isDurable()
-                + "|" + subscription.hasExternalSubscriptions()
-                + "|" + pendingMessageCount
-                + "|" + subscription.getSubscribedNode()
-                + "|" + subscription.getSubscribedDestination()
-                + "|" + subscription.getProtocolType().name()
-                + "|" + subscription.getDestinationType().name();
+                + ";" + subscription.getStorageQueue().getMessageRouterBindingKey()
+                + ";" + subscription.getStorageQueue().getMessageRouter().getName()
+                + ";" + subscription.getStorageQueue().getName()
+                + ";" + subscription.isDurable()
+                + ";" + isActive
+                + ";" + pendingMessageCount
+                + ";" + ((null == subscription.getSubscriberConnection()) ? "N/A": subscription
+                                                            .getSubscriberConnection().getConnectedNode())
+                + ";" + subscription.getStorageQueue().getMessageRouterBindingKey()
+                + ";" + subscription.getProtocolType().name()
+                + ";" + destinationType;
     }
 }

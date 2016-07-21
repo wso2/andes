@@ -19,10 +19,11 @@ package org.wso2.andes.server.subscription;
 
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.logging.LogActor;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.QueueEntry;
+
+import java.util.UUID;
 
 public interface Subscription
 {
@@ -71,6 +72,8 @@ public interface Subscription
     void close();
 
     void send(QueueEntry msg) throws AMQException;
+
+    UUID getIdOfUnderlyingChannel();
 
     void queueDeleted(AMQQueue queue);
 

@@ -20,12 +20,23 @@ package org.wso2.andes.kernel;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.disruptor.inbound.InboundBindingEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundBindingSyncEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundExchangeEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundExchangeSyncEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundQueueSyncEvent;
+import org.wso2.andes.kernel.disruptor.inbound.QueueInfo;
+import org.wso2.andes.kernel.router.AndesMessageRouter;
+import org.wso2.andes.kernel.router.MessageRouterFactory;
+import org.wso2.andes.kernel.router.QueueMessageRouter;
+import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
+import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.subscription.SubscriptionEngine;
-import org.wso2.andes.server.cluster.coordination.EventListenerCreator;
+import org.wso2.andes.server.cluster.coordination.ClusterNotificationAgent;
+import org.wso2.andes.server.cluster.coordination.CoordinationComponentFactory;
 
 import java.util.List;
-import java.util.Set;
 
 /**
  * This class is for managing control information of
@@ -39,26 +50,24 @@ public class AndesContextInformationManager {
     private static final Log log = LogFactory.getLog(AndesContextInformationManager.class);
 
     /**
-     * keep listeners that should be triggered when constructs are updated
-     */
-    private QueueListener queueListener;
-    private ExchangeListener exchangeListener;
-    private BindingListener bindingListener;
-
-    /**
      * Reference to AndesContextStore to manage exchanges/bindings and queues in persistence storage 
      */
     private AndesContextStore contextStore;
 
     /**
-     * To manage exchanges bindings and queues
+     * Factory for creating AndesMessageRouters
      */
-    private AMQPConstructStore constructStore;
+    private MessageRouterFactory messageRouterFactory;
 
     /**
-     * Interface to store and retrieve Andes subscription related information
+     * Reference to message store to be used from message count related functionality 
      */
-    private SubscriptionEngine subscriptionEngine;
+    private MessageStore messageStore;
+
+    /**
+     * To manage exchanges bindings and queues
+     */
+    private AMQPConstructStore amqpConstructStore;
 
     /**
      * Manages all operations related to subscription changes such as addition, disconnection and deletion
@@ -66,204 +75,405 @@ public class AndesContextInformationManager {
     AndesSubscriptionManager subscriptionManager;
 
     /**
+     * Notification agent used to send notifications to other nodes in cluster on changes
+     */
+    private ClusterNotificationAgent clusterNotificationAgent;
+
+    /**
      * Initializes the andes context information manager
      *
-     * @param subscriptionEngine The subscriptions store
+     * @param constructStore store managing AMQP related artifacts
+     * @param subscriptionManager manager for all subscriptions
+     * @param contextStore store persisting message routers, queues, subscribers and AMQP specific artifacts
+     * @param messageStore store persisting messages
      */
-    public AndesContextInformationManager(AMQPConstructStore constructStore, SubscriptionEngine subscriptionEngine,
-                                          AndesContextStore contextStore, EventListenerCreator listenerCreator) {
+    public AndesContextInformationManager(AMQPConstructStore constructStore,
+                                          AndesSubscriptionManager subscriptionManager,
+                                          AndesContextStore contextStore,
+                                          MessageStore messageStore) throws AndesException {
 
-        this.subscriptionManager = ClusterResourceHolder.getInstance().getSubscriptionManager();
-        this.subscriptionEngine = subscriptionEngine;
+        this.subscriptionManager = subscriptionManager;
+        this.messageRouterFactory = new MessageRouterFactory();
+        this.messageStore = messageStore;
         this.contextStore = contextStore;
-        this.constructStore = constructStore;
-
-        //register listeners for queue, binding and exchange changes
-        addQueueListener(listenerCreator.getQueueListener());
-        addExchangeListener(listenerCreator.getExchangeListener());
-        addBindingListener(listenerCreator.getBindingListener());
+        this.amqpConstructStore = constructStore;
+        CoordinationComponentFactory coordinationComponentFactory = new CoordinationComponentFactory();
+        this.clusterNotificationAgent = coordinationComponentFactory.createClusterNotificationAgent();
     }
 
     /**
-     * Register a listener interested in local binding changes
+     * Create an exchange in andes kernel and notify all listeners
      *
-     * @param listener listener to register
-     */
-    private void addBindingListener(BindingListener listener) {
-        bindingListener = listener;
-    }
-
-    /**
-     * Register a listener interested on queue changes
-     *
-     * @param listener listener to be registered
-     */
-    private void addQueueListener(QueueListener listener) {
-        queueListener = listener;
-    }
-
-    /**
-     * Register a listener interested on exchange changes
-     *
-     * @param listener listener to be registered
-     */
-    private void addExchangeListener(ExchangeListener listener) {
-        exchangeListener = listener;
-    }
-
-    /**
-     * Create an exchange in andes kernel
-     *
-     * @param exchange qpid exchange
+     * @param exchangeEvent local exchangeEvent
      * @throws org.wso2.andes.kernel.AndesException
      */
-    public void createExchange(AndesExchange exchange) throws AndesException {
-        constructStore.addExchange(exchange, true);
-        notifyExchangeListeners(exchange, ExchangeListener.ExchangeChange.ADDED);
+    public void createExchange(InboundExchangeEvent exchangeEvent) throws AndesException {
+
+        AndesMessageRouter messageRouter = messageRouterFactory.
+                createMessageRouter(exchangeEvent.getMessageRouterName(), exchangeEvent.getType(),
+                        exchangeEvent.isAutoDelete());
+
+        AndesContext.getInstance().getMessageRouterRegistry().
+                registerMessageRouter(messageRouter.getName(), messageRouter);
+
+        contextStore.storeExchangeInformation(messageRouter.getName(), messageRouter.encodeAsString());
+
+        clusterNotificationAgent.notifyMessageRouterChange(messageRouter, ClusterNotificationListener
+                .MessageRouterChange.Added);
     }
 
     /**
-     * Delete exchange from andes kernel
+     * Sync exchange creation. This will create an exchange inside Andes
      *
-     * @param exchange exchange to delete
-     * @throws org.wso2.andes.kernel.AndesException
-     */
-    public void deleteExchange(AndesExchange exchange) throws AndesException {
-        constructStore.removeExchange(exchange.exchangeName, true);
-        notifyExchangeListeners(exchange, ExchangeListener.ExchangeChange.DELETED);
-    }
-
-    /**
-     * Create queue in andes kernel
-     *
-     * @param queue queue to create
+     * @param exchangeSyncEvent event information
      * @throws AndesException
      */
-    public void createQueue(AndesQueue queue) throws AndesException {
-        constructStore.addQueue(queue, true);
-        notifyQueueListeners(queue, QueueListener.QueueEvent.ADDED);
+    public void syncExchangeCreate(InboundExchangeSyncEvent exchangeSyncEvent) throws AndesException {
+
+        //create a message router and register
+        AndesMessageRouter messageRouter = messageRouterFactory.
+                createMessageRouter(exchangeSyncEvent.getEncodedExchangeInfo());
+        AndesContext.getInstance().getMessageRouterRegistry().
+                registerMessageRouter(messageRouter.getName(), messageRouter);
+
+        ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().
+                clusterExchangeAdded(messageRouter);
+        log.info("Message Router Sync [create]: " + messageRouter.getName());
     }
 
     /**
-     * Check if queue is deletable
+     * Delete exchange from andes kernel and notify the listeners
+     *
+     * @param messageRouterEvent messageRouterEvent event information
+     * @throws org.wso2.andes.kernel.AndesException
+     */
+    public void deleteExchange(InboundExchangeEvent messageRouterEvent) throws AndesException {
+        AndesMessageRouter removedRouter = AndesContext.getInstance().getMessageRouterRegistry().
+                removeMessageRouter(messageRouterEvent.getMessageRouterName());
+        contextStore.deleteExchangeInformation(messageRouterEvent.getMessageRouterName());
+        clusterNotificationAgent.notifyMessageRouterChange(removedRouter,
+                ClusterNotificationListener.MessageRouterChange.Deleted);
+    }
+
+    /**
+     * Sync exchange deletion. This will remove the exchange
+     * and all related information from memory
+     *
+     * @param exchangeSyncEvent incoming sync event
+     * @throws AndesException
+     */
+    public void syncExchangeDelete(InboundExchangeSyncEvent exchangeSyncEvent) throws AndesException {
+
+        AndesMessageRouter mockMessageRouter = new QueueMessageRouter(exchangeSyncEvent.getEncodedExchangeInfo());
+        String messageRouterName = mockMessageRouter.getName();
+
+        AndesMessageRouter removedRouter = AndesContext.getInstance().getMessageRouterRegistry().
+                removeMessageRouter(messageRouterName);
+
+        //remove exchange inside Qpid
+        ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().
+                clusterExchangeRemoved(messageRouterName);
+
+        log.info("Message Router Sync [delete]: " + removedRouter.getName());
+    }
+
+    /**
+     * Purge storage queue. This will remove all persisted messages of the queue
+     * along with memory buffered messages.
+     *
+     * @param queuePurgeEvent Inbound event representing queue change
+     * @return number of messsages removed from persistent store
+     * @throws AndesException
+     */
+    public int handleQueuePurge(InboundQueueEvent queuePurgeEvent) throws AndesException {
+
+        StorageQueue queue = queuePurgeEvent.toStorageQueue();
+        //get the queue from queue registry
+        StorageQueue registeredQueue = AndesContext.getInstance().
+                getStorageQueueRegistry().getStorageQueue(queue.getName());
+        int numOfMessagesPurged = registeredQueue.purgeMessages();
+        //notify other nodes
+        clusterNotificationAgent.notifyQueueChange(queue, ClusterNotificationListener.QueueChange.Purged);
+        return numOfMessagesPurged;
+    }
+
+    /**
+     * Handle notification of a queue purge from remote node. This will remove any message
+     * buffered from that queue in current node.
+     *
+     * @param queuePurgeNotification Inbound event representing queue change notification
+     * @throws AndesException
+     */
+    public void handleQueuePurgeNotification(InboundQueueSyncEvent queuePurgeNotification)
+            throws AndesException{
+
+        // Clear in memory messages of self (node)
+        StorageQueue queueWithEvent = queuePurgeNotification.toStorageQueue();
+        StorageQueue registeredQueue = AndesContext.getInstance().getStorageQueueRegistry().getStorageQueue
+                (queueWithEvent.getName());
+        registeredQueue.clearMessagesReadToBufferForDelivery();
+
+        log.info("Queue Sync [purge]: " + registeredQueue.getName());
+    }
+
+    /**
+     * Create a persistent queue in andes kernel
+     *
+     * @param queueCreateEvent Inbound event representing queue create
+     * @throws AndesException
+     */
+    public void createQueue(InboundQueueEvent queueCreateEvent) throws AndesException {
+        StorageQueue queueEvent = queueCreateEvent.toStorageQueue();
+
+        StorageQueue queue = AndesContext.getInstance().
+                getStorageQueueRegistry().registerStorageQueue(queueEvent.getName(),
+                queueEvent.isDurable(), queueEvent.isShared(), queueEvent.getQueueOwner(),
+                queueEvent.isExclusive());
+
+        contextStore.storeQueueInformation(queueEvent.getName(), queueEvent.encodeAsString());
+        //create a space to keep message counter on this queue
+        messageStore.addQueue(queue.getName());
+        clusterNotificationAgent.notifyQueueChange(queueEvent, ClusterNotificationListener.QueueChange.Added);
+
+        log.info("Queue Created: " + queue.getName());
+    }
+
+    /**
+     * Handle notification of a queue creation of a remote node.
+     *
+     * @param queueCreateEvent Inbound event representing queue change notification
+     * @throws AndesException
+     */
+    public void syncQueueCreate(InboundQueueSyncEvent queueCreateEvent) throws AndesException {
+        StorageQueue queueEvent = queueCreateEvent.toStorageQueue();
+
+        StorageQueue storageQueueToAdd = AndesContext.getInstance().
+                getStorageQueueRegistry().registerStorageQueue(queueEvent.getName(),
+                queueEvent.isDurable(), queueEvent.isShared(), queueEvent.getQueueOwner(),
+                queueEvent.isExclusive());
+
+        //add queue inside Qpid
+        ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().
+                clusterQueueAdded(storageQueueToAdd);
+
+        log.info("Queue Sync [create]: " + storageQueueToAdd.getName());
+    }
+
+    /**
+     * Check if queue is deletable. If the queue has any subscriber cluster-wide
+     * it is not deletable
      *
      * @param queueName name of the queue
-     * @param protocolType The protocol which this queue belongs to
-     * @param destinationType The destination type of the queue
-     * @return possibility of deleting queue
+     * @return true if possible to delete queue
      * @throws AndesException
      */
-    public boolean checkIfQueueDeletable(String queueName, ProtocolType protocolType, DestinationType destinationType) throws AndesException {
+    public boolean checkIfQueueDeletable(String queueName) throws AndesException {
         boolean queueDeletable = false;
 
-        Set<AndesSubscription> queueSubscriptions = subscriptionEngine.getClusterSubscribersForDestination(queueName, protocolType, destinationType);
+        Iterable<org.wso2.andes.kernel.subscription.AndesSubscription> activeSubscriptions
+                = subscriptionManager.getAllSubscriptionsByQueue(queueName);
 
-        if (queueSubscriptions.isEmpty()) {
+        if (!activeSubscriptions.iterator().hasNext()) {
             queueDeletable = true;
         }
         return queueDeletable;
     }
 
     /**
-     * Delete the queue from broker. This will purge the queue and
-     * delete cluster-wide
+     * Delete the queue from broker. This will remove all bounded subscriptions, notify and
+     * remove bindings before removing the queue.
      *
-     * @param queueName name of the queue
-     * @param protocolType The protocol which the queue to delete belongs to
-     * @param destinationType The destination type which the queue belongs to
-     * @throws AndesException
+     * @param queueDeleteEvent name of the storage queue to delete
+     * @throws AndesException issue on deleting queue
      */
-    public void deleteQueue(String queueName, ProtocolType protocolType, DestinationType destinationType) throws AndesException {
-        //identify queue to delete
-        AndesQueue queueToDelete = null;
-        List<AndesQueue> queueList = contextStore.getAllQueuesStored();
-        for (AndesQueue queue : queueList) {
-            if (queue.queueName.equals(queueName)) {
-                queueToDelete = queue;
-                break;
-            }
+    public void deleteQueue(InboundQueueEvent queueDeleteEvent) throws AndesException {
+
+        StorageQueue queueWithEvent = queueDeleteEvent.toStorageQueue();
+        String storageQueueName = queueWithEvent.getName();
+
+        //remove all subscriptions to the queue
+        subscriptionManager.closeAllSubscriptionsBoundToQueue(storageQueueName);
+
+        //remove all bindings from memory if not removed
+        List<AndesBinding> removedBindings = amqpConstructStore.removeAllBindingsForQueue(storageQueueName);
+        for (AndesBinding removedBinding : removedBindings) {
+            clusterNotificationAgent.notifyBindingsChange(removedBinding,
+                    ClusterNotificationListener.BindingChange.Deleted);
         }
 
-        //delete all local and cluster subscription entries if remaining (inactive entries)
-        subscriptionManager.deleteAllLocalSubscriptionsOfBoundQueue(queueName, protocolType, destinationType);
-        subscriptionManager.deleteAllClusterSubscriptionsOfBoundQueue(queueName, protocolType, destinationType);
+        //purge the queue cluster-wide. Other nodes will only delete messages buffered to memory on those nodes
+        handleQueuePurge(queueDeleteEvent);
 
-        //purge the queue cluster-wide
-        MessagingEngine.getInstance().purgeMessages(queueName, null, protocolType, destinationType);
+        // Remove queue information from database
+        contextStore.deleteQueueInformation(storageQueueName);
+        messageStore.removeQueue(storageQueueName);
 
-        // delete queue from construct store
-        constructStore.removeQueue(queueName);
+        // Remove queue mapping from cache after removing it from DB
+        messageStore.removeLocalQueueData(storageQueueName);
+
+        //identify storage queue, unbind it from router and delete from queue registry
+        StorageQueue storageQueue = AndesContext.getInstance().
+                getStorageQueueRegistry().removeStorageQueue(storageQueueName);
 
         //Notify cluster to delete queue
-        notifyQueueListeners(queueToDelete, QueueListener.QueueEvent.DELETED);
-        log.info("Delete queue : " + queueName);
+        clusterNotificationAgent.notifyQueueChange(storageQueue, ClusterNotificationListener.QueueChange.Deleted);
+
+        log.info("Queue Deleted: " + storageQueueName);
     }
 
     /**
-     * Create andes binding in Andes kernel
+     * Handle queue delete notification of a remote node.
      *
-     * @param andesBinding binding to be created
+     * @param queueDeleteSyncEvent Inbound event representing a queue deletion
      * @throws AndesException
      */
-    public void createBinding(AndesBinding andesBinding) throws AndesException {
-        constructStore.addBinding(andesBinding, true);
-        notifyBindingListeners(andesBinding, BindingListener.BindingEvent.ADDED);
+    public void syncQueueDelete(InboundQueueSyncEvent queueDeleteSyncEvent) throws AndesException {
+        StorageQueue queueWithEvent = queueDeleteSyncEvent.toStorageQueue();
+        String storageQueueName = queueWithEvent.getName();
+
+        //remove all subscriptions to the queue
+        subscriptionManager.closeAllSubscriptionsBoundToQueue(storageQueueName);
+
+        //clear in-memory messages buffered for queue
+        handleQueuePurgeNotification(queueDeleteSyncEvent);
+
+        //remove all bindings from memory if not removed
+        amqpConstructStore.removeAllBindingsForQueue(storageQueueName);
+
+        //remove queue mapping
+        messageStore.removeLocalQueueData(storageQueueName);
+
+        //identify storage queue and delete from queue registry
+        StorageQueue queueToDelete = AndesContext.getInstance().
+                getStorageQueueRegistry().removeStorageQueue(storageQueueName);
+        //remove queue inside Qpid
+        ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterQueueRemoved(queueToDelete);
+
+        log.info("Queue Sync [delete]: " + queueToDelete.toString());
+    }
+
+    /**
+     * Create andes binding in Andes kernel. At this step we create the storage queue
+     * if not already created. Reason is, at AMQP queue creation there is no information
+     * on bindings. Thus we cannot generate storage queue name. Here there is binding information needed.
+     *
+     * @param bindingEvent binding to be created
+     * @throws AndesException
+     */
+    public void createBinding(InboundBindingEvent bindingEvent) throws AndesException {
+
+        //check queue already exists. If not create
+        QueueInfo queueInfo = bindingEvent.getBoundedQueue();
+        StorageQueue queue = AndesContext.getInstance().
+                getStorageQueueRegistry().getStorageQueue(queueInfo.getQueueName());
+        if(null == queue) {
+            InboundQueueEvent queueCreateEvent = new InboundQueueEvent(queueInfo.getQueueName(),
+                    queueInfo.isDurable(), queueInfo.isShared(), queueInfo.getQueueOwner(),
+                    queueInfo.isExclusive());
+
+            queueCreateEvent.prepareForCreateQueue(this);
+            createQueue(queueCreateEvent);
+
+            queue = AndesContext.getInstance().
+                    getStorageQueueRegistry().getStorageQueue(queueInfo.getQueueName());
+        }
+
+        //bind queue to messageRouter
+        String bindingKey = bindingEvent.getBindingKey();
+        String messageRouterName= bindingEvent.getBoundMessageRouterName();
+
+        AndesMessageRouter messageRouter = AndesContext.getInstance().
+                getMessageRouterRegistry().getMessageRouter(messageRouterName);
+
+        queue.bindQueueToMessageRouter(bindingKey,messageRouter);
+
+        AndesBinding binding = new AndesBinding(bindingEvent.getBoundMessageRouterName(),
+                queue, bindingEvent.getBindingKey());
+
+        amqpConstructStore.addBinding(binding, true);
+        clusterNotificationAgent.notifyBindingsChange(binding, ClusterNotificationListener.BindingChange.Added);
+    }
+
+    /**
+     * Hanlde binding creation notification from a remote node
+     *
+     * @param bindingSyncEvent Inbound event representing a binding create
+     * @throws AndesException
+     */
+    public void syncCreateBinding(InboundBindingSyncEvent bindingSyncEvent) throws AndesException {
+
+        AndesBinding binding = new AndesBinding(bindingSyncEvent.getEncodedBindingInfo());
+
+        //bind queue to messageRouter
+        StorageQueue queueToBind = binding.getBoundQueue();
+        String messageRouterToBind = binding.getMessageRouterName();
+        AndesMessageRouter messageRouter = AndesContext.getInstance().
+                getMessageRouterRegistry().getMessageRouter(messageRouterToBind);
+        queueToBind.bindQueueToMessageRouter(binding.getBindingKey(),messageRouter);
+        messageRouter.addMapping(binding.getBindingKey(), queueToBind);
+
+        amqpConstructStore.addBinding(binding, false);
+        //add binding inside qpid
+        ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterBindingAdded(binding);
+
+        log.info("Binding Sync [create]: " + binding.toString());
     }
 
     /**
      * Remove andes binding from andes kernel
      *
-     * @param andesBinding binding to be removed
+     * @param removeBindingEvent binding remove request event
      * @throws AndesException
      */
-    public void removeBinding(AndesBinding andesBinding) throws AndesException {
-        constructStore.removeBinding(andesBinding.boundExchangeName, 
-                andesBinding.boundQueue.queueName, true);
-        notifyBindingListeners(andesBinding, BindingListener.BindingEvent.DELETED);
+    public void removeBinding(InboundBindingEvent removeBindingEvent) throws AndesException {
+        String messageRouterName = removeBindingEvent.getBoundMessageRouterName();
+        String boundQueueName = removeBindingEvent.getBoundedQueue().getQueueName();
+
+        StorageQueue queue = AndesContext.getInstance().
+                getStorageQueueRegistry().getStorageQueue(boundQueueName);
+
+        AndesMessageRouter messageRouter = AndesContext.getInstance().
+                getMessageRouterRegistry().getMessageRouter(messageRouterName);
+
+        messageRouter.removeMapping(removeBindingEvent.getBindingKey(), queue);
+
+        AndesBinding removedBinding = amqpConstructStore.removeBinding(messageRouterName, boundQueueName, true);
+
+        clusterNotificationAgent.notifyBindingsChange(removedBinding,
+                ClusterNotificationListener.BindingChange.Deleted);
+
+        //if a non durable queue on binding removal delete the queue if there are no more
+        // subscribers. Delete call for non durable queues is prevented at Qpid-Andes bridge.
+        if(!queue.isDurable() && queue.getBoundedSubscriptions().isEmpty()) {
+            InboundQueueEvent queueDeleteEvent = new InboundQueueEvent(queue.getName(),
+                    queue.isDurable(), queue.isShared(), queue.getQueueOwner(), queue.isExclusive());
+            deleteQueue(queueDeleteEvent);
+        }
     }
 
     /**
-     * Notifying the exchange listeners stating that a change has occurred for the exchanges in the
-     * local node. This will then get notified throughout the cluster if clustered deployment is
-     * available.
+     * Handle binding removal notification from a remote node
      *
-     * @param exchange The andes exchange in which the change occurred. The exchange can be
-     *                 "default", "direct" or "topic".
-     * @param change   The change that is being occurred
+     * @param bindingSyncEvent Inbound event representing binding removal
      * @throws AndesException
      */
-    private void notifyExchangeListeners(AndesExchange exchange, ExchangeListener.ExchangeChange change)
-            throws AndesException {
-        exchangeListener.handleLocalExchangesChanged(exchange, change);
+    public void syncRemoveBinding(InboundBindingSyncEvent bindingSyncEvent) throws AndesException {
+
+        AndesBinding binding = new AndesBinding(bindingSyncEvent.getEncodedBindingInfo());
+
+        //find and remove binding
+        AndesBinding removedBinding = amqpConstructStore.removeBinding(binding.getMessageRouterName(), binding
+                .getBoundQueue().getName(), true);
+
+        //unbind queue from messageRouter
+        StorageQueue boundQueue = removedBinding.getBoundQueue();
+
+        boundQueue.unbindQueueFromMessageRouter();
+
+        //remove binding inside Qpid
+        ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterBindingRemoved(removedBinding);
+
+        log.info("Binding Sync [delete]: " + binding.toString());
     }
 
-    /**
-     * Notifying the queue listeners stating that a change has occurred for the queues in the
-     * local node. This will then get notified throughout the cluster if clustered deployment is
-     * available.
-     *
-     * @param queue  Andes queue in which the change occurred.
-     * @param change The change that was occurred.
-     * @throws AndesException
-     */
-    private void notifyQueueListeners(AndesQueue queue, QueueListener.QueueEvent change)
-            throws AndesException {
-        queueListener.handleLocalQueuesChanged(queue, change);
-    }
-
-    /**
-     * Notifying the bindings listeners stating that a change has occurred for the bindings in the
-     * local node. This will then get notified throughout the cluster if clustered deployment is
-     * available.
-     *
-     * @param binding The binding in which the change occurred. A binding describes the relationship
-     *                between an exchange and a messages queue which is represented by the routing
-     *                key.
-     * @param change  The change that occurred.
-     * @throws AndesException
-     */
-    private void notifyBindingListeners(AndesBinding binding, BindingListener.BindingEvent change)
-            throws AndesException {
-        bindingListener.handleLocalBindingsChanged(binding, change);
-    }
 }

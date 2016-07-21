@@ -19,23 +19,18 @@ package org.wso2.andes.amqp;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.AndesUtils;
-import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolMessage;
-import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.disruptor.inbound.InboundBindingEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundExchangeEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
-import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.binding.Binding;
+import org.wso2.andes.kernel.disruptor.inbound.QueueInfo;
 import org.wso2.andes.server.exchange.DirectExchange;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.exchange.TopicExchange;
@@ -47,10 +42,7 @@ import org.wso2.andes.server.queue.SimpleQueueEntryList;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.server.store.StorableMessageMetaData;
 import org.wso2.andes.server.store.StoredMessage;
-import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.store.StoredAMQPMessage;
-import org.wso2.andes.subscription.LocalSubscription;
-import org.wso2.andes.subscription.OutboundSubscription;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -66,12 +58,16 @@ import java.util.regex.Pattern;
 public class AMQPUtils {
 
     public static final String TOPIC_AND_CHILDREN_WILDCARD = "#";
+
     public static final String IMMEDIATE_CHILDREN_WILDCARD = "*";
+
     public static String DIRECT_EXCHANGE_NAME = "amq.direct";
 
     public static String TOPIC_EXCHANGE_NAME = "amq.topic";
 
     public static String DEFAULT_EXCHANGE_NAME = "<<default>>";
+
+    public static String DLC_EXCHANGE_NAME = "amq.dlc";
 
     public static String DEFAULT_ANDES_CHANNEL_IDENTIFIER = "AMQP-Unknown";
 
@@ -82,28 +78,13 @@ public class AMQPUtils {
 
     private static Log log = LogFactory.getLog(AMQPUtils.class);
 
-    /* Store previously queried message part as a cache so when the same part was required
-     for the next chunk it can be retrieved without accessing the database */
-    private static Map<Long, AndesMessagePart> messagePartCache = new HashMap<Long, AndesMessagePart>();
-
     /**
-     * convert Andes metadata list to qpid queue entry list
-     *
-     * @param queue        qpid queue
-     * @param metadataList Andes metadata list
-     * @return Queue Entry list
+     *  Store previously queried message part as a cache so when the same
+     *  part was required for the next chunk it can be retrieved without
+     *  accessing the database
      */
-    public static List<QueueEntry> getQueueEntryListFromAndesMetaDataList(AMQQueue queue, List<AndesMessageMetadata> metadataList) {
-        List<QueueEntry> messages = new ArrayList<QueueEntry>();
-        SimpleQueueEntryList list = new SimpleQueueEntryList(queue);
-        List<AMQMessage> amqMessageList = getEntryAMQMessageListFromAndesMetaDataList(metadataList);
+    private static Map<Long, AndesMessagePart> messagePartCache = new HashMap<>();
 
-        for (AMQMessage message : amqMessageList) {
-            message.getStoredMessage().setExchange("amq.direct");
-            messages.add(list.add(message));
-        }
-        return messages;
-    }
 
     /**
      * convert Andes metadata list to qpid AMQMessages
@@ -161,7 +142,7 @@ public class AMQPUtils {
         long messageId = metadata.getMessageID();
         //create message with meta data. This has access to message content
         StorableMessageMetaData metaData = convertAndesMetadataToAMQMetadata(metadata.getMessage());
-        QpidStoredMessage<MessageMetaData> message = new QpidStoredMessage<MessageMetaData>(
+        QpidStoredMessage<MessageMetaData> message = new QpidStoredMessage<>(
                 new StoredAMQPMessage(messageId, metaData), content);
         AMQMessage amqMessage = new AMQMessage(message);
         amqMessage.setAndesMetadataReference(metadata);
@@ -223,85 +204,6 @@ public class AMQPUtils {
         metadata.setMessageContentLength(amqMetadata.getContentSize());
 
         return metadata;
-    }
-
-    /**
-     * create AMQP local subscription from qpid subscription
-     *
-     * @param queue        qpid queue
-     * @param subscription qpid subscription
-     * @param b            qpid binding
-     * @return AMQP local subscription
-     * @throws AndesException
-     */
-    //in order to tell if this is a queue subscription or a topic subscription, binding is needed
-    public static LocalSubscription createAMQPLocalSubscription(AMQQueue queue, Subscription subscription, Binding b) throws
-            AndesException {
-
-        String subscriptionID = String.valueOf(subscription.getSubscriptionID());
-        Exchange exchange = b.getExchange();
-        String destination = b.getBindingKey();
-        String subscribedNode = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
-        long subscribeTime = System.currentTimeMillis();
-        String queueOwner = (queue.getOwner() == null) ? null : queue.getOwner().toString();
-        String queueBoundExchangeName = "";
-        String queueBoundExchangeType = exchange.getType().toString();
-        Short isqueueBoundExchangeAutoDeletable = Short.parseShort(exchange.isAutoDelete() ? Integer.toString(1) : Integer.toString(0));
-        boolean isBoundToTopic = false;
-
-        /**
-         *we are checking the type to avoid the confusion
-         *<<default>> exchange is actually a direct exchange. No need to keep two bindings
-         */
-        //TODO: extend to other types of exchanges
-        if (exchange.getType().equals(DirectExchange.TYPE)) {
-            queueBoundExchangeName = DirectExchange.TYPE.getDefaultExchangeName().toString();
-            isBoundToTopic = false;
-        } else if (exchange.getType().equals(TopicExchange.TYPE)) {
-            if(queue.isDurable()) {
-                // Topic messages for durable subscribers are routed through queue path. Hence the durable subscriptions
-                // for topics should get the messages from queues which are bound to direct exchange.
-                // Hence we change the exchange for durable subscription to a direct exchange in Andes
-                queueBoundExchangeName = DirectExchange.TYPE.getDefaultExchangeName().toString();
-                queueBoundExchangeType = DirectExchange.TYPE.toString();
-            } else {
-                queueBoundExchangeName = TopicExchange.TYPE.getDefaultExchangeName().toString();
-            }
-            isBoundToTopic = true;
-        }
-
-        /**
-         * For durable topic subscriptions subscription ID should be unique for a client ID.
-         * Thus we are redefining the subscription id to client ID
-         * But durable subscription ID form as queue subscription ID if durable topic has enabled shared subscription.
-         */
-        Boolean allowSharedSubscribers = AndesConfigurationManager.readValue(
-                AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
-        if (queue.isDurable() && isBoundToTopic && !allowSharedSubscribers) {
-            subscriptionID = queue.getName();
-        }
-
-        OutboundSubscription amqpDeliverySubscription = new AMQPLocalSubscription(queue, subscription, queue
-                .isDurable(), isBoundToTopic);
-
-        DestinationType destinationType;
-
-        if (isBoundToTopic) {
-            if (queue.isDurable()) {
-                destinationType = DestinationType.DURABLE_TOPIC;
-            } else {
-                destinationType = DestinationType.TOPIC;
-            }
-        } else {
-            destinationType = DestinationType.QUEUE;
-        }
-
-        LocalSubscription localSubscription = AndesUtils.createLocalSubscription(amqpDeliverySubscription,
-                subscriptionID, destination, queue.isExclusive(), queue.isDurable(),
-                subscribedNode, subscribeTime, queue.getName(), queueOwner, queueBoundExchangeName,
-                queueBoundExchangeType, isqueueBoundExchangeAutoDeletable, subscription.isActive(), destinationType);
-
-        return localSubscription;
     }
 
     /**
@@ -402,18 +304,17 @@ public class AMQPUtils {
      * @param amqQueue qpid queue
      * @return andes queue
      */
-    public static InboundQueueEvent createAndesQueue(AMQQueue amqQueue) {
-        DestinationType destinationType;
+    public static InboundQueueEvent createInboundQueueEvent(AMQQueue amqQueue) {
 
-        if (amqQueue.checkIfBoundToTopicExchange()) {
-            destinationType = DestinationType.TOPIC;
-        } else {
-            destinationType = DestinationType.QUEUE;
-        }
+        String queueName = amqQueue.getName();
+        String queueOwner = (amqQueue.getOwner() != null) ? amqQueue.getOwner().toString() : "null";
 
-        return new InboundQueueEvent(amqQueue.getName(),
-                (amqQueue.getOwner() != null) ? amqQueue.getOwner().toString() : "null",
-                amqQueue.isExclusive(), amqQueue.isDurable(), ProtocolType.AMQP, destinationType);
+        return new InboundQueueEvent(queueName,
+                amqQueue.isDurable(),
+                true,
+                queueOwner,
+                amqQueue.isExclusive());
+
     }
 
     /**
@@ -436,6 +337,8 @@ public class AMQPUtils {
      * @return InboundBindingEvent binding event that wrap AndesBinding
      */
     public static InboundBindingEvent createAndesBinding(Exchange exchange, AMQQueue queue, AMQShortString routingKey) {
+
+
         /**
          * we are checking the type of exchange to avoid the confusion
          * <<default>> exchange is actually a direct exchange. No need to keep two bindings
@@ -447,10 +350,49 @@ public class AMQPUtils {
         } else if (exchange.getType().equals(TopicExchange.TYPE)) {
             exchangeName = TopicExchange.TYPE.getDefaultExchangeName().toString();
         }
-        return new InboundBindingEvent(exchangeName, AMQPUtils.createAndesQueue(queue), routingKey.toString());
+
+        String storageQueueName = AndesUtils.getStorageQueueForDestination(routingKey.toString(),
+                exchangeName,queue.getName(),queue.isDurable());
+
+        boolean isQueueShared = isQueueShared(queue.isDurable(), exchangeName);
+        String queueOwner = "null";
+        if(queue.getOwner() != null) {
+            queueOwner = queue.getOwner().toString();
+        }
+        QueueInfo queueInformation = new QueueInfo(storageQueueName,
+                queue.isDurable(),
+                isQueueShared,
+                queueOwner,
+                queue.isExclusive());
+
+        return new InboundBindingEvent(queueInformation,exchangeName,routingKey.toString());
     }
 
-    public static boolean isTargetQueueBoundByMatchingToRoutingKey(String queueBoundRoutingKey, String messageRoutingKey) {
+    /**
+     * Get if a copy of a message in the queue should be sent to
+     * bound subscribers in a round robin way
+     * @param isDurable true is queue is durable
+     * @param exchangeName name of exchange queue is bound to
+     * @return true if message is shared between bound subscribers
+     */
+    private static boolean isQueueShared(boolean isDurable, String exchangeName) {
+
+        boolean isQueueShared = true;
+
+        /*
+          for non durable topic queue, a copy of each message should be
+          sent to each subscriber. Thus queue is not shared
+         */
+        if((AMQPUtils.TOPIC_EXCHANGE_NAME).equals(exchangeName)) {
+            if (!isDurable) {
+                isQueueShared = false;
+            }
+        }
+        return isQueueShared;
+    }
+
+    public static boolean isTargetQueueBoundByMatchingToRoutingKey(String queueBoundRoutingKey,
+                                                                   String messageRoutingKey) {
         boolean isMatching = false;
         if (queueBoundRoutingKey.equals(messageRoutingKey)) {
             isMatching = true;

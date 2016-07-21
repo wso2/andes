@@ -23,10 +23,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContextInformationManager;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesQueue;
-import org.wso2.andes.kernel.DestinationType;
-import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.kernel.ProtocolType;
+import org.wso2.andes.kernel.subscription.StorageQueue;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -35,7 +32,7 @@ import java.util.concurrent.TimeoutException;
 /**
  * Queue related inbound events are handled through this method
  */
-public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEvent {
+public class InboundQueueEvent implements AndesInboundStateEvent {
 
     private static Log log = LogFactory.getLog(InboundQueueEvent.class);
 
@@ -76,11 +73,6 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
     private AndesContextInformationManager contextInformationManager;
 
     /**
-     * Reference to MessagingEngine for queue purging
-     */
-    private MessagingEngine messagingEngine;
-
-    /**
      * Purged message count as a future. When a purging is done purged message count is set. Interested user can use 
      * InboundQueueEvent#getPurgedCount method to get the purged count from this async event. 
      * InboundQueueEvent#getPurgedCount method is a blocking call.  
@@ -97,6 +89,16 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
      */
     private SettableFuture<Boolean> isEventComplete;
 
+    private String queueName;
+
+    private boolean isDurable;
+
+    private boolean isShared;
+
+    private String queueOwner;
+
+    private boolean isExclusive;
+
 
     /**
      * create an instance of andes queue
@@ -105,36 +107,40 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
      * @param queueOwner  owner of the queue (virtual host)
      * @param isExclusive is queue exclusive
      * @param isDurable   is queue durable
-     * @param protocolType The protocol which invoked this queue create
-     * @param destinationType The destination type for which this queue is created
      */
-    public InboundQueueEvent(String queueName, String queueOwner, boolean isExclusive, boolean isDurable, ProtocolType protocolType, DestinationType destinationType) {
-        super(queueName, queueOwner, isExclusive, isDurable, protocolType, destinationType);
+    public InboundQueueEvent(String queueName,
+                             boolean isDurable,
+                             boolean isShared,
+                             String queueOwner,
+                             boolean isExclusive) {
+        this.queueName = queueName;
+        this.isDurable = isDurable;
+        this.isShared = isShared;
+        this.queueOwner = queueOwner;
+        this.isExclusive = isExclusive;
         purgedCount = SettableFuture.create();
         isEventComplete = SettableFuture.create();
     }
 
-    /**
-     * create an instance of andes queue
-     *
-     * @param queueAsStr queue information as encoded string
-     */
-    public InboundQueueEvent(String queueAsStr) {
-        super(queueAsStr);
-        purgedCount = SettableFuture.create();
-        isEventComplete = SettableFuture.create();
+
+    public StorageQueue toStorageQueue() {
+        return new StorageQueue(queueName, isDurable, isShared, queueOwner,isExclusive);
     }
 
     @Override
     public void updateState() throws AndesException {
         switch (eventType) {
             case CREATE_QUEUE_EVENT:
-                contextInformationManager.createQueue(this);
+                /**
+                 * Queue will get created when binding is added.
+                 * Reason is to decide storage queue name, we need binding information
+                 */
+                //contextInformationManager.createQueue(this);
                 //mark the completion of the queue addition operation
                 isEventComplete.set(true);
                 break;
             case DELETE_QUEUE_EVENT:
-                contextInformationManager.deleteQueue(queueName, getProtocolType(), getDestinationType());
+                handleQueueDeleteEvent();
                 break;
             case QUEUE_PURGE_EVENT:
                 handlePurgeEvent();
@@ -156,8 +162,7 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
     private void handleIsQueueDeletableEvent() {
         boolean queueDeletable = false;
         try {
-            queueDeletable = contextInformationManager.checkIfQueueDeletable(
-                    queueName, getProtocolType(), getDestinationType());
+            queueDeletable = contextInformationManager.checkIfQueueDeletable(queueName);
         } catch (AndesException e) {
             isEventComplete.setException(e);
         } finally {
@@ -166,16 +171,31 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
         }
     }
 
+    private void handleQueueDeleteEvent() {
+        boolean isComplete = false;
+        try {
+            contextInformationManager.deleteQueue(this);
+            isComplete = true;
+        } catch (AndesException e) {
+            isEventComplete.setException(e);
+        } finally {
+            isEventComplete.set(isComplete);
+        }
+    }
+
     private void handlePurgeEvent() {
+        boolean isComplete = false;
         int count = -1;
         try {
-            count = messagingEngine.purgeMessages(queueName, queueOwner, getProtocolType(), getDestinationType());
+            count = contextInformationManager.handleQueuePurge(this);
             purgedCount.set(count);
+            isComplete = true;
         } catch (AndesException e) {
             purgedCount.setException(e);
         } finally {
             // For other exceptions value will be -1;
             purgedCount.set(count);
+            isEventComplete.set(isComplete);
         }
     }
 
@@ -202,11 +222,11 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
     /**
      * Update the event to be a queue purging event
      *
-     * @param messagingEngine MessagingEngine
+     * @param contextInformationManager AndesContextInformationManager
      */
-    public void purgeQueue(MessagingEngine messagingEngine) {
+    public void purgeQueue(AndesContextInformationManager contextInformationManager) {
         eventType = EventType.QUEUE_PURGE_EVENT;
-        this.messagingEngine = messagingEngine;
+        this.contextInformationManager = contextInformationManager;
     }
 
     /**

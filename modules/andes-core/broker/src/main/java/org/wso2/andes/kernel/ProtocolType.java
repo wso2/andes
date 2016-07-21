@@ -1,7 +1,7 @@
 package org.wso2.andes.kernel;
 
 /**
- * Different subscription types represented by a {@link AndesSubscription} object.
+ * Different protocol types supported by the broker
  */
 public enum ProtocolType {
     MQTT,

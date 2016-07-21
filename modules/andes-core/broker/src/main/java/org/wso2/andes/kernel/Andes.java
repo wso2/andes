@@ -36,9 +36,10 @@ import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.kernel.slot.Slot;
+import org.wso2.andes.kernel.subscription.AndesSubscription;
+import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
+import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.metrics.MetricsConstants;
-import org.wso2.andes.subscription.LocalSubscription;
-import org.wso2.andes.subscription.SubscriptionEngine;
 import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.manager.Counter;
 import org.wso2.carbon.metrics.manager.Level;
@@ -139,30 +140,31 @@ public class Andes {
         TX_EVENT_TIMEOUT = AndesConfigurationManager.readValue(AndesConfiguration.MAX_TRANSACTION_WAIT_TIMEOUT);
     }
 
+
     /**
-     * Recover message
-     *
-     * @param recoverMsg
-     *         message to be recovered
-     * @param subscription
-     *         channel id
+     * Recover messages for the subscriber. Re-schedule sent but un-ackenowledged
+     * messages back
+     * @param channelID ID of the channel recover request is received
      * @throws AndesException
      */
-    public void recoverMessage(List<DeliverableAndesMetadata> recoverMsg, LocalSubscription subscription) throws AndesException {
-        MessagingEngine.getInstance().recoverMessage(recoverMsg, subscription);
+    public void recoverMessage(UUID channelID) throws AndesException {
+        AndesSubscription subscription  = AndesContext.getInstance().
+                getAndesSubscriptionManager().getSubscriptionByProtocolChannel(channelID);
+        subscription.recoverMessages();
     }
 
     /**
      * Initialise is package specific. We don't need outsiders initialising the API
      */
-    void initialise(SubscriptionEngine subscriptionEngine, MessagingEngine messagingEngine,
-            AndesContextInformationManager contextInformationManager, AndesSubscriptionManager subscriptionManager) {
+    void initialise(MessagingEngine messagingEngine,
+                    InboundEventManager inboundEventManager,
+                    AndesContextInformationManager contextInformationManager,
+                    AndesSubscriptionManager subscriptionManager) {
 
         this.contextInformationManager = contextInformationManager;
         this.messagingEngine = messagingEngine;
         this.subscriptionManager = subscriptionManager;
-
-        inboundEventManager = new InboundEventManager(subscriptionEngine, messagingEngine);
+        this.inboundEventManager = inboundEventManager;
 
         log.info("Andes API initialised.");
     }
@@ -234,6 +236,7 @@ public class Andes {
      *
      * @param channelID id of the closed connection
      */
+    //TODO: review: after publishing to disruptor done nothing
     public void clientConnectionClosed(UUID channelID) {
         InboundAndesChannelEvent channelEvent = new InboundAndesChannelEvent(channelID);
         channelEvent.prepareForChannelClose();
@@ -245,6 +248,7 @@ public class Andes {
      *
      * @param channelID channelID of the client connection
      */
+    //TODO: review: after publishing to disruptor done nothing
     public void clientConnectionCreated(UUID channelID) {
         InboundAndesChannelEvent channelEvent = new InboundAndesChannelEvent(channelID);
         channelEvent.prepareForChannelOpen();
@@ -275,10 +279,30 @@ public class Andes {
      * @throws SubscriptionAlreadyExistsException
      */
     public void openLocalSubscription(InboundSubscriptionEvent subscriptionEvent)
-            throws SubscriptionAlreadyExistsException, AndesException {
+            throws AndesException {
         subscriptionEvent.prepareForNewSubscription(subscriptionManager);
         inboundEventManager.publishStateEvent(subscriptionEvent);
         subscriptionEvent.waitForCompletion();
+    }
+
+    /**
+     * Un-subscribe subscription. This is usually performed on durable topic
+     * subscriptions. Event is handled in tow steps
+     * 1. Close the subscription
+     * 2. Delete storage queue subscription is bound to
+     *
+     * @param subscriptionEvent un-subscribe event
+     * @throws AndesException
+     */
+    public void unsubscribeLocalSubscription(InboundSubscriptionEvent subscriptionEvent) throws AndesException {
+        closeLocalSubscription(subscriptionEvent);
+
+        StorageQueue queue = AndesContext.getInstance().
+                getStorageQueueRegistry().getStorageQueue(subscriptionEvent.getBoundStorageQueueName());
+
+        InboundQueueEvent deleteQueueEvent = new InboundQueueEvent(queue.getName(),
+                queue.isDurable(), queue.isShared(), queue.getQueueOwner(), queue.isExclusive());
+        deleteQueue(deleteQueueEvent);
     }
 
     /**
@@ -340,7 +364,7 @@ public class Andes {
      * @throws AndesException
      */
     public int purgeQueue(InboundQueueEvent queueEvent) throws AndesException {
-        queueEvent.purgeQueue(messagingEngine);
+        queueEvent.purgeQueue(contextInformationManager);
         inboundEventManager.publishStateEvent(queueEvent);
         try {
             return queueEvent.getPurgedCount(PURGE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
@@ -447,15 +471,18 @@ public class Andes {
      * @throws AndesException
      */
     public void messageRejected(DeliverableAndesMetadata metadata, UUID channelID) throws AndesException {
-        MessagingEngine.getInstance().messageRejected(metadata, channelID);
-
-        //Adding metrics meter for ack rate
-        Meter ackMeter = MetricManager.meter(Level.INFO, MetricsConstants.REJECT_RECEIVE_RATE);
-        ackMeter.mark();
-
-        //Adding metrics counter for reject messages
-        Counter counter = MetricManager.counter(Level.INFO, MetricsConstants.REJECT_MESSAGES);
-        counter.inc();
+        AndesSubscription subscription = AndesContext.getInstance().
+                getAndesSubscriptionManager().getSubscriptionByProtocolChannel(channelID);
+        if (subscription != null) {
+            subscription.onMessageReject(metadata.getMessageID());
+        } else {
+            log.warn("Cannot handle reject. Subscription not found for channel "
+                    + channelID + "Dropping message id= "
+                    + metadata.getMessageID());
+            metadata.markDeliveredChannelAsClosed(channelID);
+        }
+        //Tracing message activity
+        MessageTracer.trace(metadata, MessageTracer.MESSAGE_REJECTED);
     }
 
     /**
@@ -469,18 +496,6 @@ public class Andes {
     public void updateMetaDataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList)
             throws AndesException {
         MessagingEngine.getInstance().updateMetaDataInformation(currentQueueName, metadataList);
-    }
-
-    /**
-     * Schedule message for subscription.
-     *
-     * @param messageMetadata message to be scheduled
-     * @param subscription    subscription to send
-     * @throws AndesException
-     */
-    public void reQueueMessageToSubscriber(DeliverableAndesMetadata messageMetadata, LocalSubscription subscription)
-            throws AndesException {
-        MessagingEngine.getInstance().reQueueMessageToSubscriber(messageMetadata, subscription);
     }
 
     /**
@@ -692,6 +707,7 @@ public class Andes {
     public void addBinding(InboundBindingEvent bindingsEvent) throws AndesException {
         bindingsEvent.prepareForAddBindingEvent(contextInformationManager);
         inboundEventManager.publishStateEvent(bindingsEvent);
+        bindingsEvent.waitForCompletion();
     }
 
     /**

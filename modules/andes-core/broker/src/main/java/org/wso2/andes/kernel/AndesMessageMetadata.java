@@ -24,6 +24,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.mqtt.MQTTMessageMetaData;
 import org.wso2.andes.mqtt.MQTTMetaDataHandler;
+import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.message.MessageMetaData;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.server.store.StorableMessageMetaData;
@@ -51,6 +52,12 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      * true if the message is addressed to a topic exchange.
      */
     boolean isTopic;
+
+    /**
+     * Name of the exchange message is addressed to
+     */
+    String messageRouterName;
+
     /**
      * The timestamp at which the message arrived at the first gates of the broker.
      */
@@ -197,22 +204,54 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         return isTopic;
     }
 
+    public String getMessageRouterName() {
+        return messageRouterName;
+    }
+
+    public void setMessageRouterName(String messageRouterName) {
+        this.messageRouterName = messageRouterName;
+    }
+
     public void setTopic(boolean isTopic) {
         this.isTopic = isTopic;
     }
 
+    /**
+     * Get the routing key of the message. This is set
+     * when parsing metadata.
+     *
+     * @return routing key of the message
+     */
     public String getDestination() {
         return destination;
     }
 
+    /**
+     * Set the routing key of the message. If you
+     * need to override the value set by parsing metadata
+     * this method should be used.
+     *
+     * @param destination routing key to set
+     */
     public void setDestination(String destination) {
         this.destination = destination;
     }
 
+    /**
+     * Get the name of storage queue message is saved to. When messages
+     * are read from persistent storage and deliver this is used.
+     *
+     * @return name of storage queue message is persisted to
+     */
     public String getStorageQueueName() {
         return storageQueueName;
     }
 
+    /**
+     * Set name of the storage queue this message is saved to
+     *
+     * @param storageQueueName name of storage queue
+     */
     public void setStorageQueueName(String storageQueueName) {
         this.storageQueueName = storageQueueName;
     }
@@ -246,6 +285,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         clone.metadata = metadata;
         clone.expirationTime = expirationTime;
         clone.isTopic = isTopic;
+        clone.messageRouterName = messageRouterName;
         clone.destination = destination;
         clone.storageQueueName = storageQueueName;
         clone.isPersistent = isPersistent;
@@ -306,18 +346,21 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
                 .createMetaData(buf);
         //todo need to discuss on making the flow more generic
         if (type.equals(MessageMetaDataType.META_DATA_0_10) || type.equals(MessageMetaDataType.META_DATA_0_8)) {
-            isPersistent = ((MessageMetaData) mdt).isPersistent();
-            expirationTime = ((MessageMetaData) mdt).getMessageHeader().getExpiration();
-            arrivalTime = ((MessageMetaData) mdt).getArrivalTime();
-            destination = ((MessageMetaData) mdt).getMessagePublishInfo().getRoutingKey().toString();
+            this.isPersistent = ((MessageMetaData) mdt).isPersistent();
+            this.expirationTime = ((MessageMetaData) mdt).getMessageHeader().getExpiration();
+            this.arrivalTime = ((MessageMetaData) mdt).getArrivalTime();
+            this.destination = ((MessageMetaData) mdt).getMessagePublishInfo().getRoutingKey().toString();
             this.messageContentLength = ((MessageMetaData) mdt).getContentSize();
-            isTopic = ((MessageMetaData) mdt).getMessagePublishInfo().getExchange().equals(AMQPUtils.TOPIC_EXCHANGE_NAME);
-            isCompressed = ((MessageMetaData) mdt).isCompressed();
+            this.isTopic = ((MessageMetaData) mdt).getMessagePublishInfo().getExchange().equals(AMQPUtils
+                    .TOPIC_EXCHANGE_NAME);
+            this.messageRouterName = ((MessageMetaData) mdt).getMessagePublishInfo().getExchange().toString();
+            this.isCompressed = ((MessageMetaData) mdt).isCompressed();
         }
         //For MQTT Specific Types
         if (type.equals(MessageMetaDataType.META_DATA_MQTT)) {
             this.arrivalTime = ((MQTTMessageMetaData) mdt).getMessageArrivalTime();
             this.isTopic = ((MQTTMessageMetaData) mdt).isTopic();
+            this.messageRouterName = MQTTUtils.MQTT_EXCHANGE_NAME;
             this.destination = ((MQTTMessageMetaData) mdt).getDestination();
             this.isPersistent = ((MQTTMessageMetaData) mdt).isPersistent();
             this.messageContentLength = ((MQTTMessageMetaData) mdt).getContentSize();

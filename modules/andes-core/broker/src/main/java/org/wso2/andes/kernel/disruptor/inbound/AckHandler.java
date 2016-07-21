@@ -27,12 +27,12 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.disruptor.BatchEventHandler;
+import org.wso2.andes.kernel.subscription.AndesSubscription;
+import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.store.AndesTransactionRollbackException;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
-import org.wso2.andes.subscription.LocalSubscription;
-import org.wso2.andes.subscription.SubscriptionEngine;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,7 +48,7 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
     
     private final MessagingEngine messagingEngine;
 
-    private final SubscriptionEngine subscriptionEngine;
+    private final AndesSubscriptionManager subscriptionManager;
 
     /**
      * Maximum number to retries to delete messages from message store
@@ -69,7 +69,7 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
     
     AckHandler(MessagingEngine messagingEngine) {
         this.messagingEngine = messagingEngine;
-        this.subscriptionEngine = AndesContext.getInstance().getSubscriptionEngine();
+        this.subscriptionManager = AndesContext.getInstance().getAndesSubscriptionManager();
         this.messageStoresUnavailable = null;
         this.messagesToRemove = new ArrayList<>();
         FailureObservingStoreManager.registerStoreHealthListener(this);
@@ -112,8 +112,10 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
             // For topics message is shared. If all acknowledgements are received only we should remove message
             boolean deleteMessage = ack.getAcknowledgedMessage().markAsAcknowledgedByChannel(ack.getChannelID());
 
-            LocalSubscription subscription = subscriptionEngine.getLocalSubscriptionForChannelId(ack.getChannelID());
-            subscription.ackReceived(ack.getAcknowledgedMessage().getMessageID());
+            AndesSubscription subscription = subscriptionManager
+                    .getSubscriptionByProtocolChannel(ack.getChannelID());
+
+            subscription.onMessageAck(ack.getAcknowledgedMessage().getMessageID());
 
             if (deleteMessage) {
                 if (log.isDebugEnabled()) {

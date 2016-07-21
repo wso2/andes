@@ -595,6 +595,11 @@ public class Subscription_0_10 implements Subscription, FlowCreditManager.FlowCr
         }
     }
 
+    @Override
+    public UUID getIdOfUnderlyingChannel() {
+        return null;
+    }
+
     private void forceDequeue(final QueueEntry entry, final boolean restoreCredit)
     {
         ServerTransaction txn = new AutoCommitTransaction(getQueue().getVirtualHost().getTransactionLog());

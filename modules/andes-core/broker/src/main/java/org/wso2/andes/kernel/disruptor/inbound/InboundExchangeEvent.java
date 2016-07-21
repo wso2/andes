@@ -22,12 +22,11 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContextInformationManager;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesExchange;
 
 /**
  * Exchange related inbound event 
  */
-public class InboundExchangeEvent extends AndesExchange implements AndesInboundStateEvent {
+public class InboundExchangeEvent implements AndesInboundStateEvent {
 
     private static Log log = LogFactory.getLog(InboundExchangeEvent.class);
 
@@ -39,6 +38,22 @@ public class InboundExchangeEvent extends AndesExchange implements AndesInboundS
     }
 
     /**
+     * Name of the exchange
+     */
+    private String messageRouterName;
+
+    /**
+     * Type of the exchange
+     */
+    private String type;
+
+    /**
+     * Is exchange deletable
+     */
+
+    private boolean autoDelete;
+
+    /**
      * Event type this event
      */
     private EventType eventType;
@@ -47,25 +62,32 @@ public class InboundExchangeEvent extends AndesExchange implements AndesInboundS
      * Reference to AndesContextInformationManager to update create/ remove queue state
      */
     private AndesContextInformationManager contextInformationManager;
-    
-    /**
-     * create an instance of Andes Exchange
-     *
-     * @param exchangeName name of exchange
-     * @param type         type of the exchange
-     * @param autoDelete   is exchange auto deletable
-     */
-    public InboundExchangeEvent(String exchangeName, String type, boolean autoDelete) {
-        super(exchangeName, type, autoDelete);
-    }
 
     /**
      * create an instance of Andes Exchange
      *
-     * @param exchangeAsStr exchange as encoded string
+     * @param messageRouterName name of exchange
+     * @param type         type of the exchange (use to pass additional information
+     *                     regarding an exchange)
+     * @param autoDelete   is exchange auto deletable (
+     *                     if true exchange is removed when all queues are detached)
      */
-    public InboundExchangeEvent(String exchangeAsStr) {
-        super(exchangeAsStr);
+    public InboundExchangeEvent(String messageRouterName, String type, boolean autoDelete) {
+       this.messageRouterName = messageRouterName;
+       this.type = type;
+       this.autoDelete = autoDelete;
+    }
+
+    public boolean isAutoDelete() {
+        return autoDelete;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public String getMessageRouterName() {
+        return messageRouterName;
     }
 
     @Override

@@ -183,6 +183,13 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
     public void start(ClusterManager manager) throws AndesException{
         this.manager = manager;
 
+        /**
+         * register topic listeners for cluster events. This has to be done
+         * after initializing Andes Stores and Manager classes
+         */
+        //TODO: review
+        //HazelcastAgent.getInstance().addTopicListeners();
+
         Member localMember = hazelcastInstance.getCluster().getLocalMember();
         nodeIdMap.set(localMember.getSocketAddress().toString(), getLocalNodeIdentifier());
 

@@ -499,7 +499,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
 
             ByteBuffer message = origMessage.duplicate();
      /*       log.debug("Broker republishing to client <{}> topic <{}> qos <{}>, active {}",
-                    sub.getClientId(), sub.getChannelId(), qos, sub.isActive());*/
+                    sub.getClientId(), sub.getChannelId(), qos, sub.isOutboundConnectionLive());*/
 
             if (qos == AbstractMessage.QOSType.MOST_ONE && sub.isActive()) {
                 //QoS 0

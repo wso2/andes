@@ -21,16 +21,20 @@ package org.wso2.andes.kernel;
 import com.gs.collections.impl.map.mutable.ConcurrentHashMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.kernel.subscription.AndesSubscription;
+import org.wso2.andes.kernel.subscription.StorageQueue;
+import org.wso2.andes.mqtt.utils.MQTTUtils;
+import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.store.MessageMetaDataType;
-import org.wso2.andes.subscription.LocalSubscription;
-import org.wso2.andes.subscription.OutboundSubscription;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
@@ -44,11 +48,14 @@ public class AndesUtils {
 
     private static Log log = LogFactory.getLog(AndesUtils.class);
 
-    //this constant will be used to prefix storage queue name for topics
-    public final static String TOPIC_NODE_QUEUE_PREFIX = "TopicQueue";
+    //this constant will be used to prefix storage queue name for AMQP topics
+    public final static String AMQP_TOPIC_STORAGE_QUEUE_PREFIX = "AMQP_Topic";
+
+    //this constant will be used to prefix storage queue name for MQTT topics
+    public final static String MQTT_TOPIC_STORAGE_QUEUE_PREFIX = "MQTT_Topic";
 
     //This will be used to co-relate between the message id used in the browser and the message id used internally in MB
-    private static ConcurrentHashMap<String, Long> browserMessageIdCorrelater = new ConcurrentHashMap<String, Long>();
+    private static ConcurrentHashMap<String, Long> browserMessageIdCorrelater = new ConcurrentHashMap<>();
 
     private static PrintWriter printWriterGlobal;
 
@@ -121,37 +128,37 @@ public class AndesUtils {
     }
 
     /**
-     * Generate storage queue name for a given destination
-     *
-     * @param destination     subscribed routing key
-     * @param nodeID          id of this node
-     * @param destinationType The destination type to generate storage queue for
-     * @return storage queue name for destination
+     * Generate storage queue name for given internal queue information
+     * @param routingKey    routing key by which queue is bound
+     * @param messageRouterName name of queue bound message router
+     * @param queueName internal queue name
+     * @param isQueueDurable is queue durable
+     * @return name that should be used as storage queue
      */
-    public static String getStorageQueueForDestination(String destination, String nodeID,
-            DestinationType destinationType) {
+    public static String getStorageQueueForDestination(String routingKey, String messageRouterName, String
+            queueName, boolean isQueueDurable) {
         String storageQueueName;
+        String nodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         // We need to add a prefix so that we could differentiate if queue is created under the same name
         //as topic
-        if (DestinationType.TOPIC == destinationType) {
-            storageQueueName = new StringBuilder(TOPIC_NODE_QUEUE_PREFIX).append("|").
-                    append(destination).append("|").append(nodeID).toString();
+        if (AMQPUtils.TOPIC_EXCHANGE_NAME.equals(messageRouterName)) {
+            if (!isQueueDurable) {
+                storageQueueName = AMQP_TOPIC_STORAGE_QUEUE_PREFIX + "|" + routingKey + "|" + nodeID;
+            } else {
+                storageQueueName = queueName;
+            }
+        } else if(MQTTUtils.MQTT_EXCHANGE_NAME.equals(messageRouterName)) {
+            if (!isQueueDurable) {
+                storageQueueName = MQTT_TOPIC_STORAGE_QUEUE_PREFIX + "|" + routingKey + "|" + nodeID;
+            } else {
+                storageQueueName = queueName;
+            }
+        } else if(AMQPUtils.DIRECT_EXCHANGE_NAME.equals(messageRouterName)){
+            storageQueueName = routingKey;
         } else {
-            storageQueueName = destination;
+            storageQueueName = queueName;
         }
         return storageQueueName;
-    }
-
-    public static LocalSubscription createLocalSubscription(OutboundSubscription subscription, String subscriptionID,
-            String destination, boolean isExclusive, boolean isDurable, String subscribedNode, long subscribeTime,
-            String targetQueue, String targetQueueOwner, String targetQueueBoundExchange,
-            String targetQueueBoundExchangeType, Short isTargetQueueBoundExchangeAutoDeletable,
-            boolean hasExternalSubscriptions, DestinationType destinationType) {
-
-        return new LocalSubscription(subscription, subscriptionID, destination, isExclusive, isDurable, subscribedNode,
-                subscribeTime, targetQueue, targetQueueOwner, targetQueueBoundExchange, targetQueueBoundExchangeType,
-                isTargetQueueBoundExchangeAutoDeletable, hasExternalSubscriptions, destinationType);
-
     }
 
     /**
@@ -162,14 +169,15 @@ public class AndesUtils {
      * @return Andes Ack Data
      */
     public static AndesAckData generateAndesAckMessage(UUID channelID, long messageID) throws AndesException {
-        LocalSubscription localSubscription = AndesContext.getInstance().
-                getSubscriptionEngine().getLocalSubscriptionForChannelId(channelID);
+        org.wso2.andes.kernel.subscription.AndesSubscription localSubscription = AndesContext.getInstance().
+                getAndesSubscriptionManager().getSubscriptionByProtocolChannel(channelID);
         if (null == localSubscription) {
             log.error("Cannot handle acknowledgement for message ID = " + messageID + " as subscription is closed "
                     + "channelID= " + "" + channelID);
             return null;
         }
-        DeliverableAndesMetadata metadata = localSubscription.getMessageByMessageID(messageID);
+        DeliverableAndesMetadata metadata = localSubscription.
+                getSubscriberConnection().getUnAckedMessage(messageID);
         return new AndesAckData(channelID, metadata);
     }
 
@@ -183,9 +191,9 @@ public class AndesUtils {
      */
     public static DeliverableAndesMetadata lookupDeliveredMessage(long messageID, UUID channelID)
             throws AndesException {
-        LocalSubscription localSubscription = AndesContext.getInstance().getSubscriptionEngine()
-                .getLocalSubscriptionForChannelId(channelID);
-        return localSubscription.getMessageByMessageID(messageID);
+        AndesSubscription localSubscription = AndesContext.getInstance().
+                getAndesSubscriptionManager().getSubscriptionByProtocolChannel(channelID);
+        return localSubscription.getSubscriberConnection().getUnAckedMessage(messageID);
     }
 
     /**
@@ -204,21 +212,22 @@ public class AndesUtils {
     }
 
     /**
-     * Method to filter queue names from a given list of destinations
+     * Method to filter queue names from a given list of storageQueues
      *
-     * @param destinations the list of destinations
-     * @return the filtered list of destinations which only include queue names
+     * @param storageQueues the list of storageQueues
+     * @return the filtered list of storageQueues which only include queue names
      */
-    public static List<String> filterQueueDestinations(List<String> destinations) {
-        Iterator itr = destinations.iterator();
+    public static List<String> filterQueueDestinations(List<StorageQueue> storageQueues) {
+        Iterator<StorageQueue> itr = storageQueues.iterator();
+        List<String> directExchangeBoundQueues = new ArrayList<>();
         //remove topic specific queues
         while (itr.hasNext()) {
-            String destinationQueueName = (String) itr.next();
-            if (!(isPersistentQueue(destinationQueueName))) {
-                itr.remove();
+            StorageQueue queue = itr.next();
+            if (queue.getMessageRouter().getName().equals(AMQPUtils.DIRECT_EXCHANGE_NAME)) {
+                directExchangeBoundQueues.add(queue.getName());
             }
         }
-        return destinations;
+        return directExchangeBoundQueues;
     }
 
     /**

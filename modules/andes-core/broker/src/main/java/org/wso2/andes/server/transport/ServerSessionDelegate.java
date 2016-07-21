@@ -19,9 +19,12 @@ package org.wso2.andes.server.transport;
 
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQUnknownExchangeType;
+import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
+import org.wso2.andes.kernel.Andes;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.exchange.*;
 import org.wso2.andes.server.filter.FilterManager;
@@ -282,7 +285,7 @@ public class ServerSessionDelegate extends SessionDelegate
 
         ArrayList<? extends BaseQueue> queues = exchange.route(message);
         /*ClusterResourceHolder.getInstance().getCassandraMessageStore().addMessageIdRoutedViaTopic(
-                messageMetaData.getRoutingKey(), storeMessage.getMessageNumber());*/
+                messageMetaData.getBindingKey(), storeMessage.getMessageNumber());*/
 
 
      /*   if(queues != null && queues.size() != 0)
@@ -915,14 +918,16 @@ public class ServerSessionDelegate extends SessionDelegate
                                 store.createQueue(queue, ftArgs);
 
                                 //Tell Andes kernel to create queue
-                                QpidAndesBridge.createQueue(queue);
+                                //Now we create queues when binding is added
+                                //QpidAndesBridge.createQueue(queue);
                             }
                             else
                             {
                                 store.createQueue(queue);
 
                                 //tell andes kernel to create queue
-                                QpidAndesBridge.createQueue(queue);
+                                //Now we create queues when binding is added
+                                //QpidAndesBridge.createQueue(queue);
 
                             }
                         }
@@ -1069,23 +1074,25 @@ public class ServerSessionDelegate extends SessionDelegate
                     try
                     {
 
-                        boolean isQueueDeletable = ClusterResourceHolder.getInstance().
-                                getVirtualHostConfigSynchronizer().checkIfQueueDeletable(queue);
+                        try {
+                            boolean isQueueDeletable = Andes.getInstance().
+                                    checkIfQueueDeletable(AMQPUtils.createInboundQueueEvent(queue));
 
-                        if(isQueueDeletable) {
-                            queue.delete();
-                            if (queue.isDurable() && !queue.isAutoDelete())
-                            {
-                                DurableConfigurationStore store = virtualHost.getDurableConfigurationStore();
-                                store.removeQueue(queue);
-
+                            if (isQueueDeletable) {
+                                queue.delete();
+                                if (queue.isDurable() && !queue.isAutoDelete()) {
+                                    DurableConfigurationStore store = virtualHost.getDurableConfigurationStore();
+                                    store.removeQueue(queue);
+                                }
                                 //tell Andes Kernel to remove queue
                                 QpidAndesBridge.deleteQueue(queue);
+                            } else {
+                                log.warn("Cannot Delete Queue" + queue.getName() + " It Has Registered Subscriptions.");
+                                throw new AMQException("Cannot Delete Queue" + queueName + " It Has Registered Subscriptions.");
 
                             }
-                        }  else {
-                            log.warn("Cannot Delete Queue" + queue.getName() + " It Has Registered Subscriptions.");
-                            throw new AMQException("Cannot Delete Queue" + queueName + " It Has Registered Subscriptions.");
+                        } catch (AndesException e) {
+                            throw new AMQException("Error while checking if queue is deletable", e);
                         }
                     }
                     catch (AMQException e)

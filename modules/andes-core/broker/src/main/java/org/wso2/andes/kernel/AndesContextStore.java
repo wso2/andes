@@ -1,26 +1,31 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
- * WSO2 Inc. licenses this file to you under the Apache License,
- * Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License.
- * You may obtain a copy of the License at
+ *  * Copyright (c) 2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *  *
+ *  * WSO2 Inc. licenses this file to you under the Apache License,
+ *  * Version 2.0 (the "License"); you may not use this file except
+ *  * in compliance with the License.
+ *  * You may obtain a copy of the License at
+ *  *
+ *  *    http://www.apache.org/licenses/LICENSE-2.0
+ *  *
+ *  * Unless required by applicable law or agreed to in writing,
+ *  * software distributed under the License is distributed on an
+ *  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ *  * KIND, either express or implied.  See the License for the
+ *  * specific language governing permissions and limitations
+ *  * under the License.
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
  */
 
 package org.wso2.andes.kernel;
 
 import org.wso2.andes.configuration.util.ConfigurationProperties;
+import org.wso2.andes.kernel.router.AndesMessageRouter;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
+import org.wso2.andes.kernel.subscription.AndesSubscription;
+import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.server.cluster.NodeHeartBeatData;
 import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEvent;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
@@ -194,7 +199,7 @@ public interface AndesContextStore extends HealthAwareStore {
      *
      * @return list of exchanges
      */
-    List<AndesExchange> getAllExchangesStored() throws AndesException;
+    List<AndesMessageRouter> getAllMessageRoutersStored() throws AndesException;
 
     /**
      * Delete all exchange information.
@@ -218,7 +223,7 @@ public interface AndesContextStore extends HealthAwareStore {
      * @return list of queues
      * @throws AndesException
      */
-    List<AndesQueue> getAllQueuesStored() throws AndesException;
+    List<StorageQueue> getAllQueuesStored() throws AndesException;
 
     /**
      * Delete a queue from store.
@@ -611,14 +616,16 @@ public interface AndesContextStore extends HealthAwareStore {
     /**
      * Stores cluster notifications in the store to be read by cluster members.
      *
-     * @param clusterNodes            the node list for which the cluster notification should be duplicated
-     * @param originatedNode          the node from which, the cluster notification was sent
-     * @param clusterNotificationType the type of the change addressed by the cluster notification. e.g. "QUEUUE_ADDED"
-     * @param notification            the notification encoded as a string
+     * @param clusterNodes             node list for which the cluster notification should be duplicated
+     * @param originatedNode           node from which, the cluster notification was sent
+     * @param artifactType             broker artifact being notified
+     * @param clusterNotificationType  type of the change addressed by the cluster notification. e.g. "QUEUUE_ADDED"
+     * @param notification             notification encoded as a string
+     * @param description              readable description of the notification
      * @throws AndesException
      */
-    void storeClusterNotification(List<String> clusterNodes, String originatedNode, String clusterNotificationType,
-                                  String notification) throws AndesException;
+    void storeClusterNotification(List<String> clusterNodes, String originatedNode, String artifactType, String
+            clusterNotificationType, String notification, String description) throws AndesException;
 
     /**
      * Reads cluster notifications that are destined to a specific node.

@@ -26,9 +26,10 @@ import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesConstants;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.DestinationType;
-import org.wso2.andes.kernel.ProtocolType;
+import org.wso2.andes.kernel.disruptor.inbound.InboundBindingEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundExchangeEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
+import org.wso2.andes.kernel.disruptor.inbound.QueueInfo;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.registry.ApplicationRegistry;
@@ -100,7 +101,8 @@ public class DLCQueueUtils {
         boolean isDeadLetterQueue = false;
         if (queueName.contains(AndesConstants.TENANT_SEPARATOR)) {
             //The Queue is in the tenant realm
-            if (AndesConstants.DEAD_LETTER_QUEUE_SUFFIX.equals(queueName.split(AndesConstants.TENANT_SEPARATOR, 2)[1])) {
+            if (AndesConstants.DEAD_LETTER_QUEUE_SUFFIX.equals
+                    (queueName.split(AndesConstants.TENANT_SEPARATOR, 2)[1])) {
                 isDeadLetterQueue = true;
             }
         } else {
@@ -139,9 +141,15 @@ public class DLCQueueUtils {
         // Skip creating if already available
         if (null == queue) {
 
+            //Create special message router for DLC
+            Andes.getInstance().createExchange(new InboundExchangeEvent(AMQPUtils.DLC_EXCHANGE_NAME, "DLC", false));
             //store a queue for DLC and notify the Hazelcast instance about the change
-            Andes.getInstance().createQueue(new InboundQueueEvent(
-                    dlcQueueName, tenantOwner, false, true, ProtocolType.AMQP, DestinationType.QUEUE));
+            Andes.getInstance().createQueue(new InboundQueueEvent(dlcQueueName,
+                    true, false, tenantOwner, false));
+            //Bind DLC queue to a special exchange
+            QueueInfo DLCQueueInfo = new QueueInfo(dlcQueueName, true, false, tenantOwner,false);
+            Andes.getInstance().addBinding(new InboundBindingEvent(DLCQueueInfo,
+                    AMQPUtils.DLC_EXCHANGE_NAME, dlcQueueName));
             
             //add the queue into internal qpid
             ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().queue(dlcQueueName, tenantOwner,

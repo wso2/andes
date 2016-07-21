@@ -28,8 +28,10 @@ import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
 import org.wso2.andes.AMQException;
+import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.framing.AMQShortString;
+import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.server.logging.LogMessage;
 import org.wso2.andes.management.common.mbeans.ManagedBroker;
 import org.wso2.andes.management.common.mbeans.ManagedQueue;
@@ -267,10 +269,10 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
             if (queue.isDurable() && !queue.isAutoDelete())
             {
                 _durableConfig.createQueue(queue);
-
-                //tell Andes kernel to create queue
-                QpidAndesBridge.createQueue(queue);
             }
+
+            //tell Andes kernel to create queue
+            QpidAndesBridge.createQueue(queue);
 
         }
         catch (Exception ex)
@@ -310,8 +312,8 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
         try
         {
             CurrentActor.set(new ManagementActor(_logActor.getRootMessageLogger()));
-            boolean isQueueDeletable = ClusterResourceHolder.getInstance().
-                    getVirtualHostConfigSynchronizer().checkIfQueueDeletable(queue);
+            boolean isQueueDeletable = Andes.getInstance().
+                    checkIfQueueDeletable(AMQPUtils.createInboundQueueEvent(queue));
             if(isQueueDeletable) {
                 // Removes the binding and unregister the queue.
                 queue.delete();

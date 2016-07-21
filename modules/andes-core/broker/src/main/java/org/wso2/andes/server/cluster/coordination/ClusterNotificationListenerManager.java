@@ -18,7 +18,10 @@
 
 package org.wso2.andes.server.cluster.coordination;
 
+import org.wso2.andes.kernel.AndesContextInformationManager;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
+import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 
 /**
  * The ClusterNotificationListenerManager initializes receiving cluster notifications.
@@ -30,7 +33,15 @@ public interface ClusterNotificationListenerManager {
      *
      * @throws AndesException
      */
-    void initializeListener() throws AndesException;
+    void initializeListener(InboundEventManager inboundEventManager, AndesSubscriptionManager subscriptionManager,
+                            AndesContextInformationManager contextInformationManager) throws AndesException;
+
+    /**
+     * Re-initialize listener
+     *
+     * @throws AndesException
+     */
+    void reInitializeListener() throws AndesException;
 
     /**
      * Clears all persisted cluster notifications at server startup.

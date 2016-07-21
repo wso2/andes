@@ -23,6 +23,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.server.cluster.error.detection.NetworkPartitionListener;
 
 import java.util.concurrent.ExecutorService;
@@ -34,12 +35,12 @@ import java.util.concurrent.TimeUnit;
 /**
  * This class is responsible for deleting slots and scheduling slot deletions.
  */
-public class SlotDeletionExecutor implements NetworkPartitionListener{
+public class SlotDeletionExecutor implements NetworkPartitionListener {
 
     private static Log log = LogFactory.getLog(SlotDeletionExecutor.class);
 
 
-    private LinkedBlockingQueue<Slot> slotsToDelete = new LinkedBlockingQueue<Slot>();
+    private LinkedBlockingQueue<Slot> slotsToDelete = new LinkedBlockingQueue<>();
 
     /**
      * Slot deletion thread factory in one MB node
@@ -73,11 +74,12 @@ public class SlotDeletionExecutor implements NetworkPartitionListener{
      * Create slot deletion scheduler
      */
     public void init() {
-        
-        if ( AndesContext.getInstance().isClusteringEnabled()){ // network partition detection works only when clustered.
+
+        if (AndesContext.getInstance().isClusteringEnabled()) { // network partition detection works only when
+            // clustered.
             AndesContext.getInstance().getClusterAgent().addNetworkPartitionListener(40, this);
         }
-        
+
         this.slotDeletionExecutorService = Executors.newSingleThreadExecutor(namedThreadFactory);
         slotDeletionTask = new SlotDeletionTask();
         this.slotDeletionExecutorService.submit(slotDeletionTask);
@@ -119,10 +121,10 @@ public class SlotDeletionExecutor implements NetworkPartitionListener{
                                 // Delete attempt not success, therefore adding slot to the queue
                                 slotsToDelete.put(slot);
                             } else {
-                                // slotWorker can be null.
-                                // For instance if the deletion request came from coordinator after a member leaves the
-                                // cluster and no subscribers on coordinator node.
-                                SlotDeliveryWorkerManager.getInstance().deleteSlot(slot);
+                                StorageQueue storageQueue = AndesContext.getInstance().getStorageQueueRegistry()
+                                        .getStorageQueue(slot.getStorageQueueName());
+                                storageQueue.deleteSlot(slot);
+
                             }
                         } else {
                             slotsToDelete.put(slot); // Not deleted. Hence putting back in queue
@@ -132,7 +134,7 @@ public class SlotDeletionExecutor implements NetworkPartitionListener{
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     log.error("SlotDeletionTask was interrupted while trying to delete the slot.", e);
-                } catch (Throwable throwable){
+                } catch (Throwable throwable) {
                     log.error("Unexpected error occurred while trying to delete the slot.", throwable);
                 }
             }

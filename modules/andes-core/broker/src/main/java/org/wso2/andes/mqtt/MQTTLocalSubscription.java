@@ -22,7 +22,7 @@ import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.wso2.QOSLevel;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
-import org.wso2.andes.subscription.OutboundSubscription;
+import org.wso2.andes.kernel.subscription.OutboundSubscription;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.nio.ByteBuffer;
@@ -221,13 +221,18 @@ public class MQTTLocalSubscription implements OutboundSubscription {
 
 
     @Override
-    public boolean isActive() {
+    public boolean isOutboundConnectionLive() {
         return true;
     }
 
     @Override
     public UUID getChannelID() {
         return channelID != null ? channelID : null;
+    }
+
+    @Override
+    public long getSubscribeTime() {
+        return 0;
     }
 
     //TODO: decide how to call this
@@ -243,21 +248,5 @@ public class MQTTLocalSubscription implements OutboundSubscription {
      */
     public boolean isDurable() {
         return isDurable;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String getStorageQueueName(String destination, String subscribedNode) {
-        String storageQueueName;
-        if (isDurable) {
-            storageQueueName = MQTTUtils.getTopicSpecificQueueName(mqttSubscriptionID, destination);
-        } else {
-            storageQueueName = AndesUtils.getStorageQueueForDestination(destination, subscribedNode,
-                    DestinationType.TOPIC);
-        }
-
-        return storageQueueName;
     }
 }

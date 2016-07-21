@@ -27,12 +27,12 @@ import org.wso2.andes.AMQStoreException;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.store.StoredAMQPMessage;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.logging.LogSubject;
 import org.wso2.andes.server.queue.AMQQueue;
-import org.wso2.andes.subscription.SubscriptionEngine;
 
 /**
  * Implementations of {#{@link org.wso2.andes.kernel.MessageStore} replaces the functionality provided by this class
@@ -43,7 +43,7 @@ public class QpidDeprecatedMessageStore implements MessageStore {
     private boolean configured = false;
     private static Log log =
             LogFactory.getLog(QpidDeprecatedMessageStore.class);
-    private SubscriptionEngine subscriptionEngine;
+    private AndesSubscriptionManager subscriptionManager;
 
     /**
      * Set CassandraMessageStore at ClusterResourceHolder
@@ -82,7 +82,7 @@ public class QpidDeprecatedMessageStore implements MessageStore {
      * @throws Exception
      */
     private void performCommonConfiguration(Configuration configuration) throws Exception {
-        subscriptionEngine = AndesContext.getInstance().getSubscriptionEngine();
+        subscriptionManager = AndesContext.getInstance().getAndesSubscriptionManager();
         configured = true;
     }
 
@@ -168,7 +168,7 @@ public class QpidDeprecatedMessageStore implements MessageStore {
                                 List<String> exchanges) throws Exception {
 /*        List<AndesBinding> bindings = subscriptionStore.getDurableBindings();
         for(AndesBinding b : bindings) {
-            brh.binding(b.boundExchangeName, b.boundQueue.queueName, b.routingKey, null);
+            brh.binding(b.messageRouterName, b.boundQueue.queueName, b.routingKey, null);
         }*/
 
     }
@@ -220,7 +220,7 @@ public class QpidDeprecatedMessageStore implements MessageStore {
     public List<String> loadExchanges(ConfigurationRecoveryHandler.ExchangeRecoveryHandler erh)
             throws Exception {
         List<String> exchangeNames = new ArrayList<String>();
-        List<AndesExchange> exchanges = subscriptionStore.getExchanges();
+        List<AndesExchange> exchanges = subscriptionStore.getMessageRouters();
         for(AndesExchange exchange : exchanges) {
             exchangeNames.add(exchange.exchangeName);
             erh.exchange(exchange.exchangeName,exchange.type,exchange.autoDelete);
