@@ -30,12 +30,12 @@ import org.wso2.andes.server.management.AMQManagedObject;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionEngine;
 
-import javax.management.MBeanException;
-import javax.management.NotCompliantMBeanException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import javax.management.MBeanException;
+import javax.management.NotCompliantMBeanException;
 
 /**
  * Class to handle data for all subscription related UI functions.
@@ -86,7 +86,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
 
             Set<AndesSubscription> subscriptionsToDisplay;
 
-            if (DestinationType.TOPIC == destinationTypeArg) {
+            if (DestinationType.TOPIC == destinationTypeArg || DestinationType.DURABLE_TOPIC == destinationTypeArg) {
                 subscriptionsToDisplay = filterTopicSubscriptions(isDurable, isActive, subscriptions);
             } else {
                 subscriptionsToDisplay = filterQueueSubscriptions(isDurable, isActive, subscriptions);
@@ -113,7 +113,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
 
     private Set<AndesSubscription> filterQueueSubscriptions(String isDurable, String isActive,
                                                             Set<AndesSubscription> subscriptions) {
-        Set<AndesSubscription> subscriptionsToDisplay = new HashSet<>();
+            Set<AndesSubscription> subscriptionsToDisplay = new HashSet<>();
 
         for (AndesSubscription subscription : subscriptions) {
             if (!isDurable.equals(ALL_WILDCARD)

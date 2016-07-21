@@ -16,17 +16,19 @@
 package org.wso2.andes.server.cluster;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.Member;
-import com.hazelcast.core.MemberAttributeEvent;
-import com.hazelcast.core.MembershipEvent;
-import com.hazelcast.core.MembershipListener;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEventType;
+import org.wso2.andes.server.cluster.coordination.rdbms.RDBMSMembershipEventingEngine;
+import org.wso2.andes.server.cluster.coordination.rdbms.RDBMSMembershipListener;
 
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -34,47 +36,56 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 /**
- * HybridRDBMSCoordinationStrategy used a RDBMS based approached to identify membership event related to cluster.
- * This include electing coordinator and notifying member added and left events.
+ * RDBMSCoordinationStrategy uses a RDBMS based approached to identify membership event related to the cluster.
+ * This includes electing coordinator and notifying member added and left events.
  */
-class RDBMSCoordinationStrategy implements CoordinationStrategy, MembershipListener {
+class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembershipListener {
     /**
      * Class logger
      */
     private Log logger = LogFactory.getLog(RDBMSCoordinationStrategy.class);
 
     /**
+     * Used to send and receive cluster notifications
+     */
+    private RDBMSMembershipEventingEngine membershipEventingEngine;
+
+    /**
+     * Local node's thrift server socket address
+     */
+    private InetSocketAddress thriftAddress;
+    private int coordinatorEntryCreationWaitTime;
+
+    /**
      * Possible node states
+     *
+     *               +----------+
+     *     +-------->+ Election +<---------+
+     *     |         +----------+          |
+     *     |            |    |             |
+     *     |            |    |             |
+     *  +-----------+   |    |   +-------------+
+     *  | Candidate +<--+    +-->+ Coordinator |
+     *  +-----------+            +-------------+
      */
     private enum NodeState {
-        COORDINATOR, STANDBY, ELECTION
+        COORDINATOR, CANDIDATE, ELECTION
     }
 
     /**
      * Heartbeat interval in seconds
-     * TODO this should be read from the configuration
      */
-    private static final int HEARTBEAT_INTERVAL = 5;
+    private final int heartBeatInterval;
 
     /**
      * After this much of time the node is assumed to have left the cluster
      */
-    private static final int HEARTBEAT_EXPIRY_INTERVAL = HEARTBEAT_INTERVAL * 2;
-
-    /**
-     * Hazelcast instance used to receive hazelcast membership information
-     */
-    private final HazelcastInstance hazelcastInstance;
+    private final int heartbeatMaxAge;
 
     /**
      * Cluster agent used to notify about the coordinator change status
      */
-    private HazelcastClusterAgent hazelcastClusterAgent;
-
-    /**
-     * Registration id for membership listener
-     */
-    private String listenerRegistrationId;
+    private CoordinationConfigurableClusterAgent configurableClusterAgent;
 
     /**
      * Long running coordination task
@@ -100,37 +111,52 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, MembershipListe
      */
     private final ExecutorService threadExecutor;
 
-    RDBMSCoordinationStrategy(HazelcastInstance hazelcastInstance) {
-        this.hazelcastInstance = hazelcastInstance;
-
+    /**
+     * Default constructor
+     */
+    RDBMSCoordinationStrategy() {
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("RDBMSCoordinationStrategy-%d")
                                                                      .build();
         threadExecutor = Executors.newSingleThreadExecutor(namedThreadFactory);
+
+        heartBeatInterval = AndesConfigurationManager
+                .readValue(AndesConfiguration.RDBMS_BASED_COORDINATION_HEARTBEAT_INTERVAL);
+        coordinatorEntryCreationWaitTime = AndesConfigurationManager
+                .readValue(AndesConfiguration.RDBMS_BASED_COORDINATOR_ENTRY_CREATION_WAIT_TIME);
+                //(heartBeatInterval / 2) + 1;
+
+        // Maximum age of a heartbeat. After this much of time, the heartbeat is considered invalid and node is
+        // considered to have left the cluster.
+        heartbeatMaxAge = heartBeatInterval * 2;
+
+        if (heartBeatInterval <= coordinatorEntryCreationWaitTime) {
+            throw new RuntimeException("Configuration error. " + AndesConfiguration
+                    .RDBMS_BASED_COORDINATION_HEARTBEAT_INTERVAL + " * 2 should be greater than " +
+                    AndesConfiguration.RDBMS_BASED_COORDINATOR_ENTRY_CREATION_WAIT_TIME);
+        }
     }
 
-
     /*
-    * ======================== Methods from MembershipListener ============================
+    * ======================== Methods from RDBMSMembershipListener ============================
     */
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void memberAdded(MembershipEvent membershipEvent) {
-        hazelcastClusterAgent.memberAdded(membershipEvent.getMember());
+    public void memberAdded(String nodeID) {
+        configurableClusterAgent.memberAdded(nodeID);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void memberRemoved(MembershipEvent membershipEvent) {
-        Member member = membershipEvent.getMember();
+    public void memberRemoved(String nodeID) {
         try {
-            hazelcastClusterAgent.memberRemoved(member);
+            configurableClusterAgent.memberRemoved(nodeID);
         } catch (AndesException e) {
-            logger.error("Error while handling node removal, " + member.getSocketAddress(), e);
+            logger.error("Error while handling node removal, " + nodeID, e);
         }
     }
 
@@ -138,7 +164,7 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, MembershipListe
      * {@inheritDoc}
      */
     @Override
-    public void memberAttributeChanged(MemberAttributeEvent memberAttributeEvent) {
+    public void coordinatorChanged(String coordinator) {
         // Do nothing
     }
 
@@ -150,17 +176,29 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, MembershipListe
      * {@inheritDoc}
      */
     @Override
-    public void start(HazelcastClusterAgent hazelcastClusterAgent, String nodeId) {
+    public void start(CoordinationConfigurableClusterAgent configurableClusterAgent, String nodeId,
+            InetSocketAddress thriftAddress) {
         localNodeId = nodeId;
+        this.thriftAddress = thriftAddress;
 
         // TODO detect if already started
         contextStore = AndesContext.getInstance().getAndesContextStore();
-        this.hazelcastClusterAgent = hazelcastClusterAgent;
+        this.configurableClusterAgent = configurableClusterAgent;
+
+        membershipEventingEngine = new RDBMSMembershipEventingEngine();
+        membershipEventingEngine.start(nodeId);
 
         // Register listener for membership changes
-        listenerRegistrationId = hazelcastInstance.getCluster().addMembershipListener(this);
+        membershipEventingEngine.addEventListener(this);
 
         currentNodeState = NodeState.ELECTION;
+
+        // Clear old membership events for current node.
+        try {
+            contextStore.clearMembershipEvents(nodeId);
+        } catch (AndesException e) {
+            logger.warn("Error while clearing old membership events for local node (" + nodeId + ")", e);
+        }
 
         coordinatorElectionTask = new CoordinatorElectionTask();
         threadExecutor.execute(coordinatorElectionTask);
@@ -171,7 +209,33 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, MembershipListe
      */
     @Override
     public boolean isCoordinator() {
-        return NodeState.COORDINATOR == currentNodeState;
+        return currentNodeState == NodeState.COORDINATOR;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public InetSocketAddress getThriftAddressOfCoordinator() {
+        InetSocketAddress coordinatorThriftAddress = null;
+
+        try {
+            coordinatorThriftAddress = contextStore.getCoordinatorThriftAddress();
+        } catch (AndesException e) {
+            logger.error("Error occurred while reading coordinator thrift address", e);
+        }
+
+        return coordinatorThriftAddress;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<String> getAllNodeIdentifiers() throws AndesException {
+        List<NodeHeartBeatData> allNodeInformation = contextStore.getAllHeartBeatData();
+
+        return getNodeIds(allNodeInformation);
     }
 
     /**
@@ -184,13 +248,27 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, MembershipListe
             try {
                 contextStore.removeCoordinator();
             } catch (AndesException e) {
-                logger.error("Error occurred while removing coordination when shutting down");
+                logger.error("Error occurred while removing coordinator when shutting down", e);
             }
         }
 
-        hazelcastInstance.getCluster().removeMembershipListener(listenerRegistrationId);
+        membershipEventingEngine.stop();
         coordinatorElectionTask.stop();
         threadExecutor.shutdown();
+    }
+
+    /**
+     * Return a list of node ids from the heartbeat data list
+     *
+     * @param allHeartbeatData list of heartbeat data
+     * @return list of node IDs
+     */
+    private List<String> getNodeIds(List<NodeHeartBeatData> allHeartbeatData) {
+        List<String> allNodeIds = new ArrayList<>(allHeartbeatData.size());
+        for (NodeHeartBeatData nodeHeartBeatData : allHeartbeatData) {
+            allNodeIds.add(nodeHeartBeatData.getNodeId());
+        }
+        return allNodeIds;
     }
 
     /**
@@ -208,11 +286,15 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, MembershipListe
 
         @Override
         public void run() {
-            try {
+            while (running) {
 
-                while (running) {
+                try {
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("Current node state: " + currentNodeState);
+                    }
+
                     switch (currentNodeState) {
-                    case STANDBY:
+                    case CANDIDATE:
                         currentNodeState = performStandByTask();
                         break;
                     case COORDINATOR:
@@ -222,18 +304,20 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, MembershipListe
                         currentNodeState = performElectionTask();
                         break;
                     }
+
+                } catch (Throwable e) {
+                    logger.error("Error detected while running coordination algorithm. Node became a "
+                            + NodeState.CANDIDATE + " node", e);
+                    currentNodeState = NodeState.CANDIDATE;
                 }
 
-            } catch (Throwable e) {
-                logger.error("Error detected while running coordination algorithm. Node became a standby node", e);
-                currentNodeState = NodeState.STANDBY;
             }
         }
 
         /**
-         * Perform periodic task that should be done by a standby node
+         * Perform periodic task that should be done by a CANDIDATE node
          *
-         * @return Next NodeStatus
+         * @return next NodeStatus
          * @throws AndesException
          * @throws InterruptedException
          */
@@ -244,18 +328,18 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, MembershipListe
 
             // Read current coordinators validity. We can improve this by returning the status (TIMED_OUT or DELETED or
             // VALID)from this call. If DELETED we do not have to check a second time.
-            boolean coordinatorValid = contextStore.checkIfCoordinatorValid(HEARTBEAT_EXPIRY_INTERVAL);
-            TimeUnit.SECONDS.sleep(HEARTBEAT_INTERVAL);
+            boolean coordinatorValid = contextStore.checkIfCoordinatorValid(heartbeatMaxAge);
+            TimeUnit.MILLISECONDS.sleep(heartBeatInterval);
 
             if (coordinatorValid) {
-                nextState = NodeState.STANDBY;
+                nextState = NodeState.CANDIDATE;
             } else {
-                coordinatorValid = contextStore.checkIfCoordinatorValid(HEARTBEAT_EXPIRY_INTERVAL);
+                coordinatorValid = contextStore.checkIfCoordinatorValid(heartbeatMaxAge);
 
                 if (coordinatorValid) {
-                    nextState = NodeState.STANDBY;
+                    nextState = NodeState.CANDIDATE;
                 } else {
-                    logger.info("Going for election since no Coordinator is invalid");
+                    logger.info("Going for election since the Coordinator is invalid");
 
                     contextStore.removeCoordinator();
                     nextState = NodeState.ELECTION;
@@ -267,7 +351,7 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, MembershipListe
         /**
          * Perform periodic task that should be done by a Coordinating node
          *
-         * @return Next NodeState
+         * @return next NodeState
          * @throws AndesException
          * @throws InterruptedException
          */
@@ -276,26 +360,43 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, MembershipListe
             boolean stillCoordinator = contextStore.updateCoordinatorHeartbeat(localNodeId);
 
             if (stillCoordinator) {
-                List<NodeHeartBeatData> allNodeInformation = contextStore.getAllNodeInformation();
+                long currentTimeMillis = System.currentTimeMillis();
+                List<NodeHeartBeatData> allNodeInformation = contextStore.getAllHeartBeatData();
+
+                List<String> allActiveNodeIds = getNodeIds(allNodeInformation);
+                List<String> newNodes = new ArrayList<>();
+                List<String> removedNodes = new ArrayList<>();
 
                 for (NodeHeartBeatData nodeHeartBeatData : allNodeInformation) {
-                    long heartbeatAge = TimeUnit.MILLISECONDS
-                            .toSeconds(System.currentTimeMillis() - nodeHeartBeatData.getLastHeartbeat());
+                    long heartbeatAge = currentTimeMillis - nodeHeartBeatData.getLastHeartbeat();
 
                     String nodeId = nodeHeartBeatData.getNodeId();
                     if (nodeHeartBeatData.isNewNode()) {
-                        // TODO: notify nodes about member added event
-                        logger.info("Member added " + nodeId);
-                        // update node info to not new node
+                        newNodes.add(nodeId);
+
+                        // update node info as read
                         contextStore.markNodeAsNotNew(nodeId);
-                    } else if (HEARTBEAT_EXPIRY_INTERVAL <= heartbeatAge) {
-                        // TODO: notify nodes about member left event
-                        logger.info("Member removed " + nodeId);
+                    } else if (heartbeatAge >= heartbeatMaxAge) {
+                        removedNodes.add(nodeId);
+                        allActiveNodeIds.remove(nodeId);
+
                         contextStore.removeNodeHeartbeat(nodeId);
                     }
                 }
 
-                TimeUnit.SECONDS.sleep(HEARTBEAT_INTERVAL);
+                for (String newNode : newNodes) {
+                    logger.info("Member added " + newNode);
+                    membershipEventingEngine.notifyMembershipEvent(allActiveNodeIds, MembershipEventType.MEMBER_ADDED,
+                            newNode);
+                }
+
+                for (String removedNode : removedNodes) {
+                    logger.info("Member removed " + removedNode);
+                    membershipEventingEngine.notifyMembershipEvent(allActiveNodeIds, MembershipEventType.MEMBER_REMOVED,
+                            removedNode);
+                }
+
+                TimeUnit.MILLISECONDS.sleep(heartBeatInterval);
                 return NodeState.COORDINATOR;
             } else {
                 logger.info("Going for election since Coordinator state is lost");
@@ -306,7 +407,7 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, MembershipListe
         /**
          * Perform new coordinator election task
          *
-         * @return Next NodeState
+         * @return next NodeState
          * @throws InterruptedException
          */
         private NodeState performElectionTask() throws InterruptedException {
@@ -315,8 +416,8 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, MembershipListe
             try {
                 nextState = tryToElectSelfAsCoordinator();
             } catch (AndesException e) {
-                logger.info("Current node became a standby node");
-                nextState = NodeState.STANDBY;
+                logger.info("Current node became a " + NodeState.CANDIDATE + " node", e);
+                nextState = NodeState.CANDIDATE;
             }
             return nextState;
         }
@@ -324,32 +425,36 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, MembershipListe
         /**
          * Try to elect local node as the coordinator by creating the coordinator entry
          *
-         * @return Next NodeState
+         * @return next NodeState
          * @throws AndesException
          * @throws InterruptedException
          */
         private NodeState tryToElectSelfAsCoordinator() throws AndesException, InterruptedException {
             NodeState nextState;
-            boolean electedAsCoordinator = contextStore.createCoordinatorEntry(localNodeId);
+            boolean electedAsCoordinator = contextStore.createCoordinatorEntry(localNodeId, thriftAddress);
             if (electedAsCoordinator) {
                 // backoff
-                TimeUnit.SECONDS.sleep((HEARTBEAT_INTERVAL / 2) + 1);
+                TimeUnit.SECONDS.sleep(coordinatorEntryCreationWaitTime);
                 boolean isCoordinator = contextStore.checkIsCoordinator(localNodeId);
 
                 if (isCoordinator) {
                     contextStore.updateCoordinatorHeartbeat(localNodeId);
-                    // TODO: notify nodes about coordinator change
                     logger.info("Elected current node as the coordinator");
-                    hazelcastClusterAgent.becameCoordinator();
+
+                    configurableClusterAgent.becameCoordinator();
                     nextState = NodeState.COORDINATOR;
+
+                    // notify nodes about coordinator change
+                    membershipEventingEngine.notifyMembershipEvent(getAllNodeIdentifiers(),
+                            MembershipEventType.COORDINATOR_CHANGED, localNodeId);
                 } else {
-                    logger.info("Election resulted in current node becoming a standby node");
-                    nextState = NodeState.STANDBY;
+                    logger.info("Election resulted in current node becoming a " + NodeState.CANDIDATE + " node");
+                    nextState = NodeState.CANDIDATE;
                 }
 
             } else {
-                logger.info("Election resulted in current node becoming a standby node");
-                nextState = NodeState.STANDBY;
+                logger.info("Election resulted in current node becoming a " + NodeState.CANDIDATE + " node");
+                nextState = NodeState.CANDIDATE;
             }
 
             return nextState;

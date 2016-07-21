@@ -25,6 +25,7 @@ import org.wso2.andes.server.cluster.NodeHeartBeatData;
 import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEvent;
 import org.wso2.andes.store.HealthAwareStore;
 
+import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -55,7 +56,7 @@ public interface AndesContextStore extends HealthAwareStore {
     /**
      * Get all stored durable subscriptions as a map with the subscription Ids as the the key
      */
-    public Map<String, String> getAllDurableSubscriptionsByID() throws AndesException;
+    Map<String, String> getAllDurableSubscriptionsByID() throws AndesException;
 
     /**
      * Check if a subscription present in database
@@ -63,7 +64,7 @@ public interface AndesContextStore extends HealthAwareStore {
      * @return True if subscription present, false otherwise
      * @throws AndesException
      */
-    public boolean isSubscriptionExist(String subscriptionId) throws AndesException;
+    boolean isSubscriptionExist(String subscriptionId) throws AndesException;
 
     /**
      * Store subscription to the durable store.
@@ -393,7 +394,7 @@ public interface AndesContextStore extends HealthAwareStore {
     /**
      * Get overlapped slots for a given queue.
      *
-     * @param nodeId    Node identifier
+     * @param nodeId    node identifier
      * @param queueName name of queue
      * @return overlapped slot object
      * @throws AndesException
@@ -476,17 +477,18 @@ public interface AndesContextStore extends HealthAwareStore {
      */
 
     /**
-     * Try to create the coordinator row using local instance ID.
+     * Try to create the coordinator entry using local node information.
      *
-     * @param nodeId Local nodes ID
+     * @param nodeId        local nodes ID
+     * @param thriftAddress thrift host/IP of the local node
      * @return True if row was created, false otherwise
      */
-    boolean createCoordinatorEntry(String nodeId) throws AndesException;
+    boolean createCoordinatorEntry(String nodeId, InetSocketAddress thriftAddress) throws AndesException;
 
     /**
-     * Check if local node is the coordinator
+     * Check if the given node is the coordinator
      *
-     * @param nodeId Local node ID
+     * @param nodeId local node ID
      * @return True if the given node is the coordinator, false otherwise
      */
     boolean checkIsCoordinator(String nodeId) throws AndesException;
@@ -494,17 +496,25 @@ public interface AndesContextStore extends HealthAwareStore {
     /**
      * Update coordinator heartbeat value to current time
      *
-     * @param nodeId Local node ID
+     * @param nodeId local node ID
      */
     boolean updateCoordinatorHeartbeat(String nodeId) throws AndesException;
 
     /**
      * Check if the coordinator is timed out using the heart beat value
      *
-     * @param age maximum relative age with respect to current time in seconds
+     * @param age maximum relative age with respect to current time in milliseconds
      * @return True if timed out, False otherwise
      */
     boolean checkIfCoordinatorValid(int age) throws AndesException;
+
+    /**
+     * Get current coordinator's thrift address
+     *
+     * @return thrift address of the coordinator
+     * @throws AndesException
+     */
+    InetSocketAddress getCoordinatorThriftAddress() throws AndesException;
 
     /**
      * Remove current Coordinator entry from database
@@ -514,36 +524,38 @@ public interface AndesContextStore extends HealthAwareStore {
     /**
      * Update Node heartbeat value to current time
      *
-     * @param nodeId Local node ID
+     * @param nodeId local node ID
      */
     void updateNodeHeartbeat(String nodeId) throws AndesException;
 
     /**
      * Get node heart beat status for all existing nodes
      */
-    List<NodeHeartBeatData> getAllNodeInformation() throws AndesException;
+    List<NodeHeartBeatData> getAllHeartBeatData() throws AndesException;
 
     /**
      * Remove heartbeat entry for the given node. This is normally done when the coordinator detects that the node
      * has left the
      *
-     * @param nodeId Local node ID
+     * @param nodeId local node ID
      */
     void removeNodeHeartbeat(String nodeId) throws AndesException;
 
     /**
      * Use this method to indicate that the coordinator detected the node addition to cluster.
      *
-     * @param nodeId Local node ID
+     * @param nodeId local node ID
      */
     void markNodeAsNotNew(String nodeId) throws AndesException;
 
     /*
      * ============================ Membership related methods =======================================
      */
+
     /**
      * Method to store cluster membership based event.
-     * @param clusterNodes      the node by which the event is destined to be read
+     *
+     * @param clusterNodes        nodes by which the event is destined to be read
      * @param membershipEventType the membership change type
      * @param changedMember       member for which the event was triggered
      */
@@ -552,6 +564,8 @@ public interface AndesContextStore extends HealthAwareStore {
 
     /**
      * Method to read cluster membership changed events for a nodeID.
+     *
+     * @param nodeID local node ID used to read event for current node
      */
     List<MembershipEvent> readMemberShipEvents(String nodeID) throws AndesException;
 

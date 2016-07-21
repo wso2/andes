@@ -16,11 +16,20 @@
 package org.wso2.andes.server.cluster;
 
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.IMap;
 import com.hazelcast.core.Member;
 import com.hazelcast.core.MemberAttributeEvent;
 import com.hazelcast.core.MembershipEvent;
 import com.hazelcast.core.MembershipListener;
+import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.slot.SlotCoordinationConstants;
+import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.catalina.ha.session.DeltaRequest.log;
@@ -42,12 +51,18 @@ public class HazelcastCoordinationStrategy implements CoordinationStrategy, Memb
     /**
      * Used to communicate membership events;
      */
-    private HazelcastClusterAgent hazelcastClusterAgent;
+    private CoordinationConfigurableClusterAgent configurableClusterAgent;
 
     /**
      * Used to identify coordinator change event
      */
     private final AtomicBoolean isCoordinator;
+
+    /**
+     * This map is used to store thrift server host and thrift server port
+     * map's key is port or host name.
+     */
+    private IMap<String,String> thriftServerDetailsMap;
 
     public HazelcastCoordinationStrategy(HazelcastInstance hazelcastInstance) {
         this.isCoordinator = new AtomicBoolean(false);
@@ -62,12 +77,15 @@ public class HazelcastCoordinationStrategy implements CoordinationStrategy, Memb
      * {@inheritDoc}
      */
     @Override
-    public void start(HazelcastClusterAgent hazelcastClusterAgent, String nodeId) {
+    public void start(CoordinationConfigurableClusterAgent configurableClusterAgent, String nodeId,
+            InetSocketAddress thriftAddress) {
+        thriftServerDetailsMap = hazelcastInstance.getMap(CoordinationConstants.THRIFT_SERVER_DETAILS_MAP_NAME);
+
         // Register listener for membership changes
         listenerRegistrationId = hazelcastInstance.getCluster()
                                                   .addMembershipListener(this);
 
-        this.hazelcastClusterAgent = hazelcastClusterAgent;
+        this.configurableClusterAgent = configurableClusterAgent;
         checkAndNotifyCoordinatorChange();
     }
 
@@ -79,6 +97,38 @@ public class HazelcastCoordinationStrategy implements CoordinationStrategy, Memb
         Member oldestMember = hazelcastInstance.getCluster().getMembers().iterator().next();
 
         return oldestMember.localMember();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public InetSocketAddress getThriftAddressOfCoordinator() {
+        String hostname = thriftServerDetailsMap.get(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_IP);
+        String portString = thriftServerDetailsMap.get(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_PORT);
+
+        InetSocketAddress coordinatorAddress = null;
+
+        if ((null != hostname) && (null != portString)) {
+            int port = Integer.parseInt(portString);
+            coordinatorAddress = new InetSocketAddress(hostname, port);
+        }
+
+        return coordinatorAddress;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<String> getAllNodeIdentifiers() throws AndesException {
+        Set<Member> members = hazelcastInstance.getCluster().getMembers();
+        List<String> nodeIDList = new ArrayList<>();
+        for (Member member : members) {
+            nodeIDList.add(configurableClusterAgent.getIdOfNode(member));
+        }
+
+        return nodeIDList;
     }
 
     /**
@@ -103,7 +153,7 @@ public class HazelcastCoordinationStrategy implements CoordinationStrategy, Memb
                 + member.getSocketAddress() + " UUID:" + member.getUuid());
 
         checkAndNotifyCoordinatorChange();
-        hazelcastClusterAgent.memberAdded(member);
+        configurableClusterAgent.memberAdded(configurableClusterAgent.getIdOfNode(member));
     }
 
     /**
@@ -117,8 +167,8 @@ public class HazelcastCoordinationStrategy implements CoordinationStrategy, Memb
 
         try {
             checkAndNotifyCoordinatorChange();
-            hazelcastClusterAgent.memberRemoved(member);
-        } catch (Exception e) {
+            configurableClusterAgent.memberRemoved(configurableClusterAgent.getIdOfNode(member));
+        } catch (AndesException e) {
             log.error("Error while handling node removal, " + member.getSocketAddress(), e);
         }
     }
@@ -136,9 +186,26 @@ public class HazelcastCoordinationStrategy implements CoordinationStrategy, Memb
      */
     private void checkAndNotifyCoordinatorChange() {
         if (isCoordinator() && isCoordinator.compareAndSet(false, true)) {
-            hazelcastClusterAgent.becameCoordinator();
+            updateThriftCoordinatorDetailsToMap();
+            configurableClusterAgent.becameCoordinator();
         } else {
             isCoordinator.set(false);
         }
+    }
+
+    /**
+     * Set coordinator's thrift server IP and port in hazelcast map.
+     */
+    private void updateThriftCoordinatorDetailsToMap() {
+
+        String thriftCoordinatorServerIP = AndesContext.getInstance().getThriftServerHost();
+        int thriftCoordinatorServerPort = AndesContext.getInstance().getThriftServerPort();
+
+
+        log.info("This node is elected as the Slot Coordinator. Registering " + thriftCoordinatorServerIP + ":"
+                + thriftCoordinatorServerPort);
+        thriftServerDetailsMap.put(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_IP, thriftCoordinatorServerIP);
+        thriftServerDetailsMap.put(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_PORT,
+                Integer.toString(thriftCoordinatorServerPort));
     }
 }

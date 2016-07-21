@@ -33,24 +33,34 @@ import java.util.List;
 class MembershipListenerTask implements Runnable {
 
     /**
-     * Listeners to listen to membership changes.
+     * Class logger
      */
-    private RDBMSMembershipListener membershipListener;
+    private static final Logger logger = Logger.getLogger(MembershipListenerTask.class);
 
     /**
-     * Logger to log information.
+     * Context store object to communicate with the database for the context store.
      */
-    Logger log = Logger.getLogger(MembershipListenerTask.class);
+    private AndesContextStore contextStore = AndesContext.getInstance().getAndesContextStore();
 
     /**
-     * context store object to communicate with the database for the context store.
+     * Node id of the node for which the reader reads member changes.
      */
-    AndesContextStore contextStore = AndesContext.getInstance().getAndesContextStore();
+    private String nodeID;
 
     /**
-     * the node id of the node for which the reader reads memebr changes.
+     * List used to hold all the registered subscribers
      */
-    String nodeID;
+    private List<RDBMSMembershipListener> listeners;
+
+    /**
+     * Default Constructor
+     *
+     * @param nodeId Local node ID used to uniquely identify the node within cluster
+     */
+    MembershipListenerTask(String nodeId) {
+        this.nodeID = nodeId;
+        listeners = new ArrayList<>();
+    }
 
     /**
      * The task that is periodically run to read membership events and to notify the listeners.
@@ -60,56 +70,83 @@ class MembershipListenerTask implements Runnable {
 
         try {
             // Read the membership changes from the store and notify the changes
-            List<MembershipEvent> membershipEvents = readMembershipEvents(nodeID);
+            List<MembershipEvent> membershipEvents = readMembershipEvents();
 
             if (!membershipEvents.isEmpty()) {
                 for (MembershipEvent event : membershipEvents) {
                     switch (event.getMembershipEventType()) {
-                        case MEMBER_ADDED:
-                            membershipListener.memberAdded(event.getMember());
-                            break;
-                        case MEMBER_REMOVED:
-                            membershipListener.memberRemoved(event.getMember());
-                            break;
-                        case COORDINATOR_CHANGED:
-                            membershipListener.coordinationChanged(event.getMember());
-                            break;
-                        default:
-                            log.error("Unknown cluster event type: " + event.getMembershipEventType());
-                            break;
+                    case MEMBER_ADDED:
+                        notifyMemberAddition(event.getMember());
+                        break;
+                    case MEMBER_REMOVED:
+                        notifyMemberRemoval(event.getMember());
+                        break;
+                    case COORDINATOR_CHANGED:
+                        notifyCoordinatorChangeEvent(event.getMember());
+                        break;
+                    default:
+                        logger.error("Unknown cluster event type: " + event.getMembershipEventType());
+                        break;
                     }
                 }
             } else {
-                log.info("No membership events to sync");
+                if (logger.isDebugEnabled()) {
+                    logger.debug("No membership events to sync");
+                }
             }
-        } catch (AndesException e) {
-            e.printStackTrace();
+        } catch (Throwable e) {
+            logger.warn("Error occurred while reading membership events.", e);
+        }
+    }
+
+    private void notifyCoordinatorChangeEvent(String member) {
+        for (RDBMSMembershipListener listener : listeners) {
+            listener.coordinatorChanged(member);
+        }
+    }
+
+    private void notifyMemberRemoval(String member) {
+        for (RDBMSMembershipListener listener : listeners) {
+            listener.memberRemoved(member);
+        }
+    }
+
+    private void notifyMemberAddition(String member) {
+        for (RDBMSMembershipListener listener : listeners) {
+            listener.memberAdded(member);
         }
     }
 
     /**
-     * Set a listener to listen to the cluster membership changes stored.
+     * Method to read membership events.
+
+     * <p>This will read all membership events that a are recorded for a particular node and clear all of those once
+     * read.
      *
-     * @param listener Membership lister which acts upon member changes
-     * @param nodeId   node id to which the listener listens to
+     * @return list membership events
+     * @throws AndesException
      */
-    public void setMembershipListener(RDBMSMembershipListener listener, String nodeId) {
-        this.nodeID = nodeId;
-        membershipListener = listener;
+    private List<MembershipEvent> readMembershipEvents() throws AndesException {
+        List<MembershipEvent> events = contextStore.readMemberShipEvents(nodeID);
+
+        return events;
     }
 
     /**
-     * Method to read membership events.
-     * <p/>
-     * This will read all membership events that a are recorded for a particular node and clear all of those once read.
+     * Add a listener to be notified of the cluster membership events
      *
-     * @param nodeID
-     * @return
-     * @throws AndesException
+     * @param membershipListener membership listener object
      */
-    private List<MembershipEvent> readMembershipEvents(String nodeID) throws AndesException {
-        List<MembershipEvent> events = contextStore.readMemberShipEvents(nodeID);
-        contextStore.clearMembershipEvents(nodeID);
-        return events;
+    void addEventListener(RDBMSMembershipListener membershipListener) {
+        listeners.add(membershipListener);
+    }
+
+    /**
+     * Remove a previously added listener
+     *
+     * @param membershipListener membership listener object
+     */
+    void removeEventListener(RDBMSMembershipListener membershipListener) {
+        listeners.remove(membershipListener);
     }
 }

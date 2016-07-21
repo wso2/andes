@@ -38,6 +38,7 @@ import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
 import org.wso2.carbon.metrics.manager.Timer.Context;
 
+import java.net.InetSocketAddress;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -48,7 +49,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.TimeUnit;
 import javax.sql.DataSource;
 
 /**
@@ -1940,7 +1940,8 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     /**
      * {@inheritDoc}
      */
-    public boolean createCoordinatorEntry(String nodeId) throws AndesException{
+    @Override
+    public boolean createCoordinatorEntry(String nodeId, InetSocketAddress thriftAddress) throws AndesException{
         Connection connection = null;
         PreparedStatement preparedStatement = null;
 
@@ -1953,6 +1954,8 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             preparedStatement.setInt(1, RDBMSConstants.COORDINATOR_ANCHOR);
             preparedStatement.setString(2, nodeId);
             preparedStatement.setLong(3, System.currentTimeMillis());
+            preparedStatement.setString(4, thriftAddress.getHostName());
+            preparedStatement.setInt(5, thriftAddress.getPort());
 
             int updateCount = preparedStatement.executeUpdate();
             connection.commit();
@@ -1962,7 +1965,15 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             String errMsg =
                     RDBMSConstants.TASK_ADD_COORDINATOR_ROW + " instance ID: " + nodeId;
             rollback(connection, RDBMSConstants.TASK_ADD_MESSAGE_ID);
-            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
+            AndesException andesException = rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
+
+            if(andesException instanceof AndesDataIntegrityViolationException) {
+                // This exception occurred because some other node has created the coordinator entry.
+                // Nothing need to be done if this exception occur.
+                return false;
+            } else {
+                throw andesException;
+            }
         } finally {
             close(preparedStatement, RDBMSConstants.TASK_ADD_MESSAGE_ID);
             close(connection, RDBMSConstants.TASK_ADD_MESSAGE_ID);
@@ -1972,6 +1983,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     /**
      * {@inheritDoc}
      */
+    @Override
     public boolean checkIsCoordinator(String nodeId) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
@@ -1980,17 +1992,13 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         try {
             connection = getConnection();
 
-            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_GET_COORDINATOR_ROW);
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_GET_COORDINATOR_ROW_FOR_NODE_ID);
             preparedStatement.setString(1, nodeId);
             resultSet = preparedStatement.executeQuery();
 
             boolean isCoordinator;
 
-            if (resultSet.next()) {
-                isCoordinator = true;
-            } else {
-                isCoordinator = false;
-            }
+            isCoordinator = resultSet.next();
 
             return isCoordinator;
         } catch (SQLException e) {
@@ -2007,6 +2015,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     /**
      * {@inheritDoc}
      */
+    @Override
     public boolean updateCoordinatorHeartbeat(String nodeId) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatementForCoordinatorUpdate = null;
@@ -2044,6 +2053,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     /**
      * {@inheritDoc}
      */
+    @Override
     public boolean checkIfCoordinatorValid(int age) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
@@ -2054,18 +2064,19 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_GET_COORDINATOR_HEARTBEAT);
             resultSet = preparedStatement.executeQuery();
+            long currentTimeMillis = System.currentTimeMillis();
 
             boolean isCoordinator;
 
             if (resultSet.next()) {
                 long coordinatorHeartbeat = resultSet.getLong(1);
-                long heartbeatAge = System.currentTimeMillis() - coordinatorHeartbeat;
-                isCoordinator = TimeUnit.MILLISECONDS.toSeconds(heartbeatAge) <= age;
+                long heartbeatAge = currentTimeMillis - coordinatorHeartbeat;
+                isCoordinator = heartbeatAge <= age;
 
                 if (logger.isDebugEnabled()) {
                     logger.debug( "isCoordinator: " + isCoordinator + ", heartbeatAge: " + age
                             + ", coordinatorHeartBeat: " + coordinatorHeartbeat
-                            + ", currentTime: " + System.currentTimeMillis());
+                            + ", currentTime: " + currentTimeMillis);
                 }
             } else {
                 if (logger.isDebugEnabled()) {
@@ -2077,18 +2088,60 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             return isCoordinator;
         } catch (SQLException e) {
             String errMsg =
-                    RDBMSConstants.TASK_GET_ALL_QUEUES;
+                    RDBMSConstants.TASK_GET_COORDINATOR_INFORMATION;
             throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
-            close(resultSet, RDBMSConstants.TASK_GET_ALL_QUEUES);
-            close(preparedStatement, RDBMSConstants.TASK_GET_ALL_QUEUES);
-            close(connection, RDBMSConstants.TASK_GET_ALL_QUEUES);
+            close(resultSet, RDBMSConstants.TASK_GET_COORDINATOR_INFORMATION);
+            close(preparedStatement, RDBMSConstants.TASK_GET_COORDINATOR_INFORMATION);
+            close(connection, RDBMSConstants.TASK_GET_COORDINATOR_INFORMATION);
         }
     }
 
     /**
      * {@inheritDoc}
      */
+    @Override
+    public InetSocketAddress getCoordinatorThriftAddress() throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+
+        try {
+            connection = getConnection();
+
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_GET_COORDINATOR_THRIFT_ADDRESS);
+            resultSet = preparedStatement.executeQuery();
+
+            InetSocketAddress thriftAddress;
+
+            if (resultSet.next()) {
+                String thriftHost = resultSet.getString(1);
+                int thriftPort = resultSet.getInt(2);
+
+                thriftAddress = new InetSocketAddress(thriftHost, thriftPort);
+            } else {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("No coordinator present in database");
+                }
+                thriftAddress = null;
+            }
+
+            return thriftAddress;
+        } catch (SQLException e) {
+            String errMsg =
+                    RDBMSConstants.TASK_GET_COORDINATOR_INFORMATION;
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
+        } finally {
+            close(resultSet, RDBMSConstants.TASK_GET_COORDINATOR_INFORMATION);
+            close(preparedStatement, RDBMSConstants.TASK_GET_COORDINATOR_INFORMATION);
+            close(connection, RDBMSConstants.TASK_GET_COORDINATOR_INFORMATION);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void removeCoordinator() throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
@@ -2174,7 +2227,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     /**
      * {@inheritDoc}
      */
-    public List<NodeHeartBeatData> getAllNodeInformation() throws AndesException {
+    public List<NodeHeartBeatData> getAllHeartBeatData() throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
@@ -2348,6 +2401,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;
+        PreparedStatement clearMembershipEvents = null;
         ResultSet resultSet = null;
         List<MembershipEvent> membershipEvents = new ArrayList<>();
         String task = "retrieving membership events destined to: " + nodeID;
@@ -2363,12 +2417,19 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
                         resultSet.getString(RDBMSConstants.MEMBERSHIP_CHANGED_MEMBER_ID));
                 membershipEvents.add(membershipEvent);
             }
+
+            clearMembershipEvents = connection.prepareStatement(RDBMSConstants.PS_CLEAN_MEMBERSHIP_EVENTS_FOR_NODE);
+            clearMembershipEvents.setString(1, nodeID);
+            clearMembershipEvents.executeUpdate();
+            connection.commit();
+
             return membershipEvents;
         } catch (SQLException e) {
             throw rdbmsStoreUtils.convertSQLException("Error occurred while " + task, e);
         } finally {
             close(resultSet, task);
             close(preparedStatement, task);
+            close(clearMembershipEvents, task);
             close(connection, task);
         }
     }
@@ -2406,6 +2467,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         try {
             connection = getConnection();
             clearMembershipEvents = connection.prepareStatement(RDBMSConstants.PS_CLEAN_MEMBERSHIP_EVENTS_FOR_NODE);
+            clearMembershipEvents.setString(1, nodeID);
             clearMembershipEvents.executeUpdate();
             connection.commit();
         } catch (SQLException e) {

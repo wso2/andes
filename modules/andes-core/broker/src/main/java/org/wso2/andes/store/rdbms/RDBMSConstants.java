@@ -143,6 +143,8 @@ public class RDBMSConstants {
     protected static final String INSTANCE_ID = "INSTANCE_ID";
     protected static final String LAST_HEARTBEAT = "LAST_HEARTBEAT";
     protected static final String IS_NEW_NODE = "IS_NEW_NODE";
+    protected static final String THRIFT_HOST = "THRIFT_HOST";
+    protected static final String THRIFT_PORT = "THRIFT_PORT";
 
     //Slot table columns
     protected static final String SLOT_ID = "SLOT_ID";
@@ -157,9 +159,9 @@ public class RDBMSConstants {
     protected static final int COORDINATOR_ANCHOR = 1;
 
     //columns for cluster membership communication
-    protected static final String MEMBERSHIP_DESTINED_NODE_ID = "DESTINED_NODE_ID";
     protected static final String MEMBERSHIP_CHANGE_TYPE = "CHANGE_TYPE";
     protected static final String MEMBERSHIP_CHANGED_MEMBER_ID = "CHANGED_MEMBER_ID";
+    protected static final String EVENT_ID = "EVENT_ID";
 
     // prepared statements for Message Store
     protected static final String PS_INSERT_MESSAGE_PART =
@@ -723,8 +725,10 @@ public class RDBMSConstants {
             "INSERT INTO " + CLUSTER_COORDINATOR_HEARTBEAT_TABLE
                     + "(" + ANCHOR + ","
                     + NODE_ID + ","
-                    + LAST_HEARTBEAT + ")"
-                    + " VALUES (?,?,?)";
+                    + LAST_HEARTBEAT + ","
+                    + THRIFT_HOST + ","
+                    + THRIFT_PORT + ")"
+                    + " VALUES (?,?,?,?,?)";
 
     /**
      * Prepared statement to insert coordinator row
@@ -739,7 +743,7 @@ public class RDBMSConstants {
     /**
      * Prepared statement to check if coordinator
      */
-    protected static final String PS_GET_COORDINATOR_ROW =
+    protected static final String PS_GET_COORDINATOR_ROW_FOR_NODE_ID =
             "SELECT " + LAST_HEARTBEAT
                     + " FROM " + CLUSTER_COORDINATOR_HEARTBEAT_TABLE
                     + " WHERE " + NODE_ID + "=?"
@@ -750,6 +754,14 @@ public class RDBMSConstants {
      */
     protected static final String PS_GET_COORDINATOR_HEARTBEAT =
             "SELECT " + LAST_HEARTBEAT
+                    + " FROM " + CLUSTER_COORDINATOR_HEARTBEAT_TABLE
+                    + " WHERE " + ANCHOR + "=" + COORDINATOR_ANCHOR;
+
+    /**
+     * Prepared statement to check if coordinator
+     */
+    protected static final String PS_GET_COORDINATOR_THRIFT_ADDRESS =
+            "SELECT " + THRIFT_HOST + "," + THRIFT_PORT
                     + " FROM " + CLUSTER_COORDINATOR_HEARTBEAT_TABLE
                     + " WHERE " + ANCHOR + "=" + COORDINATOR_ANCHOR;
 
@@ -942,10 +954,10 @@ public class RDBMSConstants {
      */
     protected static final String PS_INSERT_MEMBERSHIP_EVENT =
             "INSERT INTO " + MEMBERSHIP_TABLE + " ("
-            + MEMBERSHIP_DESTINED_NODE_ID + ","
+            + NODE_ID + ","
             + MEMBERSHIP_CHANGE_TYPE + ","
             + MEMBERSHIP_CHANGED_MEMBER_ID + ")"
-            + " VALUES ( ?,?,?, )";
+            + " VALUES ( ?,?,?)";
 
     /**
      * Prepared statement to select membership change event destined to a particular member.
@@ -953,7 +965,8 @@ public class RDBMSConstants {
     protected static final String PS_SELECT_MEMBERSHIP_EVENT =
             "SELECT " + MEMBERSHIP_CHANGE_TYPE + ", " + MEMBERSHIP_CHANGED_MEMBER_ID
             + " FROM " + MEMBERSHIP_TABLE
-            + " WHERE " + MEMBERSHIP_DESTINED_NODE_ID + "=?";
+            + " WHERE " + NODE_ID + "=?"
+                    + " ORDER BY "  + EVENT_ID;
 
     /**
      * Prepared statement to clear the membership event table.
@@ -966,7 +979,7 @@ public class RDBMSConstants {
      */
     protected static final String PS_CLEAN_MEMBERSHIP_EVENTS_FOR_NODE =
             "DELETE FROM " + MEMBERSHIP_TABLE
-            + " WHERE " + MEMBERSHIP_DESTINED_NODE_ID + "=?";
+            + " WHERE " + NODE_ID + "=?";
 
     // Message Store related jdbc tasks executed
     protected static final String TASK_STORING_MESSAGE_PARTS = "storing message parts.";
@@ -1072,6 +1085,7 @@ public class RDBMSConstants {
     protected static final String TASK_GET_ALL_QUEUES_IN_SUBMITTED_SLOTS = "getting all queues in submitted slots";
     protected static final String TASK_CLEAR_SLOT_TABLES = "clearing slot tables";
     protected static final String TASK_ADD_COORDINATOR_ROW = "adding coordinator row";
+    protected static final String TASK_GET_COORDINATOR_INFORMATION = "reading coordinator information";
     protected static final String TASK_CHECK_COORDINATOR_VALIDITY = "checking coordinator validity";
     protected static final String TASK_UPDATE_COORDINATOR_HEARTBEAT = "updating coordinator heartbeat";
     protected static final String TASK_REMOVE_COORDINATOR = "removing coordinator heartbeat";

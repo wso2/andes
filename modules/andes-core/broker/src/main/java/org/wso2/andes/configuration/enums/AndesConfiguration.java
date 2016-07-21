@@ -656,6 +656,34 @@ public enum AndesConfiguration implements ConfigurationProperty {
     SLOT_MANAGEMENT_STORAGE("slotManagement/storage", "RDBMS", String.class),
 
     /**
+     * Heartbeat interval used in the RDBMS base coordination algorithm in seconds
+     * <p>
+     * default value: 5
+     * </p>
+     */
+    RDBMS_BASED_COORDINATION_HEARTBEAT_INTERVAL("coordination/rdbmsBasedCoordination/heartbeatInterval", "5", Integer
+            .class),
+
+    /**
+     * Time to wait before informing others about coordinator change. This value should be larger than a database read
+     * time including network latency and should be less than (2 * heartbeatInterval).
+     * <p>
+     * default value: 3
+     * </p>
+     */
+    RDBMS_BASED_COORDINATOR_ENTRY_CREATION_WAIT_TIME
+            ("coordination/rdbmsBasedCoordination/coordinatorEntryCreationWaitTime",
+            "3", Integer.class),
+
+    /**
+     * Time interval used to poll database for membership related events.
+     * <p>
+     * default value: 4
+     * </p>
+     */
+    RDBMS_BASED_EVENT_POLLING_INTERVAL("coordination/rdbmsBasedCoordination/eventPollingInterval", "4", Integer.class),
+
+    /**
      * Configuration used to enable RDBMS based coordination
      * <p>
      * default value: false
@@ -671,8 +699,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * default value: false
      * </p>
      */
-    RECOVERY_NETWORK_PARTITIONS_DETECTION("recovery/networkPartitionsDetection/@enabled", "false",
-            Boolean.class),
+    RECOVERY_NETWORK_PARTITIONS_DETECTION("recovery/networkPartitionsDetection/@enabled", "false", Boolean.class),
     /**
      * The minimum node count the cluster should maintain for this node to
      * operate. if cluster size becomes less that configured value

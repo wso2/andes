@@ -31,6 +31,7 @@ import org.wso2.andes.kernel.slot.SlotState;
 import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEvent;
 import org.wso2.andes.server.cluster.NodeHeartBeatData;
 
+import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -873,9 +874,9 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public boolean createCoordinatorEntry(String nodeId) throws AndesException {
+    public boolean createCoordinatorEntry(String nodeId, InetSocketAddress thriftAddress) throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.createCoordinatorEntry(nodeId);
+            return wrappedAndesContextStoreInstance.createCoordinatorEntry(nodeId, thriftAddress);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -921,6 +922,18 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public InetSocketAddress getCoordinatorThriftAddress() throws AndesException {
+        try {
+            return wrappedAndesContextStoreInstance.getCoordinatorThriftAddress();
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
 
     /**
      * {@inheritDoc}
@@ -952,9 +965,9 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public List<NodeHeartBeatData> getAllNodeInformation() throws AndesException {
+    public List<NodeHeartBeatData> getAllHeartBeatData() throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.getAllNodeInformation();
+            return wrappedAndesContextStoreInstance.getAllHeartBeatData();
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

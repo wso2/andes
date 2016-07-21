@@ -15,30 +15,52 @@
 
 package org.wso2.andes.server.cluster;
 
+import org.wso2.andes.kernel.AndesException;
+
+import java.net.InetSocketAddress;
+import java.util.List;
+
 /**
  * The type used define the coordination algorithm used to identify the coordinator in the cluster.
  */
-public interface CoordinationStrategy {
-
-    /**
-     * Meant to be invoked when coordination algorithm should start working.
-     * This is typically during the server start up.
-     *
-     * @param hazelcastClusterAgent Hazelcast cluster agent used to indicate cluster change events
-     * @param nodeId
-     */
-    void start(HazelcastClusterAgent hazelcastClusterAgent, String nodeId);
+interface CoordinationStrategy {
 
     /**
      * Used to query about current node's coordinator status
      *
-     * @return True if current node is the coordinator, False otherwise
+     * @return true if current node is the coordinator, False otherwise
      */
     boolean isCoordinator();
 
+
     /**
-     * Meant to be invoked when coordination algorithm should stop working.
-     * This is typically during the server shutdown.
+     * Return the socket address of the coordinator Node. This socket address can be used to communicate with the
+     * coordinator node using thrift.
+     *
+     * @return socket address of the coordinator thrift server if present, null otherwise
+     */
+    InetSocketAddress getThriftAddressOfCoordinator();
+
+    /**
+     * Return all ids of the connected nodes.
+     *
+     * @return list of member ids
+     */
+    List<String> getAllNodeIdentifiers() throws AndesException;
+
+    /**
+     * Meant to be invoked when coordination algorithm should start working. This is typically invoked during the
+     * server start up.
+     * @param configurableClusterAgent cluster agent used to indicate cluster change events
+     * @param nodeId                   local node ID
+     * @param thriftAddress local node's thrift server address
+     */
+    void start(CoordinationConfigurableClusterAgent configurableClusterAgent, String nodeId,
+            InetSocketAddress thriftAddress);
+
+    /**
+     * Meant to be invoked when coordination algorithm should stop working. This is typically during the server
+     * shutdown.
      */
     void stop();
 }

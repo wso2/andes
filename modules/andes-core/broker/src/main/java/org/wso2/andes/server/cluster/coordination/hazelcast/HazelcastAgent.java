@@ -36,7 +36,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
 import org.wso2.andes.kernel.slot.SlotUtils;
-import org.wso2.andes.server.cluster.HazelcastClusterAgent;
+import org.wso2.andes.server.cluster.CoordinationConfigurableClusterAgent;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
@@ -135,12 +135,6 @@ public class HazelcastAgent implements SlotAgent {
     private IMap<String, TreeSetSlotWrapper> unAssignedSlotMap;
 
     /**
-     * This map is used to store thrift server host and thrift server port
-     * map's key is port or host name.
-     */
-    private IMap<String,String> thriftServerDetailsMap;
-
-    /**
      * Lock used to initialize the Slot map used by the Slot manager.
      */
     private ILock initializationLock;
@@ -150,11 +144,6 @@ public class HazelcastAgent implements SlotAgent {
      * since am atomic boolean is not available in the current Hazelcast implementation.
      */
     private IAtomicLong initializationDoneIndicator;
-
-    /**
-     * Hazelcast based cluster agent
-     */
-    private HazelcastClusterAgent clusterAgent;
 
     /**
      * Defines the maximum number of messages that will be read at a single try from a Hazelcast reliable topic.
@@ -212,7 +201,7 @@ public class HazelcastAgent implements SlotAgent {
         this.hazelcastInstance = hazelcastInstance;
 
         // Set cluster agent in Andes Context
-        clusterAgent = new HazelcastClusterAgent(hazelcastInstance);
+        CoordinationConfigurableClusterAgent clusterAgent = new CoordinationConfigurableClusterAgent(hazelcastInstance);
         AndesContext.getInstance().setClusterAgent(clusterAgent);
         addTopicListeners();
 
@@ -225,11 +214,6 @@ public class HazelcastAgent implements SlotAgent {
         safeZoneMap = hazelcastInstance.getMap(CoordinationConstants.LAST_PUBLISHED_ID_MAP_NAME);
         slotAssignmentMap = hazelcastInstance.getMap(CoordinationConstants.SLOT_ASSIGNMENT_MAP_NAME);
         overlappedSlotMap = hazelcastInstance.getMap(CoordinationConstants.OVERLAPPED_SLOT_MAP_NAME);
-
-        /**
-         * Initialize hazelcast map fot thrift server details
-         */
-        thriftServerDetailsMap = hazelcastInstance.getMap(CoordinationConstants.THRIFT_SERVER_DETAILS_MAP_NAME);
 
         /**
          * Initialize distributed lock and boolean related to slot map initialization
@@ -421,14 +405,6 @@ public class HazelcastAgent implements SlotAgent {
             throw new AndesException("Error while sending db sync notification"
                                      + clusterNotification.getEncodedObjectAsString(), e);
         }
-    }
-
-    /**
-     * This method returns a map containing thrift server port and hostname
-     * @return thriftServerDetailsMap
-     */
-    public IMap<String, String> getThriftServerDetailsMap() {
-        return thriftServerDetailsMap;
     }
 
     /**

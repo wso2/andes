@@ -24,9 +24,24 @@ package org.wso2.andes.server.cluster.coordination.rdbms;
  */
 public interface RDBMSMembershipListener {
 
+    /**
+     * Invoked when a new member is added to the cluster.
+     *
+     * @param nodeID node ID of the new node
+     */
     void memberAdded(String nodeID);
 
+    /**
+     * Invoked when an existing member leaves the cluster.
+     *
+     * @param nodeID node ID of the removed node
+     */
     void memberRemoved(String nodeID);
 
-    void coordinationChanged(String coordinator);
+    /**
+     * Invoked when the coordinator is changed in the cluster
+     *
+     * @param coordinator node ID of the new coordinator node
+     */
+    void coordinatorChanged(String coordinator);
 }

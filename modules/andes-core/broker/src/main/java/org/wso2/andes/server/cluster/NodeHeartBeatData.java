@@ -38,9 +38,9 @@ public class NodeHeartBeatData {
     /**
      * NodeHeartBeatData constructor
      *
-     * @param nodeId        Node ID
-     * @param lastHeartbeat Last heartbeat received from the node
-     * @param isNewNode     True if new node
+     * @param nodeId        node ID
+     * @param lastHeartbeat last heartbeat received from the node
+     * @param isNewNode     true if new node
      */
     public NodeHeartBeatData(String nodeId, long lastHeartbeat, boolean isNewNode) {
         this.nodeId = nodeId;
@@ -51,7 +51,7 @@ public class NodeHeartBeatData {
     /**
      * Getter method for Node ID
      *
-     * @return Node ID
+     * @return node ID
      */
     public String getNodeId() {
         return nodeId;
@@ -60,7 +60,7 @@ public class NodeHeartBeatData {
     /**
      * Getter method for last heartbeat
      *
-     * @return Last heartbeat received form the node
+     * @return last heartbeat received form the node
      */
     public long getLastHeartbeat() {
         return lastHeartbeat;
@@ -69,7 +69,7 @@ public class NodeHeartBeatData {
     /**
      * Getter method for isNewNode
      *
-     * @return True if this is a new node
+     * @return true if this is a new node
      */
     public boolean isNewNode() {
         return isNewNode;
