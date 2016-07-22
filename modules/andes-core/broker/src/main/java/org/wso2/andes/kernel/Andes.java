@@ -449,6 +449,10 @@ public class Andes {
     public void messageRejected(DeliverableAndesMetadata metadata, UUID channelID) throws AndesException {
         MessagingEngine.getInstance().messageRejected(metadata, channelID);
 
+        //Adding metrics meter for ack rate
+        Meter ackMeter = MetricManager.meter(Level.INFO, MetricsConstants.REJECT_RECEIVE_RATE);
+        ackMeter.mark();
+
         //Adding metrics counter for reject messages
         Counter counter = MetricManager.counter(Level.INFO, MetricsConstants.REJECT_MESSAGES);
         counter.inc();
