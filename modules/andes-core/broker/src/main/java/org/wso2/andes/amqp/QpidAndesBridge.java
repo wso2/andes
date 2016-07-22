@@ -329,7 +329,7 @@ public class QpidAndesBridge {
             log.debug("AMQP BRIDGE: rejected message id= " + rejectedMessage.getMessageID()
                     + " channel = " + channel.getId());
 
-            MessagingEngine.getInstance().messageRejected(rejectedMessage, channel.getId());
+            Andes.getInstance().messageRejected(rejectedMessage, channel.getId());
 
         } catch (AndesException e) {
             throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while handling rejected message", e);

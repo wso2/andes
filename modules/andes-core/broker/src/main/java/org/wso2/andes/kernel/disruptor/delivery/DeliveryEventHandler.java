@@ -32,6 +32,7 @@ import org.wso2.andes.kernel.SubscriptionAlreadyClosedException;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.tools.utils.MessageTracer;
+import org.wso2.carbon.metrics.manager.Counter;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.Meter;
 import org.wso2.carbon.metrics.manager.MetricManager;
@@ -100,6 +101,10 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                         //Adding metrics meter for ack rate
                         Meter messageMeter = MetricManager.meter(Level.INFO, MetricsConstants.MSG_SENT_RATE);
                         messageMeter.mark();
+
+                        //Adding metrics counter for dequeue messages
+                        Counter counter = MetricManager.counter(Level.INFO, MetricsConstants.DEQUEUE_MESSAGES);
+                        counter.inc();
 
                         subscription.sendMessageToSubscriber(protocolMessage, deliveryEventData.getAndesContent());
 

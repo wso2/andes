@@ -40,11 +40,11 @@ import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionEngine;
 import org.wso2.andes.tools.utils.MessageTracer;
+import org.wso2.carbon.metrics.manager.Counter;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.Meter;
 import org.wso2.carbon.metrics.manager.MetricManager;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -199,6 +199,10 @@ public class Andes {
         //Adding metrics meter for message rate
         Meter messageMeter = MetricManager.meter(Level.INFO, MetricsConstants.MSG_RECEIVE_RATE);
         messageMeter.mark();
+
+        //Adding metrics counter for enqueue messages
+        Counter counter = MetricManager.counter(Level.INFO, MetricsConstants.ENQUEUE_MESSAGES);
+        counter.inc();
     }
 
     /**
@@ -216,6 +220,10 @@ public class Andes {
         //Adding metrics meter for ack rate
         Meter ackMeter = MetricManager.meter(Level.INFO, MetricsConstants.ACK_RECEIVE_RATE);
         ackMeter.mark();
+
+        //Adding metrics counter for ack messages
+        Counter counter = MetricManager.counter(Level.INFO, MetricsConstants.ACK_MESSAGES);
+        counter.inc();
 
         //We call this later as this call removes the ackData.getAcknowledgedMessage() message
         inboundEventManager.ackReceived(ackData);
@@ -440,6 +448,10 @@ public class Andes {
      */
     public void messageRejected(DeliverableAndesMetadata metadata, UUID channelID) throws AndesException {
         MessagingEngine.getInstance().messageRejected(metadata, channelID);
+
+        //Adding metrics counter for reject messages
+        Counter counter = MetricManager.counter(Level.INFO, MetricsConstants.REJECT_MESSAGES);
+        counter.inc();
     }
 
     /**
