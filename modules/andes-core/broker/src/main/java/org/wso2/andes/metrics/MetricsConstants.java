@@ -176,9 +176,14 @@ public class MetricsConstants {
     public static final String MSG_RECEIVE_RATE = PREFIX + "message.receive";
 
     /**
-     * Number of acknowledgments received from publishers per second.
+     * Number of acknowledgments received from subscribers per second.
      */
     public static final String ACK_RECEIVE_RATE = PREFIX + "ack.receive";
+
+    /**
+     * Number of reject received from subscribers per second
+     */
+    public static final String REJECT_RECEIVE_RATE = PREFIX + "reject.receive";
 
     /**
      * Number of messages sent per second. This metric is calculated when a message reaches server.
