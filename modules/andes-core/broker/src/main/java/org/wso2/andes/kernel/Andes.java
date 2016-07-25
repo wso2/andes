@@ -624,12 +624,13 @@ public class Andes {
     /**
      * Get expired but not yet deleted messages from message store.
      *
-     * @param limit upper bound for number of messages to be returned
+     * @param lowerBoundMessageID lower bound message Id of the safe zone for delete
+     * @param queueName Queue name
      * @return AndesRemovableMetadata
      * @throws AndesException
      */
-    public List<AndesMessageMetadata> getExpiredMessages(int limit) throws AndesException {
-        return MessagingEngine.getInstance().getExpiredMessages(limit);
+    public List<Long> getExpiredMessages(long lowerBoundMessageID, String queueName) throws AndesException {
+        return MessagingEngine.getInstance().getExpiredMessages(lowerBoundMessageID, queueName);
     }
 
     /**

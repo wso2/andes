@@ -92,6 +92,11 @@ public class MessagingEngine {
     private SlotCoordinator slotCoordinator;
 
     /**
+     * Expiry manager which is responsible for update DLC info in db tables
+     */
+    private MessageExpiryManager messageExpiryManager;
+
+    /**
      * private constructor for singleton pattern
      */
     private MessagingEngine() {
@@ -135,12 +140,14 @@ public class MessagingEngine {
      * @param subscriptionEngine SubscriptionStore
      * @throws AndesException
      */
-    public void initialise(MessageStore messageStore, SubscriptionEngine subscriptionEngine) throws AndesException {
+    public void initialise(MessageStore messageStore, SubscriptionEngine subscriptionEngine,
+                           MessageExpiryManager messageExpiryManager) throws AndesException {
 
         configureMessageIDGenerator();
 
         this.messageStore = messageStore;
         this.subscriptionEngine = subscriptionEngine;
+        this.messageExpiryManager = messageExpiryManager;
 
         //register listeners for queue changes
         queueListener = new ClusterCoordinationHandler(HazelcastAgent.getInstance());
@@ -272,7 +279,7 @@ public class MessagingEngine {
             throws AndesException {
         String deadLetterQueueName = DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(destinationQueueName);
 
-        messageStore.moveMetadataToDLC(messageToRemove.getMessageID(), deadLetterQueueName);
+        messageExpiryManager.moveMetadataToDLC(messageToRemove.getMessageID(), deadLetterQueueName);
 
         // Increment count by 1 in DLC and decrement by 1 in original queue
 
@@ -453,6 +460,19 @@ public class MessagingEngine {
 
     }
 
+    /**
+     * Delete messages from store. Optionally move to dead letter channel.  Delete
+     * call is blocking and then slot message count is dropped in order. Message state
+     * is updated.
+     *
+     * @param messagesToRemove List of messages ids to remove
+     * @throws AndesException
+     */
+    public void deleteMessagesById(List<Long> messagesToRemove) throws AndesException {
+            messageStore.deleteMessages(messagesToRemove);
+    }
+
+
     public void moveMessageToDeadLetterChannel(List<DeliverableAndesMetadata> messagesToMove) throws AndesException {
         Map<String, List<AndesMessageMetadata>> storageSeparatedMessages = new HashMap<>();
         for (DeliverableAndesMetadata message : messagesToMove) {
@@ -468,7 +488,7 @@ public class MessagingEngine {
         for (Map.Entry<String, List<AndesMessageMetadata>> entry : storageSeparatedMessages.entrySet()) {
             //move messages to dead letter channel
             String dlcQueueName = DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(entry.getKey());
-            messageStore.moveMetadataToDLC(entry.getValue(), dlcQueueName);
+            messageExpiryManager.moveMetadataToDLC(entry.getValue(), dlcQueueName);
         }
 
         //mark the messages as DLC messages
@@ -493,7 +513,7 @@ public class MessagingEngine {
         for (Map.Entry<String, List<AndesMessageMetadata>> entry : storageSeparatedMessages.entrySet()) {
             //move messages to dead letter channel
             String dlcQueueName = DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(entry.getKey());
-            messageStore.moveMetadataToDLC(entry.getValue(), dlcQueueName);
+            messageExpiryManager.moveMetadataToDLC(entry.getValue(), dlcQueueName);
         }
 
         //TODO:message can be in delivery path. If so we need to decrement slot message count
@@ -630,12 +650,22 @@ public class MessagingEngine {
     /**
      * Get expired but not yet deleted messages from message store
      *
-     * @param limit upper bound for number of messages to be returned
+     * @param lowerBoundMessageID lower bound message Id of the safe zone for delete
+     * @param  queueName Queue name
      * @return AndesRemovableMetadata
      * @throws AndesException
      */
-    public List<AndesMessageMetadata> getExpiredMessages(int limit) throws AndesException {
-        return messageStore.getExpiredMessages(limit);
+    public List<Long> getExpiredMessages(long lowerBoundMessageID, String queueName) throws AndesException {
+        return messageStore.getExpiredMessages(lowerBoundMessageID, queueName);
+    }
+
+    /**
+     * Get expired but not yet deleted messages from DLC
+     * @return List of expired message Ids
+     * @throws AndesException
+     */
+    public List<Long> getExpiredMessagesFromDLC() throws AndesException {
+        return messageStore.getExpiredMessagesFromDLC();
     }
 
     /**
@@ -724,44 +754,12 @@ public class MessagingEngine {
     public void close() throws InterruptedException {
 
         stopMessageDelivery();
-        stopMessageExpirationWorker();
 
         completePendingStoreOperations();
     }
 
     public void completePendingStoreOperations() {
         messageStore.close();
-    }
-
-    /**
-     * Start Checking for Expired Messages (JMS Expiration)
-     */
-    public void startMessageExpirationWorker() {
-
-        MessageExpirationWorker messageExpirationWorker = ClusterResourceHolder.getInstance()
-                .getMessageExpirationWorker();
-
-        if (messageExpirationWorker == null) {
-            ClusterResourceHolder.getInstance().setMessageExpirationWorker(new MessageExpirationWorker());
-
-        } else {
-            if (!messageExpirationWorker.isWorking()) {
-                messageExpirationWorker.startWorking();
-            }
-        }
-    }
-
-    /**
-     * Stop Checking for Expired Messages (JMS Expiration)
-     */
-    public void stopMessageExpirationWorker() {
-
-        MessageExpirationWorker messageExpirationWorker = ClusterResourceHolder.getInstance()
-                .getMessageExpirationWorker();
-
-        if (messageExpirationWorker != null && messageExpirationWorker.isWorking()) {
-            messageExpirationWorker.stopWorking();
-        }
     }
 
     public SlotCoordinator getSlotCoordinator() {
