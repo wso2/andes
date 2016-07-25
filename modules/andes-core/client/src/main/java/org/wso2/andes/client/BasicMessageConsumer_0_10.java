@@ -24,21 +24,28 @@ import org.wso2.andes.AMQInternalException;
 import org.wso2.andes.client.AMQDestination.AddressOption;
 import org.wso2.andes.client.AMQDestination.DestSyntax;
 import org.wso2.andes.client.failover.FailoverException;
-import org.wso2.andes.client.message.*;
+import org.wso2.andes.client.message.AMQMessageDelegateFactory;
+import org.wso2.andes.client.message.AMQMessageDelegate_0_10;
+import org.wso2.andes.client.message.AbstractJMSMessage;
+import org.wso2.andes.client.message.MessageFactoryRegistry;
+import org.wso2.andes.client.message.UnprocessedMessage_0_10;
 import org.wso2.andes.client.protocol.AMQProtocolHandler;
 import org.wso2.andes.filter.JMSSelectorFilter;
 import org.wso2.andes.filter.MessageFilter;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.protocol.AMQConstant;
-import org.wso2.andes.transport.*;
+import org.wso2.andes.transport.Acquired;
+import org.wso2.andes.transport.MessageCreditUnit;
+import org.wso2.andes.transport.Option;
+import org.wso2.andes.transport.RangeSet;
+import org.wso2.andes.transport.SessionException;
 
+import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.jms.InvalidSelectorException;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageListener;
-import javax.jms.TextMessage;
-import java.util.Iterator;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * This is a 0.10 message consumer.
@@ -207,7 +214,9 @@ public class BasicMessageConsumer_0_10 extends BasicMessageConsumer<UnprocessedM
     @Override protected void preApplicationProcessing(AbstractJMSMessage jmsMsg) throws JMSException
     {
         super.preApplicationProcessing(jmsMsg);
-        if (!_session.getTransacted() && _session.getAcknowledgeMode() != org.wso2.andes.jms.Session.CLIENT_ACKNOWLEDGE)
+        if (!_session.getTransacted()
+            && ((_session.getAcknowledgeMode() != org.wso2.andes.jms.Session.PER_MESSAGE_ACKNOWLEDGE)
+                || (_session.getAcknowledgeMode() != org.wso2.andes.jms.Session.CLIENT_ACKNOWLEDGE)))
         {
             _session.addUnacknowledgedMessage(jmsMsg.getDeliveryTag());
         }
@@ -372,10 +381,10 @@ public class BasicMessageConsumer_0_10 extends BasicMessageConsumer<UnprocessedM
         }
         if (messageListener != null && !_synchronousQueue.isEmpty())
         {
-            Iterator messages=_synchronousQueue.iterator();
+            Iterator<DelayedObject> messages = _synchronousQueue.iterator();
             while (messages.hasNext())
             {
-                AbstractJMSMessage message=(AbstractJMSMessage) messages.next();
+                AbstractJMSMessage message = (AbstractJMSMessage) messages.next().getObject();
                 messages.remove();
                 _session.rejectMessage(message, true);
             }
@@ -469,11 +478,9 @@ public class BasicMessageConsumer_0_10 extends BasicMessageConsumer<UnprocessedM
         if (_synchronousQueue.size() > 0)
         {
             RangeSet ranges = new RangeSet();
-            Iterator iterator = _synchronousQueue.iterator();
-            while (iterator.hasNext())
-            {
-
-                Object o = iterator.next();
+            Iterator<DelayedObject> iterator = _synchronousQueue.iterator();
+            while (iterator.hasNext()) {
+                Object o = iterator.next().getObject();
                 if (o instanceof AbstractJMSMessage)
                 {
                     ranges.add((int) ((AbstractJMSMessage) o).getDeliveryTag());

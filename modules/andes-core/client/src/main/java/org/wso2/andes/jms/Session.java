@@ -42,6 +42,12 @@ public interface Session extends javax.jms.Session
      */
     static final int PRE_ACKNOWLEDGE = 258;
 
+    /**
+     * Per message acknowledgement. Each message should be acked. Unacked messages will not get acked with this
+     * acknowledgement.
+     */
+    int PER_MESSAGE_ACKNOWLEDGE = 259;
+
     MessageConsumer createConsumer(Destination destination,
                                    int prefetch,
                                    boolean noLocal,
