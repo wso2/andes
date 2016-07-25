@@ -55,7 +55,10 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      * The timestamp at which the message arrived at the first gates of the broker.
      */
     long arrivalTime;
-    private boolean isExpirationSet;
+    /**
+     * Whether Expiration value is set for the message
+     */
+    boolean isExpirationSet;
 
     /**
      * Destination (routing key) of message
@@ -457,7 +460,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      * set whether the message expiration value is set
      * @param expirationSet
      */
-    public void setExpirationSet(boolean expirationSet) {
+    public void setIsExpirationSet(boolean expirationSet) {
         isExpirationSet = expirationSet;
     }
 }

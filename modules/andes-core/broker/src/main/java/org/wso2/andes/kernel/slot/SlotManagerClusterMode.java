@@ -30,7 +30,6 @@ import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.cluster.coordination.rdbms.DatabaseSlotAgent;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.Executors;
@@ -43,7 +42,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Slot Manager Cluster Mode is responsible of slot allocating, slot creating,
  * slot re-assigning and slot managing tasks in cluster mode
  */
-public class SlotManagerClusterMode extends SafeDeletion {
+public class SlotManagerClusterMode extends AbstractSlotManager {
 
     private static final int INITIAL_MESSAGE_ID = -1;
 
@@ -149,17 +148,25 @@ public class SlotManagerClusterMode extends SafeDeletion {
     private Slot getFreshSlot(String queueName, String nodeId) throws AndesException {
 
         Slot slotToBeAssigned = null;
+        Long endMessageId = null;
         TreeSet<Long> messageIDSet;
         // Get message id set from database
-        messageIDSet = slotAgent.getMessageIds(queueName);
+        messageIDSet = slotAgent.getSlotBasedMessageIds(queueName);
         //start msgID will be last assigned ID + 1 so that slots are created with no
         // message ID gaps in-between
         long lastAssignedId = slotAgent.getQueueToLastAssignedId(queueName);
         /**
-         * The slot is allocated only if the request is not for the queue in which current deletion task is running and message id range
-         * is not in the current deletion range. Otherwise slot will not be given
+         * End message id that needs to be allocated to this slot
+         * End messageID will be the lowest in published message ID list. Get and remove
          */
-        if (!currentDeletionQueue.equals(queueName) || currentDeletionRangeLowerBoundId != lastAssignedId + 1) {
+        if(null != messageIDSet){
+            endMessageId = messageIDSet.pollFirst();
+        }
+        /**
+         * Check the current slot allocation not interfere into the range where expiry deletion happens.
+         * The check is done based on the queue name and the end message id for this slot
+         */
+        if (isSafeToDeliverSlots(queueName,endMessageId)) {
 
             if (null != messageIDSet && !(messageIDSet.isEmpty())) {
 
@@ -171,8 +178,7 @@ public class SlotManagerClusterMode extends SafeDeletion {
                     slotToBeAssigned.setStartMessageId(0L);
                 }
 
-                //end messageID will be the lowest in published message ID list. Get and remove
-                slotToBeAssigned.setEndMessageId(messageIDSet.pollFirst());
+                slotToBeAssigned.setEndMessageId(endMessageId);
 
                 //remove polled message id from database
                 slotAgent.deleteMessageId(queueName, slotToBeAssigned.getEndMessageId());
@@ -284,7 +290,7 @@ public class SlotManagerClusterMode extends SafeDeletion {
 
         // Read message Id set for slots from store
         TreeSet<Long> messageIdSet;
-        messageIdSet = slotAgent.getMessageIds(queueName);
+        messageIdSet = slotAgent.getSlotBasedMessageIds(queueName);
 
         String lockKey = queueName + SlotManagerClusterMode.class;
         synchronized (lockKey.intern()) {
@@ -481,9 +487,7 @@ public class SlotManagerClusterMode extends SafeDeletion {
     }
 
     /**
-     * Delete all slot associations with a given queue. This is required to handle a queue purge event.
-     *
-     * @param queueName name of destination queue
+     * {@inheritDoc}
      */
     public void clearAllActiveSlotRelationsToQueue(String queueName) throws AndesException {
         if (log.isDebugEnabled()) {
@@ -493,6 +497,11 @@ public class SlotManagerClusterMode extends SafeDeletion {
         slotAgent.deleteSlotsByQueueName(queueName);
         //Clear message ids from message id table
         slotAgent.deleteMessageIdsByQueueName(queueName);
+    }
+
+    @Override
+    public Set<String> getAllQueues() throws AndesException {
+        return slotAgent.getAllQueues();
     }
 
     /**
@@ -645,15 +654,20 @@ public class SlotManagerClusterMode extends SafeDeletion {
      */
     @Override
     public long getSafeZoneLowerBoundId(String queueName) throws AndesException {
-        //get the upper bound messageID for each unassigned slots as a set for the specific queue
-        TreeSet<Long> messageIDSet = slotAgent.getMessageIds(queueName);
         long lowerBoundId = -1;
-        if (messageIDSet.size() >= safetySlotCount) {
-            lowerBoundId = messageIDSet.
-                    toArray(new Long[messageIDSet.size()])[safetySlotCount - 1] + 1;
+        String lockKey = queueName + SlotManagerClusterMode.class;
+        synchronized (lockKey.intern()) {
+            //get the upper bound messageID for each unassigned slots as a set for the specific queue
+            TreeSet<Long> messageIDSet = slotAgent.getSlotBasedMessageIds(queueName);
+
+            if (messageIDSet.size() >= safetySlotCount) {
+                lowerBoundId = messageIDSet.toArray(new Long[messageIDSet.size()])[safetySlotCount - 1] + 1;
+                /**
+                 * Inform the slot manager regarding the current expiry deletion range and queue
+                 */
+                setDeletionTaskState(queueName, lowerBoundId);
+            }
         }
-        //set the deletion task specific state
-        setDeletionTaskState(queueName,lowerBoundId);
         return lowerBoundId;
     }
 }

@@ -348,6 +348,14 @@ public class FailureObservingMessageStore implements MessageStore {
     public void deleteMessages(List<Long> messagesToRemove) throws AndesException {
         try {
             wrappedInstance.deleteMessages(messagesToRemove);
+
+            //Tracing message activity
+            if (MessageTracer.isEnabled()) {
+                for (Long messageId : messagesToRemove) {
+                    MessageTracer.trace(messageId, "", MessageTracer.MESSAGE_DELETED);
+                }
+            }
+
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

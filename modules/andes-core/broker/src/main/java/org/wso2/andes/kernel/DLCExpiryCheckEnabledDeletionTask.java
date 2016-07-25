@@ -18,6 +18,7 @@ package org.wso2.andes.kernel;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -40,8 +41,8 @@ public class DLCExpiryCheckEnabledDeletionTask extends PeriodicExpiryMessageDele
              * Deletion task needs to await until message store becomes available
              */
             if (messageStoresUnavailable != null) {
-                log.info("Message store has become unavailable therefore expiry message deletion task" +
-                        " waiting until store becomes available");
+                log.info("Message store has become unavailable therefore expiry message deletion task waiting until"
+                        + " store becomes available");
                 //act as a barrier
                 messageStoresUnavailable.get();
                 log.info("Message store became available. Resuming expiry message deletion task");
@@ -52,7 +53,14 @@ public class DLCExpiryCheckEnabledDeletionTask extends PeriodicExpiryMessageDele
             //get the expired messages for that queue in the range of message ID starting form the lower bound ID
             List<Long> expiredMessages = MessagingEngine.getInstance().getExpiredMessagesFromDLC();
 
-            if (null != expiredMessages && !expiredMessages.isEmpty()) {
+            if ((null != expiredMessages) && (!expiredMessages.isEmpty())) {
+
+                //Tracing message activity
+                if (MessageTracer.isEnabled()) {
+                    for (Long messageId : expiredMessages) {
+                        MessageTracer.trace(messageId, "", MessageTracer.EXPIRED_MESSAGE_DETECTED_FROM_DLC);
+                    }
+                }
 
                 //delete message metadata, content from the meta data table, content table and expiry table
                 MessagingEngine.getInstance().deleteMessagesById(expiredMessages);

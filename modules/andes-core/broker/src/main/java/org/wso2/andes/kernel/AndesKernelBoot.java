@@ -62,34 +62,27 @@ public class AndesKernelBoot {
     private static Log log = LogFactory.getLog(AndesKernelBoot.class);
     private static VirtualHost virtualHost;
     private static MessageStore messageStore;
-
     /**
      * Scheduled thread pool executor to run periodic andes recovery task
      */
     private static ScheduledExecutorService andesRecoveryTaskScheduler;
-
     /**
      * Scheduled thread pool executor to run periodic expiry message deletion task
      */
     private static ScheduledExecutorService expiryMessageDeletionTaskScheduler;
-
     /**
      * Used to get information from context store
      */
     private static AndesContextStore contextStore;
-
     /**
      * This is used by independent worker threads to identify if the kernel is performing shutdown operations.
      */
     private static boolean isKernelShuttingDown = false;
-
     /**
      * This will boot up all the components in Andes kernel and bring the server to working state
      */
     public static void initializeComponents() throws AndesException {
-
         isKernelShuttingDown = false;
-
         //loadConfigurations - done from outside
         //startAndesStores - done from outside
         int threadPoolCount = 1;
@@ -103,13 +96,11 @@ public class AndesKernelBoot {
         registerMBeans();
         startThriftServer();
         Andes.getInstance().startSafeZoneAnalysisWorker();
-
         //Start slot deleting thread only if clustering is enabled.
         //Otherwise slots assignment will not happen
         if (AndesContext.getInstance().isClusteringEnabled()) {
             SlotDeletionExecutor.getInstance().init();
         }
-
     }
 
     /**
@@ -255,7 +246,7 @@ public class AndesKernelBoot {
 
         //whether expiry check is enabled / disabled for DLC
         boolean isExpiryCheckEnabledInDLC = AndesConfigurationManager.readValue
-                (AndesConfiguration.PERFORMANCE_TUNING_ALLOW_EXPIRATION_CHECK_IN_DLC);
+                (AndesConfiguration.PERFORMANCE_TUNING_EXPIRE_MESSAGES_IN_DLC);
 
         //Create a andes context store and register
         AndesContextStore contextStoreInConfig = createAndesContextStoreFromConfig();
@@ -277,14 +268,14 @@ public class AndesKernelBoot {
         // directly wire the instance without wrapped instance
         messageStore = new FailureObservingMessageStore(createMessageStoreFromConfig(contextStoreInConfig));
         MessagingEngine messagingEngine = MessagingEngine.getInstance();
-        MessageExpiryManager messageExpiryManager = null;
+        MessageExpiryManager messageExpiryManager;
         //depends on the configuration bind the appropriate expiry manger with the messaging engine
-        if(isExpiryCheckEnabledInDLC){
+        if (isExpiryCheckEnabledInDLC) {
             messageExpiryManager = new DLCMessageExpiryManager(messageStore);
-        }else{
+        } else {
             messageExpiryManager = new DefaultMessageExpiryManager(messageStore);
         }
-        messagingEngine.initialise(messageStore, subscriptionEngine,messageExpiryManager);
+        messagingEngine.initialise(messageStore, subscriptionEngine, messageExpiryManager);
 
         // Setting the message store in the context store
         AndesContext.getInstance().setMessageStore(messageStore);
@@ -358,25 +349,25 @@ public class AndesKernelBoot {
         int recoveryTaskScheduledPeriod = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_FAILOVER_VHOST_SYNC_TASK_INTERVAL);
         int dbBasedDeletionTaskScheduledPeriod = AndesConfigurationManager.readValue
-                (AndesConfiguration.PERFORMANCE_TUNING_MESSAGE_EXPIRATION_CHECK_INTERVAL);
+                (AndesConfiguration.PERFORMANCE_TUNING_PERIODIC_EXPIRY_MESSAGE_DELETION_INTERVAL);
         int safeDeleteRegionSlotCount = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_SAFE_DELETE_REGION_SLOT_COUNT);
         boolean isDLCExpiryCheckEnabled = AndesConfigurationManager.readValue
-                (AndesConfiguration.PERFORMANCE_TUNING_ALLOW_EXPIRATION_CHECK_IN_DLC);
+                (AndesConfiguration.PERFORMANCE_TUNING_EXPIRE_MESSAGES_IN_DLC);
 
         //based on the DLC expiration check configuration bind the appropriate deletion task
-        if(isDLCExpiryCheckEnabled){
+        if (isDLCExpiryCheckEnabled) {
             periodicExpiryMessageDeletionTask = new DLCExpiryCheckEnabledDeletionTask();
-        }else{
+        } else {
             periodicExpiryMessageDeletionTask = new PeriodicExpiryMessageDeletionTask();
         }
 
         andesRecoveryTaskScheduler.scheduleAtFixedRate(andesRecoveryTask, recoveryTaskScheduledPeriod,
                                                        recoveryTaskScheduledPeriod, TimeUnit.SECONDS);
-        if(safeDeleteRegionSlotCount >= 1){
+        if (safeDeleteRegionSlotCount >= 1) {
             expiryMessageDeletionTaskScheduler.scheduleAtFixedRate(periodicExpiryMessageDeletionTask,
-                    dbBasedDeletionTaskScheduledPeriod, dbBasedDeletionTaskScheduledPeriod,TimeUnit.SECONDS);
-        }else{
+                    dbBasedDeletionTaskScheduledPeriod, dbBasedDeletionTaskScheduledPeriod, TimeUnit.SECONDS);
+        } else {
             log.warn("DB based expiry message deletion task is not scheduled due to not providing " +
                     "a valid safe delete region slot count is not given");
         }
@@ -393,10 +384,8 @@ public class AndesKernelBoot {
         try {
             andesRecoveryTaskScheduler.shutdown();
             expiryMessageDeletionTaskScheduler.shutdown();
-            expiryMessageDeletionTaskScheduler
-                    .awaitTermination(threadTerminationTimePerod, TimeUnit.SECONDS);
-            andesRecoveryTaskScheduler
-                    .awaitTermination(threadTerminationTimePerod, TimeUnit.SECONDS);
+            expiryMessageDeletionTaskScheduler.awaitTermination(threadTerminationTimePerod, TimeUnit.SECONDS);
+            andesRecoveryTaskScheduler.awaitTermination(threadTerminationTimePerod, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             andesRecoveryTaskScheduler.shutdownNow();

@@ -179,7 +179,8 @@ public class QpidAndesBridge {
                 log.debug("Message id " + incomingMessage.getMessageNumber() + " received from channel " + channelID);
             }
             AMQMessage message = new AMQMessage(incomingMessage.getStoredMessage());
-
+            //set the time to live value for AMQ Message
+            message.setExpiration(incomingMessage.getExpiration());
             // message arrival time set to mb node's system time without using
             // message published time by publisher.
             message.getMessageMetaData().setArrivalTime(receivedTime);

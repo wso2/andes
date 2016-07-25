@@ -43,6 +43,7 @@ public class PreDeliveryExpiryMessageDeletionTask implements Runnable, StoreHeal
     /**
      * Holds expired messages detected in the message flusher delivery rule check for batch delete
      */
+    //todo have blocking queue
     private BlockingDeque<Long> expiredMessageIds;
 
     private static Log log = LogFactory.getLog(PreDeliveryExpiryMessageDeletionTask.class);

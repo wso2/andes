@@ -53,7 +53,7 @@ public abstract class DeliveryResponsibility {
 
     }
 
-    /**
+    /** //todo discribe parameters and return statement
      * Responsibility specific logic that can decide the message pass to the next responsibility
      * @param subscription
      * @param message

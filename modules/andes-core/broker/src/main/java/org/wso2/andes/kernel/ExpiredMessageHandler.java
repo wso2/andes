@@ -19,6 +19,7 @@ package org.wso2.andes.kernel;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.subscription.LocalSubscription;
+import org.wso2.andes.tools.utils.MessageTracer;
 
 /**
  * ExpiredMessageHandler skips the expired messages from delivery and add them into a set for
@@ -55,6 +56,7 @@ public class ExpiredMessageHandler extends DeliveryResponsibility {
             message.getSlot().decrementPendingMessageCount();
             //add the expired messages to a list for a batch delete
             preDeliveryExpiryMessageDeletionTask.addMessageIdToExpiredQueue(message.getMessageID());
+            MessageTracer.trace(message,MessageTracer.EXPIRED_MESSAGE_DETECTED_AND_QUEUED);
         } else {
            isOkayToProceed = true;
         }

@@ -547,25 +547,24 @@ public enum AndesConfiguration implements ConfigurationProperty {
             "/vHostSyncTaskInterval", "900", Integer.class),
 
     /**
-     * Enable/ Disable expiry check in the DLC
+     * Enable/Disable expiry check in the DLC.
      */
-    PERFORMANCE_TUNING_ALLOW_EXPIRATION_CHECK_IN_DLC
-            ("performanceTuning/messageExpiration/allowExpiryCheckInDLC", "false", Boolean.class),
+    PERFORMANCE_TUNING_EXPIRE_MESSAGES_IN_DLC
+            ("performanceTuning/messageExpiration/expireMessagesInDLC", "false", Boolean.class),
 
      /**
-     * Since server startup, whenever this interval elapses, the expired messages will be cleared from the store.
-      * specified in seconds.
+     * In order to have a batch delete for the expired messages captured at the message flusher, accumulate them
+     * in to a queue and delete them periodically as a batch. specified in seconds
      */
-    PERFORMANCE_TUNING_MESSAGE_EXPIRATION_CHECK_INTERVAL
-            ("performanceTuning/messageExpiration/checkInterval", "900", Integer.class),
+    PERFORMANCE_TUNING_PRE_DELIVERY_EXPIRY_DELETION_INTERVAL
+            ("performanceTuning/messageExpiration/preDeliveryExpiryDeletionInterval", "180", Integer.class),
 
     /**
-     * In order to have a batch delete for the expired messages captured at the message flusher, accumulate them
-     * in to a set and delete them periodically as a batch. specified in seconds
-     *
+     * Since server startup, whenever this interval elapses, the expired messages will be cleared from the store.
+     * specified in seconds.
      */
-    PERFORMANCE_TUNING_EXPIRED_MESSAGE_DELETION_INTERVAL
-            ("performanceTuning/messageExpiration/checkInterval", "900", Integer.class),
+    PERFORMANCE_TUNING_PERIODIC_EXPIRY_MESSAGE_DELETION_INTERVAL
+            ("performanceTuning/messageExpiration/periodicMessageDeletionInterval", "180", Integer.class),
 
     /**
      * The number of expired messages to be cleared in one store operation.

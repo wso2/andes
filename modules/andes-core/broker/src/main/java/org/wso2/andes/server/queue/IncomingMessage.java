@@ -91,33 +91,12 @@ public class IncomingMessage implements Filterable, InboundMessage, EnqueableMes
         _contentHeaderBody = contentHeaderBody;
     }
 
+    /**
+     * Set the time to live value for the incoming messages
+     */
     public void setExpiration()
     {
-            long expiration =
-                    ((BasicContentHeaderProperties) _contentHeaderBody.getProperties()).getExpiration();
-            long timestamp =
-                    ((BasicContentHeaderProperties) _contentHeaderBody.getProperties()).getTimestamp();
-            if (SYNCED_CLOCKS)
-            {
-                _expiration = expiration;
-            }
-            else
-            {
-                // Update TTL to be in broker time.
-                if (expiration != 0L)
-                {
-                    if (timestamp != 0L)
-                    {
-                        // todo perhaps use arrival time
-                        long diff = (System.currentTimeMillis() - timestamp);
-
-                        if ((diff > 1000L) || (diff < 1000L))
-                        {
-                            _expiration = expiration + diff;
-                        }
-                    }
-                }
-            }
+        _expiration = ((BasicContentHeaderProperties) _contentHeaderBody.getProperties()).getExpiration();
 
     }
 

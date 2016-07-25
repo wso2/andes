@@ -22,21 +22,17 @@ import com.gs.collections.impl.map.mutable.ConcurrentHashMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.MessagingEngine;
 
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.ExecutionException;
 
 /**
  * This class is  responsible of slot allocating, slot creating, slot re-assigning and slot
  * managing tasks in standalone mode
  */
-public class SlotManagerStandalone extends SafeDeletion {
+public class SlotManagerStandalone extends AbstractSlotManager {
 
     /**
      * To keep message IDs against queues.
@@ -129,15 +125,23 @@ public class SlotManagerStandalone extends SafeDeletion {
     private Slot getFreshSlot(String queueName) {
 
         Slot slotToBeAssigned = null;
+        Long endMessageId = null;
         TreeSet<Long> messageIDSet = slotIDMap.get(queueName);
         //start msgID will be last assigned ID + 1 so that slots are created with no
         // message ID gaps in-between
         Long lastAssignedId = queueToLastAssignedIDMap.get(queueName);
         /**
-         * The slot is allocated only if the request is not for the queue in which current deletion task is running and message id range
-         * is not in the current deletion range. Otherwise slot will not be given
+         * Last message id that needs to be allocated to this slot
+         * End messageID will be the lowest in published message ID list. Get and remove
          */
-        if (!currentDeletionQueue.equals(queueName) || currentDeletionRangeLowerBoundId != lastAssignedId + 1) {
+         if(null != messageIDSet){
+             endMessageId = messageIDSet.pollFirst();
+         }
+        /**
+         * Check the current slot allocation not interfere into the range where expiry deletion happens.
+         * The check is done based on the queue name and the end message id for this slot
+         */
+        if (isSafeToDeliverSlots(queueName,endMessageId)) {
 
             if (null != messageIDSet && !messageIDSet.isEmpty()) {
                 slotToBeAssigned = new Slot();
@@ -147,7 +151,7 @@ public class SlotManagerStandalone extends SafeDeletion {
                 } else {
                     slotToBeAssigned.setStartMessageId(0L);
                 }
-                slotToBeAssigned.setEndMessageId(messageIDSet.pollFirst());
+                slotToBeAssigned.setEndMessageId(endMessageId);
                 slotToBeAssigned.setStorageQueueName(queueName);
                 slotIDMap.put(queueName, messageIDSet);
                 if (log.isDebugEnabled()) {
@@ -262,9 +266,7 @@ public class SlotManagerStandalone extends SafeDeletion {
     }
 
     /**
-     * Delete all slot associations with a given queue. This is required to handle a queue purge event.
-     *
-     * @param queueName Name of destination queue
+     * {@inheritDoc}
      */
     public void clearAllActiveSlotRelationsToQueue(String queueName) {
 
@@ -278,6 +280,14 @@ public class SlotManagerStandalone extends SafeDeletion {
             unAssignedSlotMap.remove(queueName);
         }
 
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Set<String> getAllQueues() throws AndesException {
+        return slotIDMap.keySet();
     }
 
     /**
@@ -302,17 +312,19 @@ public class SlotManagerStandalone extends SafeDeletion {
      */
     @Override
     public long getSafeZoneLowerBoundId(String queueName) throws AndesException {
-
-        TreeSet<Long> messageIDSet = slotIDMap.get(queueName);
         long lowerBoundId = -1;
-        //set the lower bound Id for safety delete region as the safety slot count interval upper bound id + 1
-        if (messageIDSet.size() >= safetySlotCount){
-            lowerBoundId = messageIDSet.
-                    toArray(new Long[messageIDSet.size()])[safetySlotCount - 1] + 1;
+        String lockKey = queueName + SlotManagerStandalone.class;
+        synchronized (lockKey.intern()) {
+            TreeSet<Long> messageIDSet = slotIDMap.get(queueName);
+            //set the lower bound Id for safety delete region as the safety slot count interval upper bound id + 1
+            if (messageIDSet.size() >= safetySlotCount) {
+                lowerBoundId = messageIDSet.toArray(new Long[messageIDSet.size()])[safetySlotCount - 1] + 1;
+                /**
+                 * Inform the slot manager regarding the current expiry deletion range and queue
+                 */
+                setDeletionTaskState(queueName, lowerBoundId);
+            }
         }
-        //set the deletion task specific state
-        setDeletionTaskState(queueName,lowerBoundId);
         return lowerBoundId;
-
     }
 }

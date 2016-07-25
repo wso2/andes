@@ -28,7 +28,6 @@ import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionEngine;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -124,7 +123,7 @@ public class MessageFlusher {
 
         int threadPoolCount = 1;
         int preDeliveryDeletionTaskScheduledPeriod = AndesConfigurationManager.readValue
-                (AndesConfiguration.PERFORMANCE_TUNING_EXPIRED_MESSAGE_DELETION_INTERVAL);
+                (AndesConfiguration.PERFORMANCE_TUNING_PRE_DELIVERY_EXPIRY_DELETION_INTERVAL);
         //executor service for pre delivery deletion task
         ScheduledExecutorService expiryMessageDeletionTaskScheduler = Executors.
                 newScheduledThreadPool(threadPoolCount);

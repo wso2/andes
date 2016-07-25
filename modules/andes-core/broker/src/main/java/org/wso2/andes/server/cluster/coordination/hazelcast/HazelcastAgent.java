@@ -33,9 +33,6 @@ import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesRecoveryTask;
-import org.wso2.andes.kernel.AndesSubscriptionManager;
-import org.wso2.andes.kernel.HazelcastLifecycleListener;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
 import org.wso2.andes.kernel.slot.SlotUtils;
@@ -769,7 +766,7 @@ public class HazelcastAgent implements SlotAgent {
     @Override
     public void addMessageId(String queueName, long messageId) throws AndesException {
         try {
-            TreeSet<Long> messageIdSet = this.getMessageIds(queueName);
+            TreeSet<Long> messageIdSet = this.getSlotBasedMessageIds(queueName);
             TreeSetLongWrapper wrapper = this.slotIdMap.get(queueName);
             messageIdSet.add(messageId);
             wrapper.setLongTreeSet(messageIdSet);
@@ -784,7 +781,7 @@ public class HazelcastAgent implements SlotAgent {
      * {@inheritDoc}
      */
     @Override
-    public TreeSet<Long> getMessageIds(String queueName) throws AndesException {
+    public TreeSet<Long> getSlotBasedMessageIds(String queueName) throws AndesException {
         TreeSetLongWrapper wrapper = null;
         try {
             wrapper = this.slotIdMap.get(queueName);
@@ -793,7 +790,7 @@ public class HazelcastAgent implements SlotAgent {
                 this.slotIdMap.putIfAbsent(queueName, wrapper);
             }
         }  catch (HazelcastInstanceNotActiveException ex) {
-            throw new AndesException("Failed to getMessageIds for queue : " +
+            throw new AndesException("Failed to getSlotBasedMessageIds for queue : " +
                     queueName, ex);
         }
         return wrapper.getLongTreeSet();

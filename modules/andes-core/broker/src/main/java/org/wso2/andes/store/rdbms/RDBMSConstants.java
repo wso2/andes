@@ -318,7 +318,7 @@ public class RDBMSConstants {
             "SELECT " + MESSAGE_ID + "," + DESTINATION_QUEUE
             + " FROM " + EXPIRATION_TABLE
             + " WHERE " + EXPIRATION_TIME + "<" + System.currentTimeMillis()
-            + " AND " + MESSAGE_ID + ">?"
+            + " AND " + MESSAGE_ID + ">=?"
             + " AND " + DESTINATION_QUEUE + "=?";
 
     protected static final String PS_SELECT_EXPIRED_MESSAGES_FROM_DLC =
