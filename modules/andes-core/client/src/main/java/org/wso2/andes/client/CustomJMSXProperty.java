@@ -33,7 +33,8 @@ public enum CustomJMSXProperty
     JMS_QPID_DESTTYPE,
     JMSXGroupID,
     JMSXGroupSeq,
-    JMSXUserID;
+    JMSXUserID,
+    JMS_ANDES_ROUTING_KEY;
 
     private static List<String> _names;
 

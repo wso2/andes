@@ -33,7 +33,6 @@ import org.wso2.andes.client.message.AbstractJMSMessage;
 import org.wso2.andes.client.message.AMQMessageDelegate_0_8;
 import org.wso2.andes.client.protocol.AMQProtocolHandler;
 import org.wso2.andes.framing.AMQFrame;
-import org.wso2.andes.framing.BasicConsumeBody;
 import org.wso2.andes.framing.BasicContentHeaderProperties;
 import org.wso2.andes.framing.BasicPublishBody;
 import org.wso2.andes.framing.CompositeAMQDataBlock;
@@ -107,6 +106,11 @@ public class BasicMessageProducer_0_8 extends BasicMessageProducer
 
         //Set JMS_QPID_DESTTYPE
         delegate.getContentHeaderProperties().getHeaders().setInteger(CustomJMSXProperty.JMS_QPID_DESTTYPE.getShortStringName(), type);
+        //Set JMS_ANDES_ROUTING_KEY
+        if (null != System.getProperty("AndesSetRoutingKey")) {
+            delegate.getContentHeaderProperties().getHeaders().setString(
+                CustomJMSXProperty.JMS_ANDES_ROUTING_KEY.getShortStringName(), destination.getRoutingKey().asString());
+        }
 
         if (!_disableTimestamps)
         {
