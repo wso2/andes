@@ -81,7 +81,8 @@ public class DelayedObject implements Delayed {
         DelayedObject compareToDelayedObject = (DelayedObject) delayedObject;
         Object compareToObject = compareToDelayedObject.getObject();
         compareToValue = Long.compare(getDelay(TimeUnit.MILLISECONDS), delayedObject.getDelay(TimeUnit.MILLISECONDS));
-        if (0 == compareToValue && objectElement instanceof AbstractJMSMessage && compareToObject instanceof  AbstractJMSMessage) {
+        if (0 <= compareToValue && objectElement instanceof AbstractJMSMessage && compareToObject instanceof
+                AbstractJMSMessage) {
             AbstractJMSMessage currentAbstractJMSMessage = (AbstractJMSMessage) this.objectElement;
             AbstractJMSMessage compareToAbstractJMSMessage = (AbstractJMSMessage) compareToObject;
             compareToValue = Long.compare(currentAbstractJMSMessage.getDeliveryTag(), compareToAbstractJMSMessage.getDeliveryTag());
