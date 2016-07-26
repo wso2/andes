@@ -721,7 +721,7 @@ public class MessagingEngine {
     public void startMessageDelivery() {
         log.info("Starting SlotDelivery Workers.");
         //Start all slotDeliveryWorkers
-        SlotDeliveryWorkerManager.getInstance().startAllSlotDeliveryWorkers();
+        SlotDeliveryWorkerManager.getInstance().startMessageDelivery();
         //Start thrift reconnecting thread if started
         if (MBThriftClient.isReconnectingStarted()) {
             MBThriftClient.setReconnectingFlag(true);
@@ -736,7 +736,7 @@ public class MessagingEngine {
 
         log.info("Stopping SlotDelivery Worker.");
         //Stop all slotDeliveryWorkers
-        SlotDeliveryWorkerManager.getInstance().stopSlotDeliveryWorkers();
+        SlotDeliveryWorkerManager.getInstance().stopMessageDelivery();
         //Stop thrift reconnecting thread if started
         if (MBThriftClient.isReconnectingStarted()) {
             MBThriftClient.setReconnectingFlag(false);

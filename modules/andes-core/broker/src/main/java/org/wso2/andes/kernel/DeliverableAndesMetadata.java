@@ -94,7 +94,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
 
     /**
      * Change the belonging slot to a new one. Used when the current slot is overlapping with a slot tracked in the
-     * SlotDeliveryWorker.
+     * {@link org.wso2.andes.kernel.slot.MessageDeliveryTask}.
      *
      * @param slot New Slot
      */

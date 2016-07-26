@@ -33,7 +33,6 @@ import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionEngine;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -169,8 +168,10 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
 
         //start a slot delivery worker on the destination (or topicQueue) subscription refers
         SlotDeliveryWorkerManager slotDeliveryWorkerManager = SlotDeliveryWorkerManager.getInstance();
-        slotDeliveryWorkerManager.startSlotDeliveryWorker(localSubscription.getStorageQueueName(),
-                subscriptionEngine.getDestination(localSubscription), localSubscription.getProtocolType(), localSubscription.getDestinationType());
+        slotDeliveryWorkerManager.onSubscriptionAdded(localSubscription.getStorageQueueName(),
+                                                      subscriptionEngine.getDestination(localSubscription),
+                                                      localSubscription.getProtocolType(),
+                                                      localSubscription.getDestinationType());
 
         //notify the local subscription change to listeners. For durable topic subscriptions this will update
         // existing inactive one if it matches

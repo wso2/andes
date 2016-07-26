@@ -140,7 +140,7 @@ public class Slot implements Serializable, Comparable<Slot> {
         this.startMessageId = startMessageId;
     }
 
-    public void setSlotInActive() {
+    public void setSlotInactive() {
         isSlotActive = false;
     }
 
@@ -375,7 +375,7 @@ public class Slot implements Serializable, Comparable<Slot> {
             if (log.isDebugEnabled()) {
                 log.debug("Slot has no pending messages. Now re-checking slot for messages. " + this.toString());
             }
-            setSlotInActive();
+            setSlotInactive();
             SlotDeletionExecutor.getInstance().executeSlotDeletion(this);
         }
     }

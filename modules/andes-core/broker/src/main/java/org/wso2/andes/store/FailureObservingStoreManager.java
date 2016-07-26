@@ -18,6 +18,10 @@
 
 package org.wso2.andes.store;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -26,13 +30,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-
 import javax.mail.event.StoreListener;
-
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
-
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 /**
  * 
@@ -70,7 +68,7 @@ public class FailureObservingStoreManager {
     
     /**
      * Registers specified {@link StoreHealthListener} to receive events.
-     * @param healthListener
+     * @param healthListener {@link StoreHealthListener}
      */
     public static void registerStoreHealthListener(StoreHealthListener healthListener){
         healthListeners.add(healthListener);
