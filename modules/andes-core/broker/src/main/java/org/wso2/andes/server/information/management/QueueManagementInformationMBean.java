@@ -906,6 +906,16 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                 stringBuilder.append(headerKey).append(" = ").append(properties.getHeaders().get(headerKey));
                 stringBuilder.append(", ");
             }
+            if (null != properties.getCorrelationId()) {
+                stringBuilder.append("JMSCorrelationID").append(" = ").append(properties.getCorrelationId()).append
+                        (", ");
+            }
+            if (null != properties.getReplyTo()) {
+                stringBuilder.append("JMSReplyTo").append(" = ").append(properties.getReplyTo()).append(", ");
+            }
+            if (null != properties.getType()) {
+                stringBuilder.append("JMSType").append(" = ").append(properties.getType()).append(", ");
+            }
             String msgProperties = stringBuilder.toString();
             //get content type
             String contentType = properties.getContentTypeAsString();
