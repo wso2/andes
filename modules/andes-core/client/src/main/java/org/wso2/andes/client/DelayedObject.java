@@ -29,12 +29,7 @@ public class DelayedObject implements Delayed {
      * Time at which the delayed object is created. This is required to make the calculation of the delay when popped
      * from the queue.
      */
-    private final long timeOfRejectedMessageCreated;
-
-    /**
-     * The delay to be held before release.
-     */
-    private final long deliveryDelay;
+    private final long startTime;
 
     /**
      * The object value.
@@ -49,8 +44,7 @@ public class DelayedObject implements Delayed {
      * @param objectElement The object value to be kept stored in this container.
      */
     public DelayedObject(long deliveryDelay, Object objectElement) {
-        this.timeOfRejectedMessageCreated = System.currentTimeMillis();
-        this.deliveryDelay = deliveryDelay;
+        this.startTime = System.currentTimeMillis() + deliveryDelay;
         this.objectElement = objectElement;
     }
 
@@ -68,8 +62,8 @@ public class DelayedObject implements Delayed {
      */
     @Override
     public long getDelay(TimeUnit timeUnit) {
-        return timeUnit.convert(deliveryDelay - (System.currentTimeMillis() - timeOfRejectedMessageCreated),
-                TimeUnit.MILLISECONDS);
+        long diff = startTime - System.currentTimeMillis();
+        return timeUnit.convert(diff, TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -77,12 +71,10 @@ public class DelayedObject implements Delayed {
      */
     @Override
     public int compareTo(Delayed delayedObject) {
-        int compareToValue;
+        int compareToValue = Long.compare(this.startTime, ((DelayedObject) delayedObject).startTime);
         DelayedObject compareToDelayedObject = (DelayedObject) delayedObject;
         Object compareToObject = compareToDelayedObject.getObject();
-        compareToValue = Long.compare(getDelay(TimeUnit.MILLISECONDS), delayedObject.getDelay(TimeUnit.MILLISECONDS));
-        if (0 <= compareToValue && objectElement instanceof AbstractJMSMessage && compareToObject instanceof
-                AbstractJMSMessage) {
+        if (0 == compareToValue && objectElement instanceof AbstractJMSMessage && compareToObject instanceof AbstractJMSMessage) {
             AbstractJMSMessage currentAbstractJMSMessage = (AbstractJMSMessage) this.objectElement;
             AbstractJMSMessage compareToAbstractJMSMessage = (AbstractJMSMessage) compareToObject;
             compareToValue = Long.compare(currentAbstractJMSMessage.getDeliveryTag(), compareToAbstractJMSMessage.getDeliveryTag());
