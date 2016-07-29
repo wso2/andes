@@ -90,14 +90,6 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
                     startMessageDelivery();
                     taskComplete = true;
                     break;
-                case START_EXPIRATION_WORKER_EVENT:
-                    startMessageExpirationWorker();
-                    taskComplete = true;
-                    break;
-                case STOP_EXPIRATION_WORKER_EVENT:
-                    stopMessageExpirationWorker();
-                    taskComplete = true;
-                    break;
                 default:
                     log.error("Event type not set properly " + eventType);
                     break;
@@ -128,20 +120,6 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
      */
     public void stopMessageDelivery() {
         messagingEngine.stopMessageDelivery();
-    }
-
-    /**
-     * Handle event of start message expiration worker
-     */
-    public void startMessageExpirationWorker() {
-        messagingEngine.startMessageExpirationWorker();
-    }
-
-    /**
-     * Handle stopping message expiration worker
-     */
-    public void stopMessageExpirationWorker() {
-        messagingEngine.stopMessageExpirationWorker();
     }
 
     /**

@@ -88,22 +88,25 @@ public interface MessageStore extends HealthAwareStore {
     void moveMetadataToQueue(long messageId, String currentQueueName, String targetQueueName) throws AndesException;
 
     /**
-     * Method to move a message to dead letter channel
+     * Method to move a message to dead letter channel.
      *
-     * @param messageId    the message id to move
-     * @param dlcQueueName the dead letter channel queue name for the message to be moved
+     * @param messageId    The message id to move.
+     * @param dlcQueueName The dead letter channel queue name for the message to be moved.
+     * @param expireMessageInDLC Whether expiration enabled in DLC.
      * @throws AndesException
      */
-    void moveMetadataToDLC(long messageId, String dlcQueueName) throws AndesException;
+    void moveMetadataToDLC(long messageId, String dlcQueueName, boolean expireMessageInDLC) throws AndesException;
 
     /**
-     * Method to move a list of messages to a specified dead letter channel
+     * Method to move a list of messages to a specified dead letter channel.
      *
-     * @param messages     the list of messages to move
-     * @param dlcQueueName the dead letter channel queue name for the message to be moved
+     * @param messages     The list of messages to move.
+     * @param dlcQueueName The dead letter channel queue name for the message to be moved.
+     * @param expireMessageInDLC Whether expiration enabled in DLC.
      * @throws AndesException
      */
-    void moveMetadataToDLC(List<AndesMessageMetadata> messages, String dlcQueueName) throws AndesException;
+    void moveMetadataToDLC(List<AndesMessageMetadata> messages, String dlcQueueName, boolean expireMessageInDLC)
+            throws AndesException;
 
     /**
      * Update the meta data for the given message with the given information in the AndesMetaData. Update destination
@@ -225,6 +228,13 @@ public interface MessageStore extends HealthAwareStore {
             throws AndesException;
 
     /**
+     *  Delete a set of messages based on their message ids
+     * @param messagesToRemove list of message ids of messages that need to be removed
+     * @throws AndesException
+     */
+    void deleteMessages(List<Long> messagesToRemove) throws AndesException;
+
+    /**
      * Method to delete a list of messages from the dead letter channel.
      *
      * @param messagesToRemove the list of messages to remove
@@ -235,19 +245,19 @@ public interface MessageStore extends HealthAwareStore {
     /**
      * get expired messages from store
      *
-     * @param limit max num of messages to read
-     * @return AndesRemovableMetadata
+     * @param lowerBoundMessageID starting message Id of deletion safe zone
+     * @param  queueName Queue name
+     * @return List of expired message Ids
      * @throws AndesException
      */
-    List<AndesMessageMetadata> getExpiredMessages(int limit) throws AndesException;
+    List<Long> getExpiredMessages(long lowerBoundMessageID, String queueName) throws AndesException;
 
     /**
-     * delete messages from expiry queue
-     *
-     * @param messagesToRemove message IDs to remove
+     * get expired messages from DLC
+     * @return List of expired message Ids
      * @throws AndesException
      */
-    void deleteMessagesFromExpiryQueue(LongArrayList messagesToRemove) throws AndesException;
+    List<Long> getExpiredMessagesFromDLC() throws AndesException;
 
     /**
      * add messages to expiry queue

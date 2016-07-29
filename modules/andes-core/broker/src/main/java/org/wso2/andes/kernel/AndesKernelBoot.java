@@ -19,7 +19,6 @@
 package org.wso2.andes.kernel;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.hazelcast.util.executor.NamedThreadPoolExecutor;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -63,47 +62,45 @@ public class AndesKernelBoot {
     private static Log log = LogFactory.getLog(AndesKernelBoot.class);
     private static VirtualHost virtualHost;
     private static MessageStore messageStore;
-
     /**
      * Scheduled thread pool executor to run periodic andes recovery task
      */
     private static ScheduledExecutorService andesRecoveryTaskScheduler;
-
+    /**
+     * Scheduled thread pool executor to run periodic expiry message deletion task
+     */
+    private static ScheduledExecutorService expiryMessageDeletionTaskScheduler;
     /**
      * Used to get information from context store
      */
     private static AndesContextStore contextStore;
-
     /**
      * This is used by independent worker threads to identify if the kernel is performing shutdown operations.
      */
     private static boolean isKernelShuttingDown = false;
-
     /**
      * This will boot up all the components in Andes kernel and bring the server to working state
      */
     public static void initializeComponents() throws AndesException {
         isKernelShuttingDown = false;
-
         //loadConfigurations - done from outside
         //startAndesStores - done from outside
         int threadPoolCount = 1;
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
                 .setNameFormat("AndesRecoveryTask-%d").build();
         andesRecoveryTaskScheduler = Executors.newScheduledThreadPool(threadPoolCount);
+        expiryMessageDeletionTaskScheduler = Executors.newScheduledThreadPool(threadPoolCount);
         startAndesComponents();
         startHouseKeepingThreads();
         syncNodeWithClusterState();
         registerMBeans();
         startThriftServer();
         Andes.getInstance().startSafeZoneAnalysisWorker();
-
         //Start slot deleting thread only if clustering is enabled.
         //Otherwise slots assignment will not happen
         if (AndesContext.getInstance().isClusteringEnabled()) {
             SlotDeletionExecutor.getInstance().init();
         }
-
     }
 
     /**
@@ -247,6 +244,10 @@ public class AndesKernelBoot {
      */
     public static void startAndesStores() throws Exception {
 
+        //whether expiry check is enabled / disabled for DLC
+        boolean isExpiryCheckEnabledInDLC = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_EXPIRE_MESSAGES_IN_DLC);
+
         //Create a andes context store and register
         AndesContextStore contextStoreInConfig = createAndesContextStoreFromConfig();
         
@@ -267,7 +268,14 @@ public class AndesKernelBoot {
         // directly wire the instance without wrapped instance
         messageStore = new FailureObservingMessageStore(createMessageStoreFromConfig(contextStoreInConfig));
         MessagingEngine messagingEngine = MessagingEngine.getInstance();
-        messagingEngine.initialise(messageStore, subscriptionEngine);
+        MessageExpiryManager messageExpiryManager;
+        //depends on the configuration bind the appropriate expiry manger with the messaging engine
+        if (isExpiryCheckEnabledInDLC) {
+            messageExpiryManager = new DLCMessageExpiryManager(messageStore);
+        } else {
+            messageExpiryManager = new DefaultMessageExpiryManager(messageStore);
+        }
+        messagingEngine.initialise(messageStore, subscriptionEngine, messageExpiryManager);
 
         // Setting the message store in the context store
         AndesContext.getInstance().setMessageStore(messageStore);
@@ -335,10 +343,35 @@ public class AndesKernelBoot {
 
         //reload exchanges/queues/bindings and subscriptions
         AndesRecoveryTask andesRecoveryTask = new AndesRecoveryTask();
-        Integer scheduledPeriod = AndesConfigurationManager.readValue
+        //deleted the expired message from db
+        PeriodicExpiryMessageDeletionTask periodicExpiryMessageDeletionTask = null;
+
+        int recoveryTaskScheduledPeriod = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_FAILOVER_VHOST_SYNC_TASK_INTERVAL);
-        andesRecoveryTaskScheduler.scheduleAtFixedRate(andesRecoveryTask, scheduledPeriod,
-                                                       scheduledPeriod, TimeUnit.SECONDS);
+        int dbBasedDeletionTaskScheduledPeriod = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_PERIODIC_EXPIRY_MESSAGE_DELETION_INTERVAL);
+        int safeDeleteRegionSlotCount = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_SAFE_DELETE_REGION_SLOT_COUNT);
+        boolean isDLCExpiryCheckEnabled = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_EXPIRE_MESSAGES_IN_DLC);
+
+        //based on the DLC expiration check configuration bind the appropriate deletion task
+        if (isDLCExpiryCheckEnabled) {
+            periodicExpiryMessageDeletionTask = new DLCExpiryCheckEnabledDeletionTask();
+        } else {
+            periodicExpiryMessageDeletionTask = new PeriodicExpiryMessageDeletionTask();
+        }
+
+        andesRecoveryTaskScheduler.scheduleAtFixedRate(andesRecoveryTask, recoveryTaskScheduledPeriod,
+                                                       recoveryTaskScheduledPeriod, TimeUnit.SECONDS);
+        if (safeDeleteRegionSlotCount >= 1) {
+            expiryMessageDeletionTaskScheduler.scheduleAtFixedRate(periodicExpiryMessageDeletionTask,
+                    dbBasedDeletionTaskScheduledPeriod, dbBasedDeletionTaskScheduledPeriod, TimeUnit.SECONDS);
+        } else {
+            log.error("DB based expiry message deletion task is not scheduled due to not providing " +
+                    "a valid safe delete region slot count is not given");
+        }
+
         ClusterResourceHolder.getInstance().setAndesRecoveryTask(andesRecoveryTask);
     }
 
@@ -350,8 +383,9 @@ public class AndesKernelBoot {
         int threadTerminationTimePerod = 20; // seconds
         try {
             andesRecoveryTaskScheduler.shutdown();
-            andesRecoveryTaskScheduler
-                    .awaitTermination(threadTerminationTimePerod, TimeUnit.SECONDS);
+            expiryMessageDeletionTaskScheduler.shutdown();
+            expiryMessageDeletionTaskScheduler.awaitTermination(threadTerminationTimePerod, TimeUnit.SECONDS);
+            andesRecoveryTaskScheduler.awaitTermination(threadTerminationTimePerod, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             andesRecoveryTaskScheduler.shutdownNow();

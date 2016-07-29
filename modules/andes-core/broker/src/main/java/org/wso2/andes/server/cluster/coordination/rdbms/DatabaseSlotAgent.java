@@ -380,7 +380,7 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
      * {@inheritDoc}
      */
     @Override
-    public TreeSet<Long> getMessageIds(String queueName) throws AndesException {
+    public TreeSet<Long> getSlotBasedMessageIds(String queueName) throws AndesException {
 
         String task = "get message ids for queue: " + queueName;
 

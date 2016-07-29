@@ -53,6 +53,12 @@ public class MessageTracer {
     public static final String MESSAGE_BEYOND_LAST_ROLLBACK = "Message is beyond the last rollback point. Therefore " +
             "deliveryCount is not increased.";
     public static final String DISCARD_STALE_MESSAGE = "discarding delivery as message is stale";
+    public static final String EXPIRED_MESSAGE_DETECTED_AND_QUEUED = "expired message detected in the flusher and " +
+            "queued for batch delete";
+    public static final String EXPIRED_MESSAGE_DETECTED_FROM_DATABASE = "expired messages detected from " +
+            "the database";
+    public static final String EXPIRED_MESSAGE_DETECTED_FROM_DLC = "expired message detected from" +
+            "the DLC";
 
     /**
      * This method will print debug logs for message activities. This will accept parameters for
