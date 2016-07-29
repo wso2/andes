@@ -171,6 +171,33 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
+    public void moveMetadataToDLCWhenExpiryCheckEnabled(long messageId, String dlcQueueName) throws AndesException {
+        try {
+            wrappedInstance.moveMetadataToDLCWhenExpiryCheckEnabled(messageId, dlcQueueName);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void moveMetadataToDLCWhenExpiryCheckEnabled(List<AndesMessageMetadata> messages, String dlcQueueName)
+            throws AndesException {
+        try {
+            wrappedInstance.moveMetadataToDLCWhenExpiryCheckEnabled(messages, dlcQueueName);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void updateMetadataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList)
             throws AndesException {
         try {
@@ -315,6 +342,27 @@ public class FailureObservingMessageStore implements MessageStore {
     }
 
     /**
+     *{@inheritDoc}
+     */
+    @Override
+    public void deleteMessages(List<Long> messagesToRemove) throws AndesException {
+        try {
+            wrappedInstance.deleteMessages(messagesToRemove);
+
+            //Tracing message activity
+            if (MessageTracer.isEnabled()) {
+                for (Long messageId : messagesToRemove) {
+                    MessageTracer.trace(messageId, "", MessageTracer.MESSAGE_DELETED);
+                }
+            }
+
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -331,27 +379,25 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public List<AndesMessageMetadata> getExpiredMessages(int limit) throws AndesException {
+    public List<Long> getExpiredMessages(long lowerBoundMessageID, String queueName) throws AndesException {
         try {
-            return wrappedInstance.getExpiredMessages(limit);
+            return wrappedInstance.getExpiredMessages(lowerBoundMessageID,queueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public void deleteMessagesFromExpiryQueue(LongArrayList messagesToRemove) throws AndesException {
+    public List<Long> getExpiredMessagesFromDLC() throws AndesException {
         try {
-            wrappedInstance.deleteMessagesFromExpiryQueue(messagesToRemove);
+            return wrappedInstance.getExpiredMessagesFromDLC();
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
         }
     }
+
 
     /**
      * {@inheritDoc}

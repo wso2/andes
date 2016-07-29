@@ -215,7 +215,10 @@ public class AMQPUtils {
         amqMetadata.writeToBuffer(0, buf);
 
         AndesMessageMetadata metadata = new AndesMessageMetadata(amqMessage.getMessageId(),underlying,true);
-        metadata.setExpirationTime(amqMessage.getExpiration());
+        //Put a flag if the expiration time set for a incoming message to store the expiration details
+        if( 0L < amqMessage.getExpiration()){
+            metadata.setIsExpirationSet(true);
+        }
         metadata.setArrivalTime(amqMessage.getArrivalTime());
         metadata.setMessageContentLength(amqMetadata.getContentSize());
 

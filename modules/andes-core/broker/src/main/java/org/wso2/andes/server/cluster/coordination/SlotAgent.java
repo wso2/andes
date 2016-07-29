@@ -174,7 +174,7 @@ public interface SlotAgent {
 	/**
 	 * Get message ids from database
 	 */
-	TreeSet<Long> getMessageIds(String queueName) throws AndesException;
+	TreeSet<Long> getSlotBasedMessageIds(String queueName) throws AndesException;
 
 	/**
 	 * Delete message ids
