@@ -303,8 +303,7 @@ public class RDBMSConstants {
 
     protected static final String PS_DELETE_METADATA =
             "DELETE  FROM " + METADATA_TABLE
-            + " WHERE " + MESSAGE_ID + "=?"
-            + " AND " + DLC_QUEUE_ID + "=-1";
+            + " WHERE " + MESSAGE_ID + "=?";
 
     protected static final String PS_CLEAR_QUEUE_FROM_METADATA =
             "DELETE  FROM " + METADATA_TABLE
