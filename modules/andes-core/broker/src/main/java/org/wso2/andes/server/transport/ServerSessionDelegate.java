@@ -259,9 +259,9 @@ public class ServerSessionDelegate extends SessionDelegate
                                                                   method.getArguments());
 
                     ((ServerSession)session).register(destination, sub);
-                    try
-                    {
-                        queue.registerSubscription(sub, method.getExclusive());
+                    try {
+                        queue.registerSubscription(sub, method.getExclusive(), ((ServerSession) session)
+                                .getAuthorizedSubject());
                     }
                     catch (AMQQueue.ExistingExclusiveSubscription existing)
                     {

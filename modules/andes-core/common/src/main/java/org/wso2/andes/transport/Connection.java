@@ -37,8 +37,6 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-import javax.security.sasl.SaslClient;
-import javax.security.sasl.SaslServer;
 
 import org.wso2.andes.framing.ProtocolVersion;
 import org.wso2.andes.transport.network.Assembler;
@@ -117,8 +115,6 @@ public class Connection extends ConnectionInvoker
 
     private int channelMax = 1;
     private String locale;
-    private SaslServer saslServer;
-    private SaslClient saslClient;
     private int idleTimeout = 0;
     private Map<String,Object> _serverProperties;
     private String userID;
@@ -180,26 +176,6 @@ public class Connection extends ConnectionInvoker
     String getLocale()
     {
         return locale;
-    }
-
-    void setSaslServer(SaslServer saslServer)
-    {
-        this.saslServer = saslServer;
-    }
-
-    SaslServer getSaslServer()
-    {
-        return saslServer;
-    }
-
-    void setSaslClient(SaslClient saslClient)
-    {
-        this.saslClient = saslClient;
-    }
-
-    public SaslClient getSaslClient()
-    {
-        return saslClient;
     }
 
     public void connect(String host, int port, String vhost, String username, String password)

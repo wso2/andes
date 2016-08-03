@@ -20,6 +20,7 @@ package org.wso2.andes.server.queue;
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
+import org.wso2.andes.amqp.AMQPAuthorizationManager;
 import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.configuration.qpid.ConfigStore;
 import org.wso2.andes.configuration.qpid.ConfiguredObject;
@@ -30,6 +31,7 @@ import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.pool.ReadWriteRunnable;
 import org.wso2.andes.pool.ReferenceCountingExecutorService;
+import org.wso2.carbon.andes.core.security.AuthorizeAction;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.exchange.Exchange;
@@ -64,6 +66,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import javax.security.auth.Subject;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -390,19 +393,20 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
 
     // ------ Manage Subscriptions
 
-    public synchronized void registerSubscription(final Subscription subscription, final boolean exclusive)
-            throws AMQSecurityException, ExistingExclusiveSubscription, ExistingSubscriptionPreventsExclusive
+    /**
+     * Register a subscription against this queue.
+     *
+     * @param subscription The subscription to register
+     * @param exclusive Is the subscription exclusive
+     * @param authorizeSubject The Subject which is used to authorize the subscription for the queue
+     * @throws AMQSecurityException
+     * @throws ExistingExclusiveSubscription
+     * @throws ExistingSubscriptionPreventsExclusive
+     */
+    public synchronized void registerSubscription(final Subscription subscription, final boolean exclusive,
+                                                  Subject authorizeSubject) throws AMQSecurityException,
+            ExistingExclusiveSubscription, ExistingSubscriptionPreventsExclusive
     {
-        // Access control
-        if (subscription instanceof SubscriptionImpl.BrowserSubscription) {
-            if (!getVirtualHost().getSecurityManager().authoriseBrowse(this)) {
-                throw new AMQSecurityException("Permission denied");
-            }
-        } else {
-            if (!getVirtualHost().getSecurityManager().authoriseConsume(this)) {
-                throw new AMQSecurityException("Permission denied");
-            }
-        }
 
         //If the owner is DLC we should not allow subscriptions
         //However browser subscriptions should be allowed
@@ -410,6 +414,16 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
                 .BrowserSubscription)) {
             throw new AMQSecurityException("Subscription to " + AndesConstants.DEAD_LETTER_QUEUE_SUFFIX + " Queue is " +
                     "Not Allowed !, Please use a Different Alias");
+        }
+        // Access control
+        if (subscription instanceof SubscriptionImpl.BrowserSubscription) {
+            if (!AMQPAuthorizationManager.isAuthorized(AuthorizeAction.BROWSE, this, authorizeSubject)) {
+                throw new AMQSecurityException("Permission denied");
+            }
+        } else {
+            if (!AMQPAuthorizationManager.isAuthorized(AuthorizeAction.SUBSCRIBE, this, authorizeSubject)) {
+                throw new AMQSecurityException("Permission denied");
+            }
         }
 
         Boolean sharedSubscribersAllowed = AndesConfigurationManager.readValue

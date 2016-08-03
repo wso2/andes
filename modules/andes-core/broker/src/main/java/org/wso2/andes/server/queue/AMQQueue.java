@@ -34,6 +34,7 @@ import org.wso2.andes.server.txn.ServerTransaction;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.carbon.andes.core.ProtocolType;
 
+import javax.security.auth.Subject;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -72,7 +73,9 @@ public interface AMQQueue extends Comparable<AMQQueue>, ExchangeReferrer, Transa
 
     VirtualHost getVirtualHost();
 
-    void registerSubscription(final Subscription subscription, final boolean exclusive) throws AMQException;
+//    void registerSubscription(final Subscription subscription, final boolean exclusive) throws AMQException;
+    void registerSubscription(final Subscription subscription, final boolean exclusive, Subject authorizedSubject)
+            throws AMQException;
 
     void unregisterSubscription(final Subscription subscription) throws AMQException;
 

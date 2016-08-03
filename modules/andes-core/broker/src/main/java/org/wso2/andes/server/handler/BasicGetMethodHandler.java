@@ -169,7 +169,8 @@ public class BasicGetMethodHandler implements StateAwareMethodListener<BasicGetB
                                                  getRecordMethod);
         }
 
-        queue.registerSubscription(sub,false);
+//        queue.registerSubscription(sub,false);
+        queue.registerSubscription(sub,false, session.getAuthorizedSubject());
         queue.flushSubscription(sub);
         queue.unregisterSubscription(sub);
         return(!singleMessageCredit.hasCredit());

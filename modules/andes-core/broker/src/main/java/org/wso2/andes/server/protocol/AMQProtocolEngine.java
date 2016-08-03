@@ -22,6 +22,7 @@ import org.wso2.andes.AMQChannelException;
 import org.wso2.andes.AMQConnectionException;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
+import org.wso2.andes.amqp.AMQPAuthenticationManager;
 import org.wso2.andes.codec.AMQCodecFactory;
 import org.wso2.andes.codec.AMQDecoder;
 import org.wso2.andes.common.ClientProperties;
@@ -74,7 +75,6 @@ import org.wso2.andes.transport.Sender;
 import org.wso2.andes.transport.network.NetworkConnection;
 import org.wso2.carbon.andes.core.MessagingEngine;
 
-import javax.management.JMException;
 import javax.security.auth.Subject;
 import javax.security.sasl.SaslServer;
 import java.io.IOException;
@@ -961,7 +961,9 @@ public class AMQProtocolEngine implements ProtocolEngine, AMQProtocolSession, Co
     
     public Principal getAuthorizedPrincipal()
     {
-        return _authorizedSubject == null ? null : UsernamePrincipal.getUsernamePrincipalFromSubject(_authorizedSubject);
+//        return _authorizedSubject == null ? null : UsernamePrincipal.getUsernamePrincipalFromSubject(_authorizedSubject);
+        return _authorizedSubject == null ? null :
+                                AMQPAuthenticationManager.extractUserPrincipalFromSubject(_authorizedSubject);
     }
 
     public SocketAddress getRemoteAddress()

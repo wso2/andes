@@ -20,16 +20,13 @@
  */
 package org.wso2.andes.transport.network;
 
-import java.nio.ByteBuffer;
-
 import org.wso2.andes.transport.Binding;
 import org.wso2.andes.transport.Connection;
 import org.wso2.andes.transport.ConnectionDelegate;
-import org.wso2.andes.transport.ConnectionListener;
 import org.wso2.andes.transport.Receiver;
 import org.wso2.andes.transport.Sender;
-import org.wso2.andes.transport.network.security.sasl.SASLReceiver;
-import org.wso2.andes.transport.network.security.sasl.SASLSender;
+
+import java.nio.ByteBuffer;
 
 /**
  * ConnectionBinding
@@ -71,13 +68,6 @@ public abstract class ConnectionBinding
     public Connection endpoint(Sender<ByteBuffer> sender)
     {
         Connection conn = connection();
-
-        if (conn.getConnectionSettings() != null && 
-            conn.getConnectionSettings().isUseSASLEncryption())
-        {
-            sender = new SASLSender(sender);
-            conn.addConnectionListener((ConnectionListener)sender);
-        }
         
         // XXX: hardcoded max-frame
         Disassembler dis = new Disassembler(sender, MAX_FRAME_SIZE);
@@ -87,17 +77,7 @@ public abstract class ConnectionBinding
 
     public Receiver<ByteBuffer> receiver(Connection conn)
     {
-        if (conn.getConnectionSettings() != null && 
-            conn.getConnectionSettings().isUseSASLEncryption())
-        {
-            SASLReceiver receiver = new SASLReceiver(new InputHandler(new Assembler(conn)));
-            conn.addConnectionListener((ConnectionListener)receiver);
-            return receiver;
-        }
-        else
-        {
-            return new InputHandler(new Assembler(conn));
-        }
+        return new InputHandler(new Assembler(conn));
     }
 
 }
