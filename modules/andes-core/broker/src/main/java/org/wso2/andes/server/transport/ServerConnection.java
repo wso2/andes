@@ -17,20 +17,10 @@
  */
 package org.wso2.andes.server.transport;
 
-import static org.wso2.andes.server.logging.subjects.LogSubjectFormat.*;
-
-import java.security.Principal;
-import java.text.MessageFormat;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-
-import javax.security.auth.Subject;
-
 import org.wso2.andes.AMQException;
-import org.wso2.andes.protocol.AMQConstant;
+import org.wso2.andes.amqp.AMQPAuthenticationManager;
 import org.wso2.andes.configuration.qpid.ConnectionConfig;
+import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.logging.LogActor;
 import org.wso2.andes.server.logging.LogSubject;
 import org.wso2.andes.server.logging.actors.CurrentActor;
@@ -39,7 +29,6 @@ import org.wso2.andes.server.logging.messages.ConnectionMessages;
 import org.wso2.andes.server.protocol.AMQConnectionModel;
 import org.wso2.andes.server.protocol.AMQSessionModel;
 import org.wso2.andes.server.security.AuthorizationHolder;
-import org.wso2.andes.server.security.auth.sasl.UsernamePrincipal;
 import org.wso2.andes.server.stats.StatisticsCounter;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.transport.Connection;
@@ -49,6 +38,18 @@ import org.wso2.andes.transport.ExecutionException;
 import org.wso2.andes.transport.Method;
 import org.wso2.andes.transport.ProtocolEvent;
 import org.wso2.andes.transport.Session;
+
+import javax.security.auth.Subject;
+import java.security.Principal;
+import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.wso2.andes.server.logging.subjects.LogSubjectFormat.CONNECTION_FORMAT;
+import static org.wso2.andes.server.logging.subjects.LogSubjectFormat.SOCKET_FORMAT;
+import static org.wso2.andes.server.logging.subjects.LogSubjectFormat.USER_FORMAT;
 
 public class ServerConnection extends Connection implements AMQConnectionModel, LogSubject, AuthorizationHolder
 {
@@ -368,7 +369,7 @@ public class ServerConnection extends Connection implements AMQConnectionModel, 
         else
         {
             _authorizedSubject = authorizedSubject;
-            _authorizedPrincipal = UsernamePrincipal.getUsernamePrincipalFromSubject(_authorizedSubject);
+            _authorizedPrincipal = AMQPAuthenticationManager.extractUserPrincipalFromSubject(_authorizedSubject);
         }
     }
 

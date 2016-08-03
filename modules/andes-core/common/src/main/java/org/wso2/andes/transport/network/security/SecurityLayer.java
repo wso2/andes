@@ -20,11 +20,6 @@
  */
 package org.wso2.andes.transport.network.security;
 
-import java.nio.ByteBuffer;
-
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
-
 import org.wso2.andes.transport.Connection;
 import org.wso2.andes.transport.ConnectionListener;
 import org.wso2.andes.transport.ConnectionSettings;
@@ -37,12 +32,15 @@ import org.wso2.andes.transport.network.security.ssl.SSLReceiver;
 import org.wso2.andes.transport.network.security.ssl.SSLSender;
 import org.wso2.andes.transport.network.security.ssl.SSLUtil;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLEngine;
+import java.nio.ByteBuffer;
+
 public class SecurityLayer
 {
     ConnectionSettings settings;
     Connection con;
     SSLSecurityLayer sslLayer;
-    SASLSecurityLayer saslLayer;
 
     public SecurityLayer(Connection con)
     {
@@ -51,10 +49,6 @@ public class SecurityLayer
         if (settings.isUseSSL())
         {
             sslLayer = new SSLSecurityLayer();
-        }
-        if (settings.isUseSASLEncryption())
-        {
-            saslLayer = new SASLSecurityLayer();
         }
     }
 
@@ -65,11 +59,6 @@ public class SecurityLayer
         if (settings.isUseSSL())
         {
             sender = sslLayer.sender(sender);
-        }     
-        
-        if (settings.isUseSASLEncryption())
-        {
-            sender = saslLayer.sender(sender);
         }
         
         return sender;
@@ -82,13 +71,8 @@ public class SecurityLayer
         if (settings.isUseSSL())
         {
             receiver = sslLayer.receiver(receiver);
-        }        
-        
-        if (settings.isUseSASLEncryption())
-        {
-            receiver = saslLayer.receiver(receiver);
         }
-        
+
         return receiver;
     }
     

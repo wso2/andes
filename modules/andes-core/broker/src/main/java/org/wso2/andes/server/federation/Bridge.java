@@ -709,8 +709,11 @@ public class Bridge implements BridgeConfig
 
             try
             {
-                _queue.registerSubscription(sub, true);
-                getVirtualHost().getBindingFactory().addBinding(_key, _queue, exchange, Collections.<String, Object>emptyMap());
+//                _queue.registerSubscription(sub, true);
+//                getVirtualHost().getBindingFactory().addBinding(_key, _queue, exchange, Collections.<String, Object>emptyMap());
+                _queue.registerSubscription(sub, true, ((ServerSession) session).getAuthorizedSubject());
+                getVirtualHost().getBindingFactory().addBinding(_key, _queue, exchange,
+                        Collections.<String, Object>emptyMap());
             }
             catch (AMQException e)
             {
@@ -781,7 +784,8 @@ public class Bridge implements BridgeConfig
 
             try
             {
-                _queue.registerSubscription(sub, false);
+//                _queue.registerSubscription(sub, false);
+                _queue.registerSubscription(sub, false, ((ServerSession) session).getAuthorizedSubject());
             }
             catch (AMQException e)
             {

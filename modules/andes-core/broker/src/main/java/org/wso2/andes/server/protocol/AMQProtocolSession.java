@@ -174,16 +174,6 @@ public interface AMQProtocolSession extends AMQVersionAwareProtocolSession, Auth
      */
     String getLocalFQDN();
 
-    /** @return the sasl server that can perform authentication for this session. */
-    SaslServer getSaslServer();
-
-    /**
-     * Set the sasl server that is to perform authentication for this session.
-     *
-     * @param saslServer
-     */
-    void setSaslServer(SaslServer saslServer);
-
 
     FieldTable getClientProperties();
 

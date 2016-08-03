@@ -18,9 +18,6 @@
 package org.wso2.andes.server.security.auth.sasl;
 
 import java.security.Principal;
-import java.util.Set;
-
-import javax.security.auth.Subject;
 
 /** A principal that is just a wrapper for a simple username. */
 public class UsernamePrincipal implements Principal
@@ -80,18 +77,4 @@ public class UsernamePrincipal implements Principal
         }
     }
 
-    public static UsernamePrincipal getUsernamePrincipalFromSubject(final Subject authSubject)
-    {
-        if (authSubject == null)
-        {
-            throw new IllegalArgumentException("No authenticated subject.");
-        }
-
-        final Set<UsernamePrincipal> principals = authSubject.getPrincipals(UsernamePrincipal.class);
-        if (principals.size() != 1)
-        {
-            throw new IllegalArgumentException("Can't find single UsernamePrincipal in authenticated subject");
-        }
-        return principals.iterator().next();
-    }
 }
