@@ -21,9 +21,11 @@ package org.wso2.andes.kernel.disruptor.inbound;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesSubscriptionManager;
+import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.subscription.LocalSubscription;
-import java.util.List;
+
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -141,14 +143,17 @@ public class InboundSubscriptionEvent implements AndesInboundStateEvent {
         this.subscriptionManager = subscriptionManager;
     }
     
-    public boolean waitForCompletion() throws SubscriptionAlreadyExistsException {
+    public boolean waitForCompletion() throws SubscriptionAlreadyExistsException, AndesException {
         try {
             return future.get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } catch (ExecutionException e) {
-            if (e.getCause() instanceof SubscriptionAlreadyExistsException) {
-                throw (SubscriptionAlreadyExistsException) e.getCause();
+            Throwable originalException = e.getCause();
+            if (originalException instanceof SubscriptionAlreadyExistsException) {
+                throw (SubscriptionAlreadyExistsException) originalException;
+            } else if (originalException instanceof AndesException) {
+                throw (AndesException) originalException;
             } else {
                 // No point in throwing an exception here and disrupting the server. A warning is sufficient.
                 log.warn("Error occurred while processing event '" + eventType  + "' for subscription id "
