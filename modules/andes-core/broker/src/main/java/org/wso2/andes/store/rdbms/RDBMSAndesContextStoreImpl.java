@@ -1867,6 +1867,36 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Set<String> getAllQueuesInSubmittedSlots() throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        Set<String> queueList = new TreeSet<>();
+        try {
+            connection = getConnection();
+
+            preparedStatement =
+                    connection.prepareStatement(RDBMSConstants.PS_GET_ALL_QUEUES_IN_SUBMITTED_SLOTS);
+            resultSet = preparedStatement.executeQuery();
+
+            while (resultSet.next()) {
+                queueList.add(resultSet.getString(RDBMSConstants.QUEUE_NAME));
+            }
+            return queueList;
+        } catch (SQLException e) {
+            String errMsg = RDBMSConstants.TASK_GET_ALL_QUEUES_IN_SUBMITTED_SLOTS;
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
+        } finally {
+            close(resultSet, RDBMSConstants.TASK_GET_ALL_QUEUES_IN_SUBMITTED_SLOTS);
+            close(preparedStatement, RDBMSConstants.TASK_GET_ALL_QUEUES_IN_SUBMITTED_SLOTS);
+            close(connection, RDBMSConstants.TASK_GET_ALL_QUEUES_IN_SUBMITTED_SLOTS);
+        }
+    }
+
+    /**
      * Clear and reset slot storage
      *
      * @throws AndesException

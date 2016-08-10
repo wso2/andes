@@ -499,9 +499,12 @@ public class SlotManagerClusterMode extends AbstractSlotManager {
         slotAgent.deleteMessageIdsByQueueName(queueName);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Set<String> getAllQueues() throws AndesException {
-        return slotAgent.getAllQueues();
+        return slotAgent.getAllQueuesInSubmittedSlots();
     }
 
     /**

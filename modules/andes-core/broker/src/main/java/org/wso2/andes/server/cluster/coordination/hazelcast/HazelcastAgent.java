@@ -1033,6 +1033,14 @@ public class HazelcastAgent implements SlotAgent {
      * {@inheritDoc}
      */
     @Override
+    public Set<String> getAllQueuesInSubmittedSlots() throws AndesException {
+        return this.slotIdMap.keySet();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void clearSlotStorage() throws AndesException {
         // Maps will be automatically cleared.
     }
