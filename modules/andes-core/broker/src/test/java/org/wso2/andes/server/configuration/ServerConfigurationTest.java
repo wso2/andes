@@ -540,13 +540,13 @@ public class ServerConfigurationTest extends QpidTestCase
     {
         // Check default
         _serverConfig.initialise();
-        assertEquals("SunX509", _serverConfig.getCertType());
+        assertEquals("SunX509", _serverConfig.getKeyStoreCertType());
 
         // Check value we set
         _config.setProperty("connector.ssl.certType", "a");
         _serverConfig = new ServerConfiguration(_config);
         _serverConfig.initialise();
-        assertEquals("a", _serverConfig.getCertType());
+        assertEquals("a", _serverConfig.getKeyStoreCertType());
     }
 
     public void testGetUseBiasedWrites() throws ConfigurationException

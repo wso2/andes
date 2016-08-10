@@ -76,7 +76,7 @@ public class AppInfo
                 appInfoMap.put("vhosts", "standalone");
                 appInfoMap.put("KeystorePath", sc.getKeystorePath());
                 appInfoMap.put("PluginDirectory", sc.getPluginDirectory());
-                appInfoMap.put("CertType", sc.getCertType());
+                appInfoMap.put("CertType", sc.getKeyStoreCertType());
                 appInfoMap.put("QpidWork", sc.getQpidWork());
                 appInfoMap.put("Bind", sc.getBind());
             }

@@ -90,25 +90,30 @@ public class SSLHandlerFactory {
      */
     private ConnectionSettings constructConnectionSettings(Properties props) {
         ConnectionSettings connectionSettings = new ConnectionSettings();
-        String certificateType = "SunX509";
-
+        
         String sslTrustStoreLocation = ((JKSStore) AndesConfigurationManager.readValue
                 (AndesConfiguration.TRANSPORTS_MQTT_SSL_CONNECTION_TRUSTSTORE)).getStoreLocation();
         String sslTrustStorePassword = ((JKSStore) AndesConfigurationManager.readValue
                 (AndesConfiguration.TRANSPORTS_MQTT_SSL_CONNECTION_TRUSTSTORE)).getPassword();
+
+        String trustStoreCertificateType = ((JKSStore) AndesConfigurationManager.readValue
+                (AndesConfiguration.TRANSPORTS_MQTT_SSL_CONNECTION_TRUSTSTORE)).getStoreAlgorithm();
+        
         String sslKeyStoreLocation = ((JKSStore) AndesConfigurationManager.readValue
                 (AndesConfiguration.TRANSPORTS_MQTT_SSL_CONNECTION_KEYSTORE)).getStoreLocation();
         String sslKeyStorePassword = ((JKSStore) AndesConfigurationManager.readValue
                 (AndesConfiguration.TRANSPORTS_MQTT_SSL_CONNECTION_KEYSTORE)).getPassword();
 
+        String keyStoreCertificateType = ((JKSStore) AndesConfigurationManager.readValue
+                (AndesConfiguration.TRANSPORTS_MQTT_SSL_CONNECTION_KEYSTORE)).getStoreAlgorithm();
 
         connectionSettings.setTrustStorePath(sslTrustStoreLocation);
         connectionSettings.setTrustStorePassword(sslTrustStorePassword);
-        connectionSettings.setTrustStoreCertType(certificateType);
+        connectionSettings.setTrustStoreCertType(trustStoreCertificateType);
 
         connectionSettings.setKeyStorePath(sslKeyStoreLocation);
         connectionSettings.setKeyStorePassword(sslKeyStorePassword);
-        connectionSettings.setKeyStoreCertType(certificateType);
+        connectionSettings.setKeyStoreCertType(keyStoreCertificateType);
 
         return connectionSettings;
     }
