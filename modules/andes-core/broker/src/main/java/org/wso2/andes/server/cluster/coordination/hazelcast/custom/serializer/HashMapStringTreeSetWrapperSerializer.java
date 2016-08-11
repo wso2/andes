@@ -106,7 +106,7 @@ public class HashMapStringTreeSetWrapperSerializer implements
                 slot.setStorageQueueName(jsonObjectForSlot.get("storageQueueName").getAsString());
                 slot.decodeAndSetSlotStates(jsonObjectForSlot.get("states").getAsString());
                 if (!jsonObjectForSlot.get("isSlotActive").getAsBoolean()) {
-                    slot.setSlotInActive();
+                    slot.setSlotInactive();
                 }
                 arrayList.add(slot);
             }

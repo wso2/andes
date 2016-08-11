@@ -31,12 +31,15 @@ import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.slot.ConnectionException;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotCoordinationConstants;
-import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.server.cluster.coordination.ClusterOutageException;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.thrift.exception.ThriftClientException;
 import org.wso2.andes.thrift.slot.gen.SlotInfo;
 import org.wso2.andes.thrift.slot.gen.SlotManagementService;
+
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A wrapper client for the native thrift client. All the public methods in this class are
@@ -57,6 +60,10 @@ public class MBThriftClient {
     private static SlotManagementService.Client client = null;
 
     private static final Log log = LogFactory.getLog(MBThriftClient.class);
+
+    private static final Queue<ThriftConnectionListener> connectionListenerQueue = new ConcurrentLinkedQueue<>();
+
+    private static AtomicBoolean isConnected = new AtomicBoolean(false);
 
     /**
      * getSlot method. Returns Slot Object, when the
@@ -92,6 +99,16 @@ public class MBThriftClient {
         } catch (ClusterOutageException outage){
             throw new ConnectionException("Unable to connect to coordinator", outage);
         }
+    }
+
+    /**
+     * Add Thrift connection listener
+     *
+     * @param connectionListener {@link ThriftConnectionListener}
+     *
+     */
+    public static void addConnectionListener(ThriftConnectionListener connectionListener) {
+        connectionListenerQueue.add(connectionListener);
     }
 
     /**
@@ -295,11 +312,24 @@ public class MBThriftClient {
      * Start the thrift server reconnecting thread when the coordinator of the cluster is changed.
      */
     private static void handleCoordinatorChanges() {
+
+        notifyDisconnection();
         resetServiceClient();
         if (!isReconnectingStarted()) {
             setReconnectingFlag(true);
         }
         startServerReconnectingThread();
+    }
+
+    /**
+     * Notify Thrift connection disconnect to the {@link ThriftConnectionListener}s
+     */
+    private static void notifyDisconnection() {
+        if (isConnected.compareAndSet(true, false)) {
+            for (ThriftConnectionListener listener : connectionListenerQueue) {
+                listener.onThriftClientDisconnect();
+            }
+        }
     }
 
     /**
@@ -341,6 +371,7 @@ public class MBThriftClient {
             transport.open();
             TProtocol protocol = new TBinaryProtocol(transport);
             client = new SlotManagementService.Client(protocol);
+            notifyConnection();
         } catch (TTransportException e) {
             log.error("Could not connect to the Thrift Server " + thriftCoordinatorServerIP + ":" +
                     thriftCoordinatorServerPort + e.getMessage(), e);
@@ -352,30 +383,33 @@ public class MBThriftClient {
     }
 
     /**
+     * Notify Thrift connection establish signal to the {@link ThriftConnectionListener}
+     */
+    private static void notifyConnection() {
+        if (isConnected.compareAndSet(false, true)) {
+            for (ThriftConnectionListener listener : connectionListenerQueue) {
+                listener.onThriftClientConnect();
+            }
+        }
+    }
+
+    /**
      * This thread is responsible of reconnecting to the thrift server of the coordinator until it
      * gets succeeded
      */
     private static void startServerReconnectingThread() {
         new Thread() {
             public void run() {
-                /**
-                 * this thread will try to connect to thrift server while reconnectingStarted
-                 * flag is true
-                 * After successfully connecting to the server this flag will be set to true.
-                 * While loop is therefore intentional.
-                 */
-                SlotDeliveryWorkerManager slotDeliveryWorkerManager = SlotDeliveryWorkerManager
-                        .getInstance();
+
+                // This thread will try to connect to thrift server while reconnectingStarted flag is true
+                // After successfully connecting to the server this flag will be set to true.
+                // While loop is therefore intentional.
                 while (reconnectingStarted) {
 
                     try {
                         reConnectToServer();
-                        /**
-                         * If re connect to server is successful, following code segment will be
-                         * executed
-                         */
+                        // If re connect to server is successful, following code segment will be executed
                         reconnectingStarted = false;
-                        slotDeliveryWorkerManager.startAllSlotDeliveryWorkers();
                     } catch (TTransportException e) {
                         try {
                             Thread.sleep(2000);

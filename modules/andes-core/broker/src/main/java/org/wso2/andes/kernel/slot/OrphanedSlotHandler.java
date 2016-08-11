@@ -151,7 +151,7 @@ public class OrphanedSlotHandler implements SubscriptionListener {
                 Collection<LocalSubscription> localSubscribersForQueue = subscriptionEngine
                         .getActiveLocalSubscribers(destination, subscription.getProtocolType(),
                                                    subscription.getDestinationType());
-                if (localSubscribersForQueue.size() == 0) {
+                if (localSubscribersForQueue.isEmpty()) {
                     scheduleSlotToReassign(subscription.getStorageQueueName());
                 } else {
                     slotDeliveryWorkerManager.rescheduleMessagesForDelivery(subscription.getStorageQueueName(),

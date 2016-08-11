@@ -119,15 +119,10 @@ public class SlotDeletionExecutor implements NetworkPartitionListener{
                                 // Delete attempt not success, therefore adding slot to the queue
                                 slotsToDelete.put(slot);
                             } else {
-                                SlotDeliveryWorker slotWorker = SlotDeliveryWorkerManager.getInstance()
-                                        .getSlotWorker(slot.getStorageQueueName());
-
                                 // slotWorker can be null.
                                 // For instance if the deletion request came from coordinator after a member leaves the
                                 // cluster and no subscribers on coordinator node.
-                                if (null != slotWorker) {
-                                    slotWorker.deleteSlot(slot);
-                                }
+                                SlotDeliveryWorkerManager.getInstance().deleteSlot(slot);
                             }
                         } else {
                             slotsToDelete.put(slot); // Not deleted. Hence putting back in queue

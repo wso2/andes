@@ -19,124 +19,105 @@
 package org.wso2.andes.kernel.slot;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.gs.collections.impl.map.mutable.ConcurrentHashMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.DestinationType;
+import org.wso2.andes.kernel.MessageFlusher;
+import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolType;
+import org.wso2.andes.server.cluster.error.detection.NetworkPartitionListener;
+import org.wso2.andes.store.FailureObservingStoreManager;
+import org.wso2.andes.store.HealthAwareStore;
+import org.wso2.andes.store.StoreHealthListener;
+import org.wso2.andes.task.TaskExecutorService;
+import org.wso2.andes.thrift.MBThriftClient;
+import org.wso2.andes.thrift.ThriftConnectionListener;
 
 import java.io.File;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
 /**
  * This class is responsible of allocating SloDeliveryWorker threads to each queue
  */
-public class SlotDeliveryWorkerManager {
-
-    private Map<Integer, SlotDeliveryWorker> slotDeliveryWorkerMap = new ConcurrentHashMap<>();
-
-    private ExecutorService slotDeliveryWorkerExecutor;
+public final class SlotDeliveryWorkerManager implements StoreHealthListener, NetworkPartitionListener,
+                                                  ThriftConnectionListener {
 
     private static Log log = LogFactory.getLog(SlotDeliveryWorkerManager.class);
 
     /**
-     * Number of slot delivery worker threads running inn one MB node
+     * Delay for waiting for an idle task
      */
-    private static ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
-            .setNameFormat("SlotDeliveryWorkerExecutor-%d").build();
+    private static final long IDLE_TASK_DELAY_MILLIS = 100;
 
     /**
-     * Number of slot delivery worker threads running in one MB node
+     * Slot Delivery Worker Manager instance
      */
-    private Integer numberOfThreads;
+    private static SlotDeliveryWorkerManager slotDeliveryWorkerManager = new SlotDeliveryWorkerManager();
 
-    /**
-     * SlotDeliveryWorker instance
-     */
-    private static SlotDeliveryWorkerManager slotDeliveryWorkerManagerManager = new SlotDeliveryWorkerManager();
+    private final TaskExecutorService<MessageDeliveryTask> taskManager;
 
     private SlotDeliveryWorkerManager() {
-        numberOfThreads = AndesConfigurationManager
+        int numberOfThreads = AndesConfigurationManager
                 .readValue(AndesConfiguration.PERFORMANCE_TUNING_SLOTS_WORKER_THREAD_COUNT);
-        this.slotDeliveryWorkerExecutor = Executors.newFixedThreadPool(numberOfThreads, namedThreadFactory);
+        ThreadFactory threadFactory = new ThreadFactoryBuilder()
+                .setNameFormat("MessageDeliveryTaskThreadPool-%d").build();
+        taskManager = new TaskExecutorService<>(numberOfThreads, IDLE_TASK_DELAY_MILLIS, threadFactory);
+        taskManager.setExceptionHandler(new DeliveryTaskExceptionHandler());
+        AndesContext andesContext = AndesContext.getInstance();
+
+        if (andesContext.isClusteringEnabled()) {
+            // network partition detection and thrift client works only when clustered.
+            andesContext.getClusterAgent().addNetworkPartitionListener(50, this);
+            MBThriftClient.addConnectionListener(this);
+        }
+
+        FailureObservingStoreManager.registerStoreHealthListener(this);
     }
 
     /**
      * @return SlotDeliveryWorkerManager instance
      */
     public static SlotDeliveryWorkerManager getInstance() {
-        return slotDeliveryWorkerManagerManager;
+        return slotDeliveryWorkerManager;
     }
 
-    public void rescheduleMessagesForDelivery(String storageQueueName, List<DeliverableAndesMetadata> messages) {
-        SlotDeliveryWorker slotWorker = getSlotWorker(storageQueueName);
+    /**
+     * Rescheduled messages for re delivery
+     *
+     * @param storageQueueName storage queue name
+     * @param messages message list
+     */
+    void rescheduleMessagesForDelivery(String storageQueueName, List<DeliverableAndesMetadata> messages) {
+        MessageDeliveryTask messageDeliveryTask = taskManager.getTask(storageQueueName);
 
-        if (null != slotWorker) {
-            slotWorker.rescheduleMessagesForDelivery(storageQueueName, messages);
+        if (null != messageDeliveryTask) {
+            messageDeliveryTask.rescheduleMessagesForDelivery(messages);
         }
     }
 
     /**
-     * When a subscription is added this method will be called. This method will decide which
-     * SlotDeliveryWorker thread is assigned to which queue. If a worker is already running on
-     * the queue, it will not start a new one.
+     * When a subscription is added this method will be called. if this is the first subscriber for the destination
+     * a {@link MessageDeliveryTask} will be added to the {@link TaskExecutorService}
      *
      * @param storageQueueName name of the queue to start slot delivery worker for
      * @param destination      The destination name
      * @param protocolType     The protocol which the messages in this storage queue belongs to
      * @param destinationType  The destination type which the messages in this storage queue belongs to
      */
-    public synchronized void startSlotDeliveryWorker(String storageQueueName, String destination,
-            ProtocolType protocolType, DestinationType destinationType) throws AndesException {
-        int slotDeliveryWorkerId = getIdForSlotDeliveryWorker(storageQueueName);
-        if (getSlotDeliveryWorkerMap().containsKey(slotDeliveryWorkerId)) {
-            //if this queue is not already in the queue
-            if (!getSlotDeliveryWorkerMap().get(slotDeliveryWorkerId).isStorageQueueAdded(storageQueueName)) {
-                SlotDeliveryWorker slotDeliveryWorker = getSlotDeliveryWorkerMap().get(slotDeliveryWorkerId);
-                slotDeliveryWorker.startDeliveryForQueue(storageQueueName, destination, protocolType, destinationType);
-                // In case the SlotDeliveryWorker has been stopped due to 0 active subscribers, we must re-start it.
-                if (!slotDeliveryWorker.isRunning()) {
-                    if (log.isDebugEnabled()) {
-                        log.debug("SlotDeliveryWorker : " + slotDeliveryWorker.getId()
-                                + "has been stopped. Therefore restarting.");
-                    }
-                    slotDeliveryWorker.setRunning(true);
-                    slotDeliveryWorkerExecutor.execute(slotDeliveryWorker);
-                }
-                if (log.isDebugEnabled()) {
-                    log.debug("Assigned Already Running Slot Delivery Worker. Reading messages storageQ= "
-                            + storageQueueName + " MsgDest= " + destination);
-                }
-            }
-        } else {
-            SlotDeliveryWorker slotDeliveryWorker = new SlotDeliveryWorker();
-            if (log.isDebugEnabled()) {
-                log.debug("Slot Delivery Worker Started. Reading messages storageQ= " + storageQueueName + " MsgDest= "
-                        + destination);
-            }
-            slotDeliveryWorker.startDeliveryForQueue(storageQueueName, destination, protocolType, destinationType);
-            getSlotDeliveryWorkerMap().put(slotDeliveryWorkerId, slotDeliveryWorker);
-            slotDeliveryWorkerExecutor.execute(slotDeliveryWorker);
-        }
-    }
+    public void onSubscriptionAdded(String storageQueueName, String destination,
+                                    ProtocolType protocolType, DestinationType destinationType) throws AndesException {
 
-    /**
-     * This method is to decide slotDeliveryWorkerId for the queue
-     *
-     * @param queueName name of the newly created queue
-     * @return slot delivery worker ID
-     */
-    public int getIdForSlotDeliveryWorker(String queueName) {
-        // Get the absolute value since String.hashCode() can give both positive and negative values.
-        return Math.abs(queueName.hashCode() % numberOfThreads);
+        MessageDeliveryTask messageDeliveryTask =
+                new MessageDeliveryTask(destination, protocolType, storageQueueName,
+                                        destinationType, MessagingEngine.getInstance().getSlotCoordinator(),
+                                        MessageFlusher.getInstance());
+        taskManager.add(messageDeliveryTask);
     }
 
     /**
@@ -145,58 +126,38 @@ public class SlotDeliveryWorkerManager {
      *
      * @param storageQueueName Name of the Storage queue
      */
-    public void stopDeliveryForDestination(String storageQueueName) {
-        SlotDeliveryWorker slotWorker = getSlotWorker(storageQueueName);
-
-        // Check if there is a slot delivery worker for the storageQueueName
-        if (null != slotWorker) {
-            if (log.isDebugEnabled()) {
-                log.debug("Stopping delivery for storage queue " + storageQueueName +
-                        " with SlotDeliveryWorker : " + slotWorker.getId());
-            }
-            slotWorker.stopDeliveryForQueue(storageQueueName);
+    void stopDeliveryForDestination(String storageQueueName) {
+        if (log.isDebugEnabled()) {
+            log.debug("Stopping delivery for storage queue " + storageQueueName + " with MessageDeliveryTask : "
+                              + storageQueueName);
         }
+        taskManager.remove(storageQueueName);
     }
 
     /**
      * Stop all stop delivery workers in the thread pool
      */
-    public void stopSlotDeliveryWorkers() {
-        for (Map.Entry<Integer, SlotDeliveryWorker> slotDeliveryWorkerEntry : getSlotDeliveryWorkerMap().entrySet()) {
-            slotDeliveryWorkerEntry.getValue().setRunning(false);
-        }
-    }
-
-    /**
-     * @return SlotDeliveryWorkerMap  a map which stores slot delivery worker ID against
-     * SlotDelivery
-     * Worker
-     * object references
-     */
-    private Map<Integer, SlotDeliveryWorker> getSlotDeliveryWorkerMap() {
-        return slotDeliveryWorkerMap;
+    public void stopMessageDelivery() {
+        taskManager.stop();
     }
 
     /**
      * Start all the SlotDeliveryWorkers if not already in running state.
      */
-    public void startAllSlotDeliveryWorkers() {
-        for (Map.Entry<Integer, SlotDeliveryWorker> entry : slotDeliveryWorkerMap.entrySet()) {
-            SlotDeliveryWorker slotDeliveryWorker = entry.getValue();
-            if (!slotDeliveryWorker.isRunning()) {
-                slotDeliveryWorkerExecutor.execute(slotDeliveryWorker);
-            }
-        }
+    public void startMessageDelivery() {
+        taskManager.start();
     }
 
     /**
-     * Returns SlotDeliveryWorker mapped to a given queue
+     * Delete the relevant slot from {@link MessageDeliveryTask}
      *
-     * @param queueName name of the queue
-     * @return SlotDeliveryWorker instance
+     * @param slot Slot to be deleted
      */
-    public SlotDeliveryWorker getSlotWorker(String queueName) {
-        return slotDeliveryWorkerMap.get(getIdForSlotDeliveryWorker(queueName));
+    public void deleteSlot( Slot slot) {
+        MessageDeliveryTask messageDeliveryTask = taskManager.getTask(slot.getStorageQueueName());
+        if (null != messageDeliveryTask) {
+            messageDeliveryTask.deleteSlot(slot);
+        }
     }
 
     /**
@@ -206,8 +167,72 @@ public class SlotDeliveryWorkerManager {
      * @throws AndesException
      */
     public void dumpAllSlotInformationToFile(File fileToWrite) throws AndesException {
-        for (SlotDeliveryWorker slotDeliveryWorker : slotDeliveryWorkerMap.values()) {
-            slotDeliveryWorker.dumpAllSlotInformationToFile(fileToWrite);
-        }
+        // NOTE: Will be replaced with subscription store update PR
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void minimumNodeCountNotFulfilled(int currentNodeCount) {
+        log.warn("Network outage detected therefore stopping message delivery. Current cluster size "
+                         + currentNodeCount);
+        taskManager.stop();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void minimumNodeCountFulfilled(int currentNodeCount) {
+        log.info("Network outage resolved therefore resuming message delivery. Current cluster size "
+                         + currentNodeCount);
+        taskManager.start();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void clusteringOutage() {
+        log.warn("Clustering outage. Stopping message delivery");
+        taskManager.stop();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void storeNonOperational(HealthAwareStore store, Exception ex) {
+        log.warn("Message stores became not operational therefore waiting");
+        taskManager.stop();
+
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void storeOperational(HealthAwareStore store) {
+        log.info("Message stores became operational therefore resuming work");
+        taskManager.start();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void onThriftClientDisconnect() {
+        log.warn("Thrift client disconnected. Waiting till reconnect");
+        taskManager.stop();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void onThriftClientConnect() {
+        log.info("Thrift client connection established");
+        taskManager.start();
     }
 }

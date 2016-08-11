@@ -84,7 +84,7 @@ public class TreeSetSlotWrapperSerializer implements StreamSerializer<TreeSetSlo
             slot.setStorageQueueName(jsonObject.get("storageQueueName").getAsString());
             slot.decodeAndSetSlotStates(jsonObject.get("states").getAsString());
             if (!jsonObject.get("isSlotActive").getAsBoolean()) {
-                slot.setSlotInActive();
+                slot.setSlotInactive();
             }
             treeSet.add(slot);
         }
