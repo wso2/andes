@@ -731,6 +731,13 @@ public class RDBMSConstants {
             + " FROM " + SLOT_TABLE;
 
     /**
+     * Prepared statement to get all queues in submitted slots
+     */
+    protected static final String PS_GET_ALL_QUEUES_IN_SUBMITTED_SLOTS =
+            "SELECT DISTINCT " + QUEUE_NAME
+            + " FROM " + SLOT_MESSAGE_ID_TABLE;
+
+    /**
      * Prepared Statement to test deletes are working for message store
      */
     protected static final String PS_TEST_MSG_STORE_SELECT =
@@ -939,6 +946,7 @@ public class RDBMSConstants {
     protected static final String TASK_GET_ALL_SLOTS_BY_QUEUE_NAME = "getting all slots by queue name";
     protected static final String TASK_GET_OVERLAPPED_SLOT = "getting overlapped slot";
     protected static final String TASK_GET_ALL_QUEUES = "getting all queues";
+    protected static final String TASK_GET_ALL_QUEUES_IN_SUBMITTED_SLOTS = "getting all queues in submitted slots";
     protected static final String TASK_CLEAR_SLOT_TABLES = "clearing slot tables";
 
     /**

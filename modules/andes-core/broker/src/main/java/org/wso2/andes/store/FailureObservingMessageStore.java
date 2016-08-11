@@ -362,6 +362,9 @@ public class FailureObservingMessageStore implements MessageStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<Long> getExpiredMessagesFromDLC() throws AndesException {
         try {

@@ -231,6 +231,14 @@ public interface SlotAgent {
 	Set<String> getAllQueues() throws AndesException;
 
 	/**
+	 * Get list of all queues in submitted slots
+	 *
+	 * @return Set of queue names
+	 * @throws AndesException
+	 */
+	Set<String> getAllQueuesInSubmittedSlots() throws AndesException;
+
+	/**
 	 * Clear and reset slot storage
 	 * @throws AndesException
 	 */

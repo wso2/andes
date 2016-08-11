@@ -839,6 +839,20 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Set<String> getAllQueuesInSubmittedSlots() throws AndesException {
+        try {
+            return wrappedAndesContextStoreInstance.getAllQueuesInSubmittedSlots();
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+
+    /**
      * Clear and reset slot storage
      *
      * @throws AndesException

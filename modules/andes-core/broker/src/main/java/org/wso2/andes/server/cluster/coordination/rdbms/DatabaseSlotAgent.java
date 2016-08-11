@@ -566,6 +566,26 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
      * {@inheritDoc}
      */
     @Override
+    public Set<String> getAllQueuesInSubmittedSlots() throws AndesException {
+        String task = "retrieve all queues in submitted slots";
+
+        Set<String> allQueues = new HashSet<>();
+        for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
+            waitUntilStoresBecomeAvailable(task);
+            try {
+                allQueues = andesContextStore.getAllQueuesInSubmittedSlots();
+                break;
+            } catch (AndesStoreUnavailableException e) {
+                handleFailure(attemptCount, task, e);
+            }
+        }
+        return allQueues;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void clearSlotStorage() throws AndesException {
 
         String task = "clear slot storage";
