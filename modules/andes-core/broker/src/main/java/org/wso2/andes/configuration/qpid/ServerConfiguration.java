@@ -591,10 +591,10 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
         return ((JKSStore)AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_SSL_CONNECTION_KEYSTORE)).getPassword();
     }
 
-    public String getCertType() {
-        return getStringValue("connector.ssl.certType", "SunX509");
+    public String getKeyStoreCertType() {
+        return ((JKSStore)AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_SSL_CONNECTION_KEYSTORE)).getStoreAlgorithm();
     }
-
+    
     public boolean getUseBiasedWrites() {
         return getBooleanValue("advanced.useWriteBiasedPool");
     }

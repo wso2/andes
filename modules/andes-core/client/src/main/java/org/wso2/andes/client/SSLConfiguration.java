@@ -21,6 +21,9 @@
 
 package org.wso2.andes.client;
 
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.TrustManagerFactory;
+
 public class SSLConfiguration {
 	
 	private String _keystorePath;
@@ -33,8 +36,11 @@ public class SSLConfiguration {
 
     private String sslCertAlias;
 	
-	private String _certType = "SunX509";
+	private String keyStoreCertType = KeyManagerFactory.getDefaultAlgorithm();
 
+	private String trustStoreCertType = TrustManagerFactory.getDefaultAlgorithm();
+
+	
 	public void setKeystorePath(String path) 
 	{
 		_keystorePath = path;
@@ -55,15 +61,24 @@ public class SSLConfiguration {
 		return _keystorePassword;
 	}
 	
-	public void setCertType(String type) 
+	public void setKeyStoreCertType(String type) 
 	{
-		_certType = type;
+		keyStoreCertType = type;
 	}
 	
-	public String getCertType() 
+	public String getKeyStoreCertType() 
 	{
-		return _certType;
+		return keyStoreCertType;
 	}
+
+	
+    public String getTrustStoreCertType() {
+        return trustStoreCertType;
+    }
+
+    public void setTrustStoreCertType(String trustStoreCertType) {
+        this.trustStoreCertType = trustStoreCertType;
+    }
 
     public String get_keystorePath() {
         return _keystorePath;
