@@ -142,7 +142,7 @@ final class MessageDeliveryTask extends Task {
                 }
                 List<DeliverableAndesMetadata> messagesRead = getMetaDataListBySlot(storageQueueName, currentSlot);
 
-                if (!CollectionUtils.isEmpty(messagesRead)) {
+                if (CollectionUtils.isNotEmpty(messagesRead)) {
                     if (log.isDebugEnabled()) {
                         log.debug("Number of messages read from slot " + currentSlot.getStartMessageId()
                                           + " - " + currentSlot.getEndMessageId() + " is " + messagesRead.size()
@@ -182,7 +182,7 @@ final class MessageDeliveryTask extends Task {
      * {@inheritDoc}
      */
     @Override
-    public void onAdded() {
+    public void onAdd() {
     }
 
     /**
