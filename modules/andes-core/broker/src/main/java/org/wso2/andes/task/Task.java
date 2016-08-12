@@ -43,6 +43,12 @@ public abstract class Task implements Callable<Task.TaskHint> {
     }
 
     /**
+     * Callback invoked when the {@link Task} implementation is added to the internal task queue. If the task is
+     * a duplicate entry this method won't get invoked.
+     */
+    public abstract void onAdded();
+
+    /**
      * Callback invoked when the {@link Task} is removed by the {@link TaskExecutorService}
      */
     public abstract void onRemove();

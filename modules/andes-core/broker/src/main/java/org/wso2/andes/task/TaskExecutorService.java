@@ -193,6 +193,8 @@ public final class TaskExecutorService<T extends Task> {
                 }
                 TaskHolder<T> taskHolder = new TaskHolder<>(task);
                 taskHolderRegistry.put(task.getId(), taskHolder);
+                task.onAdded(); // Invoke task callback before adding the task to the taskHolderDelayQueue
+                                // to be processed
                 taskHolderDelayQueue.add(taskHolder);
                 if (log.isDebugEnabled()) {
                     log.debug("Task added. ID " + task.getId() + " Total Tasks " + taskHolderDelayQueue.size());
