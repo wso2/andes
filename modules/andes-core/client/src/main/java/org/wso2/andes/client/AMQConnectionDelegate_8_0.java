@@ -112,8 +112,8 @@ public class AMQConnectionDelegate_8_0 implements AMQConnectionDelegate
             settings.setKeyStorePassword(sslConfig.getKeystorePassword());
             settings.setUseSSL(Boolean.parseBoolean("true"));
             settings.setCertAlias(sslConfig.getSslCertAlias());
-            settings.setKeyStoreCertType(sslConfig.getCertType());
-            settings.setTrustStoreCertType(sslConfig.getCertType());
+            settings.setKeyStoreCertType(sslConfig.getKeyStoreCertType());
+            settings.setTrustStoreCertType(sslConfig.getTrustStoreCertType());
             if (settings.getKeyStorePath() == null && settings.getKeyStorePassword() == null &&
                 settings.getTrustStorePath() == null && settings.getTrustStorePassword() == null) {
                 _logger.warn("Loading keystore and truststore from system properties");
