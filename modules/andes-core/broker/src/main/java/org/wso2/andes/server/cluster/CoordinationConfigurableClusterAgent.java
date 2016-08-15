@@ -22,9 +22,6 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
 import com.hazelcast.core.IdGenerator;
 import com.hazelcast.core.Member;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -32,10 +29,8 @@ import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.HazelcastLifecycleListener;
 import org.wso2.andes.kernel.slot.SlotCoordinationConstants;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
-import org.wso2.andes.server.cluster.coordination.hazelcast.AndesMembershipListener;
 import org.wso2.andes.server.cluster.error.detection.DisabledNetworkPartitionDetector;
 import org.wso2.andes.server.cluster.error.detection.HazelcastBasedNetworkPartitionDetector;
 import org.wso2.andes.server.cluster.error.detection.NetworkPartitionDetector;
@@ -45,22 +40,22 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Hazelcast based cluster agent implementation
  */
-public class HazelcastClusterAgent implements ClusterAgent {
+public class CoordinationConfigurableClusterAgent implements ClusterAgent {
 
     /**
      * Class logger
      */
-    private Log log = LogFactory.getLog(HazelcastClusterAgent.class);
+    private static final Log log = LogFactory.getLog(CoordinationConfigurableClusterAgent.class);
 
     /**
-     * Used to identify coordinator change event
+     * Coordination algorithm used to elect the coordinator
      */
-    private final AtomicBoolean isCoordinator;
+    private final CoordinationStrategy coordinationStrategy;
 
     /**
      * Hazelcast instance used to communicate with the hazelcast cluster
@@ -71,11 +66,6 @@ public class HazelcastClusterAgent implements ClusterAgent {
      * Unique id of local member used for message ID generation
      */
     private int uniqueIdOfLocalMember;
-
-    /**
-     * registration id for membership listner
-     */
-    private String listenerRegistrationId;
 
     /**
      * Cluster manager used to indicate membership change events
@@ -96,11 +86,6 @@ public class HazelcastClusterAgent implements ClusterAgent {
     private IMap<String, String> nodeIdMap;
 
     /**
-     * Hold thrift server details
-     */
-    private IMap<Object, Object> thriftServerDetailsMap;
-
-    /**
      * Implementation of scheme used to detect network partitions
      */
     private NetworkPartitionDetector networkPartitionDetector;
@@ -110,10 +95,9 @@ public class HazelcastClusterAgent implements ClusterAgent {
     */
     public static final int MAX_NODE_ID_READ_ATTEMPTS = 4;
     
-    public HazelcastClusterAgent(HazelcastInstance hazelcastInstance) {
+    public CoordinationConfigurableClusterAgent(HazelcastInstance hazelcastInstance) {
 
         this.hazelcastInstance = hazelcastInstance;
-        this.isCoordinator = new AtomicBoolean(false);
         nodeIdMap = hazelcastInstance.getMap(CoordinationConstants.NODE_ID_MAP_NAME);
 
         boolean isNetworkPartitionDectectionEnabled = AndesConfigurationManager.readValue(
@@ -125,51 +109,38 @@ public class HazelcastClusterAgent implements ClusterAgent {
             networkPartitionDetector = new DisabledNetworkPartitionDetector();
         }
 
-        HazelcastLifecycleListener lifecycleListener = new HazelcastLifecycleListener(networkPartitionDetector);
-        hazelcastInstance.getLifecycleService().addLifecycleListener(lifecycleListener);
+        boolean isRDBMBasedCoordinationEnabled = AndesConfigurationManager.readValue(
+                AndesConfiguration.RDBMS_BASED_COORDINATION);
 
-    }
-
-    /**
-     * Membership listener calls this method when current node is elected as the coordinator
-     */
-    public void localNodeElectedAsCoordinator() {
-        updateThriftCoordinatorDetailsToMap();
-        updateCoordinatorNodeDetailMap();
-
-        manager.localNodeElectedAsCoordinator();
+        if (isRDBMBasedCoordinationEnabled) {
+            coordinationStrategy = new RDBMSCoordinationStrategy();
+        } else {
+            coordinationStrategy = new HazelcastCoordinationStrategy(hazelcastInstance);
+        }
     }
 
     /**
      * Membership listener calls this method when a new node joins the cluster
      *
-     * @param member
-     *            New member
-     * @param clusterSize The number of members in the cluster.
+     * @param nodeId Node ID of the new member
      */
-    public void memberAdded(Member member, int clusterSize) {
-        networkPartitionDetector.memberAdded(member, clusterSize);
-        checkAndNotifyCoordinatorChange();
-        manager.memberAdded(CoordinationConstants.NODE_NAME_PREFIX + member.getSocketAddress());
+    public void memberAdded(String nodeId) {
+        manager.memberAdded(nodeId);
     }
 
     /**
      * Membership listener calls this method when a node leaves the cluster
      *
-     * @param member
-     *            member who left
-     * @param clusterSize The number of members in the cluster.
+     * @param nodeId Node ID of the member who left
      * @throws AndesException
      */
-    public void memberRemoved(Member member, int clusterSize) throws AndesException {
-        networkPartitionDetector.memberRemoved(member, clusterSize);
-        checkAndNotifyCoordinatorChange();
-        manager.memberRemoved(getIdOfNode(member));
+    public void memberRemoved(String nodeId) throws AndesException {
+        manager.memberRemoved(nodeId);
     }
 
-    
-    public void networkPatitionMerged(){
-    	networkPartitionDetector.networkPartitionMerged();
+    public void becameCoordinator() {
+        updateCoordinatorNodeDetailMap();
+        manager.localNodeElectedAsCoordinator();
     }
     
     /**
@@ -200,16 +171,22 @@ public class HazelcastClusterAgent implements ClusterAgent {
      */
     @Override
     public boolean isCoordinator() {
-        Member oldestMember = hazelcastInstance.getCluster().getMembers().iterator().next();
-
-        return oldestMember.localMember();
+        return coordinationStrategy.isCoordinator();
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void start(ClusterManager manager) throws AndesException {
+    public InetSocketAddress getThriftAddressOfCoordinator() {
+        return coordinationStrategy.getThriftAddressOfCoordinator();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void start(ClusterManager manager) throws AndesException{
         this.manager = manager;
 
         Member localMember = hazelcastInstance.getCluster().getLocalMember();
@@ -217,12 +194,7 @@ public class HazelcastClusterAgent implements ClusterAgent {
 
         checkForDuplicateNodeId(localMember);
 
-        // Register listener for membership changes
-        listenerRegistrationId = hazelcastInstance.getCluster()
-                                                  .addMembershipListener(new AndesMembershipListener(this));
-
         coordinatorNodeDetailsMap = hazelcastInstance.getMap(CoordinationConstants.COORDINATOR_NODE_DETAILS_MAP_NAME);
-        thriftServerDetailsMap = hazelcastInstance.getMap(CoordinationConstants.THRIFT_SERVER_DETAILS_MAP_NAME);
 
         // Generate a unique id for this node for message id generation
         IdGenerator idGenerator = this.hazelcastInstance.getIdGenerator(
@@ -232,8 +204,13 @@ public class HazelcastClusterAgent implements ClusterAgent {
             log.debug("Unique ID generation for message ID generation:" + uniqueIdOfLocalMember);
         }
 
+        String thriftCoordinatorServerIP = AndesContext.getInstance().getThriftServerHost();
+        int thriftCoordinatorServerPort = AndesContext.getInstance().getThriftServerPort();
+        InetSocketAddress thriftAddress = new InetSocketAddress(thriftCoordinatorServerIP, thriftCoordinatorServerPort);
+
+        coordinationStrategy.start(this, getLocalNodeIdentifier(), thriftAddress);
+
         networkPartitionDetector.start();
-        memberAdded(hazelcastInstance.getCluster().getLocalMember(), hazelcastInstance.getCluster().getMembers().size());
     }
 
     /**
@@ -286,7 +263,7 @@ public class HazelcastClusterAgent implements ClusterAgent {
      */
     @Override
     public void stop() {
-        hazelcastInstance.getCluster().removeMembershipListener(listenerRegistrationId);
+        coordinationStrategy.stop();
     }
 
     /**
@@ -312,14 +289,8 @@ public class HazelcastClusterAgent implements ClusterAgent {
      * {@inheritDoc}
      */
     @Override
-    public List<String> getAllNodeIdentifiers() {
-        Set<Member> members = hazelcastInstance.getCluster().getMembers();
-        List<String> nodeIDList = new ArrayList<>();
-        for (Member member : members) {
-            nodeIDList.add(getIdOfNode(member));
-        }
-
-        return nodeIDList;
+    public List<String> getAllNodeIdentifiers() throws AndesException {
+        return coordinationStrategy.getAllNodeIdentifiers();
     }
 
     /**
@@ -335,22 +306,6 @@ public class HazelcastClusterAgent implements ClusterAgent {
     }
 
     /**
-     * Set coordinator's thrift server IP and port in hazelcast map.
-     */
-    private void updateThriftCoordinatorDetailsToMap() {
-
-        String thriftCoordinatorServerIP = AndesContext.getInstance().getThriftServerHost();
-        int thriftCoordinatorServerPort = AndesContext.getInstance().getThriftServerPort();
-
-
-        log.info("This node is elected as the Slot Coordinator. Registering " + thriftCoordinatorServerIP + ":"
-                 + thriftCoordinatorServerPort);
-        thriftServerDetailsMap.put(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_IP, thriftCoordinatorServerIP);
-        thriftServerDetailsMap.put(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_PORT,
-                                   Integer.toString(thriftCoordinatorServerPort));
-    }
-
-    /**
      * Sets coordinator's hostname and port in {@link org.wso2.andes.server.cluster.coordination
      * .CoordinationConstants#COORDINATOR_NODE_DETAILS_MAP_NAME} hazelcast map.
      */
@@ -361,17 +316,6 @@ public class HazelcastClusterAgent implements ClusterAgent {
                                       localMember.getSocketAddress().getAddress().getHostAddress());
         coordinatorNodeDetailsMap.put(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_PORT,
                                       Integer.toString(localMember.getSocketAddress().getPort()));
-    }
-
-    /**
-     * Check if the current node is the new coordinator and notify cluster manager.
-     */
-    private void checkAndNotifyCoordinatorChange() {
-        if (isCoordinator() && isCoordinator.compareAndSet(false, true)) {
-            localNodeElectedAsCoordinator();
-        } else {
-            isCoordinator.set(false);
-        }
     }
 
     /**

@@ -12,7 +12,7 @@ public interface NetworkPartitionListener {
      * @param currentNodeCount
      *            current size of the cluster
      */
-    public void minimumNodeCountNotFulfilled(int currentNodeCount);
+    void minimumNodeCountNotFulfilled(int currentNodeCount);
 
     /**
      * Invoked when a current cluster size become equal to expected minimum
@@ -20,7 +20,7 @@ public interface NetworkPartitionListener {
      * @param currentNodeCount
      *            current size of the cluster
      */
-    public void minimumNodeCountFulfilled(int currentNodeCount);
+    void minimumNodeCountFulfilled(int currentNodeCount);
 
     /**
      * Invoked when a clustering framework failed and can't be recovered.

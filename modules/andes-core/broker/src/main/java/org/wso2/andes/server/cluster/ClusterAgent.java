@@ -21,6 +21,7 @@ package org.wso2.andes.server.cluster;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.cluster.error.detection.NetworkPartitionListener;
 
+import java.net.InetSocketAddress;
 import java.util.List;
 
 /**
@@ -40,7 +41,7 @@ public interface ClusterAgent {
      *
      * @return list of member ids
      */
-    List<String> getAllNodeIdentifiers();
+    List<String> getAllNodeIdentifiers() throws AndesException;
 
     /**
      * Return current coordinator hostname and port
@@ -69,6 +70,14 @@ public interface ClusterAgent {
      * @return true if the current is the coordinator, else false
      */
     boolean isCoordinator();
+
+    /**
+     * Return the socket address of the coordinator Node. This socket address can be used to communicate with the
+     * coordinator node using thrift.
+     *
+     * @return Socket address of the coordinator thrift server if present, null otherwise
+     */
+    InetSocketAddress getThriftAddressOfCoordinator();
 
     /**
      * Start listening to cluster events

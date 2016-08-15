@@ -114,7 +114,12 @@ public class RDBMSConstants {
     protected static final String SLOT_TABLE = "MB_SLOT";
     protected static final String SLOT_MESSAGE_ID_TABLE = "MB_SLOT_MESSAGE_ID";
     protected static final String QUEUE_TO_LAST_ASSIGNED_ID = "MB_QUEUE_TO_LAST_ASSIGNED_ID";
+    // Coordination related tables
+    protected static final String CLUSTER_COORDINATOR_HEARTBEAT_TABLE = "MB_CLUSTER_COORDINATOR_HEARTBEAT";
+    protected static final String CLUSTER_NODE_HEARTBEAT_TABLE = "MB_CLUSTER_NODE_HEARTBEAT";
 
+    //Cluster membership table
+    protected static final String MEMBERSHIP_TABLE = "MB_MEMBERSHIP";
     /**
      * This dataset maps to the nodeID - localSafeZone association within the broker.
      */
@@ -134,6 +139,12 @@ public class RDBMSConstants {
     protected static final String QUEUE_DATA = "QUEUE_DATA";
     protected static final String MESSAGE_COUNT = "MESSAGE_COUNT";
     protected static final String TIME_STAMP = "TIME_STAMP";
+    protected static final String ANCHOR = "ANCHOR";
+    protected static final String INSTANCE_ID = "INSTANCE_ID";
+    protected static final String LAST_HEARTBEAT = "LAST_HEARTBEAT";
+    protected static final String IS_NEW_NODE = "IS_NEW_NODE";
+    protected static final String THRIFT_HOST = "THRIFT_HOST";
+    protected static final String THRIFT_PORT = "THRIFT_PORT";
 
     //Slot table columns
     protected static final String SLOT_ID = "SLOT_ID";
@@ -144,6 +155,13 @@ public class RDBMSConstants {
     protected static final String ASSIGNED_NODE_ID = "ASSIGNED_NODE_ID";
     protected static final String ASSIGNED_QUEUE_NAME = "ASSIGNED_QUEUE_NAME";
 
+    // Constants
+    protected static final int COORDINATOR_ANCHOR = 1;
+
+    //columns for cluster membership communication
+    protected static final String MEMBERSHIP_CHANGE_TYPE = "CHANGE_TYPE";
+    protected static final String MEMBERSHIP_CHANGED_MEMBER_ID = "CHANGED_MEMBER_ID";
+    protected static final String EVENT_ID = "EVENT_ID";
 
     // prepared statements for Message Store
     protected static final String PS_INSERT_MESSAGE_PART =
@@ -701,6 +719,92 @@ public class RDBMSConstants {
             + " VALUES (?,?)";
 
     /**
+     * Prepared statement to insert coordinator row
+     */
+    protected static final String PS_INSERT_COORDINATOR_ROW =
+            "INSERT INTO " + CLUSTER_COORDINATOR_HEARTBEAT_TABLE
+                    + "(" + ANCHOR + ","
+                    + NODE_ID + ","
+                    + LAST_HEARTBEAT + ","
+                    + THRIFT_HOST + ","
+                    + THRIFT_PORT + ")"
+                    + " VALUES (?,?,?,?,?)";
+
+    /**
+     * Prepared statement to insert coordinator row
+     */
+    protected static final String PS_INSERT_NODE_HEARTBEAT_ROW =
+            "INSERT INTO " + CLUSTER_NODE_HEARTBEAT_TABLE
+                    + "(" + NODE_ID + ","
+                    + LAST_HEARTBEAT + ","
+                    + IS_NEW_NODE + ")"
+                    + " VALUES (?,?,1)";
+
+    /**
+     * Prepared statement to check if coordinator
+     */
+    protected static final String PS_GET_COORDINATOR_ROW_FOR_NODE_ID =
+            "SELECT " + LAST_HEARTBEAT
+                    + " FROM " + CLUSTER_COORDINATOR_HEARTBEAT_TABLE
+                    + " WHERE " + NODE_ID + "=?"
+                    + " AND " + ANCHOR + "=" + COORDINATOR_ANCHOR;
+
+    /**
+     * Prepared statement to check if coordinator
+     */
+    protected static final String PS_GET_COORDINATOR_HEARTBEAT =
+            "SELECT " + LAST_HEARTBEAT
+                    + " FROM " + CLUSTER_COORDINATOR_HEARTBEAT_TABLE
+                    + " WHERE " + ANCHOR + "=" + COORDINATOR_ANCHOR;
+
+    /**
+     * Prepared statement to check if coordinator
+     */
+    protected static final String PS_GET_COORDINATOR_THRIFT_ADDRESS =
+            "SELECT " + THRIFT_HOST + "," + THRIFT_PORT
+                    + " FROM " + CLUSTER_COORDINATOR_HEARTBEAT_TABLE
+                    + " WHERE " + ANCHOR + "=" + COORDINATOR_ANCHOR;
+
+    /**
+     * Prepared statement to update coordinator heartbeat
+     */
+    protected static final String PS_UPDATE_COORDINATOR_HEARTBEAT =
+            "UPDATE " + CLUSTER_COORDINATOR_HEARTBEAT_TABLE
+                    + " SET " + LAST_HEARTBEAT + " =? "
+                    + " WHERE " + NODE_ID + "=?"
+                    + " AND " + ANCHOR + "=" + COORDINATOR_ANCHOR;
+
+    /**
+     * Prepared statement to update coordinator heartbeat
+     */
+    protected static final String PS_UPDATE_NODE_HEARTBEAT =
+            "UPDATE " + CLUSTER_NODE_HEARTBEAT_TABLE
+                    + " SET " + LAST_HEARTBEAT + " =? "
+                    + " WHERE " + NODE_ID + "=?";
+
+    /**
+     * Prepared statement to update coordinator heartbeat
+     */
+    protected static final String PS_MARK_NODE_NOT_NEW =
+            "UPDATE " + CLUSTER_NODE_HEARTBEAT_TABLE
+                    + " SET " + IS_NEW_NODE + " =0 "
+                    + " WHERE " + NODE_ID + "=?";
+
+    /**
+     * Prepared statement to check if coordinator
+     */
+    protected static final String PS_GET_ALL_NODE_HEARTBEAT =
+            "SELECT " + NODE_ID + "," + LAST_HEARTBEAT + "," + IS_NEW_NODE
+                    + " FROM " + CLUSTER_NODE_HEARTBEAT_TABLE;
+
+    protected static final String PS_DELETE_COORDINATOR =
+            "DELETE FROM " + CLUSTER_COORDINATOR_HEARTBEAT_TABLE
+                    + " WHERE " + ANCHOR + "=" + COORDINATOR_ANCHOR;
+
+    protected static final String PS_DELETE_NODE_HEARTBEAT =
+            "DELETE FROM " + CLUSTER_NODE_HEARTBEAT_TABLE
+                    + " WHERE " + NODE_ID + "=?";
+    /**
      * Prepared statement to get slot message ids
      */
     protected static final String PS_GET_MESSAGE_IDS =
@@ -845,6 +949,38 @@ public class RDBMSConstants {
                     + " SET " + DLC_QUEUE_ID + "=?"
                     + " WHERE " + MESSAGE_ID + "=?";
 
+    /**
+     * Prepared statement to insert membership change event.
+     */
+    protected static final String PS_INSERT_MEMBERSHIP_EVENT =
+            "INSERT INTO " + MEMBERSHIP_TABLE + " ("
+            + NODE_ID + ","
+            + MEMBERSHIP_CHANGE_TYPE + ","
+            + MEMBERSHIP_CHANGED_MEMBER_ID + ")"
+            + " VALUES ( ?,?,?)";
+
+    /**
+     * Prepared statement to select membership change event destined to a particular member.
+     */
+    protected static final String PS_SELECT_MEMBERSHIP_EVENT =
+            "SELECT " + MEMBERSHIP_CHANGE_TYPE + ", " + MEMBERSHIP_CHANGED_MEMBER_ID
+            + " FROM " + MEMBERSHIP_TABLE
+            + " WHERE " + NODE_ID + "=?"
+                    + " ORDER BY "  + EVENT_ID;
+
+    /**
+     * Prepared statement to clear the membership event table.
+     */
+    protected static final String PS_CLEAR_ALL_MEMBERSHIP_EVENTS =
+            "DELETE FROM " + MEMBERSHIP_TABLE;
+
+    /**
+     * Prepared statement to slear membership change events destined to a particular member.
+     */
+    protected static final String PS_CLEAN_MEMBERSHIP_EVENTS_FOR_NODE =
+            "DELETE FROM " + MEMBERSHIP_TABLE
+            + " WHERE " + NODE_ID + "=?";
+
     // Message Store related jdbc tasks executed
     protected static final String TASK_STORING_MESSAGE_PARTS = "storing message parts.";
     protected static final String TASK_DELETING_MESSAGE_PARTS = "deleting message parts.";
@@ -948,6 +1084,13 @@ public class RDBMSConstants {
     protected static final String TASK_GET_ALL_QUEUES = "getting all queues";
     protected static final String TASK_GET_ALL_QUEUES_IN_SUBMITTED_SLOTS = "getting all queues in submitted slots";
     protected static final String TASK_CLEAR_SLOT_TABLES = "clearing slot tables";
+    protected static final String TASK_ADD_COORDINATOR_ROW = "adding coordinator row";
+    protected static final String TASK_GET_COORDINATOR_INFORMATION = "reading coordinator information";
+    protected static final String TASK_CHECK_COORDINATOR_VALIDITY = "checking coordinator validity";
+    protected static final String TASK_UPDATE_COORDINATOR_HEARTBEAT = "updating coordinator heartbeat";
+    protected static final String TASK_REMOVE_COORDINATOR = "removing coordinator heartbeat";
+    protected static final String TASK_REMOVE_NODE_HEARTBEAT = "removing node heartbeat entry";
+    protected static final String TASK_MARK_NODE_NOT_NEW = "marking node as not new";
 
     /**
      * Messages related to checking message store is operational.

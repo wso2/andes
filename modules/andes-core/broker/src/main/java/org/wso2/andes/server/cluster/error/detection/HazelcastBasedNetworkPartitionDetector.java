@@ -19,10 +19,14 @@
 package org.wso2.andes.server.cluster.error.detection;
 
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.MemberAttributeEvent;
+import com.hazelcast.core.MembershipEvent;
+import com.hazelcast.core.MembershipListener;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.HazelcastLifecycleListener;
 
 import java.util.Collections;
 import java.util.SortedMap;
@@ -35,7 +39,7 @@ import java.util.Collection;
  * Detects network partitions (and minimum node count is not being in the
  * cluster) based on hazelcast member joined/left, cluster merged events
  */
-public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionDetector {
+public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionDetector, MembershipListener {
 
     /**
      * log for this class
@@ -66,7 +70,16 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
      */
     private boolean isNetworkPartitioned;
 
-    
+    /**
+     * Membership listener registration ID
+     */
+    private String membershipListener;
+
+    /**
+     * Lifecycle listener registration ID
+     */
+    private String lifecycleListener;
+
     /**
      * The constructor 
      * @param hazelcastInstance hazelcast instance
@@ -172,6 +185,9 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
      */
     @Override
     public void start() {
+        membershipListener = hazelcastInstance.getCluster().addMembershipListener(this);
+        lifecycleListener = hazelcastInstance.getLifecycleService()
+                                             .addLifecycleListener(new HazelcastLifecycleListener(this));
         detectNetworkPartitions(PartitionEventType.START_UP, hazelcastInstance.getCluster().getMembers().size());
     }
 
@@ -180,24 +196,15 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
      * that a new broker node joined the cluster.
      */
     @Override
-    public void memberAdded(Object member, int clusterSize) {
-        detectNetworkPartitions(PartitionEventType.MEMBER_ADDED, clusterSize);
+    public void stop() {
+        hazelcastInstance.getCluster().removeMembershipListener(membershipListener);
+        hazelcastInstance.getLifecycleService().removeLifecycleListener(lifecycleListener);
     }
 
     /**
-     * A Convenient method meant to be invoked when clustering framework detects
-     * that a broker node left the cluster.
+     * Invoked when clustering mechanism ( / library, i.e. Hazelcast) detects
+     * that network partition(s) have been resolved.
      */
-    @Override
-    public void memberRemoved(Object member, int clusterSize) {
-        detectNetworkPartitions(PartitionEventType.MEMBER_REMOVED, clusterSize);
-    }
-
-    /**
-     * A Convenient method meant to be invoked when clustering framework detects
-     * that a network partition merged.
-     */
-    @Override
     public void networkPartitionMerged() {
         detectNetworkPartitions(PartitionEventType.CLUSTER_MERGED, hazelcastInstance.getCluster().getMembers().size());
     }
@@ -248,6 +255,34 @@ public class HazelcastBasedNetworkPartitionDetector implements NetworkPartitionD
                 log.warn("Error while updating minimum node count fulfilled for listener: " + listener, e);
             }
         }
+    }
+
+    /*
+    * ======================== Methods from MembershipListener ============================
+    */
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void memberAdded(MembershipEvent membershipEvent) {
+        detectNetworkPartitions(PartitionEventType.MEMBER_ADDED, membershipEvent.getMembers().size());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void memberRemoved(MembershipEvent membershipEvent) {
+        detectNetworkPartitions(PartitionEventType.MEMBER_REMOVED, membershipEvent.getMembers().size());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void memberAttributeChanged(MemberAttributeEvent memberAttributeEvent) {
+        // Do nothing
     }
 
     /**
