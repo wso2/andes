@@ -417,15 +417,14 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
         }
         // Access control
         if (subscription instanceof SubscriptionImpl.BrowserSubscription) {
-            if (!AMQPAuthorizationManager.isAuthorized(AuthorizeAction.BROWSE, this, authorizeSubject)) {
+            if (!getVirtualHost().getSecurityManager().authoriseBrowse(this)) {
                 throw new AMQSecurityException("Permission denied");
             }
         } else {
-            if (!AMQPAuthorizationManager.isAuthorized(AuthorizeAction.SUBSCRIBE, this, authorizeSubject)) {
+            if (!getVirtualHost().getSecurityManager().authoriseConsume(this)) {
                 throw new AMQSecurityException("Permission denied");
             }
         }
-
         Boolean sharedSubscribersAllowed = AndesConfigurationManager.readValue
                 (AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
 
