@@ -18,12 +18,6 @@
 
 package org.wso2.andes.amqp;
 
-import org.wso2.carbon.andes.core.internal.AndesContext;
-import org.wso2.carbon.andes.core.security.AuthorizeAction;
-import org.wso2.andes.server.queue.AMQQueue;
-
-import javax.security.auth.Subject;
-
 /**
  * Manages authorization of QPID objects against Andes.
  */
@@ -37,10 +31,10 @@ public class AMQPAuthorizationManager {
      * @param authorizedSubject The subject which is going to access the queue
      * @return True if authorized
      */
-    public static boolean isAuthorized(AuthorizeAction action, AMQQueue amqQueue, Subject authorizedSubject) {
-        return AndesContext.getInstance().getAndesAuthorizationManager().
-                isAuthorized(authorizedSubject, amqQueue.getResourceName(), action);
-    }
+//    public static boolean isAuthorized(AuthorizeAction action, AMQQueue amqQueue, Subject authorizedSubject) {
+////        return AndesContext.getInstance().getAndesAuthorizationManager().
+////                isAuthorized(authorizedSubject, amqQueue.getResourceName(), action);
+//    }
 
 
 }

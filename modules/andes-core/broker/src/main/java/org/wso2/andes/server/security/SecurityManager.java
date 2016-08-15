@@ -20,16 +20,17 @@ package org.wso2.andes.server.security;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.log4j.Logger;
-import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPluginFactory;
+import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.plugins.PluginManager;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.security.access.ObjectProperties;
 import org.wso2.andes.server.security.access.Operation;
+import org.wso2.carbon.andes.core.internal.AndesContext;
+import org.wso2.carbon.andes.core.security.AuthorizeAction;
 
-import javax.security.auth.Subject;
 import java.net.SocketAddress;
 import java.security.Principal;
 import java.util.Arrays;
@@ -37,9 +38,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
+import javax.security.auth.Subject;
 
-import static org.wso2.andes.server.security.access.ObjectType.*;
-import static org.wso2.andes.server.security.access.Operation.*;
+import static org.wso2.andes.server.security.access.ObjectType.EXCHANGE;
+import static org.wso2.andes.server.security.access.ObjectType.METHOD;
+import static org.wso2.andes.server.security.access.ObjectType.OBJECT;
+import static org.wso2.andes.server.security.access.ObjectType.QUEUE;
+import static org.wso2.andes.server.security.access.ObjectType.VIRTUALHOST;
+import static org.wso2.andes.server.security.access.Operation.ACCESS;
+import static org.wso2.andes.server.security.access.Operation.BROWSE;
+import static org.wso2.andes.server.security.access.Operation.CONSUME;
+import static org.wso2.andes.server.security.access.Operation.CREATE;
+import static org.wso2.andes.server.security.access.Operation.PUBLISH;
+import static org.wso2.andes.server.security.access.Operation.PURGE;
 
 /**
  * The security manager contains references to all loaded {@link SecurityPlugin}s and delegates security decisions to them based
@@ -54,7 +66,7 @@ public class SecurityManager
     
     /** Container for the {@link Principal} that is using to this thread. */
     private static final ThreadLocal<Subject> _subject = new ThreadLocal<Subject>();
-    
+
     private PluginManager _pluginManager;
     private Map<String, SecurityPluginFactory> _pluginFactories = new HashMap<String, SecurityPluginFactory>();
     private Map<String, SecurityPlugin> _globalPlugins = new HashMap<String, SecurityPlugin>();
@@ -252,13 +264,12 @@ public class SecurityManager
     
     public boolean authoriseBind(final Exchange exch, final AMQQueue queue, final AMQShortString routingKey)
     {
-        return checkAllPlugins(new AccessCheck()
-        {
-            Result allowed(SecurityPlugin plugin)
-            {
-                return plugin.authorise(BIND, EXCHANGE, new ObjectProperties(exch, queue, routingKey));
-            }
-        });
+        Properties properties = new Properties();
+        properties.put("exch", exch.getName());
+        properties.put("queue", queue.getName());
+        properties.put("routingKey", routingKey.asString());
+        return AndesContext.getInstance().getAndesAuthorizationManager().
+                isAuthorized(getThreadSubject(), queue.getName(), AuthorizeAction.BIND, properties);
     }
     
     // TODO not implemented yet, awaiting consensus
@@ -307,13 +318,10 @@ public class SecurityManager
 
     public boolean authoriseConsume(final AMQQueue queue)
     {
-        return checkAllPlugins(new AccessCheck()
-        {
-            Result allowed(SecurityPlugin plugin)
-            {
-                return plugin.authorise(CONSUME, QUEUE, new ObjectProperties(queue));
-            }
-        });
+        Properties properties = new Properties();
+        properties.put("queue", queue);
+        return AndesContext.getInstance().getAndesAuthorizationManager().
+                isAuthorized(getThreadSubject(), queue.getName(), AuthorizeAction.CONSUME, properties);
     }
 
     public boolean authoriseBrowse(final AMQQueue queue)
@@ -354,24 +362,38 @@ public class SecurityManager
     public boolean authoriseCreateQueue(final Boolean autoDelete, final Boolean durable, final Boolean exclusive,
             final Boolean nowait, final Boolean passive, final AMQShortString queueName, final String owner)
     {
-        return checkAllPlugins(new AccessCheck()
-        {
-            Result allowed(SecurityPlugin plugin)
-            {
-                return plugin.authorise(CREATE, QUEUE, new ObjectProperties(autoDelete, durable, exclusive, nowait, passive, queueName, owner));
-            }
-        });
+//        return checkAllPlugins(new AccessCheck()
+//        {
+//            Result allowed(SecurityPlugin plugin)
+//            {
+        Properties properties = new Properties();
+        properties.put("autoDelete", autoDelete);
+        properties.put("durable", durable);
+        properties.put("exclusive", exclusive);
+//        properties.put("nowait", nowait);
+//        properties.put("passive", passive);
+//        properties.put("owner", owner);
+                return AndesContext.getInstance().getAndesAuthorizationManager().
+                        isAuthorized(getThreadSubject(), queueName.asString(), AuthorizeAction.CREATE, properties);
+//                return plugin.authorise(CREATE, QUEUE, new ObjectProperties(autoDelete, durable, exclusive, nowait, passive, queueName, owner));
+//            }
+//        });
     }
 
     public boolean authoriseDelete(final AMQQueue queue)
     {
-        return checkAllPlugins(new AccessCheck()
-        {
-            Result allowed(SecurityPlugin plugin)
-            {
-                return plugin.authorise(DELETE, QUEUE, new ObjectProperties(queue));
-            }
-        });
+//        return checkAllPlugins(new AccessCheck()
+//        {
+//            Result allowed(SecurityPlugin plugin)
+//            {
+//                return plugin.authorise(DELETE, QUEUE, new ObjectProperties(queue));
+//            }
+//        });
+        Properties properties = new Properties();
+        properties.put("type", "queue");
+        return AndesContext.getInstance().getAndesAuthorizationManager().
+                isAuthorized(getThreadSubject(), queue.getName(), AuthorizeAction.DELETE, properties);
+
     }
 
     public boolean authoriseDelete(final Exchange exchange)
@@ -409,12 +431,18 @@ public class SecurityManager
 
     public boolean authoriseUnbind(final Exchange exch, final AMQShortString routingKey, final AMQQueue queue)
     {
-        return checkAllPlugins(new AccessCheck()
-        {
-            Result allowed(SecurityPlugin plugin)
-            {
-                return plugin.authorise(UNBIND, EXCHANGE, new ObjectProperties(exch, queue, routingKey));
-            }
-        });
+//        return checkAllPlugins(new AccessCheck()
+//        {
+//            Result allowed(SecurityPlugin plugin)
+//            {
+//                return plugin.authorise(UNBIND, EXCHANGE, new ObjectProperties(exch, queue, routingKey));
+//            }
+//        });
+        Properties properties = new Properties();
+        properties.put("exch", exch.getName());
+        properties.put("queue", queue.getName());
+        properties.put("routingKey", routingKey.asString());
+        return AndesContext.getInstance().getAndesAuthorizationManager().
+                isAuthorized(getThreadSubject(), routingKey.asString(), AuthorizeAction.UNBIND, properties);
     }
 }

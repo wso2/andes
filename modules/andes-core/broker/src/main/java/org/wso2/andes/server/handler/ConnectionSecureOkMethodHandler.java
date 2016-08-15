@@ -28,7 +28,6 @@ import org.wso2.andes.framing.MethodRegistry;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.registry.ApplicationRegistry;
-import org.wso2.andes.server.security.auth.AuthenticationResult;
 import org.wso2.andes.server.state.AMQState;
 import org.wso2.andes.server.state.AMQStateManager;
 import org.wso2.andes.server.state.StateAwareMethodListener;
