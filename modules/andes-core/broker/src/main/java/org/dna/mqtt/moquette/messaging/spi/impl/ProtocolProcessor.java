@@ -833,6 +833,9 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
         }
 
         MQTTAuthorizationSubject authSubject = authSubjects.get(clientID);
+        if (authSubject == null) {
+            return;
+        }
         SubAckMessage ackMessage = new SubAckMessage();
         ackMessage.setMessageID(msg.getMessageID());
         for (SubscribeMessage.Couple req : msg.subscriptions()) {
@@ -860,7 +863,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
                         } catch (InterruptedException e) {
                             // Restore the interrupted status
                             Thread.currentThread().interrupt();
-                            log.error("Failed to disconnect the client " + clientID);
+                            log.error("Failed to disconnect the client " + clientID, e);
                         }
                         return;
                     } else {
