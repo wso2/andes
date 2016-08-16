@@ -192,13 +192,9 @@ public class VirtualHostImpl implements VirtualHost {
         exchangeFactory = new DefaultExchangeFactory(this);
         exchangeFactory.initialise(configuration);
 
-        exchangeRegistry = new DefaultExchangeRegistry(this);
-
         StartupRoutingTable configFileRT = new StartupRoutingTable();
 
         durableConfigurationStore = configFileRT;
-
-        bindingFactory = new BindingFactory(this);
 
         if (store != null) {
             messageStore = store;
@@ -207,7 +203,10 @@ public class VirtualHostImpl implements VirtualHost {
             initialiseAndesStores(hostConfig);
         }
 
-        AndesKernelBoot.clearMembershipEventsAndRecoverDistributedSlotMap();
+        AndesKernelBoot.startAndesCluster();
+        exchangeRegistry = new DefaultExchangeRegistry(this);
+        bindingFactory = new BindingFactory(this);
+
 
         // This needs to be after the RT has been defined as it creates the default durable exchanges.
         initialiseModel(configuration);
@@ -339,7 +338,7 @@ public class VirtualHostImpl implements VirtualHost {
     private void initialiseAndesStores(VirtualHostConfiguration hostConfig) throws Exception {
 
         //Set virtual host
-        AndesKernelBoot.setVirtualHost(this);
+        AndesKernelBoot.initVirtualHostConfigSynchronizer(this);
 
         //kernel will start message stores for Andes
         AndesKernelBoot.startAndesStores();

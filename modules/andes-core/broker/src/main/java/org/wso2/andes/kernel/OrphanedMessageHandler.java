@@ -27,21 +27,9 @@ import org.wso2.andes.subscription.LocalSubscription;
 /**
  * This class will handle removing messages depending on subscription behavior
  */
-public class OrphanedMessageHandler implements SubscriptionListener {
+public class OrphanedMessageHandler implements LocalSubscriptionChangedListener {
     private static Log log = LogFactory.getLog(OrphanedMessageHandler.class);
     AndesSubscriptionManager subscriptionManager = ClusterResourceHolder.getInstance().getSubscriptionManager();
-
-    /**
-     * Handle subscription changes in cluster. This will perform
-     * what needs to be done to the messages addressed to the subscriber
-     * @param subscription subscription changed
-     * @param changeType type of change happened
-     * @throws AndesException
-     */
-    @Override
-    public void handleClusterSubscriptionsChanged(AndesSubscription subscription, SubscriptionChange changeType) throws AndesException {
-
-    }
 
     /**
      * Handle local subscription changes. This will perform
@@ -52,8 +40,7 @@ public class OrphanedMessageHandler implements SubscriptionListener {
      */
     @Override
     public void handleLocalSubscriptionsChanged(LocalSubscription localSubscription,
-                                                SubscriptionChange changeType)
-            throws AndesException {
+            SubscriptionListener.SubscriptionChange changeType) throws AndesException {
 
         switch (changeType) {
             case ADDED:

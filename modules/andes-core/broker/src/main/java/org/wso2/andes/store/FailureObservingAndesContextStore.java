@@ -30,6 +30,7 @@ import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
 import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEvent;
 import org.wso2.andes.server.cluster.NodeHeartBeatData;
+import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 
 import java.net.InetSocketAddress;
 import java.util.List;
@@ -1048,6 +1049,56 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     public void clearMembershipEvents(String nodeID) throws AndesException {
         try {
             wrappedAndesContextStoreInstance.clearMembershipEvents(nodeID);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public void storeClusterNotification(List<String> clusterNodes, String originatedNode, String
+            clusterNotificationType, String notification) throws AndesException {
+        try {
+            wrappedAndesContextStoreInstance.storeClusterNotification(clusterNodes, originatedNode,
+                    clusterNotificationType, notification);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}.
+     */
+    public List<ClusterNotification> readClusterNotifications(String nodeID) throws AndesException {
+        try {
+            return wrappedAndesContextStoreInstance.readClusterNotifications(nodeID);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public void clearClusterNotifications() throws AndesException {
+        try {
+            wrappedAndesContextStoreInstance.clearClusterNotifications();
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public void clearClusterNotifications(String nodeID) throws AndesException {
+        try {
+            wrappedAndesContextStoreInstance.clearClusterNotifications(nodeID);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

@@ -375,9 +375,8 @@ public class FlowControlManager  implements StoreHealthListener, NetworkPartitio
      */
     @Override
     public void storeNonOperational(HealthAwareStore store, Exception ex) {
-        blockListenersOnErrorBasedFlowControl(false);// sending false to be
-                                                     // consistent with previous
-                                                     // behavior.
+        //Remove all local subscriptions and enable error based flow control when the store becomes non-operational.
+        blockListenersOnErrorBasedFlowControl(true);
     }
 
     /**

@@ -33,10 +33,9 @@ import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.kernel.slot.SlotManagerStandalone;
 import org.wso2.andes.kernel.slot.SlotMessageCounter;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
+import org.wso2.andes.server.cluster.coordination.EventListenerCreator;
 import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerator;
-import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionEngine;
@@ -138,10 +137,11 @@ public class MessagingEngine {
      *
      * @param messageStore       MessageStore
      * @param subscriptionEngine SubscriptionStore
+     * @param listenerCreator variable to create event listeners such as queueListeners.
      * @throws AndesException
      */
     public void initialise(MessageStore messageStore, SubscriptionEngine subscriptionEngine,
-                           MessageExpiryManager messageExpiryManager) throws AndesException {
+            MessageExpiryManager messageExpiryManager, EventListenerCreator listenerCreator) throws AndesException {
 
         configureMessageIDGenerator();
 
@@ -149,8 +149,8 @@ public class MessagingEngine {
         this.subscriptionEngine = subscriptionEngine;
         this.messageExpiryManager = messageExpiryManager;
 
-        //register listeners for queue changes
-        queueListener = new ClusterCoordinationHandler(HazelcastAgent.getInstance());
+        //register listener for queue changes
+        queueListener = listenerCreator.getQueueListener();
 
         /*
         Initialize the SlotCoordinator
@@ -305,9 +305,14 @@ public class MessagingEngine {
 
         MessageFlusher messageFlusher = MessageFlusher.getInstance();
         MessageDeliveryInfo messageDeliveryInfo = messageFlusher
-                .getMessageDeliveryInfo(destination, protocolType, destinationType);
-        messageDeliveryInfo.setLastPurgedTimestamp(purgedTimestamp);
-        return messageDeliveryInfo.clearReadButUndeliveredMessages();
+                .getMessageDeliveryInfo(destination, destinationType);
+        //This check is done as a temporary fix. The method should not at all be called if delivery information is
+        // not there.
+        if (null != messageDeliveryInfo) {
+            messageDeliveryInfo.setLastPurgedTimestamp(purgedTimestamp);
+            return messageDeliveryInfo.clearReadButUndeliveredMessages();
+        }
+        return 0;
     }
 
     /**

@@ -211,8 +211,6 @@ public class ClusterManager implements StoreHealthListener{
                 andesContextStore.removeNodeData(node);
             }
 
-            clearAllPersistedStatesOfDisappearedNode(nodeId);
-
             log.info("Initializing Standalone Mode. Current Node ID:" + this.nodeId + " "
                      + InetAddress.getLocalHost().getHostAddress());
 
@@ -242,26 +240,6 @@ public class ClusterManager implements StoreHealthListener{
         if (log.isDebugEnabled()) {
             log.debug("Stored node ID : " + this.nodeId +  ". Stored node data(Hazelcast local "
                       + "member host address) : " + localMemberHostAddress);
-        }
-
-        //add node information to durable store
-        andesContextStore.storeNodeDetails(nodeId, localMemberHostAddress);
-
-        /**
-         * If nodeList size is one, this is the first node joining to cluster. Here we check if
-         * there has been any nodes that lived before and somehow suddenly got killed. If there are
-         * such nodes clear the state of them and copy back node queue messages of them back to
-         * global queue. We need to clear up current node's state as well as there might have been a
-         * node with same id and it was killed
-         */
-        clearAllPersistedStatesOfDisappearedNode(nodeId);
-
-        List<String> storedNodes = new ArrayList<>(andesContextStore.getAllStoredNodeData().keySet());
-        List<String> availableNodeIds = clusterAgent.getAllNodeIdentifiers();
-        for (String storedNodeId : storedNodes) {
-            if (!availableNodeIds.contains(storedNodeId)) {
-                clearAllPersistedStatesOfDisappearedNode(storedNodeId);
-            }
         }
     }
 
@@ -317,8 +295,9 @@ public class ClusterManager implements StoreHealthListener{
         if (AndesContext.getInstance().isClusteringEnabled()) {
             return clusterAgent.getAllClusterNodeAddresses();
         }
-
-        return new ArrayList<>();
+        ArrayList<String> nodes = new ArrayList<>();
+        nodes.add(getMyNodeID());
+        return nodes;
     }
 
     /**

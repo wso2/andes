@@ -23,6 +23,7 @@ import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
 import org.wso2.andes.server.cluster.NodeHeartBeatData;
 import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEvent;
+import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 import org.wso2.andes.store.HealthAwareStore;
 
 import java.net.InetSocketAddress;
@@ -578,5 +579,41 @@ public interface AndesContextStore extends HealthAwareStore {
      * Method to remove all membership events from the store for a particular node.
      */
     void clearMembershipEvents(String nodeID) throws AndesException;
+
+    /**
+     * Stores cluster notifications in the store to be read by cluster members.
+     *
+     * @param clusterNodes            the node list for which the cluster notification should be duplicated
+     * @param originatedNode          the node from which, the cluster notification was sent
+     * @param clusterNotificationType the type of the change addressed by the cluster notification. e.g. "QUEUUE_ADDED"
+     * @param notification            the notification encoded as a string
+     * @throws AndesException
+     */
+    void storeClusterNotification(List<String> clusterNodes, String originatedNode, String clusterNotificationType,
+                                  String notification) throws AndesException;
+
+    /**
+     * Reads cluster notifications that are destined to a specific node.
+     *
+     * @param nodeID the destined node id
+     * @return the list of cluster notifications bound to the specified node
+     * @throws AndesException
+     */
+    List<ClusterNotification> readClusterNotifications(String nodeID) throws AndesException;
+
+    /**
+     * Clears all cluster notifications.
+     *
+     * @throws AndesException
+     */
+    void clearClusterNotifications() throws AndesException;
+
+    /**
+     * Clears cluster notifications for a particular node.
+     *
+     * @param nodeID the node id for which, cluster notifications should be removed.
+     * @throws AndesException
+     */
+    void clearClusterNotifications(String nodeID) throws AndesException;
 
 }

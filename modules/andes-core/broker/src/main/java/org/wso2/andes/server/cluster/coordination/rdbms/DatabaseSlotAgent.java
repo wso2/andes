@@ -53,7 +53,7 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
     /**
      * Used for logging purposes
      */
-    private static Log log = LogFactory.getLog(DatabaseSlotAgent.class);
+    private static final Log log = LogFactory.getLog(DatabaseSlotAgent.class);
 
     /**
      * Used to perform database operations on the context store.

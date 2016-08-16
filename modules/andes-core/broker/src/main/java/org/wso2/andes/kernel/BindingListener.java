@@ -18,31 +18,81 @@
 
 package org.wso2.andes.kernel;
 
-/**
- * Listener listening for binding changes local and cluster
- */
-public interface BindingListener {
+import org.apache.log4j.Logger;
+import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.server.cluster.coordination.ClusterNotificationPublisher;
+import org.wso2.andes.server.cluster.coordination.ClusterNotification;
+import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
 
-    public static enum BindingEvent {
+/**
+ * BindingListener listens and handles binding changes that have occurred locally and cluster-wide.
+ */
+public class BindingListener {
+
+    private static final Logger log = Logger.getLogger(BindingListener.class);
+
+    /**
+     * Binding event types that could be present in the cluster.
+     */
+    public enum BindingEvent {
         ADDED,
         DELETED
     }
 
     /**
-     * handle when an binding has changed in cluster
-     *
-     * @param binding    binding changed
-     * @param changeType the change
-     * @throws AndesException
+     * Local event handler is used to notify local binding changes to the cluster.
      */
-    public void handleClusterBindingsChanged(AndesBinding binding, BindingEvent changeType) throws AndesException;
+    private ClusterNotificationPublisher clusterNotificationPublisher;
 
     /**
-     * handle when binding is changed in local node
+     * VirtualHostConfigSynchronizer is used to synchronize cluster events received with Qpid.
+     */
+    VirtualHostConfigSynchronizer virtualHostConfigSynchronizer;
+
+    /**
+     * Creates a listener for binding changes given a publisher to notify the changes that are received to the cluster.
+     *
+     * @param publisher Hazelcast/RDBMS based or standalone publisher to publish cluster notifications.
+     */
+    public BindingListener(ClusterNotificationPublisher publisher) {
+        clusterNotificationPublisher = publisher;
+        virtualHostConfigSynchronizer = ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer();
+    }
+
+    /**
+     * Handle when a binding has changed in cluster.
      *
      * @param binding    binding changed
      * @param changeType the change
      * @throws AndesException
      */
-    public void handleLocalBindingsChanged(AndesBinding binding, BindingEvent changeType) throws AndesException;
+    public void handleClusterBindingsChanged(AndesBinding binding, BindingEvent changeType) throws AndesException {
+        if (log.isDebugEnabled()) {
+            log.debug("Cluster event received: " + binding.encodeAsString());
+        }
+        switch (changeType) {
+            case ADDED:
+                //create a binding
+                virtualHostConfigSynchronizer.clusterBindingAdded(binding);
+                break;
+            case DELETED:
+                //delete binding
+                virtualHostConfigSynchronizer.clusterBindingRemoved(binding);
+                break;
+        }
+    }
+
+    /**
+     * Handle when binding is changed(added or deleted) in the local node.
+     *
+     * @param binding    binding changed
+     * @param changeType the change
+     * @throws AndesException
+     */
+    public void handleLocalBindingsChanged(AndesBinding binding, BindingEvent changeType) throws AndesException {
+        ClusterNotification clusterNotification
+                = new ClusterNotification(binding.encodeAsString(), changeType.toString());
+        clusterNotificationPublisher.publishClusterNotification(clusterNotification);
+
+    }
 }

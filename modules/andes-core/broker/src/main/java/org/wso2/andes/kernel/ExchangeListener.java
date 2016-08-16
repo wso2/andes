@@ -18,31 +18,81 @@
 
 package org.wso2.andes.kernel;
 
-/**
- * Listener listening for exchange changes local and cluster
- */
-public interface ExchangeListener {
+import org.apache.log4j.Logger;
+import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.server.cluster.coordination.ClusterNotificationPublisher;
+import org.wso2.andes.server.cluster.coordination.ClusterNotification;
+import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
 
-    public static enum ExchangeChange {
-        Added,
-        Deleted
+/**
+ * ExchangeListener listens and handles exchange changes that have occurred locally and cluster-wide.
+ */
+public class ExchangeListener {
+
+    private static final Logger log = Logger.getLogger(ExchangeListener.class);
+
+    /**
+     * Exchange event types that could be present in the cluster.
+     */
+    public enum ExchangeChange {
+        ADDED,
+        DELETED
     }
 
     /**
-     * handle when an exchange has changed in cluster
-     *
-     * @param exchange   exchange changed
-     * @param changeType the change
-     * @throws AndesException
+     * Local event handler is used to notify local exchange changes to the cluster.
      */
-    public void handleClusterExchangesChanged(AndesExchange exchange, ExchangeChange changeType) throws AndesException;
+    private ClusterNotificationPublisher clusterNotificationPublisher;
 
     /**
-     * handle when exchange is changed in local node
+     * VirtualHostConfigSynchronizer is used to synchronize cluster events received with Qpid.
+     */
+    VirtualHostConfigSynchronizer virtualHostConfigSynchronizer;
+
+    /**
+     * Creates a listener for binding changes given a publisher to notify the changes that are received to the cluster.
+     *
+     * @param publisher Hazelcast/RDBMS based or standalone publisher to publish cluster notifications.
+     */
+    public ExchangeListener(ClusterNotificationPublisher publisher) {
+        clusterNotificationPublisher = publisher;
+        virtualHostConfigSynchronizer = ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer();
+    }
+
+    /**
+     * Handle when an exchange has changed in cluster.
      *
      * @param exchange   exchange changed
      * @param changeType the change
      * @throws AndesException
      */
-    public void handleLocalExchangesChanged(AndesExchange exchange, ExchangeChange changeType) throws AndesException;
+    public void handleClusterExchangesChanged(AndesExchange exchange, ExchangeChange changeType) throws AndesException {
+        if (log.isDebugEnabled()) {
+            log.debug("Cluster event received: " + exchange.encodeAsString());
+        }
+        switch (changeType) {
+            case ADDED:
+                //create a exchange
+                virtualHostConfigSynchronizer.clusterExchangeAdded(exchange);
+                break;
+            case DELETED:
+                //delete exchange
+                virtualHostConfigSynchronizer.clusterExchangeRemoved(exchange);
+                break;
+        }
+    }
+
+    /**
+     * Handle when an exchange is changed in the local node.
+     *
+     * @param exchange   exchange changed
+     * @param changeType the change
+     * @throws AndesException
+     */
+    public void handleLocalExchangesChanged(AndesExchange exchange, ExchangeChange changeType) throws AndesException {
+        ClusterNotification clusterNotification
+                = new ClusterNotification(exchange.encodeAsString(), changeType.toString());
+        clusterNotificationPublisher.publishClusterNotification(clusterNotification);
+
+    }
 }

@@ -101,9 +101,8 @@ public class MessageFlusher {
         } else if(topicMessageDeliveryStrategy.equals(TopicMessageDeliveryStrategy.SLOWEST_SUB_RATE)) {
             this.topicMessageFlusher = new SlowestSubscriberTopicMessageDeliveryImpl(subscriptionEngine);
         }
-
         initializeDeliveryResponsibilityComponents();
-
+        initializeMessageDeliveryInfo();
     }
 
     public Integer getMaxNumberOfReadButUndeliveredMessages() {
@@ -188,25 +187,26 @@ public class MessageFlusher {
         }
     }
 
+    /**
+     * Initializes message delivery info for each destination type.
+     */
+    private void initializeMessageDeliveryInfo() {
+        subscriptionCursar4QueueMap.put(DestinationType.QUEUE, new HashMap<String, MessageDeliveryInfo>());
+        subscriptionCursar4QueueMap.put(DestinationType.TOPIC, new HashMap<String, MessageDeliveryInfo>());
+        subscriptionCursar4QueueMap.put(DestinationType.DURABLE_TOPIC, new HashMap<String, MessageDeliveryInfo>());
+    }
 
     /**
-     * Will allow retrieval of information related to delivery of the message
+     * Updates mesage delivery info for a given destination.
      *
-     * @param destination where the message should be delivered to
-     * @param protocolType The protocol which the destination belongs to
+     * @param destination     where the message should be delivered to
      * @param destinationType The type of the destination
      * @return the information which holds of the message which should be delivered
      * @throws AndesException
      */
-    public MessageDeliveryInfo getMessageDeliveryInfo(String destination, ProtocolType protocolType,
-                                                      DestinationType destinationType) throws AndesException {
-
+    public void updateMessageDeliveryInfo(String destination, ProtocolType protocolType,
+            DestinationType destinationType) throws AndesException {
         Map<String, MessageDeliveryInfo> infoMap = subscriptionCursar4QueueMap.get(destinationType);
-
-
-        if (null == infoMap) {
-            infoMap = new HashMap<>();
-        }
 
         MessageDeliveryInfo messageDeliveryInfo = infoMap.get(destination);
 
@@ -217,15 +217,26 @@ public class MessageFlusher {
                     destination, protocolType, destinationType);
 
             messageDeliveryInfo.setIterator(localSubscribersForQueue.iterator());
-
             messageDeliveryInfo.setProtocolType(protocolType);
             messageDeliveryInfo.setDestinationType(destinationType);
 
             infoMap.put(destination, messageDeliveryInfo);
-
             subscriptionCursar4QueueMap.put(destinationType, infoMap);
         }
-        return messageDeliveryInfo;
+    }
+
+
+    /**
+     * Will allow retrieval of information related to delivery of the message
+     *
+     * @param destination where the message should be delivered to
+     * @param destinationType The type of the destination
+     * @return the information which holds of the message which should be delivered
+     * @throws AndesException
+     */
+    public MessageDeliveryInfo getMessageDeliveryInfo(String destination,
+            DestinationType destinationType) throws AndesException {
+        return subscriptionCursar4QueueMap.get(destinationType).get(destination);
     }
 
     /**
@@ -262,7 +273,7 @@ public class MessageFlusher {
                                                   List<DeliverableAndesMetadata> messages) {
         try {
             MessageDeliveryInfo messageDeliveryInfo =
-                    getMessageDeliveryInfo(destination, protocolType, destinationType);
+                    getMessageDeliveryInfo(destination, destinationType);
             for (DeliverableAndesMetadata metadata : messages) {
                 messageDeliveryInfo.reBufferMessage(metadata);
             }
