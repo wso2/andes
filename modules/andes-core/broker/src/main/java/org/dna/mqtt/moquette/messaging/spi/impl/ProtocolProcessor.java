@@ -833,11 +833,14 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
         }
 
         MQTTAuthorizationSubject authSubject = authSubjects.get(clientID);
-        if (authSubject == null) {
-            return;
-        }
         SubAckMessage ackMessage = new SubAckMessage();
         ackMessage.setMessageID(msg.getMessageID());
+        if (authSubject == null) {
+            ackMessage.addType(AbstractMessage.QOSType.FAILURE);
+            session.write(ackMessage);
+            return;
+        }
+
         for (SubscribeMessage.Couple req : msg.subscriptions()) {
             // Authorize subscribe
             String tenant = MQTTUtils.getTenantFromTopic(req.getTopicFilter());
