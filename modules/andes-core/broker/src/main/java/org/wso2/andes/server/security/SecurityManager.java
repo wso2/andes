@@ -50,6 +50,7 @@ import static org.wso2.andes.server.security.access.Operation.ACCESS;
 import static org.wso2.andes.server.security.access.Operation.BROWSE;
 import static org.wso2.andes.server.security.access.Operation.CONSUME;
 import static org.wso2.andes.server.security.access.Operation.CREATE;
+import static org.wso2.andes.server.security.access.Operation.DELETE;
 import static org.wso2.andes.server.security.access.Operation.PUBLISH;
 import static org.wso2.andes.server.security.access.Operation.PURGE;
 
