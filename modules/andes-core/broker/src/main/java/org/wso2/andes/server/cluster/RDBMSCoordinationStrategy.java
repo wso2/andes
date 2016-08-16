@@ -434,7 +434,7 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
             boolean electedAsCoordinator = contextStore.createCoordinatorEntry(localNodeId, thriftAddress);
             if (electedAsCoordinator) {
                 // backoff
-                TimeUnit.SECONDS.sleep(coordinatorEntryCreationWaitTime);
+                TimeUnit.MILLISECONDS.sleep(coordinatorEntryCreationWaitTime);
                 boolean isCoordinator = contextStore.checkIsCoordinator(localNodeId);
 
                 if (isCoordinator) {
