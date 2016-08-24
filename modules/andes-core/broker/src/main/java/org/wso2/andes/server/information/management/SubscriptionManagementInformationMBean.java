@@ -30,12 +30,14 @@ import org.wso2.andes.server.management.AMQManagedObject;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionEngine;
 
-import javax.management.MBeanException;
-import javax.management.NotCompliantMBeanException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import javax.management.MBeanException;
+import javax.management.NotCompliantMBeanException;
 
 /**
  * Class to handle data for all subscription related UI functions.
@@ -111,6 +113,201 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    public long getPendingMessageCount(String subscriptionId, String isDurable, String isActive, String protocolType,
+                                       String destinationType) throws MBeanException {
+        try {
+            long pendingMessageCount = 0;
+            //Set protocol type and destination type
+            ProtocolType protocolTypeArg = ProtocolType.valueOf(protocolType);
+            DestinationType destinationTypeArg = DestinationType.valueOf(destinationType);
+
+            //Get all andes subscription set from cluster map
+            Set<AndesSubscription> subscriptions = AndesContext.getInstance().getSubscriptionEngine()
+                    .getAllClusterSubscriptionsForDestinationType(protocolTypeArg, destinationTypeArg);
+
+            Set<AndesSubscription> subscriptionsToDisplay;
+
+            //Filter all subscription by destination type
+            if (DestinationType.TOPIC == destinationTypeArg || (DestinationType.DURABLE_TOPIC == destinationTypeArg)) {
+                subscriptionsToDisplay = filterTopicSubscriptions(isDurable, isActive, subscriptions);
+            } else {
+                subscriptionsToDisplay = filterQueueSubscriptions(isDurable, isActive, subscriptions);
+            }
+
+            for (AndesSubscription andesSubscription : subscriptionsToDisplay) {
+                if (subscriptionId.equals(andesSubscription.getSubscriptionID())) {
+                    pendingMessageCount = MessagingEngine.getInstance().getMessageCountOfQueue(andesSubscription
+                            .getStorageQueueName());
+                    break;
+                }
+            }
+
+            return pendingMessageCount;
+
+        } catch (Exception e) {
+            log.error("Error while invoking MBeans to retrieve subscription information", e);
+            throw new MBeanException(e, "Error while invoking MBeans to retrieve subscription information");
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public String[] getFilteredSubscriptions(String isDurable, String isActive, String protocolType,
+                                             String destinationType, String filteredNamePattern, String identifierPattern,
+                                             String ownNodeId, int pageNumber, int maxSubscriptionCount,
+            boolean isFilteredNameByExactMatch, boolean isIdentifierPatternByExactMatch) throws MBeanException {
+
+        try {
+            int startingIndex = pageNumber * maxSubscriptionCount;
+            String[] subscriptionArray;
+            int resultSetSize = maxSubscriptionCount;
+            int index = 0;
+            int subscriptionDetailsIndex = 0;
+
+            //Set protocol type and destination type
+            ProtocolType protocolTypeArg = ProtocolType.valueOf(protocolType);
+            DestinationType destinationTypeArg = DestinationType.valueOf(destinationType);
+
+            //Get all andes subscription set from cluster map
+            Set<AndesSubscription> subscriptions = AndesContext.getInstance().getSubscriptionEngine()
+                    .getAllClusterSubscriptionsForDestinationType(protocolTypeArg, destinationTypeArg);
+
+            Set<AndesSubscription> subscriptionsToDisplay;
+
+            //Filter all subscription by destination type
+            if (DestinationType.TOPIC == destinationTypeArg || (DestinationType.DURABLE_TOPIC == destinationTypeArg)) {
+                subscriptionsToDisplay = filterTopicSubscriptions(isDurable, isActive, subscriptions);
+            } else {
+                subscriptionsToDisplay = filterQueueSubscriptions(isDurable, isActive, subscriptions);
+            }
+
+            //Get matching subscriptions from filter subscriptions according to given search parameters
+            List<AndesSubscription> searchSubscriptionList = getSubscriptionListForSearchResult(subscriptionsToDisplay,
+                    filteredNamePattern, identifierPattern, ownNodeId,
+                    isFilteredNameByExactMatch, isIdentifierPatternByExactMatch);
+
+            //Get only paginated subscription from search subscription result
+            if ((searchSubscriptionList.size() - startingIndex) < maxSubscriptionCount) {
+                resultSetSize = (searchSubscriptionList.size() - startingIndex);
+            }
+            subscriptionArray = new String[resultSetSize];
+
+            for (AndesSubscription subscription : searchSubscriptionList) {
+                if (startingIndex <= index) {
+
+                    Long pendingMessageCount
+                            = MessagingEngine.getInstance().getMessageCountOfQueue(subscription.getStorageQueueName());
+                    subscriptionArray[subscriptionDetailsIndex] =
+                            renderSubscriptionForUI(subscription, pendingMessageCount.intValue());
+                    subscriptionDetailsIndex++;
+                    if (subscriptionDetailsIndex == maxSubscriptionCount) {
+                        break;
+                    }
+                }
+                index++;
+            }
+
+            return subscriptionArray;
+        } catch (Exception e) {
+            log.error("Error while invoking MBeans to retrieve subscription information with these parameters : "
+                      + "filteredNamePattern = " + filteredNamePattern + ", identifierPattern = " + identifierPattern
+                      + ", ownNodeId = " + ownNodeId, e);
+            throw new MBeanException(e, "Error while invoking MBeans to retrieve subscription information");
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public int getTotalSubscriptionCountForSearchResult(String isDurable, String isActive, String protocolType,
+                                                        String destinationType, String filteredNamePattern,
+                                                        String identifierPattern, String ownNodeId,
+            boolean isFilteredNameByExactMatch, boolean isIdentifierPatternByExactMatch) throws MBeanException {
+
+        //Set protocol type and destination type
+        ProtocolType protocolTypeArg = ProtocolType.valueOf(protocolType);
+        DestinationType destinationTypeArg = DestinationType.valueOf(destinationType);
+
+        //Get all andes subscription set from cluster map
+        Set<AndesSubscription> subscriptions = AndesContext.getInstance().getSubscriptionEngine()
+                .getAllClusterSubscriptionsForDestinationType(protocolTypeArg, destinationTypeArg);
+
+        Set<AndesSubscription> subscriptionsToDisplay;
+
+        //Filter all subscription by destination type
+        if ((DestinationType.TOPIC == destinationTypeArg) || (DestinationType.DURABLE_TOPIC == destinationTypeArg)) {
+            subscriptionsToDisplay = filterTopicSubscriptions(isDurable, isActive, subscriptions);
+        } else {
+            subscriptionsToDisplay = filterQueueSubscriptions(isDurable, isActive, subscriptions);
+        }
+
+        //Get matching subscriptions from filter subscriptions according to given search parameters
+        List<AndesSubscription> searchSubscriptionList = getSubscriptionListForSearchResult(subscriptionsToDisplay,
+                filteredNamePattern, identifierPattern, ownNodeId,
+                isFilteredNameByExactMatch, isIdentifierPatternByExactMatch);
+
+        //Count of search subscriptions
+        return searchSubscriptionList.size();
+    }
+
+    /**
+     * Get the matching subscription list for the given search criteria
+     *
+     * @param subscriptionSet  a set of subscriptions
+     * @param queueNamePattern string pattern of the queue name
+     * @param identifierPattern string pattern of the identifier
+     * @param ownNodeId node Id of node which the subscribers subscribed to
+     * @return a list of subscriptions matching to the given search criteria
+     */
+    private List<AndesSubscription> getSubscriptionListForSearchResult(Set<AndesSubscription> subscriptionSet,
+                                                                       String queueNamePattern, String identifierPattern,
+                                                                       String ownNodeId,
+            boolean isFilteredNameByExactMatch, boolean isIdentifierPatternByExactMatch) {
+        ArrayList<AndesSubscription> filteredSubscriptionList = new ArrayList<>();
+        for(AndesSubscription sub: subscriptionSet){
+            boolean isQueueOrTopicNameMatched = false;
+            boolean isQueueOrTopicIdentifierMatched = false;
+            boolean isOwnNodeIdMatched = false;
+
+            if (isFilteredNameByExactMatch) {
+                if (queueNamePattern.equals(sub.getSubscribedDestination())) {
+                    isQueueOrTopicNameMatched = true;
+                }
+            } else if (org.apache.commons.lang.StringUtils.containsIgnoreCase(sub.getSubscribedDestination(),
+                    queueNamePattern)) {
+                isQueueOrTopicNameMatched = true;
+
+            }
+
+            if (isIdentifierPatternByExactMatch) {
+                if (identifierPattern.equals(sub.getSubscriptionID())) {
+                    isQueueOrTopicIdentifierMatched = true;
+                }
+            } else if (org.apache.commons.lang.StringUtils.containsIgnoreCase(sub.getSubscriptionID(),
+                    identifierPattern)) {
+                isQueueOrTopicIdentifierMatched = true;
+            }
+
+            if (ownNodeId.equals("All")) {
+                isOwnNodeIdMatched = true;
+            }  else{
+                if(ownNodeId.equals(sub.getSubscribedNode())){
+                    isOwnNodeIdMatched = true;
+                }
+            }
+            if(isQueueOrTopicNameMatched && isQueueOrTopicIdentifierMatched && isOwnNodeIdMatched){
+                filteredSubscriptionList.add(sub);
+            }
+
+        }
+
+        return filteredSubscriptionList;
+    }
+
     private Set<AndesSubscription> filterQueueSubscriptions(String isDurable, String isActive,
                                                             Set<AndesSubscription> subscriptions) {
         Set<AndesSubscription> subscriptionsToDisplay = new HashSet<>();
@@ -136,21 +333,17 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
         Set<AndesSubscription> subscriptionsToDisplay = new HashSet<>();
 
         Map<String, AndesSubscription> inactiveSubscriptions = new HashMap<>();
-        Set<String> uniqueSubscriptionIDs = new HashSet<>();
+        Set<String> uniqueSubscriptionIds = new HashSet<>();
 
         for (AndesSubscription subscription : subscriptions) {
             if (!isDurable.equals(ALL_WILDCARD)
                     && (Boolean.parseBoolean(isDurable) != subscription.isDurable())) {
                 continue;
             }
-            if (!isActive.equals(ALL_WILDCARD)
-                    && (Boolean.parseBoolean(isActive) != subscription.hasExternalSubscriptions())) {
-                continue;
-            }
 
             if (subscription.isDurable()) {
                 if (subscription.hasExternalSubscriptions()) {
-                    uniqueSubscriptionIDs.add(subscription.getTargetQueue());
+                    uniqueSubscriptionIds.add(subscription.getTargetQueue());
                 } else {
                     // Since only one inactive shared subscription should be shown
                     // we replace the existing value if any
@@ -159,15 +352,18 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
                     continue;
                 }
             }
-
-            subscriptionsToDisplay.add(subscription);
+            if (isActive.equals(ALL_WILDCARD) || Boolean.parseBoolean(isActive)){
+                subscriptionsToDisplay.add(subscription);
+            }
         }
 
         // In UI only one inactive shared subscription should be shown if there are no active subscriptions.
-        for (Map.Entry<String, AndesSubscription> inactiveEntry : inactiveSubscriptions.entrySet()) {
-            // If there are active subscriptions with same target queue, we skip adding inactive subscriptions
-            if (!(uniqueSubscriptionIDs.contains(inactiveEntry.getKey()))) {
-                subscriptionsToDisplay.add(inactiveEntry.getValue());
+        if (isActive.equals(ALL_WILDCARD) || !Boolean.parseBoolean(isActive)){
+            for (Map.Entry<String, AndesSubscription> inactiveEntry : inactiveSubscriptions.entrySet()) {
+                // If there are active subscriptions with same target queue, we skip adding inactive subscriptions
+                if (!(uniqueSubscriptionIds.contains(inactiveEntry.getKey()))) {
+                    subscriptionsToDisplay.add(inactiveEntry.getValue());
+                }
             }
         }
 

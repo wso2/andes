@@ -48,6 +48,109 @@ public interface SubscriptionManagementInformation {
                     description = "Destination type of the subscriptions") String destinationType)
     throws MBeanException;
 
+    /**
+     * Search subscription according to provided patterns and return paginated subscription array to
+     * render in the management console.
+     * @param isDurable of type String (acceptable values => * | true | false)
+     * @param isActive of type String (acceptable values => * | true | false)
+     * @param protocolType The protocol type of the subscriptions
+     * @param destinationType The destination type of the subscriptions
+     * @param filteredNamePattern pattern to search by queue name
+     * @param identifierPattern pattern to search by subscription identifier
+     * @param ownNodeId pattern to search subscription own node id
+     * @param startingIndex page number
+     * @param maxSubscriptionCount page count
+     * @param isFilteredNameByExactMatch        exactly match the name or not
+     * @param isIdentifierPatternByExactMatch   exactly match the identifier or not
+     * @return Array of subscription matching given criteria
+     * @throws MBeanException
+     */
+    @MBeanAttribute(name="FilteredSubscriptions",description = "Filtered subscriptions")
+    String[] getFilteredSubscriptions(
+            @MBeanOperationParameter(name = "isDurable" ,description = "get durable ?") String isDurable,
+            @MBeanOperationParameter(name = "isActive" ,description = "get active ?") String isActive,
+            @MBeanOperationParameter(
+                    name = "protocolType", description = "protocol of subscriptions") String protocolType,
+            @MBeanOperationParameter(
+                    name = "destinationType",
+                    description = "Destination type of the subscriptions") String destinationType,
+            @MBeanOperationParameter(
+                    name = "filteredNamePattern" ,description = "queue name pattern") String filteredNamePattern,
+            @MBeanOperationParameter(
+                    name = "identifierPattern" ,
+                    description = "subscription identifier pattern") String identifierPattern,
+            @MBeanOperationParameter(
+                    name = "ownNodeId" , description = "subscription node id pattern") String ownNodeId,
+            @MBeanOperationParameter(
+                    name = "startingIndex" , description = "page number") int startingIndex,
+            @MBeanOperationParameter(
+                    name = "maxSubscriptionCount" , description = "page count") int maxSubscriptionCount,
+            @MBeanOperationParameter(
+                    name = "isFilteredNameByExactMatch" ,description = "exact match ?")
+                    boolean isFilteredNameByExactMatch,
+            @MBeanOperationParameter(
+                    name = "isIdentifierPatternByExactMatch" , description = "exact match ?")
+                    boolean isIdentifierPatternByExactMatch) throws MBeanException;
+
+    /**
+     * Return pending message count for the given subscription
+     *
+     * @param subscriptionId of the subscription
+     * @param isDurable of type String (acceptable values => * | true | false)
+     * @param isActive of type String (acceptable values => * | true | false)
+     * @param protocolType The protocol type of the subscriptions
+     * @param destinationType The destination type of the subscriptions
+     * @return pending message count for the given subscription
+     * @throws MBeanException
+     */
+    @MBeanAttribute(name="getPendingMessageCount",description = "Filtered subscriptions")
+    long getPendingMessageCount(
+            @MBeanOperationParameter(name = "subscriptionId" ,description = "get subscriptionId ?") String
+                    subscriptionId,
+            @MBeanOperationParameter(name = "isDurable" ,description = "get durable ?") String isDurable,
+            @MBeanOperationParameter(name = "isActive" ,description = "get active ?") String isActive,
+            @MBeanOperationParameter(
+                    name = "protocolType", description = "protocol of subscriptions") String protocolType,
+            @MBeanOperationParameter(
+                    name = "destinationType",
+                    description = "Destination type of the subscriptions") String destinationType) throws MBeanException;
+
+
+    /**
+     * Return subscription result count according to provided patterns
+     * @param isDurable of type String (acceptable values => * | true | false)
+     * @param isActive of type String (acceptable values => * | true | false)
+     * @param protocolType The protocol type of the subscriptions
+     * @param destinationType The destination type of the subscriptions
+     * @param filteredNamePattern pattern to search by queue name
+     * @param identifierPattern pattern to search by subscription identifier
+     * @param ownNodeId pattern to search subscription own node id
+     * @param isFilteredNameByExactMatch        exactly match the name or not
+     * @param isIdentifierPatternByExactMatch   exactly match the identifier or not
+     * @return subscription count
+     * @throws MBeanException
+     */
+    int getTotalSubscriptionCountForSearchResult(
+            @MBeanOperationParameter(name = "isDurable" ,description = "get durable ?") String isDurable,
+            @MBeanOperationParameter(name = "isActive" ,description = "get active ?") String isActive,
+            @MBeanOperationParameter(
+                    name = "protocolType", description = "protocol of subscriptions") String protocolType,
+            @MBeanOperationParameter(
+                    name = "destinationType",
+                    description = "Destination type of the subscriptions") String destinationType,
+            @MBeanOperationParameter(
+                    name = "filteredNamePattern" ,description = "queue name pattern") String filteredNamePattern,
+            @MBeanOperationParameter(
+                    name = "identifierPattern" ,
+                    description = "subscription identifier pattern") String identifierPattern,
+            @MBeanOperationParameter(
+                    name = "ownNodeId" , description = "subscription node id pattern") String ownNodeId,
+            @MBeanOperationParameter(
+                    name = "isFilteredNameByExactMatch" ,description = "exact match ?")
+                    boolean isFilteredNameByExactMatch,
+            @MBeanOperationParameter(
+                    name = "isIdentifierPatternByExactMatch" , description = "exact match ?")
+                    boolean isIdentifierPatternByExactMatch) throws MBeanException;
 
     /**
      * MBean service to get Pending Message count for a given destination

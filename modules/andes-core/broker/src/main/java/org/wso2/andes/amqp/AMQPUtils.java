@@ -274,8 +274,8 @@ public class AMQPUtils {
          */
         Boolean allowSharedSubscribers = AndesConfigurationManager.readValue(
                 AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
-        if (queue.isDurable() && isBoundToTopic && !allowSharedSubscribers) {
-            subscriptionID = queue.getName();
+        if (queue.isDurable() && isBoundToTopic) {
+            subscriptionID = queue.getName() + "_" + subscriptionID;
         }
 
         OutboundSubscription amqpDeliverySubscription = new AMQPLocalSubscription(queue, subscription, queue
