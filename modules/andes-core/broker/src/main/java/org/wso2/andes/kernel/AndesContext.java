@@ -170,6 +170,24 @@ public class AndesContext {
     }
 
     /**
+     *  get the advertised ip of the thrift server
+     *
+     * @return  thrift server host ip if defined, else empty String
+     */
+    public String getThriftServerAdvertisedHost() {
+        return AndesConfigurationManager.readValue(AndesConfiguration.COORDINATION_THRIFT_SERVER_ADVERTISED_HOST);
+    }
+
+    /**
+     * get the advertised port for thrift server
+     *
+     * @return The port value if defined, else -1
+     */
+    public Integer getThriftServerAdvertisedPort() {
+        return AndesConfigurationManager.readValue(AndesConfiguration.COORDINATION_THRIFT_SERVER_ADVERTISED_PORT);
+    }
+
+    /**
      * Read configuration properties related to persistent stores and construct semantic object
      * for simple reference.
      */

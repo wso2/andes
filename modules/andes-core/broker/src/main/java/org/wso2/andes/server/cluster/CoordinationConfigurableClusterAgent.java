@@ -204,13 +204,45 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
             log.debug("Unique ID generation for message ID generation:" + uniqueIdOfLocalMember);
         }
 
-        String thriftCoordinatorServerIP = AndesContext.getInstance().getThriftServerHost();
-        int thriftCoordinatorServerPort = AndesContext.getInstance().getThriftServerPort();
-        InetSocketAddress thriftAddress = new InetSocketAddress(thriftCoordinatorServerIP, thriftCoordinatorServerPort);
+        InetSocketAddress thriftAddress = new InetSocketAddress(getThriftCoordinatorServerAddress(), getThriftCoordinatorServerPort());
 
         coordinationStrategy.start(this, getLocalNodeIdentifier(), thriftAddress);
 
         networkPartitionDetector.start();
+    }
+
+    /**
+     * Get the advertised port of Thrift Coordinator Server
+     *
+     * @return  IP address for Thrift Coordinator Server
+     */
+    private String getThriftCoordinatorServerAddress() {
+        String thriftCoordinatorServerIP = AndesContext.getInstance().getThriftServerAdvertisedHost();
+        if (!thriftCoordinatorServerIP.isEmpty()) {
+            if (log.isDebugEnabled()) {
+                log.debug("Thrift Coordinator Server bind IP specified as " + thriftCoordinatorServerIP);
+            }
+        } else {
+            thriftCoordinatorServerIP = AndesContext.getInstance().getThriftServerHost();
+        }
+        return thriftCoordinatorServerIP;
+    }
+
+    /**
+     * Get the advertised address of Thrift Coordinator Server
+     *
+     * @return IP address for Thrift Coordinator Server
+     */
+    private int getThriftCoordinatorServerPort() {
+        int thriftCoordinatorServerPort = AndesContext.getInstance().getThriftServerAdvertisedPort();
+        if (thriftCoordinatorServerPort > 0) {
+            if (log.isDebugEnabled()) {
+                log.debug("Thrift Coordinator Server bind port specified as " + thriftCoordinatorServerPort);
+            }
+        } else {
+            thriftCoordinatorServerPort = AndesContext.getInstance().getThriftServerPort();
+        }
+        return thriftCoordinatorServerPort;
     }
 
     /**

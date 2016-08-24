@@ -59,6 +59,20 @@ public enum AndesConfiguration implements ConfigurationProperty {
      */
     COORDINATION_THRIFT_SERVER_PORT
             ("coordination/thriftServerPort", "7611", Integer.class),
+
+    /**
+     * The IP of the Thrift server to be advertised to external. This is used in NAT/containerized
+     * environments which has a local private IP and a routable public IP.
+     */
+    COORDINATION_THRIFT_SERVER_ADVERTISED_HOST
+            ("coordination/thriftServerAdvertisedHost", "", String.class),
+
+    /**
+     * The port of the Thrift server to be advertised to external. This is used in NAT/containerized
+     * environments which has a local private IP and a routable public IP.
+     */
+    COORDINATION_THRIFT_SERVER_ADVERTISED_PORT
+            ("coordination/thriftServerAdvertisedPort", "-1", Integer.class),
             
     /**
      * Socket timeout for thrift connection.
