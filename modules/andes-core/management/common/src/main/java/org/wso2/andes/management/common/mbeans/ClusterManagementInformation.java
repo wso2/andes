@@ -3,6 +3,7 @@ package org.wso2.andes.management.common.mbeans;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanAttribute;
 
 import java.util.List;
+import javax.management.JMException;
 
 /**
  * <code>ClusterManagementInformation</code>
@@ -32,20 +33,12 @@ public interface ClusterManagementInformation {
     String getMyNodeID();
 
     /**
-     * Gets the coordinator node's address
-     *
-     * @return Address of the coordinator node
-     */
-    @MBeanAttribute(name = "getCoordinatorNodeAddress", description = "Gets the coordinator nodes address")
-    String getCoordinatorNodeAddress();
-
-    /**
      * Gets all the address of the nodes in a cluster
      *
      * @return A list of address of the nodes in a cluster
      */
     @MBeanAttribute(name = "getAllClusterNodeAddresses", description = "Gets the addresses of the members in a cluster")
-    List<String> getAllClusterNodeAddresses();
+    List<String> getAllClusterNodeAddresses() throws JMException;
 
     /**
      * Gets the message store's health status

@@ -18,24 +18,13 @@ package org.wso2.andes.server.cluster;
 import java.net.InetSocketAddress;
 
 /**
- * Hold information related to a node heartbeat entry. This can be used to pass information related to node heartbeat
- * to/from persistence layer.
+ * Hold clustering related information related to a node.
  */
-public class NodeHeartBeatData {
+public class NodeDetail {
     /**
      * Node ID of the belonging node
      */
     private final String nodeId;
-
-    /**
-     * The last updated heartbeat value
-     */
-    private final long lastHeartbeat;
-
-    /**
-     * Indicate if the node addition is already identified by the coordinator
-     */
-    private final boolean isNewNode;
 
     /**
      * Socket address of the cluster agent. With Hazelcast clustering this will be local node's Hazelcast bind address
@@ -43,19 +32,14 @@ public class NodeHeartBeatData {
     private final InetSocketAddress clusterAgentAddress;
 
     /**
-     * NodeHeartBeatData constructor
-     *
-     * @param nodeId              node ID
-     * @param lastHeartbeat       last heartbeat received from the node
-     * @param isNewNode           true if new node
-     * @param clusterAgentAddress cluster agent's socket address
+     * Indicate if the node is the coordinator node
      */
-    public NodeHeartBeatData(String nodeId, long lastHeartbeat, boolean isNewNode,
-            InetSocketAddress clusterAgentAddress) {
+    private final boolean isCoordinator;
+
+    public NodeDetail(String nodeId, InetSocketAddress clusterAgentAddress, boolean isCoordinator) {
         this.nodeId = nodeId;
-        this.lastHeartbeat = lastHeartbeat;
-        this.isNewNode = isNewNode;
         this.clusterAgentAddress = clusterAgentAddress;
+        this.isCoordinator = isCoordinator;
     }
 
     /**
@@ -68,21 +52,12 @@ public class NodeHeartBeatData {
     }
 
     /**
-     * Getter method for last heartbeat
-     *
-     * @return last heartbeat received form the node
-     */
-    public long getLastHeartbeat() {
-        return lastHeartbeat;
-    }
-
-    /**
      * Getter method for isNewNode
      *
      * @return true if this is a new node
      */
-    public boolean isNewNode() {
-        return isNewNode;
+    public boolean isCoordinator() {
+        return isCoordinator;
     }
 
     /**

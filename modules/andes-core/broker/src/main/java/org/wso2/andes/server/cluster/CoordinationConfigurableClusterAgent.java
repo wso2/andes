@@ -29,7 +29,6 @@ import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.slot.SlotCoordinationConstants;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.server.cluster.error.detection.DisabledNetworkPartitionDetector;
 import org.wso2.andes.server.cluster.error.detection.HazelcastBasedNetworkPartitionDetector;
@@ -72,10 +71,6 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
      */
     private ClusterManager manager;
 
-    /**
-     * Hold coordinator information
-     */
-    private IMap<String, String> coordinatorNodeDetailsMap;
 
     /**
      * Node identifier (set in broker.xml) of each node is stored in this map against the <ip>:<port> of that node.
@@ -139,7 +134,6 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
     }
 
     public void becameCoordinator() {
-        updateCoordinatorNodeDetailMap();
         manager.localNodeElectedAsCoordinator();
     }
     
@@ -194,8 +188,6 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
 
         checkForDuplicateNodeId(localMember);
 
-        coordinatorNodeDetailsMap = hazelcastInstance.getMap(CoordinationConstants.COORDINATOR_NODE_DETAILS_MAP_NAME);
-
         // Generate a unique id for this node for message id generation
         IdGenerator idGenerator = this.hazelcastInstance.getIdGenerator(
                 CoordinationConstants.HAZELCAST_ID_GENERATOR_NAME);
@@ -207,8 +199,10 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
         String thriftCoordinatorServerIP = AndesContext.getInstance().getThriftServerHost();
         int thriftCoordinatorServerPort = AndesContext.getInstance().getThriftServerPort();
         InetSocketAddress thriftAddress = new InetSocketAddress(thriftCoordinatorServerIP, thriftCoordinatorServerPort);
+        InetSocketAddress hazelcastAddress = hazelcastInstance.getCluster().getLocalMember().getSocketAddress();
 
-        coordinationStrategy.start(this, getLocalNodeIdentifier(), thriftAddress);
+        coordinationStrategy.start(this, getLocalNodeIdentifier(), thriftAddress,
+                hazelcastAddress);
 
         networkPartitionDetector.start();
     }
@@ -293,46 +287,26 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
         return coordinationStrategy.getAllNodeIdentifiers();
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public CoordinatorInformation getCoordinatorDetails() {
-        String ipAddress = coordinatorNodeDetailsMap.get(
-                SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_IP);
-        String port = coordinatorNodeDetailsMap.get(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_PORT);
 
-        return new CoordinatorInformation(ipAddress, port);
-    }
-
-    /**
-     * Sets coordinator's hostname and port in {@link org.wso2.andes.server.cluster.coordination
-     * .CoordinationConstants#COORDINATOR_NODE_DETAILS_MAP_NAME} hazelcast map.
-     */
-    private void updateCoordinatorNodeDetailMap() {
-        // Adding cluster coordinator's node IP and port
-        Member localMember = hazelcastInstance.getCluster().getLocalMember();
-        coordinatorNodeDetailsMap.put(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_IP,
-                                      localMember.getSocketAddress().getAddress().getHostAddress());
-        coordinatorNodeDetailsMap.put(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_PORT,
-                                      Integer.toString(localMember.getSocketAddress().getPort()));
-    }
 
     /**
      * Gets address of all the members in the cluster. i.e address:port
      *
      * @return A list of address of the nodes in a cluster
      */
-    public List<String> getAllClusterNodeAddresses() {
-        List<String> addresses = new ArrayList<>();
+    public List<String> getAllClusterNodeAddresses() throws AndesException {
+        List<String> nodeDetailStringList = new ArrayList<>();
+
+        List<NodeDetail> nodeDetails = coordinationStrategy.getAllNodeDetails();
+
         if (AndesContext.getInstance().isClusteringEnabled()) {
-            for (Member member : hazelcastInstance.getCluster().getMembers()) {
-                InetSocketAddress socket = member.getSocketAddress();
-                addresses.add(getIdOfNode(member) + ","
-                              + socket.getAddress().getHostAddress() + "," + socket.getPort());
+            for (NodeDetail nodeDetail : nodeDetails) {
+                nodeDetailStringList.add(nodeDetail.getNodeId() + "," + nodeDetail.getClusterAgentAddress().getHostString() + ","
+                        + nodeDetail.getClusterAgentAddress().getPort() + "," + nodeDetail.isCoordinator());
             }
         }
-        return addresses;
+
+        return nodeDetailStringList;
     }
 
     /**

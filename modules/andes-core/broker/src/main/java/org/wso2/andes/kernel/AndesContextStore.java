@@ -527,10 +527,21 @@ public interface AndesContextStore extends HealthAwareStore {
      *
      * @param nodeId local node ID
      */
-    void updateNodeHeartbeat(String nodeId) throws AndesException;
+    boolean updateNodeHeartbeat(String nodeId) throws AndesException;
+
+    /**
+     * Update Node heartbeat value to current time
+     *
+     * @param nodeId      local node ID
+     * @param nodeAddress Hazelcast bind address of the node
+     * @throws AndesException when an error is detected while calling the store (mostly due to a DB error)
+     */
+    void createNodeHeartbeatEntry(String nodeId, InetSocketAddress nodeAddress) throws AndesException;
 
     /**
      * Get node heart beat status for all existing nodes
+     *
+     * @throws AndesException when an error is detected while calling the store (mostly due to a DB error)
      */
     List<NodeHeartBeatData> getAllHeartBeatData() throws AndesException;
 
@@ -539,6 +550,7 @@ public interface AndesContextStore extends HealthAwareStore {
      * has left the
      *
      * @param nodeId local node ID
+     * @throws AndesException when an error is detected while calling the store (mostly due to a DB error)
      */
     void removeNodeHeartbeat(String nodeId) throws AndesException;
 
@@ -546,8 +558,24 @@ public interface AndesContextStore extends HealthAwareStore {
      * Use this method to indicate that the coordinator detected the node addition to cluster.
      *
      * @param nodeId local node ID
+     * @throws AndesException when an error is detected while calling the store (mostly due to a DB error)
      */
     void markNodeAsNotNew(String nodeId) throws AndesException;
+
+    /**
+     * Get current coordinator's node ID
+     *
+     * @return node ID of the current coordinator
+     * @throws AndesException when an error is detected while calling the store (mostly due to a DB error)
+     */
+    String getCoordinatorNodeId() throws AndesException;
+
+    /**
+     * Clear all heartbeat data present in the database. This is normally done when the cluster is restarted
+     *
+     * @throws AndesException when an error is detected while calling the store (mostly due to a DB error)
+     */
+    void clearHeartBeatData() throws AndesException;
 
     /*
      * ============================ Membership related methods =======================================

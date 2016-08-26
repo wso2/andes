@@ -54,7 +54,16 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
      * Local node's thrift server socket address
      */
     private InetSocketAddress thriftAddress;
+
+    /**
+     * Time waited before notifying others about coordinator change.
+     */
     private int coordinatorEntryCreationWaitTime;
+
+    /**
+     * Used to identify a node using its IP address and port
+     */
+    private InetSocketAddress hazelcastAddress;
 
     /**
      * Possible node states
@@ -177,9 +186,10 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
      */
     @Override
     public void start(CoordinationConfigurableClusterAgent configurableClusterAgent, String nodeId,
-            InetSocketAddress thriftAddress) {
+            InetSocketAddress thriftAddress, InetSocketAddress hazelcastAddress) {
         localNodeId = nodeId;
         this.thriftAddress = thriftAddress;
+        this.hazelcastAddress = hazelcastAddress;
 
         // TODO detect if already started
         contextStore = AndesContext.getInstance().getAndesContextStore();
@@ -236,6 +246,26 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
         List<NodeHeartBeatData> allNodeInformation = contextStore.getAllHeartBeatData();
 
         return getNodeIds(allNodeInformation);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<NodeDetail> getAllNodeDetails() throws AndesException {
+        List<NodeDetail> nodeDetails = new ArrayList<>();
+
+        List<NodeHeartBeatData> allHeartBeatData = contextStore.getAllHeartBeatData();
+        String coordinatorNodeId = contextStore.getCoordinatorNodeId();
+
+        for (NodeHeartBeatData nodeHeartBeatData : allHeartBeatData) {
+            boolean isCoordinatorNode = coordinatorNodeId.equals(nodeHeartBeatData.getNodeId());
+
+            nodeDetails.add(new NodeDetail(nodeHeartBeatData.getNodeId(),
+                    nodeHeartBeatData.getClusterAgentAddress(),
+                    isCoordinatorNode));
+        }
+        return nodeDetails;
     }
 
     /**
@@ -324,7 +354,7 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
         private NodeState performStandByTask() throws AndesException, InterruptedException {
             NodeState nextState;
 
-            contextStore.updateNodeHeartbeat(localNodeId);
+            updateNodeHeartBeat();
 
             // Read current coordinators validity. We can improve this by returning the status (TIMED_OUT or DELETED or
             // VALID)from this call. If DELETED we do not have to check a second time.
@@ -349,6 +379,19 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
         }
 
         /**
+         * Try to update the heart beat entry for local node in the DB. If the entry is deleted by the coordinator,
+         * this will recreate the entry.
+         *
+         * @throws AndesException
+         */
+        private void updateNodeHeartBeat() throws AndesException {
+            boolean heartbeatEntryExists = contextStore.updateNodeHeartbeat(localNodeId);
+            if (!heartbeatEntryExists) {
+                contextStore.createNodeHeartbeatEntry(localNodeId, hazelcastAddress);
+            }
+        }
+
+        /**
          * Perform periodic task that should be done by a Coordinating node
          *
          * @return next NodeState
@@ -360,6 +403,8 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
             boolean stillCoordinator = contextStore.updateCoordinatorHeartbeat(localNodeId);
 
             if (stillCoordinator) {
+                updateNodeHeartBeat();
+
                 long currentTimeMillis = System.currentTimeMillis();
                 List<NodeHeartBeatData> allNodeInformation = contextStore.getAllHeartBeatData();
 

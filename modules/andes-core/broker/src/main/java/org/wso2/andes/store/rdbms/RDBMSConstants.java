@@ -146,6 +146,8 @@ public class RDBMSConstants {
     protected static final String IS_NEW_NODE = "IS_NEW_NODE";
     protected static final String THRIFT_HOST = "THRIFT_HOST";
     protected static final String THRIFT_PORT = "THRIFT_PORT";
+    protected static final String CLUSTER_AGENT_HOST = "CLUSTER_AGENT_HOST";
+    protected static final String CLUSTER_AGENT_PORT = "CLUSTER_AGENT_PORT";
 
     //Slot table columns
     protected static final String SLOT_ID = "SLOT_ID";
@@ -776,8 +778,10 @@ public class RDBMSConstants {
             "INSERT INTO " + CLUSTER_NODE_HEARTBEAT_TABLE
                     + "(" + NODE_ID + ","
                     + LAST_HEARTBEAT + ","
+                    + CLUSTER_AGENT_HOST + ","
+                    + CLUSTER_AGENT_PORT + ","
                     + IS_NEW_NODE + ")"
-                    + " VALUES (?,?,1)";
+                    + " VALUES (?,?,?,?,1)";
 
     /**
      * Prepared statement to check if coordinator
@@ -793,6 +797,14 @@ public class RDBMSConstants {
      */
     protected static final String PS_GET_COORDINATOR_HEARTBEAT =
             "SELECT " + LAST_HEARTBEAT
+                    + " FROM " + CLUSTER_COORDINATOR_HEARTBEAT_TABLE
+                    + " WHERE " + ANCHOR + "=" + COORDINATOR_ANCHOR;
+
+    /**
+     * Prepared statement to get coordinator node ID
+     */
+    protected static final String PS_GET_COORDINATOR_NODE_ID =
+            "SELECT " + NODE_ID
                     + " FROM " + CLUSTER_COORDINATOR_HEARTBEAT_TABLE
                     + " WHERE " + ANCHOR + "=" + COORDINATOR_ANCHOR;
 
@@ -833,7 +845,8 @@ public class RDBMSConstants {
      * Prepared statement to check if coordinator
      */
     protected static final String PS_GET_ALL_NODE_HEARTBEAT =
-            "SELECT " + NODE_ID + "," + LAST_HEARTBEAT + "," + IS_NEW_NODE
+            "SELECT " + NODE_ID + "," + LAST_HEARTBEAT + "," + IS_NEW_NODE + "," + CLUSTER_AGENT_HOST + ","
+                    + CLUSTER_AGENT_PORT
                     + " FROM " + CLUSTER_NODE_HEARTBEAT_TABLE;
 
     protected static final String PS_DELETE_COORDINATOR =
@@ -843,6 +856,13 @@ public class RDBMSConstants {
     protected static final String PS_DELETE_NODE_HEARTBEAT =
             "DELETE FROM " + CLUSTER_NODE_HEARTBEAT_TABLE
                     + " WHERE " + NODE_ID + "=?";
+
+    protected static final String PS_CLEAR_NODE_HEARTBEATS =
+            "DELETE FROM " + CLUSTER_NODE_HEARTBEAT_TABLE;
+
+    protected static final String PS_CLEAR_COORDINATOR_HEARTBEAT =
+            "DELETE FROM " + CLUSTER_COORDINATOR_HEARTBEAT_TABLE;
+
     /**
      * Prepared statement to get slot message ids
      */
@@ -1129,6 +1149,8 @@ public class RDBMSConstants {
     protected static final String TASK_GET_COORDINATOR_INFORMATION = "reading coordinator information";
     protected static final String TASK_CHECK_COORDINATOR_VALIDITY = "checking coordinator validity";
     protected static final String TASK_UPDATE_COORDINATOR_HEARTBEAT = "updating coordinator heartbeat";
+    protected static final String TASK_UPDATE_NODE_HEARTBEAT = "updating node heartbeat";
+    protected static final String TASK_CREATE_NODE_HEARTBEAT = "creating node heartbeat";
     protected static final String TASK_REMOVE_COORDINATOR = "removing coordinator heartbeat";
     protected static final String TASK_REMOVE_NODE_HEARTBEAT = "removing node heartbeat entry";
     protected static final String TASK_MARK_NODE_NOT_NEW = "marking node as not new";

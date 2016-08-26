@@ -34,7 +34,7 @@ public interface ClusterAgent {
      *
      * @return A list of address of the nodes in a cluster
      */
-     List<String> getAllClusterNodeAddresses();
+     List<String> getAllClusterNodeAddresses() throws AndesException;
 
     /**
      * Return all ids of the connected nodes.
@@ -42,13 +42,6 @@ public interface ClusterAgent {
      * @return list of member ids
      */
     List<String> getAllNodeIdentifiers() throws AndesException;
-
-    /**
-     * Return current coordinator hostname and port
-     *
-     * @return coordinator details
-     */
-    CoordinatorInformation getCoordinatorDetails();
 
     /**
      * Get id of the local node
