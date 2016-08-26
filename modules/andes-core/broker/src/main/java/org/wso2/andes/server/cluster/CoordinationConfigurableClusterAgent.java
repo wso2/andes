@@ -212,34 +212,38 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
     }
 
     /**
-     * Get the advertised port of Thrift Coordinator Server
+     * Get the routable IP address of Thrift Coordinator Server
      *
      * @return  IP address for Thrift Coordinator Server
      */
     private String getThriftCoordinatorServerAddress() {
+        // first check if the advertised routable ip is present
         String thriftCoordinatorServerIP = AndesContext.getInstance().getThriftServerAdvertisedHost();
         if (!thriftCoordinatorServerIP.isEmpty()) {
             if (log.isDebugEnabled()) {
-                log.debug("Thrift Coordinator Server bind IP specified as " + thriftCoordinatorServerIP);
+                log.debug("Thrift Coordinator Server advertised IP specified as " + thriftCoordinatorServerIP);
             }
         } else {
+            // advertised ip is not defined; use the local ip
             thriftCoordinatorServerIP = AndesContext.getInstance().getThriftServerHost();
         }
         return thriftCoordinatorServerIP;
     }
 
     /**
-     * Get the advertised address of Thrift Coordinator Server
+     * Get the routable port of Thrift Coordinator Server
      *
-     * @return IP address for Thrift Coordinator Server
+     * @return Port for Thrift Coordinator Server
      */
     private int getThriftCoordinatorServerPort() {
+        // first check if the advertised port is present
         int thriftCoordinatorServerPort = AndesContext.getInstance().getThriftServerAdvertisedPort();
         if (thriftCoordinatorServerPort > 0) {
             if (log.isDebugEnabled()) {
-                log.debug("Thrift Coordinator Server bind port specified as " + thriftCoordinatorServerPort);
+                log.debug("Thrift Coordinator Server advertised port specified as " + thriftCoordinatorServerPort);
             }
         } else {
+            // advertised ip is not defined; use the local port
             thriftCoordinatorServerPort = AndesContext.getInstance().getThriftServerPort();
         }
         return thriftCoordinatorServerPort;
