@@ -20,6 +20,7 @@ package org.wso2.andes.store;
 
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
+import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
@@ -35,6 +36,7 @@ import org.wso2.andes.tools.utils.MessageTracer;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Implementation of {@link MessageStore} which observes failures such is
@@ -56,11 +58,25 @@ public class FailureObservingMessageStore implements MessageStore {
     private ScheduledFuture<?> storeHealthDetectingFuture;
 
     /**
+     * Variable that holds the operational status of the context store. True if store is operational.
+     */
+    private AtomicBoolean isStoreAvailable;
+
+    /**
+     * {@link FailureObservingStoreManager} to notify about store's operational status.
+     */
+    private FailureObservingStoreManager failureObservingStoreManager;
+
+    private static final Logger log = Logger.getLogger(FailureObservingMessageStore.class);
+
+    /**
      * {@inheritDoc}
      */
-    public FailureObservingMessageStore(MessageStore messageStore) {
+    public FailureObservingMessageStore(MessageStore messageStore, FailureObservingStoreManager manager) {
         this.wrappedInstance = messageStore;
         this.storeHealthDetectingFuture = null;
+        isStoreAvailable = new AtomicBoolean(true);
+        failureObservingStoreManager = manager;
     }
 
     /**
@@ -613,7 +629,7 @@ public class FailureObservingMessageStore implements MessageStore {
     @Override
     public void close() {
         wrappedInstance.close();
-        FailureObservingStoreManager.close();
+        failureObservingStoreManager.close();
     }
 
     /**
@@ -628,18 +644,19 @@ public class FailureObservingMessageStore implements MessageStore {
     @Override
     public boolean isOperational(String testString, long testTime) {
 
-        boolean operational = false;
         if (wrappedInstance.isOperational(testString, testTime)) {
-            operational = true;
+            isStoreAvailable.set(true);
             if (storeHealthDetectingFuture != null) {
                 // we have detected that store is operational therefore
-                // we don't need to run the periodic task to check weather store is available.
+                // we don't need to run the periodic task to check weather store
+                // is available.
                 storeHealthDetectingFuture.cancel(false);
                 storeHealthDetectingFuture = null;
             }
-
+            failureObservingStoreManager.notifyMessageStoreOperational(this);
+            return true;
         }
-        return operational;
+        return false;
     }
 
     /**
@@ -648,15 +665,13 @@ public class FailureObservingMessageStore implements MessageStore {
      *
      * @param e the exception occurred.
      */
-    private synchronized void notifyFailures(AndesStoreUnavailableException e) {
+    private void notifyFailures(AndesStoreUnavailableException e) {
 
-        if (storeHealthDetectingFuture == null) {
-            // this is the first failure 
-            FailureObservingStoreManager.notifyStoreNonOperational(e, wrappedInstance);
-            storeHealthDetectingFuture = FailureObservingStoreManager.scheduleHealthCheckTask(this);
-
+        if (isStoreAvailable.compareAndSet(true,false)){
+            log.warn("Message store became non-operational");
+            failureObservingStoreManager.notifyMessageStoreNonOperational(e, wrappedInstance);
+            storeHealthDetectingFuture = failureObservingStoreManager.scheduleHealthCheckTask(this);
         }
-
     }
 
 }

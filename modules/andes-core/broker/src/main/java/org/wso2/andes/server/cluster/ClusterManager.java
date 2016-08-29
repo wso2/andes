@@ -294,6 +294,7 @@ public class ClusterManager implements StoreHealthListener{
      */
     @Override
     public void storeNonOperational(HealthAwareStore store, Exception ex) {
+        log.warn("Store became non-operational.");
         storeOperational = false;
     }
 
@@ -303,5 +304,6 @@ public class ClusterManager implements StoreHealthListener{
     @Override
     public void storeOperational(HealthAwareStore store) {
         storeOperational = true;
+        log.info("Store became operational.");
     }
 }

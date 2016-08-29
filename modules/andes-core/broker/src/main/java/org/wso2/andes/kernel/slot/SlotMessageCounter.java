@@ -18,6 +18,7 @@
 
 package org.wso2.andes.kernel.slot;
 
+import com.google.common.util.concurrent.SettableFuture;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.gs.collections.impl.map.mutable.ConcurrentHashMap;
 import org.apache.commons.logging.Log;
@@ -31,6 +32,9 @@ import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.subscription.StorageQueue;
+import org.wso2.andes.store.FailureObservingStoreManager;
+import org.wso2.andes.store.HealthAwareStore;
+import org.wso2.andes.store.StoreHealthListener;
 
 import java.util.Collection;
 import java.util.List;
@@ -44,7 +48,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * This class is responsible of counting messages in a slot for each queue
  */
-public class SlotMessageCounter {
+public class SlotMessageCounter implements StoreHealthListener {
 
     private ConcurrentHashMap<String, Slot> queueToSlotMap = new ConcurrentHashMap<>();
     private ConcurrentHashMap<String, Long> slotTimeOutMap = new ConcurrentHashMap<>();
@@ -82,6 +86,12 @@ public class SlotMessageCounter {
      */
     public final int SLOT_SUBMIT_TIMEOUT;
 
+    /**
+     * Indicates if messages stores become offline. Marked as volatile since this value could be set from a different
+     * thread (other than those of disruptor)
+     */
+    private volatile boolean messageStoresUnavailable;
+
     private SlotMessageCounter() {
 
         SLOT_SUBMIT_TIMEOUT = AndesConfigurationManager
@@ -95,6 +105,9 @@ public class SlotMessageCounter {
 
         slotSubmitLoopSkipCount = 0;
         slotCoordinator = MessagingEngine.getInstance().getSlotCoordinator();
+
+        messageStoresUnavailable = false;
+        FailureObservingStoreManager.registerStoreHealthListener(this);
 
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("SlotMessageCounterTimeoutTask")
                 .build();
@@ -191,8 +204,8 @@ public class SlotMessageCounter {
                     long localSafeZone = inferLocalSafeZone(storageQueueName);
                     slotTimeOutMap.remove(storageQueueName);
                     queueToSlotMap.remove(storageQueueName);
-                    slotCoordinator.updateMessageId(storageQueueName, slot.getStartMessageId(), slot.getEndMessageId(),
-                            localSafeZone);
+                    slotCoordinator.updateMessageId(storageQueueName, slot.getStartMessageId(),
+                            slot.getEndMessageId(), localSafeZone);
                 } catch (ConnectionException e) {
                     // we only log here since this is called again from timer task if previous attempt failed
                     log.error("Error occurred while connecting to the thrift coordinator.", e);
@@ -277,25 +290,30 @@ public class SlotMessageCounter {
      * @param recoveryMessageId message id that is taken as the seed for the update message id event
      */
     public void sendRecoverySlotSubmit(long recoveryMessageId) {
-        try {
-            log.info("Starting publisher slot recovery event with recovery message id " + recoveryMessageId);
-            AndesContextStore contextStore = AndesContext.getInstance().getAndesContextStore();
-            List<StorageQueue> queueList = contextStore.getAllQueuesStored();
-            for (StorageQueue queue : queueList) {
-                slotCoordinator.updateMessageId(queue.getName(), recoveryMessageId, recoveryMessageId,
-                        currentSlotDeleteSafeZone);
-                // NOTE: Two queues can't have the same message id at the MB_SLOT_MESSAGE_ID table hence incrementing.
-                // Get fresh slot logic deletes the current 'last-queue-to-message-id' mapping with only the message id
-                recoveryMessageId++;
-                log.info("Moving last published message id of queue " + queue.getName() + " to " + recoveryMessageId);
-            }
-            log.info("Publisher slot recovery event completed for " + queueList.size() +
-                    " queue(s). Recovery message id " + recoveryMessageId);
+        if (!messageStoresUnavailable) {
+            try {
+                log.info("Starting publisher slot recovery event with recovery message id " + recoveryMessageId);
+                AndesContextStore contextStore = AndesContext.getInstance().getAndesContextStore();
+                List<StorageQueue> queueList = contextStore.getAllQueuesStored();
+                for (StorageQueue queue : queueList) {
+                    slotCoordinator.updateMessageId(queue.getName(), recoveryMessageId, recoveryMessageId,
+                            currentSlotDeleteSafeZone);
+                    // NOTE: Two queues can't have the same message id at the MB_SLOT_MESSAGE_ID table hence incrementing.
 
-        } catch (ConnectionException e) {
-            log.error("Error occurred while connecting to Thrift server", e);
-        } catch (AndesException e) {
-            log.error("Error occurred while executing scheduled submit slot", e);
+                    // Get fresh slot logic deletes the current 'last-queue-to-message-id' mapping with only the
+                    // message id
+                    recoveryMessageId++;
+                    log.info("Moving last published message id of queue " + queue.getName() + " to "
+                             + recoveryMessageId);
+                }
+                log.info("Publisher slot recovery event completed for " + queueList.size() +
+                         " queue(s). Recovery message id " + recoveryMessageId);
+
+            } catch (ConnectionException e) {
+                log.error("Error occurred while connecting to Thrift server", e);
+            } catch (AndesException e) {
+                log.error("Error occurred while executing scheduled submit slot", e);
+            }
         }
     }
 
@@ -354,11 +372,14 @@ public class SlotMessageCounter {
 
                     long evaluatedSafeZone = currentSlotDeleteSafeZone;
 
-                    // If there are any slots pending submission to coordinator, we must lower the safe zone to their starting point.
+                    // If there are any slots pending submission to coordinator, we must lower the safe zone to their
+                    // starting point.
+
                     // If we do not consider pending slots at this calculation, safe zone will fly up unexpectedly.
                     for (Map.Entry<String, Slot> slotEntry : queueToSlotMap.entrySet()) {
                         if (!checkMessageLimitReached(slotEntry.getValue())) {
-                            evaluatedSafeZone = Math.min(slotEntry.getValue().getStartMessageId(), evaluatedSafeZone);
+                            evaluatedSafeZone = Math.min(slotEntry.getValue().getStartMessageId(),
+                                    evaluatedSafeZone);
                         }
                     }
 
@@ -376,4 +397,25 @@ public class SlotMessageCounter {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     * <p/>
+     * Creates a {@link SettableFuture} indicating message store became non operational.
+     */
+    @Override
+    public void storeNonOperational(HealthAwareStore store, Exception ex) {
+        log.info("Message store became non-operational. Slot message counter paused.");
+        messageStoresUnavailable = true;
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p/>
+     * Clears the {@link SettableFuture} indicating message store became operational.
+     */
+    @Override
+    public void storeOperational(HealthAwareStore store) {
+        log.info("Message store became operational. Slot message counter resumed.");
+        messageStoresUnavailable = false;
+    }
 }
