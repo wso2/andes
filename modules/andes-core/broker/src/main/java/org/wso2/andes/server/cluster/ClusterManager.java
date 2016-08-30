@@ -19,7 +19,6 @@ package org.wso2.andes.server.cluster;
 
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -268,29 +267,12 @@ public class ClusterManager implements StoreHealthListener{
     }
 
     /**
-     * Gets the coordinator node's address. i.e address:port
-     *
-     * @return Address of the coordinator node
-     */
-    public String getCoordinatorNodeAddress() {
-        if (AndesContext.getInstance().isClusteringEnabled()) {
-            CoordinatorInformation coordinatorDetails = clusterAgent.getCoordinatorDetails();
-            String ipAddress = coordinatorDetails.getHostname();
-            String port = coordinatorDetails.getPort();
-            if (null != ipAddress && null != port) {
-                return ipAddress + "," + port;
-            }
-        }
-
-        return StringUtils.EMPTY;
-    }
-
-    /**
-     * Gets address of all the members in the cluster. i.e address:port
+     * Gets details  of all the members in the cluster in the format of,
+     *    "node_ID,host_address,port,isCoordinator->(true|false)"
      *
      * @return A list of address of the nodes in a cluster
      */
-    public List<String> getAllClusterNodeAddresses() {
+    public List<String> getAllClusterNodeAddresses() throws AndesException {
 
         if (AndesContext.getInstance().isClusteringEnabled()) {
             return clusterAgent.getAllClusterNodeAddresses();

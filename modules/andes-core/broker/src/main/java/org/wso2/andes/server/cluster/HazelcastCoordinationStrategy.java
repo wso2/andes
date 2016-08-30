@@ -59,6 +59,11 @@ public class HazelcastCoordinationStrategy implements CoordinationStrategy, Memb
     private final AtomicBoolean isCoordinator;
 
     /**
+     * Hold coordinator information
+     */
+    private IMap<String, String> coordinatorNodeDetailsMap;
+
+    /**
      * This map is used to store thrift server host and thrift server port
      * map's key is port or host name.
      */
@@ -78,8 +83,9 @@ public class HazelcastCoordinationStrategy implements CoordinationStrategy, Memb
      */
     @Override
     public void start(CoordinationConfigurableClusterAgent configurableClusterAgent, String nodeId,
-            InetSocketAddress thriftAddress) {
+            InetSocketAddress thriftAddress, InetSocketAddress hazelcastAddress) {
         thriftServerDetailsMap = hazelcastInstance.getMap(CoordinationConstants.THRIFT_SERVER_DETAILS_MAP_NAME);
+        coordinatorNodeDetailsMap = hazelcastInstance.getMap(CoordinationConstants.COORDINATOR_NODE_DETAILS_MAP_NAME);
 
         // Register listener for membership changes
         listenerRegistrationId = hazelcastInstance.getCluster()
@@ -131,6 +137,40 @@ public class HazelcastCoordinationStrategy implements CoordinationStrategy, Memb
         return nodeIDList;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<NodeDetail> getAllNodeDetails() throws AndesException {
+        List<NodeDetail> nodeDetails = new ArrayList<>();
+
+        CoordinatorInformation coordinatorDetails = getCoordinatorDetails();
+        InetSocketAddress coordinatorSocketAddress = new InetSocketAddress(coordinatorDetails.getHostname(),
+                Integer.parseInt(coordinatorDetails.getPort()));
+
+        for (Member member : hazelcastInstance.getCluster().getMembers()) {
+            InetSocketAddress nodeSocketAddress = member.getSocketAddress();
+            String nodeId = configurableClusterAgent.getIdOfNode(member);
+            boolean isCoordinator = nodeSocketAddress.equals(coordinatorSocketAddress);
+
+            nodeDetails.add(new NodeDetail(nodeId, nodeSocketAddress, isCoordinator));
+        }
+
+        return nodeDetails;
+    }
+
+    /**
+     * Return current coordinator hostname and port
+     *
+     * @return coordinator details
+     */
+    private CoordinatorInformation getCoordinatorDetails() {
+        String ipAddress = coordinatorNodeDetailsMap.get(
+                SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_IP);
+        String port = coordinatorNodeDetailsMap.get(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_PORT);
+
+        return new CoordinatorInformation(ipAddress, port);
+    }
     /**
      * {@inheritDoc}
      */
@@ -187,10 +227,24 @@ public class HazelcastCoordinationStrategy implements CoordinationStrategy, Memb
     private void checkAndNotifyCoordinatorChange() {
         if (isCoordinator() && isCoordinator.compareAndSet(false, true)) {
             updateThriftCoordinatorDetailsToMap();
+            updateCoordinatorNodeDetailMap();
             configurableClusterAgent.becameCoordinator();
         } else {
             isCoordinator.set(false);
         }
+    }
+
+    /**
+     * Sets coordinator's hostname and port in {@link org.wso2.andes.server.cluster.coordination
+     * .CoordinationConstants#COORDINATOR_NODE_DETAILS_MAP_NAME} hazelcast map.
+     */
+    private void updateCoordinatorNodeDetailMap() {
+        // Adding cluster coordinator's node IP and port
+        Member localMember = hazelcastInstance.getCluster().getLocalMember();
+        coordinatorNodeDetailsMap.put(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_IP,
+                localMember.getSocketAddress().getAddress().getHostAddress());
+        coordinatorNodeDetailsMap.put(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_PORT,
+                Integer.toString(localMember.getSocketAddress().getPort()));
     }
 
     /**

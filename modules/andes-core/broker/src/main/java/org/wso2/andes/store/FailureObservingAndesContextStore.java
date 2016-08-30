@@ -953,9 +953,22 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public void updateNodeHeartbeat(String nodeId) throws AndesException {
+    public boolean updateNodeHeartbeat(String nodeId) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.updateNodeHeartbeat(nodeId);
+            return wrappedAndesContextStoreInstance.updateNodeHeartbeat(nodeId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void createNodeHeartbeatEntry(String nodeId,  InetSocketAddress nodeAddress) throws AndesException {
+        try {
+            wrappedAndesContextStoreInstance.createNodeHeartbeatEntry(nodeId, nodeAddress);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -1001,6 +1014,28 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getCoordinatorNodeId() throws AndesException {
+        try {
+            return wrappedAndesContextStoreInstance.getCoordinatorNodeId();
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    @Override
+    public void clearHeartBeatData() throws AndesException {
+        try {
+            wrappedAndesContextStoreInstance.clearHeartBeatData();
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
 
     /**
      * {@inheritDoc}

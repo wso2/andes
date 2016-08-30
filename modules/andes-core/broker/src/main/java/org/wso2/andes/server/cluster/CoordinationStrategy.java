@@ -49,14 +49,23 @@ interface CoordinationStrategy {
     List<String> getAllNodeIdentifiers() throws AndesException;
 
     /**
+     * Return all ids of the connected nodes.
+     *
+     * @return list of member ids
+     */
+    List<NodeDetail> getAllNodeDetails() throws AndesException;
+
+    /**
      * Meant to be invoked when coordination algorithm should start working. This is typically invoked during the
      * server start up.
+     *
      * @param configurableClusterAgent cluster agent used to indicate cluster change events
      * @param nodeId                   local node ID
-     * @param thriftAddress local node's thrift server address
+     * @param thriftAddress            local node's thrift server socket address
+     * @param hazelcastAddress         local node's Hazelcast socket address
      */
     void start(CoordinationConfigurableClusterAgent configurableClusterAgent, String nodeId,
-            InetSocketAddress thriftAddress);
+            InetSocketAddress thriftAddress, InetSocketAddress hazelcastAddress);
 
     /**
      * Meant to be invoked when coordination algorithm should stop working. This is typically during the server

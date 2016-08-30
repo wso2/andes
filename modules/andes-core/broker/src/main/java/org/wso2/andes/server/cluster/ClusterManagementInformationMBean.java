@@ -17,19 +17,26 @@
  */
 package org.wso2.andes.server.cluster;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.management.common.mbeans.ClusterManagementInformation;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanConstructor;
 import org.wso2.andes.server.management.AMQManagedObject;
 
-import javax.management.JMException;
 import java.util.List;
+import javax.management.JMException;
 
 /**
  * <code>ClusterManagementInformationMBean</code> The the JMS MBean that expose cluster management information
  * Exposes the Cluster Management related information using MBeans
  */
 public class ClusterManagementInformationMBean extends AMQManagedObject implements ClusterManagementInformation {
+    /**
+     * Class logger
+     */
+    private static final Log logger = LogFactory.getLog(ClusterManagementInformationMBean.class);
 
     /**
      * ClusterManager instance to get the information to expose
@@ -76,16 +83,13 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
      * {@inheritDoc}
      */
     @Override
-    public String getCoordinatorNodeAddress() {
-        return this.clusterManager.getCoordinatorNodeAddress();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public List<String> getAllClusterNodeAddresses() {
-        return this.clusterManager.getAllClusterNodeAddresses();
+    public List<String> getAllClusterNodeAddresses() throws JMException {
+        try {
+            return this.clusterManager.getAllClusterNodeAddresses();
+        } catch (AndesException e) {
+            logger.error("Error occurred while retrieving cluster details", e);
+            throw new JMException("Error occurred while retrieving cluster details");
+        }
     }
 
     /**
