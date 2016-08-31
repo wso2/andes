@@ -81,8 +81,20 @@ public class RDBMSConstants {
     protected static final String TRANSACTION_ROLLBACK_ERROR_SQL_STATE_CLASSES = "transactionRollbackSQLStateClasses";
 
     // Message Store tables
-    protected static final String CONTENT_TABLE = "MB_CONTENT";
-    protected static final String METADATA_TABLE = "MB_METADATA";
+    protected static final String CONTENT_TABLE = "$MB_CONTENT";
+
+    protected static final String CONTENT_TABLE1 = "MB_CONTENT1";
+    protected static final String CONTENT_TABLE2 = "MB_CONTENT2";
+    protected static final String CONTENT_TABLE3 = "MB_CONTENT3";
+    protected static final String CONTENT_TABLE4 = "MB_CONTENT4";
+
+    protected static final String METADATA_TABLE = "$MB_METADATA";
+
+    protected static final String METADATA_TABLE1 = "MB_METADATA1";
+    protected static final String METADATA_TABLE2 = "MB_METADATA2";
+    protected static final String METADATA_TABLE3 = "MB_METADATA3";
+    protected static final String METADATA_TABLE4 = "MB_METADATA4";
+
     protected static final String QUEUES_TABLE = "MB_QUEUE_MAPPING";
     protected static final String EXPIRATION_TABLE = "MB_EXPIRATION_DATA";
     protected static final String MSG_STORE_STATUS_TABLE = "MB_MSG_STORE_STATUS";
@@ -91,8 +103,10 @@ public class RDBMSConstants {
 
 
     // Message Store table columns
+
     protected static final String MESSAGE_ID = "MESSAGE_ID";
     protected static final String QUEUE_ID = "QUEUE_ID";
+    protected static final String TABLE_ID = "TABLE_ID";
     protected static final String DLC_QUEUE_ID = "DLC_QUEUE_ID";
     protected static final String QUEUE_NAME = "QUEUE_NAME";
     protected static final String METADATA = "MESSAGE_METADATA";
@@ -173,12 +187,36 @@ public class RDBMSConstants {
     protected static final String ORIGINATED_MEMBER_ID = "ORIGINATED_NODE_ID";
     protected static final String EVENT_ID = "EVENT_ID";
 
-    // prepared statements for Message Store
     protected static final String PS_INSERT_MESSAGE_PART =
             "INSERT INTO " + CONTENT_TABLE + "("
-            + MESSAGE_ID + ","
-            + MSG_OFFSET + ","
-            + MESSAGE_CONTENT + ") VALUES (?, ?, ?)";
+                    + MESSAGE_ID + ","
+                    + MSG_OFFSET + ","
+                    + MESSAGE_CONTENT + ") VALUES (?, ?, ?)";
+
+    protected static final String PS_INSERT_MESSAGE_PART1 =
+            "INSERT INTO " + CONTENT_TABLE1 + "("
+                    + MESSAGE_ID + ","
+                    + MSG_OFFSET + ","
+                    + MESSAGE_CONTENT + ") VALUES (?, ?, ?)";
+
+    protected static final String PS_INSERT_MESSAGE_PART2 =
+            "INSERT INTO " + CONTENT_TABLE2 + "("
+                    + MESSAGE_ID + ","
+                    + MSG_OFFSET + ","
+                    + MESSAGE_CONTENT + ") VALUES (?, ?, ?)";
+
+    protected static final String PS_INSERT_MESSAGE_PART3 =
+            "INSERT INTO " + CONTENT_TABLE3 + "("
+                    + MESSAGE_ID + ","
+                    + MSG_OFFSET + ","
+                    + MESSAGE_CONTENT + ") VALUES (?, ?, ?)";
+
+    protected static final String PS_INSERT_MESSAGE_PART4 =
+            "INSERT INTO " + CONTENT_TABLE4 + "("
+                    + MESSAGE_ID + ","
+                    + MSG_OFFSET + ","
+                    + MESSAGE_CONTENT + ") VALUES (?, ?, ?)";
+
 
     protected static final String PS_RETRIEVE_MESSAGE_PART =
             "SELECT " + MESSAGE_CONTENT
@@ -189,14 +227,47 @@ public class RDBMSConstants {
     /**
      * We need to select rows that have the DLC_QUEUE_ID = -1 indicating that the message is not moved
      * into the dead letter channel
+     * Hardcoded METADATA_TABLE 1 to 4 and MB_CONTENT 1 to 4
      */
     protected static final String PS_INSERT_METADATA =
             "INSERT INTO " + METADATA_TABLE + " ("
+                    + MESSAGE_ID + ","
+                    + QUEUE_ID + ","
+                    + DLC_QUEUE_ID + ","
+                    + METADATA + ")"
+                    + " VALUES ( ?,?,-1,? )";
+
+    protected static final String PS_INSERT_METADATA1 =
+            "INSERT INTO " + METADATA_TABLE1 + " ("
             + MESSAGE_ID + ","
             + QUEUE_ID + ","
             + DLC_QUEUE_ID + ","
             + METADATA + ")"
             + " VALUES ( ?,?,-1,? )";
+
+    protected static final String PS_INSERT_METADATA2 =
+            "INSERT INTO " + METADATA_TABLE2 + " ("
+                    + MESSAGE_ID + ","
+                    + QUEUE_ID + ","
+                    + DLC_QUEUE_ID + ","
+                    + METADATA + ")"
+                    + " VALUES ( ?,?,-1,? )";
+
+    protected static final String PS_INSERT_METADATA3 =
+            "INSERT INTO " + METADATA_TABLE3 + " ("
+                    + MESSAGE_ID + ","
+                    + QUEUE_ID + ","
+                    + DLC_QUEUE_ID + ","
+                    + METADATA + ")"
+                    + " VALUES ( ?,?,-1,? )";
+
+    protected static final String PS_INSERT_METADATA4 =
+            "INSERT INTO " + METADATA_TABLE4 + " ("
+                    + MESSAGE_ID + ","
+                    + QUEUE_ID + ","
+                    + DLC_QUEUE_ID + ","
+                    + METADATA + ")"
+                    + " VALUES ( ?,?,-1,? )";
 
     protected static final String PS_INSERT_EXPIRY_DATA =
             "INSERT INTO " + EXPIRATION_TABLE + " ("
@@ -209,7 +280,7 @@ public class RDBMSConstants {
     protected static final String PS_INSERT_QUEUE =
             "INSERT INTO " + QUEUES_TABLE + " ("
             + RDBMSConstants.QUEUE_NAME + ")"
-            + "  VALUES (?)";
+            + "  VALUES ( ? )" ;
 
     protected static final String PS_DELETE_QUEUE =
                         "DELETE FROM " + QUEUES_TABLE
@@ -353,9 +424,9 @@ public class RDBMSConstants {
             + " WHERE " + EXPIRATION_TIME + "<?"
             + " AND " + DLC_QUEUE_ID + " != -1";
 
-
-    protected static final String PS_SELECT_QUEUE_ID =
-            "SELECT " + QUEUE_ID
+    //Changed PS_SELECT_QUEUE_ID to PS_SELECT_QUEUE_DETAILS and added TABLE_ID for SELECT : 2016/08/22
+    protected static final String PS_SELECT_QUEUE_DETAILS =
+            "SELECT " + QUEUE_ID + "," + TABLE_ID
             + " FROM " + QUEUES_TABLE
             + " WHERE " + QUEUE_NAME + "=?";
 

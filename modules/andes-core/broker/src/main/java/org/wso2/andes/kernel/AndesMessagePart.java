@@ -24,6 +24,7 @@ package org.wso2.andes.kernel;
 public class AndesMessagePart {
     long messageID;
     int offSet = 0;
+    long tableID;
     private byte[] data;
     private int dataLength;
 
@@ -37,6 +38,9 @@ public class AndesMessagePart {
 
     public long getMessageID() {
         return messageID;
+    }
+    public long getTableIDID() {
+        return tableID;
     }
 
     public void setMessageID(long messageID) {
