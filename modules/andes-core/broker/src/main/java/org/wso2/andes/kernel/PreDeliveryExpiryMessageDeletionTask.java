@@ -24,12 +24,8 @@ import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Queue;
-import java.util.Set;
 import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingDeque;
 
@@ -97,15 +93,15 @@ public class PreDeliveryExpiryMessageDeletionTask implements Runnable, StoreHeal
         //delete the accumulated messages in the list that are filtered out from the message flusher expiration rule
         //should be run in all the nodes
         if (!expiredMessageIds.isEmpty()) {
-            try {
+            //try {
                 List<Long> expiredMessageIdList = new ArrayList<>();
                 //removes the messages from the queue and add them into a list
                 expiredMessageIds.drainTo(expiredMessageIdList);
                 //delete the messages from the store
-                MessagingEngine.getInstance().deleteMessagesById(expiredMessageIdList);
-            } catch (AndesException e) {
-                log.error("Error running message expiration checker ", e);
-            }
+               // MessagingEngine.getInstance().deleteMessagesById(expiredMessageIdList);
+//            } catch (AndesException e) {
+//                log.error("Error running message expiration checker ", e);
+//            }
         }
     }
 

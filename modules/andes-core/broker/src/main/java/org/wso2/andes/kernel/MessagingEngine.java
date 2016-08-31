@@ -23,6 +23,7 @@ import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.slot.ConnectionException;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotCoordinator;
 import org.wso2.andes.kernel.slot.SlotCoordinatorCluster;
@@ -143,15 +144,18 @@ public class MessagingEngine {
     /**
      * Read content for given message metadata list
      *
-     * @param messageIdList message id list for the content to be retrieved
+     * @param messageHash message id list for the content to be retrieved
      * @return <code>Map<Long, List<AndesMessagePart>></code> Message id and its corresponding message part list
      * @throws AndesException
      */
-    public LongObjectHashMap<List<AndesMessagePart>> getContent(LongArrayList messageIdList) throws AndesException {
-        return messageStore.getContent(messageIdList);
+    public LongObjectHashMap<List<AndesMessagePart>> getContent(
+            HashMap<String, ArrayList<Long>> messageHash) throws AndesException {
+        return messageStore.getContent(messageHash);
 
     }
-
+    public LongObjectHashMap<List<AndesMessagePart>> getContent(LongArrayList messageIdList) throws AndesException {
+        return messageStore.getContent(messageIdList);
+    }
     /**
      * Persist received messages. Implemented {@link org.wso2.andes.kernel.MessageStore} will be used to
      * persist the messages
@@ -160,7 +164,25 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public void messagesReceived(List<AndesMessage> messageList) throws AndesException {
-        messageStore.storeMessages(messageList);
+        HashMap <String , List<AndesMessage>> messageToQueueHashMap = new HashMap<>();
+        String queueName;
+
+        for (AndesMessage message : messageList) {
+            queueName = message.getMetadata().getStorageQueueName();
+            List<AndesMessage> messages = messageToQueueHashMap.get(queueName);
+            //long messageID = message.getMetadata().messageID;
+            if (null == messages) {
+                messages = new ArrayList<>();
+                messageToQueueHashMap.put(queueName, messages);
+            }
+            messages.add(message);
+        }
+        for (Map.Entry<String , List<AndesMessage>> entry : messageToQueueHashMap.entrySet()) {
+
+            messageStore.storeMessages(entry.getKey() , entry.getValue());
+        }
+           // messageStore.storeMessages(messageList);
+
     }
 
     /**
@@ -344,6 +366,7 @@ public class MessagingEngine {
      * @param queueNames list of queue names of which the message count should be retrieved
      * @return Map of queue names and the message count for each queue
      */
+
     public Map<String, Integer> getMessageCountForAllQueues(List<String> queueNames) throws AndesException {
         return messageStore.getMessageCountForAllQueues(queueNames);
     }

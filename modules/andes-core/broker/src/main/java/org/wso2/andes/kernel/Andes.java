@@ -448,17 +448,7 @@ public class Andes {
         inboundEventManager.publishStateEvent(queueEvent);
     }
 
-    /**
-     * Return the requested chunk of a message's content.
-     *
-     * @param messageID       Unique ID of the Message
-     * @param offsetInMessage The offset of the required chunk in the Message content.
-     * @return AndesMessagePart
-     * @throws AndesException
-     */
-    public AndesMessagePart getMessageContentChunk(long messageID, int offsetInMessage) throws AndesException {
-        return MessagingEngine.getInstance().getMessageContentChunk(messageID, offsetInMessage);
-    }
+
 
     /**
      * Get a single metadata object.
