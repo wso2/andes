@@ -118,15 +118,16 @@ public class FailureObservingMessageStore implements MessageStore {
         }
     }
 
+
     @Override
     public LongObjectHashMap<List<AndesMessagePart>> getContent(LongArrayList messageIdList) throws AndesException {
         return null;
     }
 
     @Override
-    public void storeMessages(List<AndesMessage> messageList) throws AndesException {
+    public void storeMessages(String queueName , List<AndesMessage> messageList) throws AndesException {
         try {
-            wrappedInstance.storeMessages(messageList);
+            wrappedInstance.storeMessages(queueName, messageList);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

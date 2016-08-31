@@ -79,7 +79,7 @@ public interface MessageStore extends HealthAwareStore {
      *
      * @param messageList messages to be stored
      */
-    void storeMessages(List<AndesMessage> messageList) throws AndesException;
+    void storeMessages(String queueName , List<AndesMessage> messageList) throws AndesException;
 
     /**
      * Store a message in a different Queue without altering the meta data.

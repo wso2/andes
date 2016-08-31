@@ -32,6 +32,7 @@ import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.kernel.slot.SlotManagerStandalone;
 import org.wso2.andes.kernel.slot.SlotMessageCounter;
+
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerator;
@@ -44,6 +45,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 
 /**
  * This class will handle all message related functions of WSO2 Message Broker
@@ -141,11 +143,18 @@ public class MessagingEngine {
         return messageStore.getContent(messageID, offsetInMessage);
     }
 
-    public LongObjectHashMap<List<AndesMessagePart>> getContent(HashMap<String, ArrayList<Long>> messageHash)
-            throws AndesException {
+    /**
+     * Read content for given message metadata list
+     *
+     * @param messageHash message id list for the content to be retrieved
+     * @return <code>Map<Long, List<AndesMessagePart>></code> Message id and its corresponding message part list
+     * @throws AndesException
+     */
+    public LongObjectHashMap<List<AndesMessagePart>> getContent(
+            HashMap<String, ArrayList<Long>> messageHash) throws AndesException {
         return messageStore.getContent(messageHash);
-    }
 
+    }
     public LongObjectHashMap<List<AndesMessagePart>> getContent(LongArrayList messageIdList) throws AndesException {
         return messageStore.getContent(messageIdList);
     }
@@ -157,7 +166,24 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public void messagesReceived(List<AndesMessage> messageList) throws AndesException {
-        messageStore.storeMessages(messageList);
+        HashMap <String , List<AndesMessage>> messageToQueueHashMap = new HashMap<>();
+        String queueName;
+
+        for (AndesMessage message : messageList) {
+            queueName = message.getMetadata().getStorageQueueName();
+            List<AndesMessage> messages = messageToQueueHashMap.get(queueName);
+            //long messageID = message.getMetadata().messageID;
+            if (null == messages) {
+                messages = new ArrayList<>();
+                messageToQueueHashMap.put(queueName, messages);
+            }
+            messages.add(message);
+        }
+        for (Map.Entry<String , List<AndesMessage>> entry : messageToQueueHashMap.entrySet()) {
+
+            messageStore.storeMessages(entry.getKey() , entry.getValue());
+        }
+           // messageStore.storeMessages(messageList);
 
     }
 

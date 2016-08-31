@@ -26,14 +26,7 @@ import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
-import org.wso2.andes.kernel.AndesContextStore;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessage;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.DeliverableAndesMetadata;
-import org.wso2.andes.kernel.DurableStoreConnection;
-import org.wso2.andes.kernel.MessageStore;
+import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.queue.DLCQueueUtils;
@@ -45,25 +38,14 @@ import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
 import org.wso2.carbon.metrics.manager.Timer.Context;
 
-import java.sql.BatchUpdateException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
-import static org.wso2.andes.store.rdbms.RDBMSConstants.CONTENT_TABLE;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_CONTENT;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_ID;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.MSG_OFFSET;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_EXPIRY_DATA;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_MESSAGE_PART;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_METADATA;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.TASK_RETRIEVING_CONTENT_FOR_MESSAGES;
+import static org.wso2.andes.store.rdbms.RDBMSConstants.*;
 
 /**
  * ANSI SQL based message store implementation. Message persistence related methods are implemented
@@ -112,6 +94,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         log.info("Message Store initialised");
         return rdbmsConnection;
+
     }
 
     /**
@@ -383,6 +366,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         PreparedStatement storeMetadataPS = null;
         PreparedStatement storeContentPS = null;
+       // PreparedStatement[] storeContentPS = new PreparedStatement[4];
         PreparedStatement storeExpiryMetadataPS = null;
 
         storeMetadataPS = conn.prepareStatement(getCachedQueueDetails(queueName).rdbmsMetadataConstants
@@ -418,10 +402,10 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void storeMessages(List<AndesMessage> messageList) throws AndesException {
+    public void storeMessages(String queueName, List<AndesMessage> messageList) throws AndesException {
 
         HashMap <String , List<AndesMessage>> messageToQueueHashMap = new HashMap<>();
-        String queueName;
+        //String queueName;
 
         for (AndesMessage message : messageList) {
             queueName = message.getMetadata().getStorageQueueName();
