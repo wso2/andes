@@ -29,7 +29,7 @@ import java.util.List;
  * Keeps track of messages that were stored (from this message broker instance).
  * Intention is to eliminate the need to go to database to read
  * messages/metadata if they are inserted from
- * this node. (intension is to reduce the strain on database and improves
+ * this node. (intention is to reduce the strain on database and improves
  * performance)
  */
 public interface AndesMessageCache {
@@ -51,7 +51,7 @@ public interface AndesMessageCache {
     /**
      * Removes a message with a given id from the cache
      *
-     * @param messagesToRemove list of message Ids
+     * @param messageToRemove list of message Ids
      */
     abstract void removeFromCache(long messageToRemove);
 
