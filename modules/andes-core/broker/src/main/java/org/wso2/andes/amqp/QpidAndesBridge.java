@@ -120,7 +120,7 @@ public class QpidAndesBridge {
                     recoveredMetadataList.add(messageMetadata);
 
                     if (log.isDebugEnabled()) {
-                        log.debug("AMQP BRIDGE: recovered message id= " + messageMetadata.getMessageID() + " channel = "
+                        log.debug("AMQP BRIDGE: recovered message id= " + messageMetadata.getMessageId() + " channel = "
                                   + channelID);
                     }
 
@@ -205,7 +205,7 @@ public class QpidAndesBridge {
             for (int i = 0; i < contentChunks; i++) {
                 ContentChunk chunk = incomingMessage.getContentChunk(i);
                 AndesMessagePart messagePart = messageContentChunkReceived(
-                                                        metadata.getMessageID(), offset, chunk.getData().buf());
+                                                        metadata.getMessageId(), offset, chunk.getData().buf());
                 offset = offset + chunk.getSize();
                 andesMessage.addMessagePart(messagePart);
             }
@@ -331,7 +331,7 @@ public class QpidAndesBridge {
 
             rejectedMessage.setIsBeyondLastRollbackedMessage(channel.isMessageBeyondLastRollback(message.getMessageId()));
 
-            log.debug("AMQP BRIDGE: rejected message id= " + rejectedMessage.getMessageID()
+            log.debug("AMQP BRIDGE: rejected message id= " + rejectedMessage.getMessageId()
                     + " channel = " + channel.getId());
 
             MessagingEngine.getInstance().messageRejected(rejectedMessage, channel.getId());
