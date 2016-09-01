@@ -124,31 +124,38 @@ public interface QueueManagementInformation {
             description = "The Dead Letter Queue Name for the selected tenant") String destinationQueueName);
 
     /**
-     * Restore a given browser message Id list from the Dead Letter Queue to the same queue it was previous in before
-     * moving to the Dead Letter Queue
-     * and remove them from the Dead Letter Queue.
-     *
-     * @param andesMetadataIDs     The browser message Ids
-     * @param destinationQueueName The Dead Letter Queue Name for the tenant
+     * Restore a given message id list from the Dead Letter Channel to the same queue it was previously in before
+     * moving to the Dead Letter Channel and remove them from the Dead Letter Channel.
+     * @param andesMessageIds       The andes message Id list
+     * @param destinationQueueName  Original destination queue of these messages.
      */
-    @MBeanAttribute(name = " Restore Back a Specific set of Messages ", description = "Will Restore a Specific Set of Messages Back to Its Original Queue")
-    void restoreMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "andesMetadataIDs",
-            description = "IDs of the Messages to Be Restored") long[] andesMetadataIDs, @MBeanOperationParameter(name = "destinationQueueName",
-            description = "The Dead Letter Queue Name for the selected tenant") String destinationQueueName);
+    @MBeanAttribute(name = "restoreSelectedMessagesFromDeadLetterChannel", description = "Will restore a specific set of"
+            + " messages back to their original queue")
+    void restoreSelectedMessagesFromDeadLetterChannel(
+            @MBeanOperationParameter(name = "andesMessageIds",
+                                     description = "IDs of the Messages to Be restored") long[] andesMessageIds,
+            @MBeanOperationParameter(name = "destinationQueueName",
+                                     description = "Original destination queue of the messages") String destinationQueueName)
+            throws MBeanException;
 
     /**
-     * Restore a given browser message Id list from the Dead Letter Queue to a different given queue in the same
-     * tenant and remove them from the Dead Letter Queue.
+     * Reroute a given message Id list from the Dead Letter Channel to a different queue in the same
+     * tenant and remove the old messages from the Dead Letter Channel.
      *
-     * @param destinationQueueName    The Dead Letter Queue Name for the tenant
-     * @param andesMetadataIDs        The browser message Ids
-     * @param newDestinationQueueName The new destination
+     * @param sourceQueue       The Dead Letter Queue Name for the tenant
+     * @param andesMessageIds   The browser message Ids
+     * @param targetQueue       The new destination
      */
-    @MBeanAttribute(name = " Restore Back a Specific set of Messages ", description = "Will Restore a Specific Set of Messages Back to a Queue differnt from the original")
-    void restoreMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "andesMetadataIDs",
-            description = "IDs of the Messages to Be Restored") long[] andesMetadataIDs,@MBeanOperationParameter(name = "destination",
-            description = "Destination of the message to be restored") String newDestinationQueueName, @MBeanOperationParameter(name = "deadLetterQueueName",
-            description = "The Dead Letter Queue Name for the selected tenant") String destinationQueueName);
+    @MBeanAttribute(name = "rerouteSelectedMessagesFromDeadLetterChannel", description = "Will reroute a specific set"
+            + " of Messages of QueueA in DLC to a new target QueueB")
+    void rerouteSelectedMessagesFromDeadLetterChannel(
+            @MBeanOperationParameter(name = "andesMessageIds",
+                                     description = "IDs of the Messages to Be Restored") long[] andesMessageIds,
+            @MBeanOperationParameter(name = "sourceQueue",
+                                     description = "The  original queue name of the messages") String sourceQueue,
+            @MBeanOperationParameter(name = "targetQueue",
+                                     description = "New destination queue for the messages") String targetQueue)
+            throws MBeanException;
 
     /**
      * Browse queue for given id starting from last message id until it meet max message count
@@ -198,5 +205,45 @@ public interface QueueManagementInformation {
                                                                        "onwards") long nextMsgId,
             @MBeanOperationParameter(name = "maxMessageCount", description = "Maximum message " +
                                                          "count per request") int maxMessageCount)
+            throws MBeanException;
+
+    /**
+     * Returns a paginated list of message metadata which are destined for the targetQueue, but currently living in the
+     * Dead Letter Channel.
+     *
+     * @param targetQueue    Name of the destination queue
+     * @param startMessageId Message Id to start the resultset with.
+     * @param pageLimit      Maximum message count required in a single response
+     * @return Array of {@link CompositeData}
+     */
+    @MBeanAttribute(name = "getMessageMetadataInDeadLetterChannel",
+                    description = "List Message Metadata that live in Dead Letter Channel for a given queue.")
+    CompositeData[] getMessageMetadataInDeadLetterChannel(
+            @MBeanOperationParameter(name = "targetQueue",
+                                     description = "Name of destination queue ") String targetQueue,
+            @MBeanOperationParameter(name = "startMessageId",
+                                     description = "Message Id to start the resultset with.") long startMessageId,
+            @MBeanOperationParameter(name = "pageLimit",
+                                     description = "Maximum message count required in a single response") int pageLimit)
+            throws MBeanException;
+
+    /**
+     * Restore messages destined for the input sourceQueue into a different targetQueue.
+     * If the sourceQueue is DLCQueue, all messages in the DLC will be restored to the targetQueue.
+     *
+     * @param sourceQueue Name of the source queue
+     * @param targetQueue Name of the target queue.
+     * @param internalBatchSize even with this method, the MB server will internally read messages in DLC in batches,
+     *                          and simulate each batch as a new message list to the targetQueue. internalBatchSize
+     *                          controls the number of messages processed in a single batch internally.
+     * @throws MBeanException if an exception occurs while moving messages from the sourceQueue.
+     */
+    @MBeanAttribute(name = "rerouteAllMessagesInDeadLetterChannelForQueue", description = "Restore messages destined for "
+            + "the input sourceQueue into a different targetQueue.")
+    int rerouteAllMessagesInDeadLetterChannelForQueue(
+            @MBeanOperationParameter(name = "sourceQueue", description = "Name of the source queue") String sourceQueue,
+            @MBeanOperationParameter(name = "targetQueue", description = "Name of the source queue") String targetQueue,
+            @MBeanOperationParameter(name = "internalBatchSize", description = "Number of messages processed in a "
+                    + "single database call.") int internalBatchSize)
             throws MBeanException;
 }

@@ -586,8 +586,35 @@ public class FailureObservingMessageStore implements MessageStore {
         }
     }
 
-    
-    
+    /***
+     * {@inheritDoc}
+     */
+    @Override
+    public List<Long> getMessageIdsInDLCForQueue(String sourceQueueName, String dlcQueueName, long startMessageId,
+            int messageLimit) throws AndesException {
+        try {
+            return wrappedInstance.getMessageIdsInDLCForQueue(sourceQueueName, dlcQueueName, startMessageId, messageLimit);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /***
+     * {@inheritDoc}
+     */
+    @Override
+    public List<Long> getMessageIdsInDLC(String dlcQueueName, long startMessageId, int messageLimit)
+            throws AndesException {
+        try {
+            return wrappedInstance.getMessageIdsInDLC(dlcQueueName, startMessageId, messageLimit);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+
     /**
      * {@inheritDoc}
      */
