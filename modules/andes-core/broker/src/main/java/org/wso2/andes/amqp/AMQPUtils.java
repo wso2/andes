@@ -141,7 +141,7 @@ public class AMQPUtils {
      * @return AMQMessage
      */
     public static AMQMessage getAMQMessageFromAndesMetaData(AndesMessageMetadata metadata) {
-        long messageId = metadata.getMessageID();
+        long messageId = metadata.getMessageId();
         StorableMessageMetaData metaData = convertAndesMetadataToAMQMetadata(metadata);
         //create message with meta data. This has access to message content
         StoredAMQPMessage message = new StoredAMQPMessage(messageId, metaData);

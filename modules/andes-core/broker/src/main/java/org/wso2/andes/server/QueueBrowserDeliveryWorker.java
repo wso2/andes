@@ -136,7 +136,7 @@ public class QueueBrowserDeliveryWorker {
     public class CustomComparator implements Comparator<AndesMessageMetadata>{
 
         public int compare(AndesMessageMetadata message1, AndesMessageMetadata message2) {
-            return (int) (message1.getMessageID()-message2.getMessageID());
+            return (int) (message1.getMessageId()-message2.getMessageId());
         }
     }
 
