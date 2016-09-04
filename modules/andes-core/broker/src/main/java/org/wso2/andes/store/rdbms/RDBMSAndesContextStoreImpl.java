@@ -23,12 +23,13 @@ import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesBinding;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesExchange;
-import org.wso2.andes.kernel.AndesQueue;
-import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.DurableStoreConnection;
+import org.wso2.andes.kernel.router.AndesMessageRouter;
+import org.wso2.andes.kernel.router.MessageRouterFactory;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
+import org.wso2.andes.kernel.subscription.AndesSubscription;
+import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.cluster.NodeHeartBeatData;
 import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEvent;
@@ -744,13 +745,13 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public List<AndesExchange> getAllExchangesStored() throws AndesException {
+    public List<AndesMessageRouter> getAllMessageRoutersStored() throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
         Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
         try {
-            List<AndesExchange> exchangeList = new ArrayList<>();
+            List<AndesMessageRouter> messageRouters = new ArrayList<>();
 
             connection = getConnection();
             preparedStatement = connection
@@ -759,12 +760,12 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             // traverse the result set and add it to exchange list and return the list
             while (resultSet.next()) {
-                AndesExchange andesExchange = new AndesExchange(
-                        resultSet.getString(RDBMSConstants.EXCHANGE_DATA)
-                );
-                exchangeList.add(andesExchange);
+                MessageRouterFactory messageRouterFactory = new MessageRouterFactory();
+                AndesMessageRouter messageRouter = messageRouterFactory.
+                        createMessageRouter(resultSet.getString(RDBMSConstants.EXCHANGE_DATA));
+                messageRouters.add(messageRouter);
             }
-            return exchangeList;
+            return messageRouters;
         } catch (SQLException e) {
             throw rdbmsStoreUtils.convertSQLException("Error occurred while " + RDBMSConstants
                     .TASK_RETRIEVING_ALL_EXCHANGE_INFO, e);
@@ -849,7 +850,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public List<AndesQueue> getAllQueuesStored() throws AndesException {
+    public List<StorageQueue> getAllQueuesStored() throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
@@ -859,12 +860,11 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_ALL_QUEUE_INFO);
             resultSet = preparedStatement.executeQuery();
 
-            List<AndesQueue> queueList = new ArrayList<>();
+            List<StorageQueue> queueList = new ArrayList<>();
             // iterate through the result set and add to queue list
             while (resultSet.next()) {
-                AndesQueue andesQueue = new AndesQueue(
-                        resultSet.getString(RDBMSConstants.QUEUE_DATA)
-                );
+                StorageQueue andesQueue = new StorageQueue(
+                        resultSet.getString(RDBMSConstants.QUEUE_DATA));
                 queueList.add(andesQueue);
             }
 
@@ -2392,19 +2392,22 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     
     }
 
+    //TODO: this field is redundant now. Making it to binding key to get ability to query subs by subscribed destination
     private String getDestinationIdentifier(AndesSubscription subscription) {
-        return subscription.getDestinationType() + "." + subscription.getSubscribedDestination();
+        return subscription.getStorageQueue().getMessageRouterBindingKey();
     }
 
     /**
-     * Generates a unique ID for a subscription based on node ID, destination and subscriber's ID
+     * Generates a unique ID for a subscription. Subscription ID will be enough
+     * here, but for identifying purposes we append other information.
      *
      * @param subscription The subscription
      * @return A subscription ID
      */
     private String generateSubscriptionID(AndesSubscription subscription) {
-        return subscription.getSubscribedNode() + "_" + subscription.getSubscribedDestination() + "_" + subscription
-                .getSubscriptionID();
+        return subscription.getSubscriberConnection().getConnectedNode()
+                + "_" + subscription.getStorageQueue().getMessageRouterBindingKey()
+                + "_" + subscription.getSubscriptionId();
     }
 
     /**
@@ -2559,8 +2562,9 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public void storeClusterNotification(List<String> clusterNodes, String originatedNode, String
-            clusterNotificationType, String notification) throws AndesException {
+    public void storeClusterNotification(List<String> clusterNodes, String originatedNode, String notifiedArtifact,
+                                         String clusterNotificationType, String notification, String description)
+            throws AndesException {
 
         Connection connection = null;
         PreparedStatement storeMembershipEventPreparedStatement = null;
@@ -2573,12 +2577,15 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             for (String destinedNode : clusterNodes) {
                 storeMembershipEventPreparedStatement.setString(1, destinedNode);
                 storeMembershipEventPreparedStatement.setString(2, originatedNode);
-                storeMembershipEventPreparedStatement.setString(3, clusterNotificationType);
-                storeMembershipEventPreparedStatement.setString(4, notification);
+                storeMembershipEventPreparedStatement.setString(3, notifiedArtifact);
+                storeMembershipEventPreparedStatement.setString(4, clusterNotificationType);
+                storeMembershipEventPreparedStatement.setString(5, notification);
+                storeMembershipEventPreparedStatement.setString(6, description);
                 storeMembershipEventPreparedStatement.addBatch();
             }
             storeMembershipEventPreparedStatement.executeBatch();
             connection.commit();
+
         } catch (SQLException e) {
             rollback(connection, task);
             throw rdbmsStoreUtils.convertSQLException(
@@ -2611,7 +2618,9 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             while (resultSet.next()) {
                 ClusterNotification notification = new ClusterNotification(
                         resultSet.getString(RDBMSConstants.EVENT_DETAILS),
+                        resultSet.getString(RDBMSConstants.EVENT_ARTIFACT),
                         resultSet.getString(RDBMSConstants.EVENT_TYPE),
+                        resultSet.getString(RDBMSConstants.EVENT_DESCRIPTION),
                         resultSet.getString(RDBMSConstants.ORIGINATED_MEMBER_ID));
                 clusterNotifications.add(notification);
             }

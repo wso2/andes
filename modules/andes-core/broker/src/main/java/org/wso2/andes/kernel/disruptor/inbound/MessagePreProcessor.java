@@ -21,26 +21,24 @@ package org.wso2.andes.kernel.disruptor.inbound;
 import com.lmax.disruptor.EventHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.AndesChannel;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.AndesUtils;
-import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.ProtocolType;
+import org.wso2.andes.kernel.router.AndesMessageRouter;
+import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.subscription.SubscriptionEngine;
 import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.Meter;
 import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -51,11 +49,9 @@ import java.util.Set;
 public class MessagePreProcessor implements EventHandler<InboundEventContainer> {
 
     private static final Log log = LogFactory.getLog(MessagePreProcessor.class);
-    private final SubscriptionEngine subscriptionEngine;
     private final MessageIDGenerator idGenerator;
 
-    public MessagePreProcessor(SubscriptionEngine subscriptionEngine) {
-        this.subscriptionEngine = subscriptionEngine;
+    public MessagePreProcessor() {
         idGenerator = new MessageIDGenerator();
     }
 
@@ -144,113 +140,85 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                     + message.getMetadata().getMessageID());
         }
 
-        if (message.getMetadata().isTopic()) {
-            handleTopicRoutine(event, message, andesChannel);
-        } else {
-            AndesMessageMetadata messageMetadata = message.getMetadata();
-            messageMetadata.setStorageQueueName(messageMetadata.getDestination());
-            event.addMessage(message);
-        }
+        preProcessIncomingMessage(event, message, andesChannel);
     }
 
-    private void handleTopicRoutine(InboundEventContainer event, AndesMessage message, AndesChannel andesChannel) {
-        String messageRoutingKey = message.getMetadata().getDestination();
+    private void preProcessIncomingMessage(InboundEventContainer event, AndesMessage message,
+                                           AndesChannel andesChannel) {
+
         boolean isMessageRouted = false;
 
-        //get all topic subscriptions in the cluster matching to routing key
-        //including hierarchical topic case
-        Set<AndesSubscription> subscriptionList;
-        try {
+        //Get storage queues bound to the message router
+        String messageRouterName = message.getMetadata().getMessageRouterName();
+        AndesMessageRouter messageRouter = AndesContext.getInstance().
+                getMessageRouterRegistry().getMessageRouter(messageRouterName);
 
-            // Get subscription list according to the message type
-            ProtocolType protocolType =
-                    AndesUtils.getProtocolTypeForMetaDataType(message.getMetadata().getMetaDataType());
+        //do topic matching with the routing key of the message and get a list of
+        //mating binding keys
+        Set<StorageQueue> matchingQueues = messageRouter.getMatchingStorageQueues(message);
 
-            subscriptionList = subscriptionEngine.getClusterSubscribersForDestination(messageRoutingKey,
-                    protocolType, DestinationType.TOPIC);
+        boolean originalMessageConsumed = false;
 
-            subscriptionList.addAll(subscriptionEngine.getClusterSubscribersForDestination(messageRoutingKey,
-                    protocolType, DestinationType.DURABLE_TOPIC));
+        for (StorageQueue matchingQueue : matchingQueues) {
 
-            //We do not consider message selectors here. They will be considered when being delivered
+            if (!originalMessageConsumed) {
+                message.getMetadata().setStorageQueueName(matchingQueue.getName());
 
-            Set<String> alreadyStoredQueueNames = new HashSet<>();
-            for (AndesSubscription subscription : subscriptionList) {
-                if (!alreadyStoredQueueNames.contains(subscription.getStorageQueueName())) {
+                // add the topic wise cloned message to the events list. Message writers will pick that and
+                // write it.
+                event.addMessage(message);
+                originalMessageConsumed = true;
 
-                    //Check protocol specific rules for validate delivery to given subscription.
-                    //If there are no protocol specific delivery rules implemented, message will deliver by default.
-                    if(!message.isDelivarable(subscription)){
-                        continue;
-                    }
+            } else {
+                AndesMessage clonedMessage = cloneAndesMessageMetadataAndContent(message);
 
-                    AndesMessage clonedMessage = cloneAndesMessageMetadataAndContent(message);
+                //Message should be written to storage queue name. This is
+                //determined by destination of the message. So should be
+                //updated (but internal metadata will have topic name as usual)
+                clonedMessage.getMetadata().setStorageQueueName(matchingQueue.getName());
 
-                    //Message should be written to storage queue name. This is
-                    //determined by destination of the message. So should be
-                    //updated (but internal metadata will have topic name as usual)
-                    clonedMessage.getMetadata().setStorageQueueName(subscription.getStorageQueueName());
-
-                    if (MessageTracer.isEnabled()) {
-                        MessageTracer.trace(message, MessageTracer.MESSAGE_CLONED + clonedMessage.getMetadata()
-                                .getMessageID() + " for " + clonedMessage.getMetadata().getStorageQueueName());
-                    }
-
-                    if (subscription.isDurable()) {
-                        /**
-                         * For durable topic subscriptions we must update the routing key
-                         * in metadata as well so that they become independent messages
-                         * baring subscription bound queue name as the destination
-                         */
-                        clonedMessage.getMetadata().updateMetadata(subscription.getTargetQueue(),
-                                AMQPUtils.DIRECT_EXCHANGE_NAME);
-                    }
-
-                    /**
-                     * Update cloned topic message metadata if isCompressed set true.
-                     */
-                    if(clonedMessage.getMetadata().isCompressed()) {
-                        clonedMessage.getMetadata().updateMetadata(true);
-                    }
-
-                    if (log.isDebugEnabled()) {
-                        log.debug("Storing metadata queue " + subscription.getStorageQueueName() + " messageID "
-                                + clonedMessage.getMetadata().getMessageID() + " isTopic");
-                    }
-
-                    // add the topic wise cloned message to the events list. Message writers will pick that and
-                    // write it.
-                    event.addMessage(clonedMessage);
-                    isMessageRouted = true;
-                    alreadyStoredQueueNames.add(subscription.getStorageQueueName());
+                /**
+                 * Update cloned message metadata if isCompressed set true.
+                 */
+                if (clonedMessage.getMetadata().isCompressed()) {
+                    clonedMessage.getMetadata().updateMetadata(true);
                 }
+
+                if (MessageTracer.isEnabled()) {
+                    MessageTracer.trace(message, MessageTracer.MESSAGE_CLONED + clonedMessage.getMetadata()
+                            .getMessageID() + " for " + clonedMessage.getMetadata().getStorageQueueName());
+                }
+
+                // add the topic wise cloned message to the events list. Message writers will pick that and
+                // write it.
+                event.addMessage(clonedMessage);
             }
 
-            // If retain enabled, need to store the retained message. Set the retained message
-            // so the message writer will persist the retained message
-            if(message.getMetadata().isRetain()) {
-                event.retainMessage = message;
-            }
+            isMessageRouted = true;
+        }
 
-            // If there is no matching subscriber at the moment there is no point of storing the message
-            if (!isMessageRouted) {
 
-                // Even though we drop the message pub ack needs to be sent
-                event.pubAckHandler.ack(message.getMetadata());
+        //TODO: validate this
+        // If retain enabled, need to store the retained message. Set the retained message
+        // so the message writer will persist the retained message
+        if (message.getMetadata().isRetain()) {
+            event.retainMessage = message;
+        }
 
-                //Adding metrics meter for ack rate
-                Meter ackMeter = MetricManager.meter(Level.INFO, MetricsConstants.ACK_SENT_RATE);
-                ackMeter.mark();
+        // If there is no matching subscriber at the moment there is no point of storing the message
+        if (!isMessageRouted) {
 
-                // since inbound message has no routes, inbound message list will be cleared.
-                event.clearMessageList(andesChannel);
-                log.info("Message routing key: " + message.getMetadata().getDestination() + " No routes in " +
-                             "cluster. Ignoring Message id " + message.getMetadata().getMessageID());
-            }
+            // Even though we drop the message pub ack needs to be sent
+            event.pubAckHandler.ack(message.getMetadata());
 
-        } catch (AndesException e) {
-            log.error("Error occurred while processing routing information fot topic message. Routing Key " +
-                    messageRoutingKey + ", Message ID " + message.getMetadata().getMessageID());
+            //Adding metrics meter for ack rate
+            Meter ackMeter = MetricManager.meter(Level.INFO, MetricsConstants.ACK_SENT_RATE);
+            ackMeter.mark();
+
+            // since inbound message has no routes, inbound message list will be cleared.
+            event.clearMessageList(andesChannel);
+            log.info("Message routing key: " + message.getMetadata().getDestination() + " No routes in " +
+                    "cluster. Ignoring Message id " + message.getMetadata().getMessageID());
         }
     }
 

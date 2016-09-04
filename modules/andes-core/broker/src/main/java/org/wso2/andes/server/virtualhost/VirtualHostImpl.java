@@ -418,10 +418,10 @@ public class VirtualHostImpl implements VirtualHost {
 
         if (queue.isDurable()) {
             getDurableConfigurationStore().createQueue(queue);
-
-            //tell Andes kernel to create queue
-            QpidAndesBridge.createQueue(queue);
         }
+
+        //tell Andes kernel to create queue
+        QpidAndesBridge.createQueue(queue);
 
         String exchangeName = queueConfiguration.getExchange();
 

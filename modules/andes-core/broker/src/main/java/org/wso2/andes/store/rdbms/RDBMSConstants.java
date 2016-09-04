@@ -165,8 +165,10 @@ public class RDBMSConstants {
     protected static final String MEMBERSHIP_CHANGE_TYPE = "CHANGE_TYPE";
     protected static final String MEMBERSHIP_CHANGED_MEMBER_ID = "CHANGED_MEMBER_ID";
     // Columns for cluster communication
+    protected static final String EVENT_ARTIFACT = "EVENT_ARTIFACT";
     protected static final String EVENT_TYPE = "EVENT_TYPE";
     protected static final String EVENT_DETAILS = "EVENT_DETAILS";
+    protected static final String EVENT_DESCRIPTION = "EVENT_DESCRIPTION";
     protected static final String DESTINED_MEMBER_ID = "DESTINED_NODE_ID";
     protected static final String ORIGINATED_MEMBER_ID = "ORIGINATED_NODE_ID";
     protected static final String EVENT_ID = "EVENT_ID";
@@ -406,15 +408,18 @@ public class RDBMSConstants {
             "INSERT INTO " + CLUSTER_EVENT_TABLE + " ("
             + DESTINED_MEMBER_ID + ","
             + ORIGINATED_MEMBER_ID + ","
+            + EVENT_ARTIFACT + ","
             + EVENT_TYPE + ","
+            + EVENT_DESCRIPTION + ","
             + EVENT_DETAILS + ")"
-            + " VALUES (?,?,?,?)";
+            + " VALUES (?,?,?,?,?,?)";
 
     /**
      * Prepared statement to select cluster notification destined to a particular member.
      */
     protected static final String PS_SELECT_CLUSTER_NOTIFICATION_FOR_NODE =
-            "SELECT " + ORIGINATED_MEMBER_ID + ", " + EVENT_TYPE + ", " + EVENT_DETAILS
+            "SELECT " + ORIGINATED_MEMBER_ID + ", " + EVENT_ARTIFACT + ","
+                    + EVENT_TYPE + ", " + EVENT_DETAILS + "," + EVENT_DESCRIPTION
             + " FROM " + CLUSTER_EVENT_TABLE
             + " WHERE " + DESTINED_MEMBER_ID + "=?"
             + " ORDER BY " + EVENT_ID;

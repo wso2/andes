@@ -19,26 +19,59 @@
 package org.wso2.andes.kernel;
 
 import org.apache.commons.lang.builder.HashCodeBuilder;
+import org.wso2.andes.kernel.subscription.StorageQueue;
 
 import java.io.Serializable;
 
+/**
+ * This class represents a binding required for AMQP transport. Binding
+ * represents the mapping between {@link org.wso2.andes.kernel.subscription.StorageQueue} and
+ * {@link org.wso2.andes.kernel.router.AndesMessageRouter}.
+ */
 public class AndesBinding implements Serializable {
 
-    public String boundExchangeName;
-    public String routingKey;
-    public AndesQueue boundQueue;
+    private String messageRouterName;
+    private String bindingKey;
+    private StorageQueue boundQueue;
 
     /**
      * create an instance of andes binding
      *
-     * @param boundExchangeName name of exchange binding carries
+     * @param messageRouterName name of exchange binding carries
      * @param boundQueue        name of the queue bound
-     * @param routingKey        routing key of the binding
+     * @param bindingKey        routing key of the binding
      */
-    public AndesBinding(String boundExchangeName, AndesQueue boundQueue, String routingKey) {
-        this.boundExchangeName = boundExchangeName;
+    public AndesBinding(String messageRouterName, StorageQueue boundQueue, String bindingKey) {
+        this.messageRouterName = messageRouterName;
         this.boundQueue = boundQueue;
-        this.routingKey = routingKey;
+        this.bindingKey = bindingKey;
+    }
+
+    /**
+     * Get name of message router binding is for
+     *
+     * @return name of message router binding
+     */
+    public String getMessageRouterName() {
+        return messageRouterName;
+    }
+
+    /**
+     * Get binding key of the binding to the router
+     *
+     * @return binding key
+     */
+    public String getBindingKey() {
+        return bindingKey;
+    }
+
+    /**
+     * Get queue binding binds
+     *
+     * @return StorageQueue
+     */
+    public StorageQueue getBoundQueue() {
+        return boundQueue;
     }
 
     /**
@@ -46,43 +79,51 @@ public class AndesBinding implements Serializable {
      *
      * @param bindingAsStr binding information as encoded string
      */
-    public AndesBinding(String bindingAsStr) {
-        String[] propertyToken = bindingAsStr.split("\\|");
+    public AndesBinding(String bindingAsStr) throws AndesException {
+        String[] propertyToken = bindingAsStr.split(",");
         for (String pt : propertyToken) {
-            String[] tokens = pt.split("&");
-            if (tokens[0].equals("boundExchange")) {
-                this.boundExchangeName = tokens[1];
-            } else if (tokens[0].equals("boundQueue")) {
-                this.boundQueue = new AndesQueue(tokens[1]);
-            } else if (tokens[0].equals("routingKey")) {
-                this.routingKey = tokens[1];
+            String[] tokens = pt.split("=");
+            switch (tokens[0]) {
+                case "boundMessageRouter":
+                    this.messageRouterName = tokens[1];
+                    break;
+                case "boundQueueName":
+                    this.boundQueue = AndesContext.getInstance().
+                            getStorageQueueRegistry().getStorageQueue(tokens[1]);
+                    if (null == boundQueue) {
+                        throw new AndesException("Queue to bind is not found " + tokens[1]);
+                    }
+                    break;
+                case "bindingKey":
+                    this.bindingKey = tokens[1];
+                    break;
             }
         }
-    }
-
-    public String toString() {
-        return "[Binding]" + "E=" + boundExchangeName +
-                "/Q=" + boundQueue.queueName +
-                "/RK=" + routingKey +
-                "/D=" + boundQueue.isDurable +
-                "/EX=" + boundQueue.isExclusive;
     }
 
     /**
      * Encode object to a string.
      */
     public String encodeAsString() {
-        return "boundExchange&" + boundExchangeName +
-                "|boundQueue&" + boundQueue.encodeAsString() +
-                "|routingKey&" + routingKey;
+        return "boundMessageRouter=" + messageRouterName +
+                ",boundQueueName=" + boundQueue.getName() +
+                ",bindingKey=" + bindingKey;
+    }
+
+    public String toString() {
+        return "[Binding]" + "E=" + messageRouterName +
+                "/Q=" + boundQueue.getName() +
+                "/RK=" + bindingKey +
+                "/D=" + boundQueue.isDurable() +
+                "/EX=" + boundQueue.isExclusive();
     }
 
     public boolean equals(Object o) {
         if (o instanceof AndesBinding) {
             AndesBinding c = (AndesBinding) o;
-            if (this.boundExchangeName.equals(c.boundExchangeName) &&
-                    this.boundQueue.queueName.equals(c.boundQueue.queueName) &&
-                    this.routingKey.equals(c.routingKey)) {
+            if (this.messageRouterName.equals(c.messageRouterName) &&
+                    this.boundQueue.getName().equals(c.boundQueue.getName()) &&
+                    this.bindingKey.equals(c.bindingKey)) {
                 return true;
             }
         }
@@ -91,9 +132,9 @@ public class AndesBinding implements Serializable {
 
     public int hashCode() {
         return new HashCodeBuilder(17, 31).
-                append(boundExchangeName).
-                append(boundQueue.queueName).
-                append(routingKey).
+                append(messageRouterName).
+                append(boundQueue.getName()).
+                append(bindingKey).
                 toHashCode();
     }
 }

@@ -23,7 +23,6 @@ import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.slot.ConnectionException;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotCoordinator;
 import org.wso2.andes.kernel.slot.SlotCoordinatorCluster;
@@ -33,12 +32,9 @@ import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.kernel.slot.SlotManagerStandalone;
 import org.wso2.andes.kernel.slot.SlotMessageCounter;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cluster.coordination.EventListenerCreator;
 import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerator;
 import org.wso2.andes.server.queue.DLCQueueUtils;
-import org.wso2.andes.subscription.LocalSubscription;
-import org.wso2.andes.subscription.SubscriptionEngine;
 import org.wso2.andes.thrift.MBThriftClient;
 import org.wso2.andes.tools.utils.MessageTracer;
 
@@ -47,7 +43,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * This class will handle all message related functions of WSO2 Message Broker
@@ -70,20 +65,10 @@ public class MessagingEngine {
     private MessageIdGenerator messageIdGenerator;
 
     /**
-     * reference to subscription store
-     */
-    private SubscriptionEngine subscriptionEngine;
-
-    /**
      * Reference to MessageStore. This holds the messages received by andes
      */
     private MessageStore messageStore;
 
-    /**
-     * This listener is primarily added so that messaging engine and communicate a queue purge situation to the cluster.
-     * Addition/Deletion of queues are done through AndesContextInformationManager
-     */
-    private QueueListener queueListener;
 
     /**
      * Slot coordinator who is responsible of coordinating with the SlotManager
@@ -101,20 +86,6 @@ public class MessagingEngine {
     private MessagingEngine() {
     }
 
-    /**
-     * Recover message
-     *
-     * @param andesMetadataList
-     *         message to be recovered
-     * @param subToResend
-     *         Subscription to send
-     * @throws AndesException
-     */
-    public void recoverMessage(List<DeliverableAndesMetadata> andesMetadataList, LocalSubscription subToResend) throws AndesException {
-        for (DeliverableAndesMetadata andesMetadata : andesMetadataList) {
-            reQueueMessageToSubscriber(andesMetadata, subToResend);
-        }
-    }
 
     static {
         log = Logger.getLogger(MessagingEngine.class);
@@ -135,22 +106,17 @@ public class MessagingEngine {
      * Initialises the MessagingEngine with a given durableMessageStore. Message retrieval and
      * storing strategy will be set according to the configurations by calling this.
      *
-     * @param messageStore       MessageStore
-     * @param subscriptionEngine SubscriptionStore
-     * @param listenerCreator variable to create event listeners such as queueListeners.
+     * @param messageStore MessageStore
      * @throws AndesException
      */
-    public void initialise(MessageStore messageStore, SubscriptionEngine subscriptionEngine,
-            MessageExpiryManager messageExpiryManager, EventListenerCreator listenerCreator) throws AndesException {
+    public void initialise(MessageStore messageStore, MessageExpiryManager messageExpiryManager)
+            throws AndesException {
 
         configureMessageIDGenerator();
 
         this.messageStore = messageStore;
-        this.subscriptionEngine = subscriptionEngine;
         this.messageExpiryManager = messageExpiryManager;
 
-        //register listener for queue changes
-        queueListener = listenerCreator.getQueueListener();
 
         /*
         Initialize the SlotCoordinator
@@ -209,65 +175,6 @@ public class MessagingEngine {
     }
 
     /**
-     * Message is rejected
-     *
-     * @param andesMetadata message that is rejected.
-     * @param channelID     ID of the channel reject received
-     * @throws AndesException
-     */
-    public void messageRejected(DeliverableAndesMetadata andesMetadata, UUID channelID) throws AndesException {
-        andesMetadata.markAsNackedByClient(channelID);
-        LocalSubscription subToResend = subscriptionEngine.getLocalSubscriptionForChannelId(channelID);
-        if (subToResend != null) {
-            subToResend.msgRejectReceived(andesMetadata.messageID);
-            reQueueMessageToSubscriber(andesMetadata, subToResend);
-        } else {
-            log.warn("Cannot handle reject. Subscription not found for channel " + channelID + "Dropping message id= "
-                    + andesMetadata.getMessageID());
-            andesMetadata.markDeliveredChannelAsClosed(channelID);
-        }
-        //Tracing message activity
-        MessageTracer.trace(andesMetadata, MessageTracer.MESSAGE_REJECTED);
-    }
-
-    /**
-     * Schedule message for subscription. Slot Returned and slot removed messages
-     * are not scheduled
-     *
-     * @param messageMetadata message to be scheduled
-     * @param subscription    subscription to send
-     * @throws AndesException
-     */
-    public void reQueueMessageToSubscriber(DeliverableAndesMetadata messageMetadata, LocalSubscription subscription)
-            throws AndesException {
-
-        if (!messageMetadata.isOKToDispose()) {
-            MessageFlusher.getInstance().scheduleMessageForSubscription(subscription, messageMetadata);
-            //Tracing message activity
-            MessageTracer.trace(messageMetadata, MessageTracer.MESSAGE_REQUEUED_SUBSCRIBER);
-        }
-    }
-
-    /**
-     * Re-queue message to andes core. This message will be delivered to
-     * any eligible subscriber to receive later. This also check message status before
-     * re-schedule
-     *
-     * @param messageMetadata message to reschedule
-     * @param destinationType the destination type of the messages
-     * @throws AndesException in case of an error
-     */
-    public void reQueueMessage(DeliverableAndesMetadata messageMetadata, DestinationType destinationType)
-            throws AndesException {
-        if (!messageMetadata.isOKToDispose()) {
-            MessageFlusher.getInstance().reQueueMessage(messageMetadata, destinationType);
-            //Tracing Message
-            MessageTracer.trace(messageMetadata.getMessageID(), messageMetadata.getDestination(),
-                    MessageTracer.MESSAGE_REQUEUED_BUFFER);
-        }
-    }
-
-    /**
      * Move the messages meta data in the given message to the Dead Letter Channel and
      * remove those meta data from the original queue.
      *
@@ -288,111 +195,6 @@ public class MessagingEngine {
 
         //Tracing message activity
         MessageTracer.trace(messageToRemove.getMessageID(), destinationQueueName, MessageTracer.MOVED_TO_DLC);
-    }
-
-    /**
-     * Remove in-memory message buffers of the destination matching to given destination in this
-     * node. This is called from the Hazelcast Agent when it receives a queue purged event.
-     *
-     * @param destination     queue or topic name (subscribed routing key) whose messages should be removed
-     * @param protocolType    The protocol which the destination belongs to
-     * @param destinationType The type of the destination
-     * @return number of messages removed
-     * @throws AndesException
-     */
-    public int clearMessagesFromQueueInMemory(String destination, Long purgedTimestamp, ProtocolType protocolType,
-            DestinationType destinationType) throws AndesException {
-
-        MessageFlusher messageFlusher = MessageFlusher.getInstance();
-        MessageDeliveryInfo messageDeliveryInfo = messageFlusher
-                .getMessageDeliveryInfo(destination, destinationType);
-        //This check is done as a temporary fix. The method should not at all be called if delivery information is
-        // not there.
-        if (null != messageDeliveryInfo) {
-            messageDeliveryInfo.setLastPurgedTimestamp(purgedTimestamp);
-            return messageDeliveryInfo.clearReadButUndeliveredMessages();
-        }
-        return 0;
-    }
-
-    /**
-     * This is the andes-specific purge method and can be called from AMQPBridge,
-     * MQTTBridge or UI MBeans (QueueManagementInformationMBean)
-     * Remove messages of the queue matching to given destination queue (h2 / mysql etc. )
-     *
-     * @param destination     queue or topic name (subscribed routing key) whose messages should be removed
-     * @param ownerName       The user who initiated the purge request
-     * @param protocolType    The protocol which the destination to purge belongs to
-     * @param destinationType The destination type which the destination to purge belongs to
-     * @return number of messages removed (in memory message count may not be 100% accurate
-     * since we cannot guarantee that we caught all messages in delivery threads.)
-     * @throws AndesException
-     */
-    public int purgeMessages(String destination, String ownerName, ProtocolType protocolType,
-            DestinationType destinationType) throws AndesException {
-
-        // The timestamp is recorded to track messages that came before the purge event.
-        Long purgedTimestamp = System.currentTimeMillis();
-        String nodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
-        String storageQueueName = AndesUtils.getStorageQueueForDestination(destination, nodeID, destinationType);
-
-        try {
-            // Clear all slots assigned to the Queue. This should ideally stop any messages being buffered during the
-            // purge.
-            // This call clears all slot associations for the queue in all nodes. (could take time)
-            //Slot relations should be cleared through the storage queue name
-            slotCoordinator.clearAllActiveSlotRelationsToQueue(storageQueueName);
-        } catch (ConnectionException e) {
-            String message = "Error while establishing a connection with the thrift server to delete active slots " +
-                    "assigned for the purged queue : " + destination;
-            log.error(message);
-            throw new AndesException(message, e);
-        }
-
-        // Clear in memory messages of self (node)
-        clearMessagesFromQueueInMemory(destination, purgedTimestamp, protocolType, destinationType);
-
-        //Notify the cluster if queues
-        if (DestinationType.QUEUE == destinationType) {
-            AndesQueue purgedQueue = new AndesQueue(destination, ownerName, false, true, protocolType, destinationType);
-            purgedQueue.setLastPurgedTimestamp(purgedTimestamp);
-
-            queueListener.handleLocalQueuesChanged(purgedQueue, QueueListener.QueueEvent.PURGED);
-        }
-
-        // Clear any and all message references addressed to the queue from the persistent store.
-        // We can measure the message count in store, but cannot exactly infer the message count
-        // in memory within all nodes at the time of purging. (Adding that could unnecessarily
-        // block critical pub sub flows.)
-        // queues destination = storage queue. But for topics it is different
-        int purgedNumOfMessages = purgeQueueFromStore(storageQueueName);
-        log.info("Purged messages of destination " + destination);
-        return purgedNumOfMessages;
-    }
-
-    /**
-     * Clear all references to all message metadata / content addressed to a specific queue. Used when purging.
-     *
-     * @param storageQueueName name of the queue, could be a storage queue or a dlc queue
-     * @throws AndesException
-     */
-    public int purgeQueueFromStore(String storageQueueName) throws AndesException {
-
-        try {
-            int deletedMessageCount;
-            if (!(DLCQueueUtils.isDeadLetterQueue(storageQueueName))) {
-                // delete all messages for the queue
-                deletedMessageCount = messageStore.deleteAllMessageMetadata(storageQueueName);
-            } else {
-                //delete all the messages in dlc
-                deletedMessageCount = messageStore.clearDLCQueue(storageQueueName);
-            }
-            return deletedMessageCount;
-
-        } catch (AndesException e) {
-            // This will be a store-specific error.
-            throw new AndesException("Error occurred when purging queue from store : " + storageQueueName, e);
-        }
     }
 
     /**
@@ -748,7 +550,7 @@ public class MessagingEngine {
         }
         SlotMessageCounter.getInstance().stop();
         //Stop delivery disruptor
-        MessageFlusher.getInstance().getFlusherExecutor().stop();
+        MessageFlusher.getInstance().stopMessageFlusher();
     }
 
     /**

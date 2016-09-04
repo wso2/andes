@@ -20,10 +20,13 @@ package org.wso2.andes.server.handler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wso2.andes.AMQException;
+import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.framing.MethodRegistry;
 import org.wso2.andes.framing.QueueDeleteBody;
 import org.wso2.andes.framing.QueueDeleteOkBody;
+import org.wso2.andes.kernel.Andes;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.ClusterResourceHolder;
@@ -107,18 +110,25 @@ public class QueueDeleteHandler implements StateAwareMethodListener<QueueDeleteB
                                                           + " is exclusive, but not created on this Connection.");
                     }
 
-                    boolean isQueueDeletable = ClusterResourceHolder.getInstance().
-                            getVirtualHostConfigSynchronizer().checkIfQueueDeletable(queue);
+                    boolean isQueueDeletable =
+                            false;
+                    try {
+                        isQueueDeletable = Andes.getInstance().checkIfQueueDeletable(AMQPUtils
+                                .createInboundQueueEvent(queue));
+                    } catch (AndesException e) {
+                        throw new AMQException("Error while checking if queue is " +
+                                "deletable queue= " + queue.getName() ,e);
+                    }
 
                     if (isQueueDeletable) {
                         int purged = queue.delete();
 
                         if (queue.isDurable()) {
                             store.removeQueue(queue);
-
-                            //tell Andes Kernel to remove queue
-                            QpidAndesBridge.deleteQueue(queue);
                         }
+
+                        //tell Andes Kernel to remove queue
+                        QpidAndesBridge.deleteQueue(queue);
 
                         MethodRegistry methodRegistry = protocolConnection.getMethodRegistry();
                         QueueDeleteOkBody responseBody = methodRegistry.createQueueDeleteOkBody(purged);

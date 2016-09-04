@@ -70,6 +70,7 @@ public class RDBMSMembershipEventingEngine {
      */
     public void start(String nodeId) {
 
+        //TODO: this needs to be fixed
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("ClusterEventReaderTask-%d").build();
         clusterMembershipReaderTaskScheduler = Executors.newSingleThreadScheduledExecutor(namedThreadFactory);
 

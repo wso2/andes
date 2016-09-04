@@ -25,11 +25,9 @@ import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.DeliverableAndesMetadata;
-import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.MessageFlusher;
 import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.kernel.ProtocolType;
+import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.server.cluster.error.detection.NetworkPartitionListener;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
@@ -37,16 +35,13 @@ import org.wso2.andes.store.StoreHealthListener;
 import org.wso2.andes.task.TaskExecutorService;
 import org.wso2.andes.thrift.MBThriftClient;
 import org.wso2.andes.thrift.ThriftConnectionListener;
-
-import java.io.File;
-import java.util.List;
 import java.util.concurrent.ThreadFactory;
 
 /**
  * This class is responsible of allocating SloDeliveryWorker threads to each queue
  */
 public final class SlotDeliveryWorkerManager implements StoreHealthListener, NetworkPartitionListener,
-                                                  ThriftConnectionListener {
+        ThriftConnectionListener {
 
     private static Log log = LogFactory.getLog(SlotDeliveryWorkerManager.class);
 
@@ -65,8 +60,10 @@ public final class SlotDeliveryWorkerManager implements StoreHealthListener, Net
     private SlotDeliveryWorkerManager() {
         int numberOfThreads = AndesConfigurationManager
                 .readValue(AndesConfiguration.PERFORMANCE_TUNING_SLOTS_WORKER_THREAD_COUNT);
+
         ThreadFactory threadFactory = new ThreadFactoryBuilder()
                 .setNameFormat("MessageDeliveryTaskThreadPool-%d").build();
+
         taskManager = new TaskExecutorService<>(numberOfThreads, IDLE_TASK_DELAY_MILLIS, threadFactory);
         taskManager.setExceptionHandler(new DeliveryTaskExceptionHandler());
         AndesContext andesContext = AndesContext.getInstance();
@@ -88,45 +85,28 @@ public final class SlotDeliveryWorkerManager implements StoreHealthListener, Net
     }
 
     /**
-     * Rescheduled messages for re delivery
-     *
-     * @param storageQueueName storage queue name
-     * @param messages message list
-     */
-    void rescheduleMessagesForDelivery(String storageQueueName, List<DeliverableAndesMetadata> messages) {
-        MessageDeliveryTask messageDeliveryTask = taskManager.getTask(storageQueueName);
-
-        if (null != messageDeliveryTask) {
-            messageDeliveryTask.rescheduleMessagesForDelivery(messages);
-        }
-    }
-
-    /**
      * When a subscription is added this method will be called. if this is the first subscriber for the destination
      * a {@link MessageDeliveryTask} will be added to the {@link TaskExecutorService}
      *
-     * @param storageQueueName name of the queue to start slot delivery worker for
-     * @param destination      The destination name
-     * @param protocolType     The protocol which the messages in this storage queue belongs to
-     * @param destinationType  The destination type which the messages in this storage queue belongs to
+     * @param storageQueue queue to start slot delivery worker for
      */
-    public void onSubscriptionAdded(String storageQueueName, String destination,
-                                    ProtocolType protocolType, DestinationType destinationType) throws AndesException {
+    public void startMessageDeliveryForQueue(StorageQueue storageQueue) throws AndesException {
 
-        MessageDeliveryTask messageDeliveryTask =
-                new MessageDeliveryTask(destination, protocolType, storageQueueName,
-                                        destinationType, MessagingEngine.getInstance().getSlotCoordinator(),
+        MessageDeliveryTask messageDeliveryTask = new MessageDeliveryTask(storageQueue,
+                                    MessagingEngine.getInstance().getSlotCoordinator(),
                                         MessageFlusher.getInstance());
         taskManager.add(messageDeliveryTask);
     }
 
     /**
-     * Stop delivery task for the given storage queue locally. This is normally called when all the subscribers for a
+     * Stop delivery task for the given storage queue locally.
+     * This is normally called when all the subscribers for a
      * destination leave the local node.
      *
-     * @param storageQueueName Name of the Storage queue
+     * @param storageQueue Storage queue to stop delivery for
      */
-    void stopDeliveryForDestination(String storageQueueName) {
+    public void stopDeliveryForQueue(StorageQueue storageQueue) {
+        String storageQueueName = storageQueue.getName();
         if (log.isDebugEnabled()) {
             log.debug("Stopping delivery for storage queue " + storageQueueName + " with MessageDeliveryTask : "
                               + storageQueueName);
@@ -146,28 +126,6 @@ public final class SlotDeliveryWorkerManager implements StoreHealthListener, Net
      */
     public void startMessageDelivery() {
         taskManager.start();
-    }
-
-    /**
-     * Delete the relevant slot from {@link MessageDeliveryTask}
-     *
-     * @param slot Slot to be deleted
-     */
-    public void deleteSlot( Slot slot) {
-        MessageDeliveryTask messageDeliveryTask = taskManager.getTask(slot.getStorageQueueName());
-        if (null != messageDeliveryTask) {
-            messageDeliveryTask.deleteSlot(slot);
-        }
-    }
-
-    /**
-     * Dump all message status of the slots owned by this slot delivery worker
-     *
-     * @param fileToWrite file to dump
-     * @throws AndesException
-     */
-    public void dumpAllSlotInformationToFile(File fileToWrite) throws AndesException {
-        // NOTE: Will be replaced with subscription store update PR
     }
 
     /**

@@ -21,10 +21,9 @@ package org.wso2.andes.kernel.disruptor.inbound;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesSubscriptionManager;
-import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
-import org.wso2.andes.subscription.LocalSubscription;
+import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
+import org.wso2.andes.kernel.subscription.SubscriberConnection;
 
 import java.util.concurrent.ExecutionException;
 
@@ -48,7 +47,7 @@ public class InboundSubscriptionEvent implements AndesInboundStateEvent {
         /**
          * Close a local subscription event
          */
-        CLOSE_SUBSCRIPTION_EVENT,
+        CLOSE_SUBSCRIPTION_EVENT
 
     }
 
@@ -58,6 +57,14 @@ public class InboundSubscriptionEvent implements AndesInboundStateEvent {
     private EventType eventType;
 
     /**
+     * Future to wait for subscription open/close event to be completed. Disruptor based async call will become a
+     * blocking call by waiting on this future.
+     * This will assure ordered event processing through Disruptor plus synchronous behaviour through future get call
+     * after publishing event to Disruptor.
+     */
+    private SettableFuture<Boolean> future = SettableFuture.create();
+
+    /**
      * Reference to subscription manager to update subscription event 
      */
     private AndesSubscriptionManager subscriptionManager;
@@ -65,20 +72,58 @@ public class InboundSubscriptionEvent implements AndesInboundStateEvent {
     /**
      * Local subscription reference related to subscription event
      */
-    private LocalSubscription localSubscription;
+    private SubscriberConnection subscriberConnection;
+
+    private ProtocolType protocol;
+
+    private String subscriptionIdentifier;
+
+    private String boundStorageQueueName;
+
+    private String routingKey;
+
+
+    public InboundSubscriptionEvent(ProtocolType protocol,
+                                    String subscriptionIdentifier,
+                                    String boundStorageQueueName,
+                                    String routingKey,
+                                    SubscriberConnection subscription) {
+        this.protocol = protocol;
+        this.subscriptionIdentifier = subscriptionIdentifier;
+        this.boundStorageQueueName = boundStorageQueueName;
+        this.routingKey = routingKey;
+        this.subscriberConnection = subscription;
+    }
+
+    public SubscriberConnection getSubscriber() {
+        return subscriberConnection;
+    }
+
+    public String getBoundStorageQueueName() {
+        return boundStorageQueueName;
+    }
+
+    public String getRoutingKey() {
+        return routingKey;
+    }
 
     /**
-     * Future to wait for subscription open/close event to be completed. Disruptor based async call will become a 
-     * blocking call by waiting on this future. 
-     * This will assure ordered event processing through Disruptor plus synchronous behaviour through future get call
-     * after publishing event to Disruptor.
+     * Get the protocol subscription is made
+     * @return ProtocolType
      */
-    private SettableFuture<Boolean> future = SettableFuture.create();
-
-
-    public InboundSubscriptionEvent(LocalSubscription subscription) {
-        this.localSubscription = subscription;
+    public ProtocolType getProtocol() {
+        return protocol;
     }
+
+    /**
+     * Identifier of the subscription. For durable topic subscriptions
+     * this would be the subscription ID
+     * @return subscription identifier
+     */
+    public String getSubscriptionIdentifier() {
+        return subscriptionIdentifier;
+    }
+
 
     @Override
     public void updateState() throws AndesException {
@@ -95,15 +140,14 @@ public class InboundSubscriptionEvent implements AndesInboundStateEvent {
         }
     }
 
+
     private void handleCloseSubscriptionEvent() {
         boolean isComplete = false;
         try {
-            subscriptionManager.closeLocalSubscription(localSubscription);
+            subscriptionManager.closeLocalSubscription(this);
             isComplete = true;
         } catch (AndesException e) {
             future.setException(e);
-            log.error("Error occurred while closing subscription. Subscription id "
-                    + localSubscription.getSubscriptionID(), e);
         } finally {
             future.set(isComplete);
         }
@@ -113,13 +157,9 @@ public class InboundSubscriptionEvent implements AndesInboundStateEvent {
         boolean isComplete = false;
 
         try {
-            subscriptionManager.addSubscription(localSubscription);
+            subscriptionManager.addLocalSubscription(this);
             isComplete = true;
         } catch (AndesException e) {
-            future.setException(e);
-            log.error("Error occurred while adding subscription. Subscription id "
-                    + localSubscription.getSubscriptionID(), e);
-        } catch (SubscriptionAlreadyExistsException e) {
             // exception will be handled by receiver
             future.setException(e);
         } finally {
@@ -131,7 +171,7 @@ public class InboundSubscriptionEvent implements AndesInboundStateEvent {
     /**
      * Prepare new subscription to publish to disruptor.
      *
-     * @param subscriptionManager
+     * @param subscriptionManager AndesSubscriptionManager
      */
     public void prepareForNewSubscription(AndesSubscriptionManager subscriptionManager) {
         eventType = EventType.OPEN_SUBSCRIPTION_EVENT;
@@ -143,7 +183,7 @@ public class InboundSubscriptionEvent implements AndesInboundStateEvent {
         this.subscriptionManager = subscriptionManager;
     }
     
-    public boolean waitForCompletion() throws SubscriptionAlreadyExistsException, AndesException {
+    public boolean waitForCompletion() throws AndesException {
         try {
             return future.get();
         } catch (InterruptedException e) {
@@ -156,8 +196,8 @@ public class InboundSubscriptionEvent implements AndesInboundStateEvent {
                 throw (AndesException) originalException;
             } else {
                 // No point in throwing an exception here and disrupting the server. A warning is sufficient.
-                log.warn("Error occurred while processing event '" + eventType  + "' for subscription id "
-                        + localSubscription.getSubscriptionID());
+                log.warn("Error occurred while processing event '" + eventType  + "' for channel id "
+                        + subscriberConnection.getProtocolChannelID());
             }
         }
         return false;

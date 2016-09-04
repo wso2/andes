@@ -22,7 +22,7 @@ import com.gs.collections.impl.map.mutable.ConcurrentHashMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.slot.Slot;
-import org.wso2.andes.subscription.LocalSubscription;
+import org.wso2.andes.kernel.subscription.*;
 import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.ArrayList;
@@ -203,12 +203,13 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
      * @param localSubscriptions local subscriptions to deliver. AMQP/MQTT subscribers have individual
      *                           delivery channels
      */
-    public void markAsScheduledToDeliver(Collection<LocalSubscription> localSubscriptions) {
-        for (LocalSubscription subscription : localSubscriptions) {
-            ChannelInformation channelInformation = channelDeliveryInfo.get(subscription.getChannelID());
+    public void markAsScheduledToDeliver(Collection<AndesSubscription> localSubscriptions) {
+        for (AndesSubscription subscription : localSubscriptions) {
+            UUID subscriptionChannelID = subscription.getSubscriberConnection().getProtocolChannelID();
+            ChannelInformation channelInformation = channelDeliveryInfo.get(subscriptionChannelID);
             if (null == channelInformation) {
                 channelInformation = new ChannelInformation();
-                channelDeliveryInfo.put(subscription.getChannelID(), channelInformation);
+                channelDeliveryInfo.put(subscriptionChannelID, channelInformation);
             }
         }
         addMessageStatus(MessageStatus.SCHEDULED_TO_SEND);
@@ -219,11 +220,12 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
      *
      * @param subscription subscription to deliver message
      */
-    public void markAsScheduledToDeliver(LocalSubscription subscription) {
-        ChannelInformation channelInformation = channelDeliveryInfo.get(subscription.getChannelID());
+    public void markAsScheduledToDeliver(AndesSubscription subscription) {
+        UUID subscriptionChannelID = subscription.getSubscriberConnection().getProtocolChannelID();
+        ChannelInformation channelInformation = channelDeliveryInfo.get(subscriptionChannelID);
         if (null == channelInformation) {
             channelInformation = new ChannelInformation();
-            channelDeliveryInfo.put(subscription.getChannelID(), channelInformation);
+            channelDeliveryInfo.put(subscriptionChannelID, channelInformation);
         }
         addMessageStatus(MessageStatus.SCHEDULED_TO_SEND);
     }

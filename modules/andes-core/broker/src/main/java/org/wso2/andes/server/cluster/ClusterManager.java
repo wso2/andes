@@ -129,9 +129,6 @@ public class ClusterManager implements StoreHealthListener{
         if(clusterAgent.isCoordinator()) {
             SlotManagerClusterMode.getInstance().deletePublisherNode(deletedNodeId);
 
-            //clear persisted states of disappeared node
-            clearAllPersistedStatesOfDisappearedNode(deletedNodeId);
-
             //Reassign the slot to free slots pool
             SlotManagerClusterMode.getInstance().reassignSlotsWhenMemberLeaves(deletedNodeId);
 
@@ -146,8 +143,10 @@ public class ClusterManager implements StoreHealthListener{
         }
 
         // Deactivate durable subscriptions belonging to the node
-        ClusterResourceHolder.getInstance().getSubscriptionManager().deactivateClusterDurableSubscriptionsForNodeID(
-                clusterAgent.isCoordinator(), deletedNodeId);
+        if(clusterAgent.isCoordinator()) {
+            ClusterResourceHolder.getInstance().getSubscriptionManager().
+                    closeAllActiveSubscriptionsOfNode(deletedNodeId);
+        }
     }
 
     /**
@@ -251,11 +250,10 @@ public class ClusterManager implements StoreHealthListener{
     private void clearAllPersistedStatesOfDisappearedNode(String nodeID) throws AndesException {
 
         log.info("Clearing the Persisted State of Node with ID " + nodeID);
-
-        //remove node from nodes list
         andesContextStore.removeNodeData(nodeID);
-        //close all local queue and topic subscriptions belonging to the node
-        ClusterResourceHolder.getInstance().getSubscriptionManager().closeAllClusterSubscriptionsOfNode(nodeID);
+
+        ClusterResourceHolder.getInstance().
+                getSubscriptionManager().closeAllActiveSubscriptionsOfNode(nodeID);
 
     }
 

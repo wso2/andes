@@ -22,8 +22,7 @@ import com.lmax.disruptor.EventFactory;
 import org.apache.log4j.Logger;
 import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.ProtocolMessage;
-import org.wso2.andes.subscription.LocalSubscription;
-
+import org.wso2.andes.kernel.subscription.AndesSubscription;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -33,7 +32,7 @@ public class DeliveryEventData {
     /**
      * Recipient of the message
      */
-    private LocalSubscription localSubscription;
+    private AndesSubscription localSubscription;
 
     /**
      * Metadata of the message
@@ -106,7 +105,7 @@ public class DeliveryEventData {
      *
      * @return Local subscription
      */
-    public LocalSubscription getLocalSubscription() {
+    public AndesSubscription getLocalSubscription() {
         return localSubscription;
     }
 
@@ -116,7 +115,7 @@ public class DeliveryEventData {
      * @param localSubscription
      *         Local subscription
      */
-    public void setLocalSubscription(LocalSubscription localSubscription) {
+    public void setLocalSubscription(AndesSubscription localSubscription) {
         this.localSubscription = localSubscription;
     }
 

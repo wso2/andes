@@ -22,15 +22,15 @@ import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesBinding;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesExchange;
-import org.wso2.andes.kernel.AndesQueue;
-import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.DurableStoreConnection;
+import org.wso2.andes.kernel.router.AndesMessageRouter;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
 import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEvent;
 import org.wso2.andes.server.cluster.NodeHeartBeatData;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
+import org.wso2.andes.kernel.subscription.AndesSubscription;
+import org.wso2.andes.kernel.subscription.StorageQueue;
 
 import java.net.InetSocketAddress;
 import java.util.List;
@@ -321,9 +321,9 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public List<AndesExchange> getAllExchangesStored() throws AndesException {
+    public List<AndesMessageRouter> getAllMessageRoutersStored() throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.getAllExchangesStored();
+            return wrappedAndesContextStoreInstance.getAllMessageRoutersStored();
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -362,7 +362,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public List<AndesQueue> getAllQueuesStored() throws AndesException {
+    public List<StorageQueue> getAllQueuesStored() throws AndesException {
         try {
             return wrappedAndesContextStoreInstance.getAllQueuesStored();
         } catch (AndesStoreUnavailableException exception) {
@@ -1093,11 +1093,11 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     /**
      * {@inheritDoc}
      */
-    public void storeClusterNotification(List<String> clusterNodes, String originatedNode, String
-            clusterNotificationType, String notification) throws AndesException {
+    public void storeClusterNotification(List<String> clusterNodes, String originatedNode, String artifactType, String
+            clusterNotificationType, String notification, String description) throws AndesException {
         try {
             wrappedAndesContextStoreInstance.storeClusterNotification(clusterNodes, originatedNode,
-                    clusterNotificationType, notification);
+                    artifactType, clusterNotificationType, notification, description);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

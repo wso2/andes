@@ -26,11 +26,8 @@ import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.ILock;
 import com.hazelcast.core.IMap;
 import com.hazelcast.core.ITopic;
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.slot.Slot;
@@ -38,7 +35,6 @@ import org.wso2.andes.kernel.slot.SlotState;
 import org.wso2.andes.kernel.slot.SlotUtils;
 import org.wso2.andes.server.cluster.CoordinationConfigurableClusterAgent;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
-import org.wso2.andes.server.cluster.coordination.ClusterNotificationListenerManager;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.server.cluster.coordination.SlotAgent;
 import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.HashmapStringTreeSetWrapper;
@@ -55,7 +51,7 @@ import java.util.TreeSet;
 /**
  * This is a singleton class, which contains all Hazelcast related operations.
  */
-public class HazelcastAgent implements SlotAgent, ClusterNotificationListenerManager {
+public class HazelcastAgent implements SlotAgent {
 
     private static final Log log = LogFactory.getLog(HazelcastAgent.class);
 
@@ -73,35 +69,6 @@ public class HazelcastAgent implements SlotAgent, ClusterNotificationListenerMan
      * Hazelcast instance exposed by Carbon.
      */
     private HazelcastInstance hazelcastInstance;
-
-    /**
-     * Distributed topic to communicate subscription change notifications among cluster nodes.
-     */
-    private ITopic<ClusterNotification> subscriptionChangedNotifierChannel;
-
-    /**
-     * Distributed topic to communicate binding change notifications among cluster nodes.
-     */
-    private ITopic<ClusterNotification> bindingChangeNotifierChannel;
-
-    /**
-     * Distributed topic to communicate queue purge notifications among cluster nodes.
-     */
-    private ITopic<ClusterNotification> queueChangedNotifierChannel;
-
-    /**
-     * Distributed topic to communicate exchange change notification among cluster nodes.
-     */
-    private ITopic<ClusterNotification> exchangeChangeNotifierChannel;
-
-    /**
-     * Distributed topic to sent among cluster nodes to run andes recover task.
-     */
-    private ITopic<ClusterNotification> dbSyncNotifierChannel;
-
-    /**
-     * These distributed maps are used for slot management
-     */
 
     /**
      * distributed Map to store message ID list against queue name
@@ -146,34 +113,6 @@ public class HazelcastAgent implements SlotAgent, ClusterNotificationListenerMan
      */
     private IAtomicLong initializationDoneIndicator;
 
-    /**
-     * Defines the maximum number of messages that will be read at a single try from a Hazelcast reliable topic.
-     * This value is set to a very low number since these reliable topics only handle cluster notifications on
-     * subscription changes, exchange changes, etc.
-     * and the frequency of messages being published is very low.
-     */
-    private final int HAZELCAST_RELIABLE_TOPIC_READ_BACH_SIZE = 5;
-
-    /**
-     * Defines the maximum number of messages that can be stored in the ring buffer associated with a
-     * Hazelcast Reliable Topic. The buffer could be initialized with a somewhat low number since these reliable topics
-     * only handle cluster notifications on subscription changes, exchange changes, etc. which are a very not so
-     * frequent. But, there could be extreme and rare situations where subscriptions, bindings, etc. change at a very
-     * high rate and to be able to tolerate that, the capacity is kept at 1000.
-     */
-    private final int HAZELCAST_RING_BUFFER_CAPACITY = 1000;
-
-    /**
-     * Disables statistics on the messages published to Hazelcast Reliable Topics.
-     * We don't need statistics on the messages that are published, therefore, we have disabled statistics.
-     */
-    private final boolean ENABLE_STATISTICS = false;
-
-    private String subscriptionListenerId;
-    private String bindingListenerId;
-    private String exchangeListenerId;
-    private String queueListenerId;
-    private String dbSyncNotificationListenerId;
 
     /**
      * Private constructor.
@@ -222,158 +161,29 @@ public class HazelcastAgent implements SlotAgent, ClusterNotificationListenerMan
         initializationDoneIndicator = hazelcastInstance
                 .getAtomicLong(CoordinationConstants.INITIALIZATION_DONE_INDICATOR);
 
-        addTopics();
-
         log.info("Successfully initialized Hazelcast Agent");
     }
 
-    private void addTopics() {
-        // Defines the time it takes for a message published to a Hazelcast reliable topic to be expired.
-        // The messages that are published to these topics should ideally be read at the same time. One instance
-        // where this would not happen is when a node gets disconnected. Since all the messages that are published
-        // to these topics are stored in the database, this situation is handled by synchronizing the information in
-        // the databases when the node recovers. Therefore, we do not need undelivered messages to delivered
-        // after a while. Therefore, we need messages to be held in the buffer onle for a very little time.
-        int hazelcastRingBufferTTL = AndesConfigurationManager.readValue(AndesConfiguration
-                .COORDINATION_CLUSTER_NOTIFICATION_TIMEOUT);
 
-        /**
-         * subscription changes
-         */
-        //configure Hazelcast ring buffer and reliable topic for subscription changes
-        addReliableTopicConfig(CoordinationConstants.HAZELCAST_SUBSCRIPTION_CHANGED_NOTIFIER_TOPIC_NAME,
-                ENABLE_STATISTICS, HAZELCAST_RELIABLE_TOPIC_READ_BACH_SIZE);
-        addRingBufferConfig(CoordinationConstants.HAZELCAST_SUBSCRIPTION_CHANGED_NOTIFIER_TOPIC_NAME,
-                HAZELCAST_RING_BUFFER_CAPACITY, hazelcastRingBufferTTL);
-
-        //add listener for subscription changes
-        this.subscriptionChangedNotifierChannel = this.hazelcastInstance.getReliableTopic(
-                CoordinationConstants.HAZELCAST_SUBSCRIPTION_CHANGED_NOTIFIER_TOPIC_NAME);
-        HazelcastBasedEventListenerCreator.setSubscriptionChannel(subscriptionChangedNotifierChannel);
-
-        /**
-         * exchange changes
-         */
-
-        //configure Hazelcast ring buffer and reliable topic for exchange changes
-        addReliableTopicConfig(CoordinationConstants.HAZELCAST_EXCHANGE_CHANGED_NOTIFIER_TOPIC_NAME,
-                ENABLE_STATISTICS, HAZELCAST_RELIABLE_TOPIC_READ_BACH_SIZE);
-        addRingBufferConfig(CoordinationConstants.HAZELCAST_EXCHANGE_CHANGED_NOTIFIER_TOPIC_NAME,
-                HAZELCAST_RING_BUFFER_CAPACITY, hazelcastRingBufferTTL);
-
-        //add listener for exchange changes
-        this.exchangeChangeNotifierChannel = this.hazelcastInstance.getReliableTopic(
-                CoordinationConstants.HAZELCAST_EXCHANGE_CHANGED_NOTIFIER_TOPIC_NAME);
-        HazelcastBasedEventListenerCreator.setExchangeChannel(exchangeChangeNotifierChannel);
-
-        /**
-         * queue changes
-         */
-
-        //configure Hazelcast ring buffer and reliable topic for queue changes
-        addReliableTopicConfig(CoordinationConstants.HAZELCAST_QUEUE_CHANGED_NOTIFIER_TOPIC_NAME,
-                ENABLE_STATISTICS, HAZELCAST_RELIABLE_TOPIC_READ_BACH_SIZE);
-        addRingBufferConfig(CoordinationConstants.HAZELCAST_QUEUE_CHANGED_NOTIFIER_TOPIC_NAME,
-                HAZELCAST_RING_BUFFER_CAPACITY, hazelcastRingBufferTTL);
-
-        //add listener for queue changes
-        this.queueChangedNotifierChannel = this.hazelcastInstance.getReliableTopic(
-                CoordinationConstants.HAZELCAST_QUEUE_CHANGED_NOTIFIER_TOPIC_NAME);
-        HazelcastBasedEventListenerCreator.setQueueChannel(queueChangedNotifierChannel);
-
-        /**
-         * binding changes
-         */
-
-        //configure Hazelcast ring buffer and reliable topic for binding changes
-        addReliableTopicConfig(CoordinationConstants.HAZELCAST_BINDING_CHANGED_NOTIFIER_TOPIC_NAME,
-                ENABLE_STATISTICS, HAZELCAST_RELIABLE_TOPIC_READ_BACH_SIZE);
-        addRingBufferConfig(CoordinationConstants.HAZELCAST_BINDING_CHANGED_NOTIFIER_TOPIC_NAME,
-                HAZELCAST_RING_BUFFER_CAPACITY, hazelcastRingBufferTTL);
-
-        //add listener for binding changes
-        this.bindingChangeNotifierChannel = this.hazelcastInstance.getReliableTopic(
-                CoordinationConstants.HAZELCAST_BINDING_CHANGED_NOTIFIER_TOPIC_NAME);
-        HazelcastBasedEventListenerCreator.setBindingChannel(bindingChangeNotifierChannel);
-
-        /**
-         * Adding database sync notification to run andes recovery task
-         */
-        //configure Hazelcast ring buffer and reliable topic for DB sync notification
-        addReliableTopicConfig(CoordinationConstants.HAZELCAST_DB_SYNC_NOTIFICATION_TOPIC_NAME,
-                ENABLE_STATISTICS, HAZELCAST_RELIABLE_TOPIC_READ_BACH_SIZE);
-        addRingBufferConfig(CoordinationConstants.HAZELCAST_DB_SYNC_NOTIFICATION_TOPIC_NAME,
-                HAZELCAST_RING_BUFFER_CAPACITY, hazelcastRingBufferTTL);
-
-        //add listener for DB sync notification
-        this.dbSyncNotifierChannel = this.hazelcastInstance.getReliableTopic(
-                CoordinationConstants.HAZELCAST_DB_SYNC_NOTIFICATION_TOPIC_NAME);
-    }
-
-    private void addTopicListeners() {
-
-        HazelcastBasedEventListenerCreator hazelcastBasedEventListenerCreator
-                = new HazelcastBasedEventListenerCreator();
-
-        // Add listener for subscription changes
-        HazelcastBasedClusterSubscriptionChangedListener clusterSubscriptionChangedListener = new
-                HazelcastBasedClusterSubscriptionChangedListener();
-        clusterSubscriptionChangedListener.addSubscriptionListener(hazelcastBasedEventListenerCreator
-                .getSubscriptionListener());
-        if (StringUtils.isNotEmpty(subscriptionListenerId)) {
-            this.subscriptionChangedNotifierChannel.removeMessageListener(subscriptionListenerId);
-        }
-        subscriptionListenerId = this.subscriptionChangedNotifierChannel.addMessageListener
-                (clusterSubscriptionChangedListener);
-
-        // Add listener for exchange changes
-        HazelcastBasedClusterExchangeChangedListener clusterExchangeChangedListener = new
-                HazelcastBasedClusterExchangeChangedListener();
-        clusterExchangeChangedListener.addExchangeListener(hazelcastBasedEventListenerCreator.getExchangeListener());
-        if (StringUtils.isNotEmpty(exchangeListenerId)) {
-            this.exchangeChangeNotifierChannel.removeMessageListener(exchangeListenerId);
-        }
-        exchangeListenerId = this.exchangeChangeNotifierChannel.addMessageListener(clusterExchangeChangedListener);
-
-        // Add listener for queue changes
-        HazelcastBasedClusterQueueChangedListener clusterQueueChangedListener = new
-                HazelcastBasedClusterQueueChangedListener();
-        clusterQueueChangedListener.addQueueListener(hazelcastBasedEventListenerCreator.getQueueListener());
-        if (StringUtils.isNotEmpty(queueListenerId)) {
-            this.queueChangedNotifierChannel.removeMessageListener(queueListenerId);
-        }
-        queueListenerId = this.queueChangedNotifierChannel.addMessageListener(clusterQueueChangedListener);
-
-        // Add listener for binding changes
-        HazelcastBasedClusterBindingChangedListener clusterBindingChangedListener = new
-                HazelcastBasedClusterBindingChangedListener();
-        clusterBindingChangedListener.addBindingListener(hazelcastBasedEventListenerCreator.getBindingListener());
-        if (StringUtils.isNotEmpty(bindingListenerId)) {
-            this.bindingChangeNotifierChannel.removeMessageListener(bindingListenerId);
-        }
-        bindingListenerId = this.bindingChangeNotifierChannel.addMessageListener(clusterBindingChangedListener);
-
-        // Add listener for DB sync notification
-        DatabaseSyncNotificationListener databaseSyncNotificationListener = new DatabaseSyncNotificationListener();
-        if (StringUtils.isNotEmpty(dbSyncNotificationListenerId)) {
-            this.dbSyncNotifierChannel.removeMessageListener(dbSyncNotificationListenerId);
-        }
-        dbSyncNotificationListenerId = this.dbSyncNotifierChannel.addMessageListener(databaseSyncNotificationListener);
-
-    }
-
-    public void notifyDBSyncEvent(ClusterNotification clusterNotification) throws AndesException {
-        try {
-            this.dbSyncNotifierChannel.publish(clusterNotification);
-            if (log.isDebugEnabled()) {
-                log.debug("Requested for DB sync across the cluster.");
-            }
-        } catch (Exception e) {
-            log.error("Error while sending db sync notification"
-                      + clusterNotification.getEncodedObjectAsString(), e);
-            throw new AndesException("Error while sending db sync notification"
-                                     + clusterNotification.getEncodedObjectAsString(), e);
-        }
+    /**
+     * Create a reliable topic and configure it inside Hazelcast
+     *
+     * @param topicName        the name of the reliable topic. The configuration will be stored under the same name
+     * @param enableStatistics whether to enable statistics
+     * @param readBatchSize    he maximum number of items that will be read at a single try. If the number of items
+     *                         that are present is less than the readBatchSize, the available items will be read
+     * @param capacity         the size of the ring buffer. Defines the number of messages that will be stored
+     * @param timeToLive       the time it takes for a message published to a reliable topic to expire
+     * @return Hazelcast topic created
+     */
+    public ITopic<ClusterNotification> createReliableTopic(String topicName,
+                                      boolean enableStatistics,
+                                      int readBatchSize,
+                                      int capacity,
+                                      int timeToLive) {
+        addReliableTopicConfig(topicName, enableStatistics, readBatchSize);
+        addRingBufferConfig(topicName, capacity, timeToLive);
+        return hazelcastInstance.getReliableTopic(topicName);
     }
 
     /**
@@ -1001,7 +811,9 @@ public class HazelcastAgent implements SlotAgent, ClusterNotificationListenerMan
      * @param readBatchSize     the maximum number of items that will be read at a single try. If the number of items
      *                          that are present is less than the readBatchSize, the available items will be read
      */
-    private void addReliableTopicConfig(String reliableTopicName, boolean enableStatistics, int readBatchSize) {
+    private void addReliableTopicConfig(String reliableTopicName, boolean enableStatistics,
+                                        int readBatchSize) {
+
         Config config = hazelcastInstance.getConfig();
 
         // Create a new Hazelcast reliable topic configuration with the given values
@@ -1032,37 +844,5 @@ public class HazelcastAgent implements SlotAgent, ClusterNotificationListenerMan
 
         // Add the current ring buffer configuration to the configurations of the Hazelcast instance
         config.addRingBufferConfig(ringConfig);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void initializeListener() {
-        addTopicListeners();
-    }
-
-    /**
-     * Recreate Hazelcast topics and add listeners.
-     */
-    public void reInitializeTopicListeners() {
-        addTopics();
-        addTopicListeners();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void clearAllClusterNotifications() throws AndesException {
-        //Do nothing since this is handle by hazelcast itself
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void stopListener() throws AndesException {
-        //Do nothing, this will be handled by shutting down the hazelcast instance.
     }
 }

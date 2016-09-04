@@ -23,6 +23,7 @@ package org.wso2.andes.server.subscription;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -219,6 +220,11 @@ public class MockSubscription implements Subscription
             entry.setRedelivered();
         }
         messages.add(entry);
+    }
+
+    @Override
+    public UUID getIdOfUnderlyingChannel() {
+        return null;
     }
 
     public void setQueueContext(AMQQueue.Context queueContext)

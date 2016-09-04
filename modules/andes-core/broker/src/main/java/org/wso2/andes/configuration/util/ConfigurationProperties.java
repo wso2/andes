@@ -33,7 +33,7 @@ public class ConfigurationProperties {
     private Map<String, String> propertyValueMap;
 
     public ConfigurationProperties() {
-        propertyValueMap = new HashMap<String, String>();
+        propertyValueMap = new HashMap<>();
     }
 
     /**

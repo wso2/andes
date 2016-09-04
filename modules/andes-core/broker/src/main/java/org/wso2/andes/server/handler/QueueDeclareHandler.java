@@ -99,7 +99,8 @@ public class QueueDeclareHandler implements StateAwareMethodListener<QueueDeclar
                             store.createQueue(queue, body.getArguments());
 
                             //Tell Andes kernel to create queue
-                            QpidAndesBridge.createQueue(queue);
+                            //Now we create queues when binding is added
+                            //QpidAndesBridge.createQueue(queue);
                         }
                         if (body.getAutoDelete()) {
                             queue.setDeleteOnNoConsumers(true);

@@ -1090,6 +1090,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
                 AndesMessageMetadata md = new AndesMessageMetadata(results.getLong(RDBMSConstants.MESSAGE_ID),
                         results.getBytes(RDBMSConstants.METADATA), true);
+                md.setStorageQueueName(dlcQueueName);
                 mdList.add(md);
                 resultCount++;
             }

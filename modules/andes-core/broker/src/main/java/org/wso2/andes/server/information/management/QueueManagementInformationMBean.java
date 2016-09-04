@@ -40,16 +40,17 @@ import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.AndesUtils;
-import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.DisablePubAckImpl;
 import org.wso2.andes.kernel.FlowControlListener;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.disruptor.compression.LZ4CompressionHelper;
 import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
+import org.wso2.andes.kernel.registry.StorageQueueRegistry;
+import org.wso2.andes.kernel.router.AndesMessageRouter;
+import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.management.common.mbeans.QueueManagementInformation;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
-import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.management.AMQManagedObject;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.queue.AMQQueue;
@@ -76,8 +77,11 @@ import javax.management.openmbean.SimpleType;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * This class contains all operations such as addition, deletion, purging, browsing, etc. that are invoked by the UI
@@ -235,10 +239,11 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
     public synchronized String[] getAllQueueNames() {
 
         try {
-            List<String> queuesList = AndesUtils
-                    .filterQueueDestinations(AndesContext.getInstance().getAMQPConstructStore().getQueueNames());
-            String[] queues = new String[queuesList.size()];
-            queuesList.toArray(queues);
+            AndesMessageRouter queueMessageRouter = AndesContext.getInstance().
+                    getMessageRouterRegistry().getMessageRouter(AMQPUtils.DIRECT_EXCHANGE_NAME);
+            List<String> queueNameList = queueMessageRouter.getNamesOfAllQueuesBound();
+            String[] queues = new String[queueNameList.size()];
+            queueNameList.toArray(queues);
             return queues;
 
         } catch (Exception e) {
@@ -253,12 +258,30 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
     @Override
     public Map<String, Integer> getAllQueueCounts() {
         try {
-            List<String> queuesList = AndesUtils
-                    .filterQueueDestinations(AndesContext.getInstance().getAMQPConstructStore().getQueueNames());
-            return Andes.getInstance().getMessageCountForAllQueues(queuesList);
+            AndesMessageRouter queueMessageRouter = AndesContext.getInstance().
+                    getMessageRouterRegistry().getMessageRouter(AMQPUtils.DIRECT_EXCHANGE_NAME);
+            List<String> queueNames = queueMessageRouter.getNamesOfAllQueuesBound();
+            return Andes.getInstance().getMessageCountForAllQueues(queueNames);
         } catch (AndesException exception) {
             throw new RuntimeException("Error retrieving message count for all queues", exception);
         }
+    }
+
+    /**
+     * Get names of all durable queues created and registered in broker.
+     * @return set of unique names of queues
+     */
+    @Override
+    public Set<String> getNamesOfAllDurableQueues() {
+        Set<String> namesOfDurableQueues = new HashSet<>();
+        StorageQueueRegistry queueRegistry = AndesContext.getInstance().getStorageQueueRegistry();
+        List<StorageQueue> queues = queueRegistry.getAllStorageQueues();
+        for (StorageQueue queue : queues) {
+            if(queue.isDurable()) {
+                namesOfDurableQueues.add(queue.getName());
+            }
+        }
+        return namesOfDurableQueues;
     }
 
     /**
@@ -266,7 +289,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      */
     public boolean isQueueExists(String queueName) {
         try {
-            List<String> queuesList = AndesContext.getInstance().getAMQPConstructStore().getQueueNames();
+            List<String> queuesList = AndesContext.getInstance().
+                    getStorageQueueRegistry().getAllStorageQueueNames();
             return queuesList.contains(queueName);
         } catch (Exception e) {
             throw new RuntimeException("Error in accessing destination queues", e);
@@ -294,8 +318,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             // state of qpid is updated. This method also validates the request owner and throws
             // an exception if permission is denied.
 
-            InboundQueueEvent andesQueue = AMQPUtils.createAndesQueue(queue);
-            int purgedMessageCount = Andes.getInstance().purgeQueue(andesQueue);
+            InboundQueueEvent storageQueue = AMQPUtils.createInboundQueueEvent(queue);
+            int purgedMessageCount = Andes.getInstance().purgeQueue(storageQueue);
             log.info("Total message count purged for queue (from store) : " + queueName + " : " +
                     purgedMessageCount + ". All in memory messages received before the purge call" +
                     " are abandoned from delivery phase. ");
@@ -378,8 +402,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                     String destination = metadata.getDestination();
 
                     metadata.setStorageQueueName(AndesUtils.getStorageQueueForDestination(destination,
-                            ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID(),
-                            DestinationType.QUEUE));
+                            AMQPUtils.DIRECT_EXCHANGE_NAME,destination,true));
 
                     messagesToRemove.add(metadata);
 
@@ -453,9 +476,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                     // Set the new destination queue
                     metadata.setDestination(newDestinationQueueName);
                     metadata.setStorageQueueName(AndesUtils.getStorageQueueForDestination(newDestinationQueueName,
-                            ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID(),
-                            DestinationType.QUEUE));
-
+                            AMQPUtils.DIRECT_EXCHANGE_NAME,newDestinationQueueName,true));
+                    metadata.setMessageRouterName(AMQPUtils.DIRECT_EXCHANGE_NAME);
                     metadata.updateMetadata(newDestinationQueueName, AMQPUtils.DIRECT_EXCHANGE_NAME);
                     AndesMessageMetadata clonedMetadata = metadata.shallowCopy(metadata.getMessageID());
                     AndesMessage andesMessage = new AndesMessage(clonedMetadata);
@@ -846,13 +868,44 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
         return messageCount;
     }
 
+    /**
+     * Get DLC queue by name specified if already created
+     *
+     * @param queueName name of the DLc queue (including tenant information)
+     * @return a Map with <DLCQueueName,MessageCount> entry
+     */
+    public Map<String, Long> getDLCQueueInformation(String queueName) throws MBeanException {
+
+        Map<String, Long> DLCQueueInformation;
+
+        try {
+            DLCQueueInformation = new HashMap<>(1);
+
+            AndesMessageRouter DLCMessageRouter = AndesContext.getInstance().
+                    getMessageRouterRegistry().getMessageRouter(AMQPUtils.DLC_EXCHANGE_NAME);
+
+            List<StorageQueue> DLCQueues = DLCMessageRouter.getAllBoundQueues();
+
+            for (StorageQueue dlcQueue : DLCQueues) {
+                if(queueName.equals(dlcQueue.getName())) {
+                    DLCQueueInformation.put(dlcQueue.getName(), dlcQueue.getMessageCount());
+                    break;
+                }
+            }
+        } catch (AndesException e) {
+            throw new MBeanException(e, "Error while receiving DLC queue Information from MBeans");
+        }
+
+        return DLCQueueInformation;
+    }
+
     /***
      * {@inheritDoc}
      */
     public int getSubscriptionCount(String queueName) {
         try {
-            return AndesContext.getInstance().getSubscriptionEngine()
-                    .numberOfSubscriptionsInCluster(queueName, ProtocolType.AMQP, DestinationType.QUEUE);
+            return AndesContext.getInstance().getAndesSubscriptionManager().
+                    numberOfSubscriptionsInCluster(queueName, ProtocolType.AMQP);
         } catch (Exception e) {
             throw new RuntimeException("Error in getting subscriber count", e);
         }

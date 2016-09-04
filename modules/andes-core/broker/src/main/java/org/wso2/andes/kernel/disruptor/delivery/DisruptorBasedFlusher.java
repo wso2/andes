@@ -30,8 +30,8 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.ProtocolMessage;
+import org.wso2.andes.kernel.subscription.AndesSubscription;
 import org.wso2.andes.metrics.MetricsConstants;
-import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.manager.Gauge;
 import org.wso2.carbon.metrics.manager.Level;
@@ -137,7 +137,7 @@ public class DisruptorBasedFlusher {
      * @param metadata
      *         Message metadata
      */
-    public void submit(LocalSubscription subscription, ProtocolMessage metadata) {
+    public void submit(AndesSubscription subscription, ProtocolMessage metadata) {
 
         //Tracing Message
         MessageTracer.trace(metadata.getMessage(), MessageTracer.PUBLISHED_TO_OUTBOUND_DISRUPTOR);

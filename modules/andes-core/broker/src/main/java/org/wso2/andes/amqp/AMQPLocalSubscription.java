@@ -27,11 +27,11 @@ import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesUtils;
-import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.ProtocolDeliveryFailureException;
 import org.wso2.andes.kernel.ProtocolDeliveryRulesFailureException;
 import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.server.AMQChannel;
+import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.message.MessageMetaData;
 import org.wso2.andes.server.queue.AMQQueue;
@@ -39,7 +39,7 @@ import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.store.StoredMessage;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionImpl;
-import org.wso2.andes.subscription.OutboundSubscription;
+import org.wso2.andes.kernel.subscription.OutboundSubscription;
 import org.wso2.andes.tools.utils.MessageTracer;
 import java.util.ArrayList;
 import java.util.List;
@@ -58,7 +58,7 @@ public class AMQPLocalSubscription implements OutboundSubscription {
     private static Log log = LogFactory.getLog(AMQPLocalSubscription.class);
 
     //AMQP transport channel subscriber is dealing with
-    AMQChannel channel = null;
+    private AMQChannel channel = null;
 
     //internal qpid queue subscription is bound to
     private AMQQueue amqQueue;
@@ -66,11 +66,11 @@ public class AMQPLocalSubscription implements OutboundSubscription {
     //internal qpid subscription
     private Subscription amqpSubscription;
 
-    //if this subscription is a durable one
+    //if this subscription is bound to a durable queue
     private boolean isDurable;
 
-    //if this subscription represent a topic subscription
-    private  boolean isBoundToTopic;
+    //time when subscriber is created
+    private long subscribeTime;
 
     /*
      * This map works as a cache for queue entries, preventing need to convert
@@ -79,22 +79,19 @@ public class AMQPLocalSubscription implements OutboundSubscription {
     private Map<Long, StoredMessage<MessageMetaData>> storedMessageCache;
 
     //List of Delivery Rules to evaluate
-    private List<AMQPDeliveryRule> AMQPDeliveryRulesList = new ArrayList<>();
+    private List<AMQPDeliveryRule> amqpDeliveryRuleList = new ArrayList<>();
 
 
-    public AMQPLocalSubscription(AMQQueue amqQueue, Subscription amqpSubscription, boolean isDurable, boolean
-            isBoundToTopic) {
-
-        this.amqQueue = amqQueue;
+    public AMQPLocalSubscription(Subscription amqpSubscription) {
+        this.subscribeTime = System.currentTimeMillis();
+        this.amqQueue = amqpSubscription.getQueue();
+        this.isDurable = amqpSubscription.getQueue().isDurable();
         this.amqpSubscription = amqpSubscription;
 
         if (amqpSubscription != null && amqpSubscription instanceof SubscriptionImpl) {
             channel = ((SubscriptionImpl) amqpSubscription).getChannel();
             initializeDeliveryRules();
         }
-
-        this.isDurable = isDurable;
-        this.isBoundToTopic = isBoundToTopic;
 
         //We leave the default values for initialCapacity and progression factor
         //We re define concurrencyLevel as 2, since there will be only 2 threads which accesses it concurrently
@@ -106,23 +103,38 @@ public class AMQPLocalSubscription implements OutboundSubscription {
      */
     private void initializeDeliveryRules() {
 
+        List<Binding> bindings = amqpSubscription.getQueue().getBindings();
+        boolean isBoundToTopic = false;
+        for (Binding binding : bindings) {
+            if(binding.getExchange().getName().equals(AMQPUtils.TOPIC_EXCHANGE_NAME)) {
+                isBoundToTopic = true;
+                break;
+            }
+        }
         //checking counting delivery rule
-        if (  (! isBoundToTopic) || isDurable){ //evaluate this only for queues and durable subscriptions
-            AMQPDeliveryRulesList.add(new MaximumNumOfDeliveryRuleAMQP(channel));
+        if (  (! isBoundToTopic) || amqpSubscription.getQueue().isDurable()) { //evaluate this only for queues and
+            // durable
+            // subscriptions
+            amqpDeliveryRuleList.add(new MaximumNumOfDeliveryRule());
         }
 
         //checking no local delivery rule
-        AMQPDeliveryRulesList.add(new NoLocalRuleAMQP(amqpSubscription, channel));
+        amqpDeliveryRuleList.add(new AmqpNoLocalRule(amqpSubscription, channel));
 
     }
 
-    public boolean isActive() {
+    public boolean isOutboundConnectionLive() {
         return amqpSubscription.isActive();
     }
 
     @Override
     public UUID getChannelID() {
         return channel.getId();
+    }
+
+    @Override
+    public long getSubscribeTime() {
+        return subscribeTime;
     }
 
     /**
@@ -200,7 +212,7 @@ public class AMQPLocalSubscription implements OutboundSubscription {
     private boolean evaluateDeliveryRules(QueueEntry message) throws AndesException {
         boolean isOKToDelivery = true;
 
-        for (AMQPDeliveryRule element : AMQPDeliveryRulesList) {
+        for (AMQPDeliveryRule element : amqpDeliveryRuleList) {
             if (!element.evaluate(message)) {
                 isOKToDelivery = false;
                 break;
@@ -257,29 +269,5 @@ public class AMQPLocalSubscription implements OutboundSubscription {
             throw new ProtocolDeliveryFailureException(
                     "Error occurred while delivering message with ID : " + msgHeaderStringID, e);
         }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String getStorageQueueName(String destination, String subscribedNode) {
-
-        String storageQueueName;
-
-        String targetQueue = amqQueue.getName();
-
-        if (isBoundToTopic && !isDurable) {  // for normal topic subscriptions
-            storageQueueName =
-                    AndesUtils.getStorageQueueForDestination(destination, subscribedNode, DestinationType.TOPIC);
-        } else if (isBoundToTopic) {  //for durable topic subscriptions
-            storageQueueName =
-                    AndesUtils.getStorageQueueForDestination(targetQueue, subscribedNode, DestinationType.QUEUE);
-        } else { //For queue subscriptions. This is a must. Otherwise queue will not be shared among nodes
-            storageQueueName =
-                    AndesUtils.getStorageQueueForDestination(targetQueue, subscribedNode, DestinationType.QUEUE);
-        }
-
-        return storageQueueName;
     }
 }

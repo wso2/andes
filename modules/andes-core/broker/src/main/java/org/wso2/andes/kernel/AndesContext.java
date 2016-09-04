@@ -21,8 +21,13 @@ package org.wso2.andes.kernel;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.StoreConfiguration;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
+import org.wso2.andes.kernel.registry.MessageRouterRegistry;
+import org.wso2.andes.kernel.registry.StorageQueueRegistry;
+import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.server.cluster.ClusterAgent;
-import org.wso2.andes.subscription.SubscriptionEngine;
+import org.wso2.andes.server.cluster.coordination.ClusterNotificationListenerManager;
+
 
 import java.util.List;
 
@@ -31,7 +36,8 @@ import java.util.List;
  * to Andes. A place holder class.
  */
 public class AndesContext {
-    private SubscriptionEngine subscriptionEngine;
+
+    private AndesSubscriptionManager andesSubscriptionManager;
     private AndesContextStore andesContextStore;
     private StoreConfiguration storeConfiguration;
     private boolean isClusteringEnabled;
@@ -44,6 +50,33 @@ public class AndesContext {
      * This is mainly used by Cluster Manager to manger cluster communication
      */
     private ClusterAgent clusterAgent;
+
+    /**
+     * Registry for keeping storage queues created in Andes
+     */
+    private StorageQueueRegistry storageQueueRegistry;
+
+    /**
+     * Registry for keeping AndesMessageRouter instances. This is similar
+     * to an exchange registry
+     */
+    private MessageRouterRegistry messageRouterRegistry;
+
+    /**
+     * InboundEventManager instance for pumping inbound events into Inbound Disruptor
+     */
+    private InboundEventManager inboundEventManager;
+
+    /**
+     * AndesContextInformationManager instance for managing context information
+     * inside broker
+     */
+    private AndesContextInformationManager andesContextInformationManager;
+
+    /**
+     * Holds the listener handling cluster notifications
+     */
+    private ClusterNotificationListenerManager clusterNotificationListenerManager;
 
     /**
      * Getter for cluster agent
@@ -72,21 +105,20 @@ public class AndesContext {
     }
 
     /**
-     * get subscription store
-     *
-     * @return subscription store
+     * Get andesSubscriptionManager instance. All subscription management is done by
+     * this object.
+     * @return AndesSubscriptionManager instance
      */
-    public SubscriptionEngine getSubscriptionEngine() {
-        return subscriptionEngine;
+    public AndesSubscriptionManager getAndesSubscriptionManager() {
+        return andesSubscriptionManager;
     }
 
     /**
-     * set subscription store
-     *
-     * @param subscriptionEngine subscription store
+     * Set andesSubscriptionManager instance
+     * @param andesSubscriptionManager instance to set
      */
-    public void setSubscriptionEngine(SubscriptionEngine subscriptionEngine) {
-        this.subscriptionEngine = subscriptionEngine;
+    public void setAndesSubscriptionManager(AndesSubscriptionManager andesSubscriptionManager) {
+        this.andesSubscriptionManager = andesSubscriptionManager;
     }
 
     /**
@@ -126,7 +158,8 @@ public class AndesContext {
     }
 
     /**
-     * set if clustering is enabled
+     * set if clustering is enabled. This is set by activator
+     * of Andes component
      *
      * @param isClusteringEnabled if clustering is enabled
      */
@@ -234,5 +267,92 @@ public class AndesContext {
      */
     public void setMessageStore(MessageStore messageStore) {
         this.messageStore = messageStore;
+    }
+
+    /**
+     * Set storageQueueRegistry to context
+     * @param storageQueueRegistry queue registry to set
+     */
+    public void setStorageQueueRegistry(StorageQueueRegistry storageQueueRegistry) {
+        this.storageQueueRegistry = storageQueueRegistry;
+    }
+
+
+    /**
+     * Get MessageRouterRegistry instance
+     * @return MessageRouterRegistry instance
+     */
+    public MessageRouterRegistry getMessageRouterRegistry() {
+        return messageRouterRegistry;
+    }
+
+    /**
+     * Set MessageRouterRegistry to context
+     * @param messageRouterRegistry MessageRouterRegistry to set
+     */
+    public void setMessageRouterRegistry(MessageRouterRegistry messageRouterRegistry) {
+        this.messageRouterRegistry = messageRouterRegistry;
+    }
+
+    /**
+     * Get StorageQueueRegistry instance
+     *
+     * @return StorageQueueRegistry instance
+     */
+    public StorageQueueRegistry getStorageQueueRegistry() {
+        return storageQueueRegistry;
+    }
+
+    public void setInboundEventManager(InboundEventManager inboundEventManager) {
+        this.inboundEventManager = inboundEventManager;
+    }
+
+    /**
+     * Get InboundEventManager instance. This is used for publishing inbound events
+     * into inbound disruptor
+     *
+     * @return InboundEventManager instance
+     */
+    public InboundEventManager getInboundEventManager() {
+        return inboundEventManager;
+    }
+
+    /**
+     * Set AndesContextInformationManager to the context
+     *
+     * @param contextInformationManager AndesContextInformationManager instance to set
+     */
+    public void setAndesContextInformationManager(AndesContextInformationManager contextInformationManager) {
+        this.andesContextInformationManager = contextInformationManager;
+    }
+
+    /**
+     * Get AndesContextInformationManager instance set to context. This is used to manage
+     * context information inside broker
+     *
+     * @return AndesContextInformationManager instance
+     */
+    public AndesContextInformationManager getAndesContextInformationManager() {
+        return andesContextInformationManager;
+    }
+
+
+    /**
+     * Get ClusterNotificationListenerManager set to the context.
+     *
+     * @return ClusterNotificationListenerManager of broker.
+     */
+    public ClusterNotificationListenerManager getClusterNotificationListenerManager() {
+        return clusterNotificationListenerManager;
+    }
+
+    /**
+     * Set ClusterNotificationListenerManager to the context.
+     *
+     * @param clusterNotificationListenerManager ClusterNotificationListenerManager instance to set
+     */
+    public void setClusterNotificationListenerManager(ClusterNotificationListenerManager
+                                                              clusterNotificationListenerManager) {
+        this.clusterNotificationListenerManager = clusterNotificationListenerManager;
     }
 }

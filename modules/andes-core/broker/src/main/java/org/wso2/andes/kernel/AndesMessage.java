@@ -39,7 +39,7 @@ public class AndesMessage {
 
     public AndesMessage(AndesMessageMetadata metadata) {
         this.metadata = metadata;
-        contentChunkList = new ArrayList<AndesMessagePart>();
+        contentChunkList = new ArrayList<>();
     }
 
 
@@ -66,17 +66,6 @@ public class AndesMessage {
 
     public void addMessagePart(AndesMessagePart messagePart) {
         contentChunkList.add(messagePart);
-    }
-
-    /**
-     * Check whether message should be delivered to given subscriber
-     * @param subscription message receiver subscription information
-     * @return
-     */
-    public boolean isDelivarable(AndesSubscription subscription)
-    {
-        //Messages should be deliverable by default if no rules have been implemented.
-        return true;
     }
 
     /**

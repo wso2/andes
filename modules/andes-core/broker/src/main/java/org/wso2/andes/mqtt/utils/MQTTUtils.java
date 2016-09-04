@@ -45,6 +45,7 @@ public class MQTTUtils {
 
     private static Log log = LogFactory.getLog(MQTTUtils.class);
     public static final String MESSAGE_ID = "MessageID";
+    public static final String MQTT_EXCHANGE_NAME = "mqtt.topic";
     private static final String TOPIC = "Topic";
     public static final String ARRIVAL_TIME = "ArrivalTime";
     private static final String DESTINATION = "Destination";
@@ -129,6 +130,7 @@ public class MQTTUtils {
         AndesMessageMetadata messageHeader = new AndesMessageMetadata();
         messageHeader.setMessageID(messageID);
         messageHeader.setTopic(true);
+        messageHeader.setMessageRouterName(MQTT_EXCHANGE_NAME);
         messageHeader.setDestination(topic);
         messageHeader.setPersistent(true);
         messageHeader.setRetain(retain);
@@ -275,10 +277,6 @@ public class MQTTUtils {
         }
 
         return tenant;
-    }
-
-    public static String getTopicSpecificQueueName(String clientId, String topic) {
-        return "carbon:" + clientId + ":" + topic;
     }
 
     /**

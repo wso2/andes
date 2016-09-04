@@ -24,10 +24,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * This class keep track of exchanges/queues/bindings
- * Also it updates the database as necessary when changes happen to
- * above constructs if change is local. If change is not local
- * only in-memory maps will be synced
+ * This class keep track of AMQP specific
+ * artifacts and store them persistently
  */
 public class AMQPConstructStore {
 
@@ -36,134 +34,14 @@ public class AMQPConstructStore {
      */
     private AndesContextStore andesContextStore;
 
-    /**
-     * Reference to message store to be used from message count related functionality 
-     */
-    private MessageStore messageStore;
-
-    private Map<String, AndesQueue> andesQueues = new HashMap<String, AndesQueue>();
-    private Map<String, AndesExchange> andesExchanges = new HashMap<String, AndesExchange>();
-
     //keeps bindings <exchange>,<queue,binding>
-    private Map<String, Map<String, AndesBinding>> andesBindings = new HashMap<String, Map<String, AndesBinding>>();
+    private Map<String, Map<String, AndesBinding>> andesBindings = new HashMap<>();
 
 
-    public AMQPConstructStore(AndesContextStore contextStore, MessageStore messageStore) throws AndesException {
+    public AMQPConstructStore(AndesContextStore contextStore) throws AndesException {
         this.andesContextStore = contextStore;
-        this.messageStore = messageStore;
     }
 
-    /**
-     * Add an exchange
-     *
-     * @param exchange exchange to store
-     * @param isLocal  is this a local change
-     * @throws AndesException
-     */
-    public void addExchange(AndesExchange exchange, boolean isLocal) throws AndesException {
-        if (isLocal) {
-            andesContextStore.storeExchangeInformation(exchange.exchangeName, exchange.encodeAsString());
-        }
-        andesExchanges.put(exchange.exchangeName, exchange);
-    }
-
-
-    /**
-     * remove an exchange
-     *
-     * @param exchangeName name of the exchange to remove
-     * @param isLocal      is this a local change
-     * @throws AndesException
-     */
-    public void removeExchange(String exchangeName, boolean isLocal) throws AndesException {
-        if (isLocal) {
-            andesContextStore.deleteExchangeInformation(exchangeName);
-        }
-        andesExchanges.remove(exchangeName);
-    }
-
-    /**
-     * read all exchanges saved
-     *
-     * @return list of exchanges
-     * @throws AndesException
-     */
-    public List<AndesExchange> getExchanges() throws AndesException {
-        return new ArrayList<AndesExchange>(andesExchanges.values());
-    }
-
-    /**
-     * read all exchange names
-     *
-     * @return list of exchange names
-     * @throws AndesException
-     */
-    public List<String> getExchangeNames() throws AndesException {
-        return new ArrayList<String>(andesExchanges.keySet());
-    }
-
-    /**
-     * store a queue
-     *
-     * @param queue   queue to be stored
-     * @param isLocal is this a local change
-     * @throws AndesException
-     */
-    public void addQueue(AndesQueue queue, boolean isLocal) throws AndesException {
-        if (isLocal) {
-            andesContextStore.storeQueueInformation(queue.queueName, queue.encodeAsString());
-            //create a space to keep message counter on this queue
-            messageStore.addQueue(queue.queueName);
-        }
-        andesQueues.put(queue.queueName, queue);
-    }
-
-    /**
-     * remove a queue
-     *
-     * @param queueName name of the queue to be removed
-     * @throws AndesException
-     */
-    public void removeQueue(String queueName) throws AndesException {
-
-        // Remove the queue from internal maps
-        removeLocalQueueData(queueName);
-
-        // Remove queue information from database
-        andesContextStore.deleteQueueInformation(queueName);
-        messageStore.removeQueue(queueName);
-    }
-
-    /**
-     * remove a queue from local maps
-     *
-     * @param queueName name of the queue to be removed
-     * @throws AndesException
-     */
-    public void removeLocalQueueData(String queueName) throws AndesException {
-        andesQueues.remove(queueName);
-        messageStore.removeLocalQueueData(queueName);
-    }
-
-    /**
-     * get all queues
-     *
-     * @return a list of queues
-     * @throws AndesException
-     */
-    public List<AndesQueue> getQueues() throws AndesException {
-        return new ArrayList<AndesQueue>(andesQueues.values());
-    }
-
-    /**
-     * read all queue names
-     *
-     * @return a list of queue names
-     * @throws AndesException
-     */
-    public List<String> getQueueNames() throws AndesException {
-        return new ArrayList<String>(andesQueues.keySet());
-    }
 
     /**
      * store binding
@@ -173,15 +51,18 @@ public class AMQPConstructStore {
      * @throws AndesException
      */
     public void addBinding(AndesBinding binding, boolean isLocal) throws AndesException {
+        String messageRouterName = binding.getMessageRouterName();
+        String boundQueueName = binding.getBoundQueue().getName();
         if (isLocal) {
-            andesContextStore.storeBindingInformation(binding.boundExchangeName, binding.boundQueue.queueName, binding.encodeAsString());
+            andesContextStore.storeBindingInformation
+                    (messageRouterName, boundQueueName, binding.encodeAsString());
         }
-        if (andesBindings.get(binding.boundExchangeName) != null) {
-            (andesBindings.get(binding.boundExchangeName)).put(binding.boundQueue.queueName, binding);
+        if (andesBindings.get(messageRouterName) != null) {
+            (andesBindings.get(messageRouterName)).put(boundQueueName, binding);
         } else {
-            Map<String, AndesBinding> tempBindingMap = new HashMap<String, AndesBinding>();
-            tempBindingMap.put(binding.boundQueue.queueName, binding);
-            andesBindings.put(binding.boundExchangeName, tempBindingMap);
+            Map<String, AndesBinding> tempBindingMap = new HashMap<>();
+            tempBindingMap.put(boundQueueName, binding);
+            andesBindings.put(messageRouterName, tempBindingMap);
         }
     }
 
@@ -191,18 +72,21 @@ public class AMQPConstructStore {
      * @param exchangeName name of the exchange name of binding
      * @param queueName    name of the queue binding carries
      * @param isLocal      is this a local change
+     * @return  AndesBinding binding removed
      * @throws AndesException
      */
-    public void removeBinding(String exchangeName, String queueName, boolean isLocal) throws AndesException {
+    public AndesBinding removeBinding(String exchangeName, String queueName, boolean isLocal) throws AndesException {
         if (isLocal) {
             andesContextStore.deleteBindingInformation(exchangeName, queueName);
         }
+        AndesBinding removedBinding = null;
         if ((andesBindings.get(exchangeName)).get(queueName) != null) {
-            (andesBindings.get(exchangeName)).remove(queueName);
+            removedBinding = (andesBindings.get(exchangeName)).remove(queueName);
         }
         if (andesBindings.get(exchangeName).isEmpty()) {
             andesBindings.remove(exchangeName);
         }
+        return removedBinding;
     }
 
     /**
@@ -213,7 +97,7 @@ public class AMQPConstructStore {
      * @throws AndesException
      */
     public List<AndesBinding> getBindingsForExchange(String exchange) throws AndesException {
-        List<AndesBinding> bindings = new ArrayList<AndesBinding>();
+        List<AndesBinding> bindings = new ArrayList<>();
         if (andesBindings.get(exchange) != null) {
             bindings.addAll((andesBindings.get(exchange)).values());
         }
@@ -221,19 +105,18 @@ public class AMQPConstructStore {
     }
 
     /**
-     * get all routing keys of bindings belonging to an exchange
+     * Remove all the bindings for queue. A queue can bind to multiple message routers
      *
-     * @param exchange name of the exchange
-     * @return a list of routing keys
+     * @param queueName name of the queue
+     * @return A list of bindings stored
      * @throws AndesException
      */
-    public List<String> getRoutingKeys(String exchange) throws AndesException {
-        List<String> routingKeys = new ArrayList<String>();
-        List<AndesBinding> bindings = getBindingsForExchange(exchange);
-        for (AndesBinding b : bindings) {
-            routingKeys.add(b.routingKey);
+    public List<AndesBinding> removeAllBindingsForQueue(String queueName) throws AndesException {
+        List<AndesBinding> bindings = new ArrayList<>();
+        for (Map<String, AndesBinding> queueBindingMap : andesBindings.values()) {
+            queueBindingMap.remove(queueName);
         }
-        return routingKeys;
+        return bindings;
     }
 
 }

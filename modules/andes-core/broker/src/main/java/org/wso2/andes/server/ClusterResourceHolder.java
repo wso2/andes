@@ -18,7 +18,7 @@
 package org.wso2.andes.server;
 
 import org.wso2.andes.kernel.AndesRecoveryTask;
-import org.wso2.andes.kernel.AndesSubscriptionManager;
+import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.store.QpidDeprecatedMessageStore;
 import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;

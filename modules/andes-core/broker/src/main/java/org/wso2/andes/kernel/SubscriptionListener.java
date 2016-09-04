@@ -18,75 +18,25 @@
 
 package org.wso2.andes.kernel;
 
-import org.apache.log4j.Logger;
-import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cluster.coordination.ClusterNotificationPublisher;
-import org.wso2.andes.server.cluster.coordination.ClusterNotification;
-import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
-import org.wso2.andes.subscription.LocalSubscription;
+import org.wso2.andes.kernel.subscription.AndesSubscription;
+import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 
 /**
- * SubscriptionListener listens and handles exchange changes that have occurred locally and cluster-wide.
+ * Subscription Listener Interface.  Any handler handling a local subscription change should implement
+ * this interface. These should get registered in
+ * {@link AndesSubscriptionManager}
+ * only.
  */
-public class SubscriptionListener implements LocalSubscriptionChangedListener {
-
-    private static final Logger log = Logger.getLogger(SubscriptionListener.class);
+public interface SubscriptionListener {
 
     /**
-     * Subscription event types that could be present in the cluster.
-     */
-	public enum SubscriptionChange{
-        ADDED,
-        DELETED,
-        DISCONNECTED,
-        /**
-         * Merge subscriber after a split brain
-         */
-        MERGED
-    }
-
-    /**
-     * Local event handler is used to notify local subscription changes to the cluster.
-     */
-    private ClusterNotificationPublisher clusterNotificationPublisher;
-
-    /**
-     * Creates a listener for binding changes given a publisher to notify the changes that are received to the cluster.
+     * Handle create/close subscription event
      *
-     * @param publisher Hazelcast/RDBMS based or standalone publisher to publish cluster notifications.
+     * @param subscription subscription updated
+     * @param changeType change made, create/close
+     * @throws AndesException on an issue
      */
-    public SubscriptionListener(ClusterNotificationPublisher publisher) {
-        clusterNotificationPublisher = publisher;
-    }
+    void handleSubscriptionsChange(AndesSubscription subscription,
+                                   ClusterNotificationListener.SubscriptionChange changeType) throws AndesException;
 
-    /**
-     * Handle subscription changes in cluster.
-     *
-     * @param subscription subscription changed
-     * @param changeType   type of change happened
-     * @throws AndesException
-     */
-    public void handleClusterSubscriptionsChanged(AndesSubscription subscription, SubscriptionChange changeType)
-            throws AndesException {
-        if (log.isDebugEnabled()) {
-            log.debug("Cluster event received: " + subscription.encodeAsStr());
-        }
-        ClusterResourceHolder.getInstance().getSubscriptionManager().updateClusterSubscriptionMaps(subscription,
-                changeType);
-    }
-
-    /**
-     * Handle local subscription changes.
-     *
-     * @param subscription subscription changed
-     * @param changeType   type of change happened
-     * @throws AndesException
-     */
-    public void handleLocalSubscriptionsChanged(LocalSubscription subscription, SubscriptionChange changeType)
-            throws AndesException {
-        handleClusterSubscriptionsChanged(subscription, changeType);
-        ClusterNotification clusterNotification
-                = new ClusterNotification(subscription.encodeAsStr(), changeType.toString());
-        clusterNotificationPublisher.publishClusterNotification(clusterNotification);
-    }
 }

@@ -18,11 +18,13 @@
 
 package org.wso2.andes.kernel;
 
+import org.wso2.andes.kernel.subscription.SubscriptionException;
+
 /**
  * SubscriptionAlreadyExistsException will be thrown when multiple subscriptions are added with
  * same subscription ID in durable topics.
  */
-public class SubscriptionAlreadyExistsException extends Exception {
+public class SubscriptionAlreadyExistsException extends SubscriptionException {
 
     public SubscriptionAlreadyExistsException() {
     }

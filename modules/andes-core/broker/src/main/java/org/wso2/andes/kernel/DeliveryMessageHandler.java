@@ -18,7 +18,9 @@ package org.wso2.andes.kernel;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.subscription.LocalSubscription;
+import org.wso2.andes.kernel.subscription.AndesSubscription;
+
+import java.util.UUID;
 
 /**
  * DeliveryMessageHandler responsible for submit the messages to a thread pool to deliver asynchronously.
@@ -32,7 +34,7 @@ public class DeliveryMessageHandler extends DeliveryResponsibility {
      * {@inheritDoc}
      */
     @Override
-    protected boolean performResponsibility(LocalSubscription subscription,
+    protected boolean performResponsibility(AndesSubscription subscription,
                                             DeliverableAndesMetadata message) throws AndesException {
 
         if (log.isDebugEnabled()) {
@@ -41,9 +43,9 @@ public class DeliveryMessageHandler extends DeliveryResponsibility {
         /**
          * Mark message as came into the subscription for deliver.
          */
-        message.markAsDispatchedToDeliver(subscription.getChannelID());
-
-        ProtocolMessage protocolMessage = message.generateProtocolDeliverableMessage(subscription.getChannelID());
+        UUID subscriptionChannelID = subscription.getSubscriberConnection().getProtocolChannelID();
+        message.markAsDispatchedToDeliver(subscriptionChannelID);
+        ProtocolMessage protocolMessage = message.generateProtocolDeliverableMessage(subscriptionChannelID);
         MessageFlusher.getInstance().getFlusherExecutor().submit(subscription, protocolMessage);
 
         return true;

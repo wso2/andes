@@ -21,8 +21,8 @@ package org.wso2.andes.kernel;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.subscription.LocalSubscription;
-import org.wso2.andes.subscription.SubscriptionEngine;
+import org.wso2.andes.kernel.subscription.AndesSubscription;
+import org.wso2.andes.kernel.subscription.StorageQueue;
 
 import java.util.*;
 
@@ -33,20 +33,18 @@ import java.util.*;
 public class SlowestSubscriberTopicMessageDeliveryImpl implements MessageDeliveryStrategy {
 
     private static Log log = LogFactory.getLog(SlowestSubscriberTopicMessageDeliveryImpl.class);
-    private SubscriptionEngine subscriptionEngine;
 
-    public SlowestSubscriberTopicMessageDeliveryImpl(SubscriptionEngine subscriptionEngine) {
-        this.subscriptionEngine = subscriptionEngine;
+    public SlowestSubscriberTopicMessageDeliveryImpl() {
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public int deliverMessageToSubscriptions(MessageDeliveryInfo messageDeliveryInfo, String storageQueueName) throws
+    public int deliverMessageToSubscriptions(StorageQueue storageQueue) throws
             AndesException {
 
-        Collection<DeliverableAndesMetadata> messages = messageDeliveryInfo.getReadButUndeliveredMessages();
+        Collection<DeliverableAndesMetadata> messages = storageQueue.getMessagesForDelivery();
         int sentMessageCount = 0;
         Iterator<DeliverableAndesMetadata> iterator = messages.iterator();
         List<DeliverableAndesMetadata> droppedTopicMessagesList = new ArrayList<>();
@@ -55,12 +53,12 @@ public class SlowestSubscriberTopicMessageDeliveryImpl implements MessageDeliver
          * get all relevant type of subscriptions. This call does NOT
          * return hierarchical subscriptions for the destination. There
          * are duplicated messages for each different subscribed destination.
-         * For durable topic subscriptions this should return queue subscription
-         * bound to unique queue based on subscription id
          */
-        Collection<LocalSubscription> subscriptions =
-                subscriptionEngine.getActiveLocalSubscribers(messageDeliveryInfo.getDestination(),
-                        messageDeliveryInfo.getProtocolType(), messageDeliveryInfo.getDestinationType());
+        List<org.wso2.andes.kernel.subscription.AndesSubscription> subscriptions4Queue =
+                storageQueue.getBoundedSubscriptions();
+
+        List<org.wso2.andes.kernel.subscription.AndesSubscription> currentSubscriptions =
+                Collections.unmodifiableList(subscriptions4Queue);
 
 
         while (iterator.hasNext()) {
@@ -69,9 +67,9 @@ public class SlowestSubscriberTopicMessageDeliveryImpl implements MessageDeliver
                 DeliverableAndesMetadata message = iterator.next();
 
                 //All subscription filtering logic for topics goes here
-                List<LocalSubscription> subscriptionsToDeliver = new ArrayList<>();
+                List<AndesSubscription> subscriptionsToDeliver = new ArrayList<>();
 
-                for (LocalSubscription subscription : subscriptions) {
+                for (AndesSubscription subscription : currentSubscriptions) {
 
                     /*
                      * If this is a topic message, remove all durable topic subscriptions here
@@ -79,12 +77,13 @@ public class SlowestSubscriberTopicMessageDeliveryImpl implements MessageDeliver
                      * Also need to consider the arrival time of the message. Only topic
                      * subscribers which appeared before publishing this message should receive it
                      */
-                    if (subscription.isDurable() || (subscription.getSubscribeTime() > message.getArrivalTime())) {
+                    if (subscription.isDurable() ||
+                            (subscription.getSubscriberConnection().getSubscribeTime() > message.getArrivalTime())) {
                         continue;
                     }
 
                     // Avoid sending if the selector of subscriber does not match
-                    if(!subscription.isMessageAcceptedBySelector(message)) {
+                    if (!subscription.getSubscriberConnection().isMessageAcceptedByConnectionSelector(message)) {
                         continue;
                     }
 
@@ -106,8 +105,8 @@ public class SlowestSubscriberTopicMessageDeliveryImpl implements MessageDeliver
                  * topic subscriber.
                  */
                 boolean allTopicSubscriptionsHasRoom = true;
-                for (LocalSubscription subscription : subscriptionsToDeliver) {
-                    if (!subscription.hasRoomToAcceptMessages()) {
+                for (AndesSubscription subscription : subscriptionsToDeliver) {
+                    if (!subscription.getSubscriberConnection().hasRoomToAcceptMessages()) {
                         allTopicSubscriptionsHasRoom = false;
                         break;
                     }
@@ -117,7 +116,7 @@ public class SlowestSubscriberTopicMessageDeliveryImpl implements MessageDeliver
                     message.markAsScheduledToDeliver(subscriptionsToDeliver);
 
                     //schedule message to all subscribers
-                    for (LocalSubscription localSubscription : subscriptionsToDeliver) {
+                    for (AndesSubscription localSubscription : subscriptionsToDeliver) {
                         MessageFlusher.getInstance().deliverMessageAsynchronously(localSubscription, message);
                     }
                     iterator.remove();
@@ -127,8 +126,9 @@ public class SlowestSubscriberTopicMessageDeliveryImpl implements MessageDeliver
                     sentMessageCount++;
                 } else {
                     if (log.isDebugEnabled()) {
-                        log.debug("Some subscriptions for destination " + messageDeliveryInfo.getDestination()
-                                + " have max unacked messages " + message.getDestination());
+                        log.debug("Some subscriptions for storage queue" + storageQueue.getName()
+                                + " have reached max number of unacked messages " + message.getDestination() + ". "
+                                + "Thus skipping delivery to any subscriber");
                     }
                     //if we continue message order will break
                     break;
@@ -136,9 +136,11 @@ public class SlowestSubscriberTopicMessageDeliveryImpl implements MessageDeliver
 
 
             } catch (NoSuchElementException ex) {
-                // This exception can occur because the iterator of ConcurrentSkipListSet loads the at-the-time snapshot.
+                // This exception can occur because the iterator of ConcurrentSkipListSet loads the at-the-time
+                // snapshot.
                 // Some records could be deleted by the time the iterator reaches them.
-                // However, this can only happen at the tail of the collection, not in middle, and it would cause the loop
+                // However, this can only happen at the tail of the collection, not in middle, and it would cause the
+                // loop
                 // to blindly check for a batch of deleted records.
                 // Given this situation, this loop should break so the sendFlusher can re-trigger it.
                 // for tracing purposes can use this : log.warn("NoSuchElementException thrown",ex);

@@ -18,7 +18,7 @@ package org.wso2.andes.kernel;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.subscription.LocalSubscription;
+import org.wso2.andes.kernel.subscription.AndesSubscription;
 
 /**
  * PurgedMessageHandler skips the purged messages from the delivery path and
@@ -33,26 +33,26 @@ public class PurgedMessageHandler extends DeliveryResponsibility {
      * {@inheritDoc}
      */
     @Override
-    protected boolean performResponsibility(LocalSubscription subscription,
-            DeliverableAndesMetadata message) throws AndesException {
+    protected boolean performResponsibility(AndesSubscription subscription,
+                                            DeliverableAndesMetadata message) throws AndesException {
+        boolean isOkayToProceed = false;
         // Get last purged timestamp of the destination queue.
-        MessageDeliveryInfo deliveryInfo = MessageFlusher.getInstance().getMessageDeliveryInfo(message.getDestination(),
-                subscription.getDestinationType());
-        //This check is done as a temporary fix. This method should not at all be called if delivery information is
-        // not there.
-        if (null != deliveryInfo) {
-            long lastPurgedTimestampOfQueue = deliveryInfo.getLastPurgedTimestamp();
-            if (message.getArrivalTime() <= lastPurgedTimestampOfQueue) {
-                log.warn("Message was sent at " + message.getArrivalTime()
-                         + " before last purge event at " + lastPurgedTimestampOfQueue
-                         + ". Therefore, it will not be sent. id= "
-                         + message.getMessageID());
-                if (!message.isPurgedOrDeletedOrExpired()) {
-                    message.markAsPurgedMessage();
-                }
-                return false;
+        long lastPurgedTimestampOfQueue = subscription.getStorageQueue().getLastPurgedTimestamp();
+
+        if (message.getArrivalTime() <= lastPurgedTimestampOfQueue) {
+
+            log.warn("Message was sent at " + message.getArrivalTime()
+                    + " before last purge event at " + lastPurgedTimestampOfQueue
+                    + ". Therefore, it will not be sent. id= "
+                    + message.getMessageID());
+
+            if(!message.isPurgedOrDeletedOrExpired()) {
+                message.markAsPurgedMessage();
             }
+        } else {
+            isOkayToProceed = true;
         }
-        return true;
+
+        return isOkayToProceed;
     }
 }

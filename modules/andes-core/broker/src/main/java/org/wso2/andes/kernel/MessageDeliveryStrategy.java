@@ -19,6 +19,8 @@
 package org.wso2.andes.kernel;
 
 
+import org.wso2.andes.kernel.subscription.StorageQueue;
+
 /**
  * This interface defines the structure of a message delivery strategy
  */
@@ -28,13 +30,9 @@ public interface MessageDeliveryStrategy {
      * Deliver message. It will find current subscriptions to deliver by the destination of the message
      * and send the messages accordingly
      *
-     * @param messageDeliveryInfo The message delivery information holder
      * @param storageQueue Storage queue related to messages
-     *
-     *
      * @return number of messages sent
      * @throws AndesException in case of a delivery failure
      */
-    public int deliverMessageToSubscriptions(MessageDeliveryInfo messageDeliveryInfo, String storageQueue) throws
-            AndesException;
+    int deliverMessageToSubscriptions(StorageQueue storageQueue) throws AndesException;
 }

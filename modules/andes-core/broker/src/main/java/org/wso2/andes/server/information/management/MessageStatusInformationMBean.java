@@ -1,7 +1,7 @@
 package org.wso2.andes.server.information.management;
 
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.management.common.mbeans.MessageStatusInformation;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanConstructor;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
@@ -40,7 +40,8 @@ public class MessageStatusInformationMBean extends AMQManagedObject
 
 
             //Get slot delivery workers
-            SlotDeliveryWorkerManager.getInstance().dumpAllSlotInformationToFile(fileToWriteMessageStatus);
+            AndesContext.getInstance().getStorageQueueRegistry().
+                    dumpAllSlotInformationToFile(fileToWriteMessageStatus);
 
         } catch (AndesException e) {
             throw new RuntimeException("Internal error while dumping message status", e);

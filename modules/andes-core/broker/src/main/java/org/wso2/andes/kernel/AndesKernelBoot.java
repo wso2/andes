@@ -24,20 +24,24 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.StoreConfiguration;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
+import org.wso2.andes.kernel.disruptor.inbound.InboundExchangeEvent;
+import org.wso2.andes.kernel.registry.MessageRouterRegistry;
+import org.wso2.andes.kernel.registry.StorageQueueRegistry;
+import org.wso2.andes.kernel.registry.SubscriptionRegistry;
 import org.wso2.andes.kernel.slot.SlotCreator;
 import org.wso2.andes.kernel.slot.SlotDeletionExecutor;
 import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
+import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
+import org.wso2.andes.kernel.subscription.StorageQueue;
+import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.ClusterAgent;
 import org.wso2.andes.server.cluster.ClusterManagementInformationMBean;
 import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.cluster.coordination.ClusterNotificationListenerManager;
-import org.wso2.andes.server.cluster.coordination.EventListenerCreator;
-import org.wso2.andes.server.cluster.coordination.StandaloneEventListenerCreator;
+import org.wso2.andes.server.cluster.coordination.CoordinationComponentFactory;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
-import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastBasedEventListenerCreator;
-import org.wso2.andes.server.cluster.coordination.rdbms.RDBMSBasedEventListenerCreator;
-import org.wso2.andes.server.cluster.coordination.rdbms.RDBMSClusterNotificationListenerManager;
 import org.wso2.andes.server.information.management.MessageStatusInformationMBean;
 import org.wso2.andes.server.information.management.SubscriptionManagementInformationMBean;
 import org.wso2.andes.server.queue.DLCQueueUtils;
@@ -45,7 +49,6 @@ import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
 import org.wso2.andes.store.FailureObservingAndesContextStore;
 import org.wso2.andes.store.FailureObservingMessageStore;
-import org.wso2.andes.subscription.SubscriptionEngine;
 import org.wso2.andes.thrift.MBThriftServer;
 import org.wso2.carbon.context.CarbonContext;
 import org.wso2.carbon.user.api.UserStoreException;
@@ -65,8 +68,23 @@ import javax.management.JMException;
  * Andes kernel startup/shutdown related work is done through this class.
  */
 public class AndesKernelBoot {
+
     private static Log log = LogFactory.getLog(AndesKernelBoot.class);
+
+    /**
+     * Store for keeping messages (i.e persistent store)
+     */
     private static MessageStore messageStore;
+
+    /**
+     * Store for keeping AMQP based artifacts
+     */
+    private static AMQPConstructStore amqpConstructStore;
+
+    /**
+     * In-memory store for keeping subscription entries
+     */
+    private static SubscriptionRegistry subscriptionRegistry;
 
     /**
      * Scheduled thread pool executor to run periodic andes recovery task
@@ -89,12 +107,6 @@ public class AndesKernelBoot {
     private static boolean isKernelShuttingDown = false;
 
     /**
-     * This enables creating cluster event listeners depending on whether cluster communication happens through
-     * Hazelcast or RDBMS or whether it is running in the standalone mode.
-     */
-    private static EventListenerCreator eventListenerCreator;
-
-    /**
      * Used to initialize cluster notifications listners.
      */
     private static ClusterNotificationListenerManager clusterNotificationListenerManager;
@@ -107,11 +119,12 @@ public class AndesKernelBoot {
         //loadConfigurations - done from outside
         //startAndesStores - done from outside
         int threadPoolCount = 1;
-        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
+        ThreadFactory recoveryTaskThreadFactory = new ThreadFactoryBuilder()
                 .setNameFormat("AndesRecoveryTask-%d").build();
         andesRecoveryTaskScheduler = Executors.newScheduledThreadPool(threadPoolCount);
         expiryMessageDeletionTaskScheduler = Executors.newScheduledThreadPool(threadPoolCount);
         startHouseKeepingThreads();
+        createDefinedProtocolArtifacts();
         syncNodeWithClusterState();
         registerMBeans();
         startThriftServer();
@@ -166,13 +179,13 @@ public class AndesKernelBoot {
      * @throws AndesException
      */
     private static void recoverMapsForEachQueue() throws AndesException {
-        List<AndesQueue> queueList = contextStore.getAllQueuesStored();
-        List<Future> futureSlotRecoveryExecutorList = new ArrayList<Future>();
+        List<StorageQueue> queueList = contextStore.getAllQueuesStored();
+        List<Future> futureSlotRecoveryExecutorList = new ArrayList<>();
         Integer concurrentReads = AndesConfigurationManager.readValue
                 (AndesConfiguration.RECOVERY_MESSAGES_CONCURRENT_STORAGE_QUEUE_READS);
         ExecutorService executorService = Executors.newFixedThreadPool(concurrentReads);
-        for (final AndesQueue queue : queueList) {
-            final String queueName = queue.queueName;
+        for (final StorageQueue queue : queueList) {
+            final String queueName = queue.getName();
             // Skip slot creation for Dead letter Channel
             if (DLCQueueUtils.isDeadLetterQueue(queueName)) {
                 continue;
@@ -265,47 +278,6 @@ public class AndesKernelBoot {
         return messageStoreInConfig;
     }
 
-    /**
-     * Starts all andes components such as the subscription engine, messaging engine, cluster event sync tasks, etc.
-     *
-     * @throws Exception
-     */
-    private static void startAndesComponents() throws Exception {
-
-        //create subscription store
-        SubscriptionEngine subscriptionEngine = new SubscriptionEngine();
-        AndesContext.getInstance().setSubscriptionEngine(subscriptionEngine);
-
-        /**
-         * initialize subscription managing
-         */
-        AndesSubscriptionManager subscriptionManager = new AndesSubscriptionManager();
-        ClusterResourceHolder.getInstance().setSubscriptionManager(subscriptionManager);
-        subscriptionManager.init(eventListenerCreator);
-
-        // Whether expiry check is enabled/disabled for DLC
-        boolean isExpiryCheckEnabledInDLC
-                = AndesConfigurationManager.readValue(AndesConfiguration.PERFORMANCE_TUNING_EXPIRE_MESSAGES_IN_DLC);
-        MessageExpiryManager messageExpiryManager;
-        //depends on the configuration bind the appropriate expiry manger with the messaging engine
-        if (isExpiryCheckEnabledInDLC) {
-            messageExpiryManager = new DLCMessageExpiryManager(messageStore);
-        } else {
-            messageExpiryManager = new DefaultMessageExpiryManager(messageStore);
-        }
-
-        MessagingEngine messagingEngine = MessagingEngine.getInstance();
-        messagingEngine.initialise(messageStore, subscriptionEngine, messageExpiryManager, eventListenerCreator);
-
-        // initialise Andes context information related manager class
-        AndesContextInformationManager contextInformationManager =
-                new AndesContextInformationManager(AndesContext.getInstance().getAMQPConstructStore(),
-                        subscriptionEngine, contextStore, eventListenerCreator);
-
-        // When message stores are initialised initialise Andes as well.
-        Andes.getInstance().initialise(subscriptionEngine, messagingEngine,
-                contextInformationManager, subscriptionManager);
-    }
 
     /**
      * Start all andes stores message store/context store and AMQP construct store
@@ -325,28 +297,90 @@ public class AndesKernelBoot {
         AndesContext.getInstance().setMessageStore(messageStore);
 
         //create AMQP Constructs store
-        AMQPConstructStore amqpConstructStore = new AMQPConstructStore(contextStore, messageStore);
+        amqpConstructStore = new AMQPConstructStore(contextStore);
         AndesContext.getInstance().setAMQPConstructStore(amqpConstructStore);
+
+        //create MessageRouter Registry
+        MessageRouterRegistry messageRouterRegistry = new MessageRouterRegistry();
+        AndesContext.getInstance().setMessageRouterRegistry(messageRouterRegistry);
+
+        //create Storage Queue Registry
+        StorageQueueRegistry storageQueueRegistry = new StorageQueueRegistry();
+        AndesContext.getInstance().setStorageQueueRegistry(storageQueueRegistry);
+
+        //create subscription registry and manager
+        subscriptionRegistry = new SubscriptionRegistry();
+    }
+
+    /**
+     * Starts all andes components such as the subscription engine, messaging engine, cluster event sync tasks, etc.
+     *
+     * @throws Exception
+     */
+    private static void startAndesComponents() throws Exception {
+
+        //create subscription registry and manager
+        AndesSubscriptionManager subscriptionManager = new AndesSubscriptionManager(subscriptionRegistry,
+                contextStore);
+        AndesContext.getInstance().setAndesSubscriptionManager(subscriptionManager);
+        ClusterResourceHolder.getInstance().setSubscriptionManager(subscriptionManager);
+
+        // Whether expiry check is enabled/disabled for DLC
+        boolean isExpiryCheckEnabledInDLC
+                = AndesConfigurationManager.readValue(AndesConfiguration.PERFORMANCE_TUNING_EXPIRE_MESSAGES_IN_DLC);
+        MessageExpiryManager messageExpiryManager;
+        //depends on the configuration bind the appropriate expiry manger with the messaging engine
+        if (isExpiryCheckEnabledInDLC) {
+            messageExpiryManager = new DLCMessageExpiryManager(messageStore);
+        } else {
+            messageExpiryManager = new DefaultMessageExpiryManager(messageStore);
+        }
+
+        MessagingEngine messagingEngine = MessagingEngine.getInstance();
+        messagingEngine.initialise(messageStore, messageExpiryManager);
+
+        // initialise Andes context information related manager class
+        AndesContextInformationManager contextInformationManager =
+                new AndesContextInformationManager(amqpConstructStore, subscriptionManager,
+                        contextStore, messageStore);
+        AndesContext.getInstance().setAndesContextInformationManager(contextInformationManager);
+
+        //Create an inbound event manager. This will prepare inbound events to disruptor
+        InboundEventManager inboundEventManager =  new InboundEventManager(subscriptionManager, messagingEngine);
+        AndesContext.getInstance().setInboundEventManager(inboundEventManager);
+
+        //Initialize Andes API (used by all inbound transports)
+        Andes.getInstance().initialise(messagingEngine, inboundEventManager, contextInformationManager,
+                subscriptionManager);
+
+        //Initialize cluster notification listener (null if standalone)
+        if(null != clusterNotificationListenerManager) {
+            clusterNotificationListenerManager.initializeListener(inboundEventManager, subscriptionManager,
+                    contextInformationManager);
+        }
+    }
+
+    /**
+     * Create Pre-defined exchanges, queues, bindings and subscriptions and other artifacts
+     * at the startup
+     *
+     * @throws AndesException
+     */
+    private static void createDefinedProtocolArtifacts() throws AndesException {
+        //Create MQTT exchange
+        InboundExchangeEvent inboundExchangeEvent = new
+                InboundExchangeEvent(MQTTUtils.MQTT_EXCHANGE_NAME, "topic", false);
+        Andes.getInstance().createExchange(inboundExchangeEvent);
     }
 
     /**
      * Initialize mode of cluster event synchronization depending on configurations and start listeners.
      */
-    private static void initClusterEventSynchronizationMode() throws AndesException {
+    private static void initClusterEventListener() throws AndesException {
 
-        if (ClusterResourceHolder.getInstance().getClusterManager().isClusteringEnabled()) {
-            if (AndesConfigurationManager.readValue(AndesConfiguration.CLUSTER_EVENT_SYNC_MODE_RDBMS_ENABLED)) {
-                eventListenerCreator = new RDBMSBasedEventListenerCreator();
-                log.info("Broker is initialized with RDBMS based cluster event synchronization.");
-                clusterNotificationListenerManager = new RDBMSClusterNotificationListenerManager();
-            } else {
-                eventListenerCreator = new HazelcastBasedEventListenerCreator();
-                log.info("Broker is initialized with HAZELCAST based cluster event synchronization.");
-                clusterNotificationListenerManager = HazelcastAgent.getInstance();
-            }
-        } else {
-            eventListenerCreator = new StandaloneEventListenerCreator();
-        }
+        CoordinationComponentFactory coordinationComponentFactory = new CoordinationComponentFactory();
+        clusterNotificationListenerManager = coordinationComponentFactory.createClusterNotificationListener();
+        AndesContext.getInstance().setClusterNotificationListenerManager(clusterNotificationListenerManager);
     }
 
     /**
@@ -357,8 +391,8 @@ public class AndesKernelBoot {
         // Initialize cluster manager
         initClusterManager();
 
-        // Initialize the cluster communication mode whether it is HAZELCAST or RDBMS.
-        initClusterEventSynchronizationMode();
+        // Create the listener for listening for cluster events
+        initClusterEventListener();
 
         // Clear all slots and cluster notifications at a cluster startup
         clearMembershipEventsAndRecoverDistributedSlotMap();
@@ -366,10 +400,6 @@ public class AndesKernelBoot {
         //Start components such as the subscription manager, subscription engine, messaging engine, etc.
         startAndesComponents();
 
-        // Initialize listener to be notified of cluster events.
-        if (ClusterResourceHolder.getInstance().getClusterManager().isClusteringEnabled()) {
-            clusterNotificationListenerManager.initializeListener();
-        }
     }
 
     /**
@@ -381,6 +411,7 @@ public class AndesKernelBoot {
         }
     }
 
+
     /**
      * Bring the node to the state of the cluster. If this is the coordinator, disconnect all active durable
      * subscriptions.
@@ -389,28 +420,17 @@ public class AndesKernelBoot {
      */
     public static void syncNodeWithClusterState() throws AndesException {
 
-        // Mark all the existing durable subscriptions as inactive when starting a standalone node or the coordinator
-        // node since there can be no active durable subscribers when starting the first node of the cluster.
-        // Having existing active durable subscribers causes them to not be able to reconnect to the broker
-        // The deactivation should not be performed by just any node but the first node to start
-        boolean isClusteringEnabled = AndesContext.getInstance().isClusteringEnabled();
-        if (!(isClusteringEnabled)
-                || (isClusteringEnabled && AndesContext.getInstance().getClusterAgent().isCoordinator())) {
-            ClusterResourceHolder.getInstance().getSubscriptionManager().deactivateAllActiveSubscriptions();
-        }
-
         //at the startup reload exchanges/queues/bindings and subscriptions
         log.info("Syncing exchanges, queues, bindings and subscriptions");
         ClusterResourceHolder.getInstance().getAndesRecoveryTask()
-                .recoverExchangesQueuesBindingsSubscriptions();
+                .recoverBrokerArtifacts();
 
-        // All non-durable subscriptions subscribed from this node will be deleted since, there
-        // can't be any non-durable subscriptions as node just started.
-        // closeAllClusterSubscriptionsOfNode() should only be called after
-        // recoverExchangesQueuesBindingsSubscriptions() executed.
-        String myNodeId = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
-        ClusterResourceHolder.getInstance().getSubscriptionManager()
-                .closeAllLocalSubscriptionsOfNode(myNodeId);
+        /**
+         * remove all subscriptions registered by the local node ID.
+         * During a node crash there can be stale subscriptions hanging around.
+         */
+        AndesContext.getInstance().getAndesSubscriptionManager().
+                closeAllActiveLocalSubscriptions();
     }
 
     /**
@@ -421,7 +441,15 @@ public class AndesKernelBoot {
     public static void startHouseKeepingThreads() throws AndesException {
 
         //reload exchanges/queues/bindings and subscriptions
-        AndesRecoveryTask andesRecoveryTask = new AndesRecoveryTask(eventListenerCreator);
+        AndesContextInformationManager contextInformationManager = AndesContext.getInstance()
+                .getAndesContextInformationManager();
+        AndesSubscriptionManager subscriptionManager = AndesContext.getInstance()
+                .getAndesSubscriptionManager();
+        InboundEventManager inboundEventManager = AndesContext.getInstance()
+                .getInboundEventManager();
+        AndesRecoveryTask andesRecoveryTask = new AndesRecoveryTask(contextInformationManager,
+                subscriptionManager, inboundEventManager);
+
         //deleted the expired message from db
         PeriodicExpiryMessageDeletionTask periodicExpiryMessageDeletionTask = null;
 
@@ -442,7 +470,7 @@ public class AndesKernelBoot {
         }
 
         andesRecoveryTaskScheduler.scheduleAtFixedRate(andesRecoveryTask, recoveryTaskScheduledPeriod,
-                                                       recoveryTaskScheduledPeriod, TimeUnit.SECONDS);
+                recoveryTaskScheduledPeriod, TimeUnit.SECONDS);
         if (safeDeleteRegionSlotCount >= 1) {
             expiryMessageDeletionTaskScheduler.scheduleAtFixedRate(periodicExpiryMessageDeletionTask,
                     dbBasedDeletionTaskScheduledPeriod, dbBasedDeletionTaskScheduledPeriod, TimeUnit.SECONDS);
@@ -498,7 +526,8 @@ public class AndesKernelBoot {
     }
 
     /**
-     * Start andes components
+     * Start manager to join node to the cluster and register
+     * node in the cluster
      *
      * @throws AndesException
      */
@@ -510,6 +539,10 @@ public class AndesKernelBoot {
         ClusterManager clusterManager = new ClusterManager();
         clusterManager.init();
         ClusterResourceHolder.getInstance().setClusterManager(clusterManager);
+
+        //TODO: remove as submanager starts after cluster manager now
+       // AndesContext.getInstance().getAndesSubscriptionManager().
+        //        setLocalNodeId(clusterManager.getMyNodeID());
     }
 
     /**
@@ -532,9 +565,6 @@ public class AndesKernelBoot {
      */
     public static void startMessaging() {
         Andes.getInstance().startMessageDelivery();
-
-        // NOTE: Feature Message Expiration moved to a future release
-//        Andes.getInstance().startMessageExpirationWorker();
     }
 
     /**
@@ -542,9 +572,6 @@ public class AndesKernelBoot {
      *
      */
     private static void stopMessaging() {
-        // NOTE: Feature Message Expiration moved to a future release
-//        Andes.getInstance().stopMessageExpirationWorker();
-
         //this will un-assign all slots currently owned
         Andes.getInstance().stopMessageDelivery();
     }

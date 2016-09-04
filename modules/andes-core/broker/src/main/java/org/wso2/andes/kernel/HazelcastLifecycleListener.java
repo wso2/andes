@@ -22,8 +22,7 @@ import com.hazelcast.core.LifecycleEvent;
 import com.hazelcast.core.LifecycleListener;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
+import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.server.cluster.error.detection.HazelcastBasedNetworkPartitionDetector;
 import org.wso2.andes.server.cluster.error.detection.NetworkPartitionDetector;
 
@@ -66,9 +65,9 @@ public class HazelcastLifecycleListener implements LifecycleListener {
             log.info("Hazelcast instance lifecycle changed state to " + lifecycleEvent.getState());
             if (lifecycleEvent.getState() == LifecycleEvent.LifecycleState.MERGED) {
                 log.info("Hazelcast cluster merge detected after a split brain. Updating unmerged data structures");
-                HazelcastAgent.getInstance().reInitializeTopicListeners();
-                AndesSubscriptionManager andesSubscriptionManager = ClusterResourceHolder.getInstance()
-                        .getSubscriptionManager();
+                AndesContext.getInstance().getClusterNotificationListenerManager().reInitializeListener();
+                AndesSubscriptionManager andesSubscriptionManager = AndesContext.getInstance()
+                        .getAndesSubscriptionManager();
                 if(null != andesSubscriptionManager) {
                     andesSubscriptionManager.updateSubscriptionsAfterClusterMerge();
                 } else {

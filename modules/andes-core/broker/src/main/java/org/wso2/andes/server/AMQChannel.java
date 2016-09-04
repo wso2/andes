@@ -633,21 +633,8 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             //TODO- hasitha - we need to review this? do not we need to iterate over bindings?
             try
             {
-//            	List<Binding> bindingList = sub.getQueue().getBindings();
-//				if(bindingList !=null && !bindingList.isEmpty())
-//				for(Binding b : bindingList) {
-//				    Exchange exchange = b.getExchange();
-//				    if (exchange.getName().equalsIgnoreCase("amq.direct")) {
-//				    	String subscriptionID = String.valueOf(subscription.getSubscription().getSubscriptionID());
-//				        String destinationQueue = b.getBindingKey();
-//				    }
-//				}
                 sub.getSendLock();
                 sub.getQueue().unregisterSubscription(sub);
-//			    ClusteringEnabledSubscriptionManager csm = ClusterResourceHolder.getInstance().getSubscriptionManager();
-//			    csm.closeLocalSubscription(sub.getQueue().getResourceName(), String.valueOf(sub.getSubscriptionID()));
-//            }catch(AndesException e){
-//            	throw new AMQException(AMQConstant.INTERNAL_ERROR, e.getMessage(),  e);
             }finally
             {
                 sub.releaseSendLock();

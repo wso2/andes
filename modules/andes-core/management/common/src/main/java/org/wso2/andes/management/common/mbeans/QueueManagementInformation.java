@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * This interface contains all operations invoked by the UI console with relation to queues. (addition, deletion, purging, etc.)
@@ -70,6 +71,20 @@ public interface QueueManagementInformation {
      */
     @MBeanAttribute(name = "AllQueueCounts", description = "Message counts of all queues")
     Map<String, Integer> getAllQueueCounts();
+
+    @MBeanAttribute(name = "NamesOfAllDurableQueues", description = "Names of all durable queues")
+    Set<String> getNamesOfAllDurableQueues();
+
+
+    /**
+     * Retrieve DLC queue with message count
+     *
+     * @return Map having <DLC queue name, message count>
+     */
+    @MBeanAttribute(name = "DLCQueueInformation",
+            description = "DLC Queue Information. Format = " + "<DLC queue name, message count>")
+    Map<String, Long> getDLCQueueInformation(@MBeanOperationParameter(name = "DLCQueueName" ,
+            description = "Name of the queue of DLC queue") String queueName) throws MBeanException;
 
     /**
      * Retrieve current message count of a queue. This may be only a rough estimate in a fast pub/sub scenario.

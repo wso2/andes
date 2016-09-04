@@ -146,6 +146,11 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
         }
 
         @Override
+        public UUID getIdOfUnderlyingChannel() {
+            return getChannel().getId();
+        }
+
+        @Override
         public boolean wouldSuspend(QueueEntry msg)
         {
             return false;
@@ -212,6 +217,11 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
         }
 
         @Override
+        public UUID getIdOfUnderlyingChannel() {
+            return getChannel().getId();
+        }
+
+        @Override
         public boolean wouldSuspend(QueueEntry msg)
         {
             return false;
@@ -245,7 +255,7 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
          * thread safe.
          *
          * @param entry The message to send
-         * @throws AMQException
+         * @throws AMQException Error when writing message to connection
          */
         @Override
         public void send(QueueEntry entry) throws AMQException {
@@ -254,22 +264,23 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
 
                 long deliveryTag = getChannel().getNextDeliveryTag();
 
-                /**
-                 * This method will record that this message is delivered in AMQChannel level
-                 * Requeueing and ack handling will be affected by this.
+                /*
+                  This method will record that this message is delivered in AMQChannel level
+                  Re-queueing and ack handling will be affected by this.
                  */
                 recordMessageDelivery(entry, deliveryTag);
 
-                //no point of trying to deliver if channel is closed ReQueue the message to
-                // be resent
-                // when channel is available
+                /*
+                 no point of trying to deliver if channel is closed ReQueue the message to
+                 be resent when channel is available
+                 */
                 if (getChannel().isClosing()) {
-                    if ( log.isDebugEnabled()){
+                    if (log.isDebugEnabled()) {
                         log.debug("channel getting closed therefore, not trying to deliver : "
-                                + entry.getMessage().getMessageNumber()  );
-                        
+                                + entry.getMessage().getMessageNumber());
+
                     }
-                    throw new SubscriptionAlreadyClosedException("Channel " + getChannel().getClientID() + " is already"
+                    throw new SubscriptionAlreadyClosedException("Channel " + getChannel().getId() + " is already"
                             + " closed. Delivery failed message id = " + entry.getMessage().getMessageNumber());
                 }
 
@@ -278,13 +289,15 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
 							+ " Slot = " + ((AMQMessage)entry.getMessage()).getAndesMetadataReference()
 							.getMessage().getSlot().getId()
 							+ " JMSMessageId " + ": " + entry.getMessageHeader().getMessageId()
-							+ " channel=" + getChannel().getChannelId());
+							+ " channel=" + getChannel().getId());
                 }
 
                 sendToClient(entry, deliveryTag);
 
-                //We do not need to keep the whole message as we save it in DB. As this can cause Out Of Memory issue
-                //in a loaded environment
+                /*
+                 We do not need to keep the whole message as we save it in DB. As this can cause Out Of Memory issue
+                 in a loaded environment
+                 */
                 entry.dispose();
 
             } catch (Exception e) {
@@ -313,9 +326,14 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                 }
 
                 throw new AMQException("SEND FAILED >> Exception occurred while sending message " +
-                        "out message ID" + entry.getMessage().getMessageNumber()
-                        + " " + e.getMessage(), e);
+                        "out message ID " + entry.getMessage().getMessageNumber() + " to channel with id = "
+                        + getChannel().getId() + " " + e.getMessage(), e);
             }
+        }
+
+        @Override
+        public UUID getIdOfUnderlyingChannel() {
+            return getChannel().getId();
         }
     }
 

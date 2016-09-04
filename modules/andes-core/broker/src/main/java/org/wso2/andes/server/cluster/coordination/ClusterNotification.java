@@ -24,18 +24,11 @@ import java.io.Serializable;
  * This class represents a cluster notification to be transfer via HazelCast
  */
 public class ClusterNotification implements Serializable {
-
-    public static final String QUEUE_ADDED = "QUEUE_ADDED";
-    public static final String QUEUE_DELETED = "QUEUE_DELETED";
-    public static final String QUEUE_PURGED = "QUEUE_PURGED";
-    public static final String BINDING_ADDED = "BINDING_ADDED";
-    public static final String BINDING_DELETED = "BINDING_DELETED";
-    public static final String EXCHANGE_ADDED = "EXCHANGE_ADDED";
-    public static final String EXCHANGE_DELETED = "EXCHANGE_DELETED";
-    public static final String SUBSCRIPTION_ADDED = "SUBSCRIPTION_ADDED";
-    public static final String SUBSCRIPTION_DELETED = "SUBSCRIPTION_DELETED";
-    public static final String SUBSCRIPTION_DISCONNECTED = "SUBSCRIPTION_DISCONNECTED";
-    public static final String SUBSCRIPTION_MERGED = "SUBSCRIPTION_MERGED";
+    /**
+     * The artifact carried in the notification
+     * (i.e queue, messageRouter, binding, subscription)
+     */
+    private String notifiedArtifact;
 
     /**
      * The type of change represented by the notification.
@@ -53,28 +46,30 @@ public class ClusterNotification implements Serializable {
     private String originatedNode;
 
     /**
-     * Create an instance of cluster notification given the notification and the change type.
-     *
-     * @param encodedAsString encoded string to transfer thro
-     * @param changeType      change happened (added/deleted etc)
+     * Human readable description of the notification.
      */
-    public ClusterNotification(String encodedAsString, String changeType) {
-        this.encodedObjectAsString = encodedAsString;
-        this.changeType = changeType;
-    }
+    private String description;
+
 
     /**
      * Create an instance of cluster notification given the notification, the change type and the node from which the
      * cluster notification originated.
      *
-     * @param encodedAsString encoded string to transfer thro
-     * @param changeType      change happened (added/deleted etc)
+     * @param encodedAsString  encoded string to transfer thro
+     * @param notifiedArtifact artifact that is notified by this notification
+     * @param changeType       change happened (added/deleted etc)
+     * @param description      human readable description of the notification
+     * @param originatedNode   ID of the node notification originated from
      */
-    public ClusterNotification(String encodedAsString, String changeType, String originatedNode) {
+    public ClusterNotification(String encodedAsString, String notifiedArtifact, String changeType, String
+            description, String originatedNode) {
         this.encodedObjectAsString = encodedAsString;
+        this.notifiedArtifact = notifiedArtifact;
         this.changeType = changeType;
+        this.description = description;
         this.originatedNode = originatedNode;
     }
+
 
     /**
      * Get encoded string notification carries
@@ -83,6 +78,16 @@ public class ClusterNotification implements Serializable {
      */
     public String getEncodedObjectAsString() {
         return encodedObjectAsString;
+    }
+
+    /**
+     * Get what the notified artifact is. Is the what has changed at the notification
+     * originated node
+     *
+     * @return String value of {@link org.wso2.andes.kernel.ClusterNotificationListener.NotifiedArtifact}
+     */
+    public String getNotifiedArtifact() {
+        return notifiedArtifact;
     }
 
     /**
@@ -101,5 +106,15 @@ public class ClusterNotification implements Serializable {
      */
     public String getOriginatedNode() {
         return originatedNode;
+    }
+
+
+    /**
+     * Get human readable description of the notification
+     *
+     * @return description
+     */
+    public String getDescription() {
+        return description;
     }
 }

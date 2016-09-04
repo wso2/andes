@@ -17,7 +17,7 @@
 package org.wso2.andes.kernel;
 
 
-import org.wso2.andes.subscription.LocalSubscription;
+import org.wso2.andes.kernel.subscription.AndesSubscription;
 
 /**
  * Delivery responsibility represents the constrains that needs to be checked
@@ -33,18 +33,22 @@ public abstract class DeliveryResponsibility {
 
     /**
      * Set the next delivery responsibility
-     * @param deliveryResponsibility Responsibility that need to be performed in the delivery path
+     *
+     * @param deliveryResponsibility Responsibility that need to
+     *                               be performed in the delivery path
      */
     public void setNextDeliveryFilter(DeliveryResponsibility deliveryResponsibility){
         this.nextDeliveryResponsibility = deliveryResponsibility;
     }
 
     /**
-     * Handover the message to the next responsibility if current responsibility successfully finished
-     * @param subscription
-     * @param message
+     * Handover the message to the next responsibility if
+     * current responsibility successfully finished
+     *
+     * @param subscription subscription to which message should be delivered
+     * @param message message to deliver
      */
-    public void handleDeliveryMessage(LocalSubscription subscription, DeliverableAndesMetadata message)
+    public void handleDeliveryMessage(AndesSubscription subscription, DeliverableAndesMetadata message)
             throws AndesException{
 
         if(performResponsibility(subscription,message) && (null != nextDeliveryResponsibility)){
@@ -53,13 +57,16 @@ public abstract class DeliveryResponsibility {
 
     }
 
-    /** //todo discribe parameters and return statement
-     * Responsibility specific logic that can decide the message pass to the next responsibility
-     * @param subscription
-     * @param message
-     * @return is Okay to hand over to the next responsibility in the chain
+    /**
+     * Responsibility specific logic that can decide the
+     * message pass to the next responsibility
+     *
+     * @param subscription subscription to which message should be delivered
+     * @param message message to deliver
+     * @return true if it is Okay to hand over to the next
+     *         responsibility in the chain
      */
-    protected abstract boolean performResponsibility (LocalSubscription subscription,
+    protected abstract boolean performResponsibility (AndesSubscription subscription,
                                                       DeliverableAndesMetadata message) throws AndesException;
 
 

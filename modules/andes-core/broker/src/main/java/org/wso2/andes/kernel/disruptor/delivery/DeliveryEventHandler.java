@@ -29,8 +29,9 @@ import org.wso2.andes.kernel.ProtocolDeliveryFailureException;
 import org.wso2.andes.kernel.ProtocolDeliveryRulesFailureException;
 import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.kernel.SubscriptionAlreadyClosedException;
+import org.wso2.andes.kernel.subscription.AndesSubscription;
+import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.metrics.MetricsConstants;
-import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.manager.Counter;
 import org.wso2.carbon.metrics.manager.Level;
@@ -76,10 +77,11 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
      */
     @Override
     public void onEvent(DeliveryEventData deliveryEventData, long sequence, boolean endOfBatch) throws Exception {
-        LocalSubscription subscription = deliveryEventData.getLocalSubscription();
+        AndesSubscription subscription = deliveryEventData.getLocalSubscription();
 
         // Taking the absolute value since hashCode can be a negative value
-        long channelModulus = Math.abs(subscription.getChannelID().hashCode() % numberOfConsumers);
+        UUID protocolChannelID = subscription.getSubscriberConnection().getProtocolChannelID();
+        long channelModulus = Math.abs(protocolChannelID.hashCode() % numberOfConsumers);
 
         // Filter tasks assigned to this handler
         if (channelModulus == ordinal) {
@@ -101,12 +103,12 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                         //Adding metrics meter for ack rate
                         Meter messageMeter = MetricManager.meter(Level.INFO, MetricsConstants.MSG_SENT_RATE);
                         messageMeter.mark();
-
                         //Adding metrics counter for dequeue messages
                         Counter counter = MetricManager.counter(Level.INFO, MetricsConstants.DEQUEUE_MESSAGES);
                         counter.inc();
 
-                        subscription.sendMessageToSubscriber(protocolMessage, deliveryEventData.getAndesContent());
+                        subscription.getSubscriberConnection().writeMessageToConnection(protocolMessage,
+                                deliveryEventData.getAndesContent());
 
                     } else {
                         onSendError(message, subscription);
@@ -158,11 +160,11 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
      * @param subscription subscription to check on
      * @throws AndesException on re-queue error
      */
-    private void reQueueMessageIfDurable(DeliverableAndesMetadata message, LocalSubscription subscription)
+    private void reQueueMessageIfDurable(DeliverableAndesMetadata message, AndesSubscription subscription)
             throws AndesException {
         if (subscription.isDurable()) {
-            //re-queue message to andes core so that it can find other subscriber to deliver
-            MessagingEngine.getInstance().reQueueMessage(message, subscription.getDestinationType());
+            StorageQueue storageQueue = subscription.getStorageQueue();
+            storageQueue.bufferMessageForDelivery(message);
         } else {
             if (!message.isOKToDispose()) {
                 log.warn("Cannot send message id= " + message.getMessageID() + " as subscriber is closed");
@@ -177,9 +179,10 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
      * @param subscription subscription already closed
      * @throws AndesException
      */
-    private void onSubscriptionAlreadyClosed(DeliverableAndesMetadata message, LocalSubscription subscription) throws
+    private void onSubscriptionAlreadyClosed(DeliverableAndesMetadata message, AndesSubscription subscription) throws
             AndesException {
-        message.markDeliveredChannelAsClosed(subscription.getChannelID());
+        UUID channelID = subscription.getSubscriberConnection().getProtocolChannelID();
+        message.markDeliveredChannelAsClosed(channelID);
         //re-evaluate ACK if a topic subscriber has closed
         if (!subscription.isDurable()) {
             message.evaluateMessageAcknowledgement();
@@ -200,11 +203,11 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
      * @param messageMetadata message failed to be delivered
      * @param localSubscription subscription failed to deliver message
      */
-    private void onSendError(DeliverableAndesMetadata messageMetadata, LocalSubscription localSubscription) {
+    private void onSendError(DeliverableAndesMetadata messageMetadata, AndesSubscription localSubscription) {
         //Send failed. Rollback changes done that assumed send would be success
-        UUID channelID = localSubscription.getChannelID();
+        UUID channelID = localSubscription.getSubscriberConnection().getProtocolChannelID();
         messageMetadata.markDeliveryFailureOfASentMessage(channelID);
-        localSubscription.removeSentMessageFromTracker(messageMetadata.getMessageID());
+        localSubscription.getSubscriberConnection().onWriteToConnectionError(messageMetadata.getMessageID());
     }
 
     /**
@@ -216,10 +219,10 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
      * @param messageMetadata   message failed to be delivered by protocol
      * @param localSubscription subscription failed to deliver message
      */
-    private void onDeliveryException(DeliverableAndesMetadata messageMetadata, LocalSubscription localSubscription) {
-        UUID channelID = localSubscription.getChannelID();
+    private void onDeliveryException(DeliverableAndesMetadata messageMetadata, AndesSubscription localSubscription) {
+        UUID channelID = localSubscription.getSubscriberConnection().getProtocolChannelID();
         messageMetadata.markDeliveryFailureByProtocol(channelID);
-        localSubscription.removeSentMessageFromTracker(messageMetadata.getMessageID());
+        localSubscription.getSubscriberConnection().onWriteToConnectionError(messageMetadata.getMessageID());
     }
 
     /**
@@ -227,12 +230,14 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
      *
      * @param message Meta data for the message
      */
-    private void routeMessageToDLC(DeliverableAndesMetadata message, LocalSubscription subscription, boolean internalErrorOccured)
-            throws AndesException {
+    private void routeMessageToDLC(DeliverableAndesMetadata message,
+                                   AndesSubscription subscription,
+                                   boolean internalErrorOccurred)
+                                   throws AndesException {
 
         // If message is a queue message we move the message to the Dead Letter Channel
         // since topics doesn't have a Dead Letter Channel
-        if ((!internalErrorOccured) && subscription.isDurable()) {
+        if ((!internalErrorOccurred) && subscription.isDurable()) {
             log.warn("Moving message to Dead Letter Channel Due to Send Error. Message ID " + message.getMessageID());
             try {
                 Andes.getInstance().moveMessageToDeadLetterChannel(message, message.getDestination());
@@ -246,7 +251,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
         } else {
             //for non durable topic messages see if we can delete the message
             log.warn("Discarding topic message id = " + message.getMessageID() + " as delivery failed");
-            message.markAsRejectedByClient(subscription.getChannelID());
+            message.markAsRejectedByClient(subscription.getSubscriberConnection().getProtocolChannelID());
             List<DeliverableAndesMetadata> messagesToRemove = new ArrayList<>();
             message.evaluateMessageAcknowledgement();
             if (message.getLatestState().equals(MessageStatus.ACKED_BY_ALL)) {

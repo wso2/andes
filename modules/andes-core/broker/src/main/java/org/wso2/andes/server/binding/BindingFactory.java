@@ -192,11 +192,11 @@ public class BindingFactory {
             if (binding.isDurable() && !restore) {
                 _configSource.getDurableConfigurationStore().bindQueue
                         (exchange, new AMQShortString(bindingKey), queue, FieldTable.convertToFieldTable(arguments));
+            }
 
-                if(isLocal) {
-                    //tell Andes kernel to create binding
-                    QpidAndesBridge.createBinding(exchange, new AMQShortString(bindingKey), queue);
-                }
+            if(isLocal) {
+                //tell Andes kernel to create binding
+                QpidAndesBridge.createBinding(exchange, new AMQShortString(bindingKey), queue);
             }
 
             queue.addQueueDeleteTask(binding);
@@ -262,14 +262,15 @@ public class BindingFactory {
         try {
             if (binding != null) {
                 if (binding.isDurable()) {
-                    if(isLocal) {
-                        //inform andes kernel to remove binding.
-                        QpidAndesBridge.removeBinding(binding);
-                    }
                     _configSource.getDurableConfigurationStore().unbindQueue(exchange,
                             new AMQShortString(bindingKey),
                             queue,
                             FieldTable.convertToFieldTable(arguments));
+                }
+
+                if(isLocal) {
+                    //inform andes kernel to remove binding.
+                    QpidAndesBridge.removeBinding(binding);
                 }
 
                 exchange.removeBinding(binding);
