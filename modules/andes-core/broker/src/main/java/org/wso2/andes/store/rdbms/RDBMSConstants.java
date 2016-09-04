@@ -187,11 +187,7 @@ public class RDBMSConstants {
     protected static final String ORIGINATED_MEMBER_ID = "ORIGINATED_NODE_ID";
     protected static final String EVENT_ID = "EVENT_ID";
 
-    protected static final String PS_INSERT_MESSAGE_PART =
-            "INSERT INTO " + CONTENT_TABLE + "("
-                    + MESSAGE_ID + ","
-                    + MSG_OFFSET + ","
-                    + MESSAGE_CONTENT + ") VALUES (?, ?, ?)";
+
 
     protected static final String PS_INSERT_MESSAGE_PART1 =
             "INSERT INTO " + CONTENT_TABLE1 + "("
@@ -217,25 +213,6 @@ public class RDBMSConstants {
                     + MSG_OFFSET + ","
                     + MESSAGE_CONTENT + ") VALUES (?, ?, ?)";
 
-
-    protected static final String PS_RETRIEVE_MESSAGE_PART =
-            "SELECT " + MESSAGE_CONTENT
-            + " FROM " + CONTENT_TABLE
-            + " WHERE " + MESSAGE_ID + "=?"
-            + " AND " + MSG_OFFSET + "=?";
-
-    /**
-     * We need to select rows that have the DLC_QUEUE_ID = -1 indicating that the message is not moved
-     * into the dead letter channel
-     * Hardcoded METADATA_TABLE 1 to 4 and MB_CONTENT 1 to 4
-     */
-    protected static final String PS_INSERT_METADATA =
-            "INSERT INTO " + METADATA_TABLE + " ("
-                    + MESSAGE_ID + ","
-                    + QUEUE_ID + ","
-                    + DLC_QUEUE_ID + ","
-                    + METADATA + ")"
-                    + " VALUES ( ?,?,-1,? )";
 
     protected static final String PS_INSERT_METADATA1 =
             "INSERT INTO " + METADATA_TABLE1 + " ("
@@ -293,6 +270,36 @@ public class RDBMSConstants {
 
 
     protected static final String ALIAS_FOR_QUEUES = "QUEUE_COUNT";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     protected static final String PS_SELECT_EXPIRED_MESSAGES =
             "SELECT " + MESSAGE_ID + "," + DESTINATION_QUEUE

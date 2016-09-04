@@ -474,11 +474,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
             close(connection, RDBMSConstants.TASK_ADDING_MESSAGES);
         }
-
-
-
-
-
     }
 
     /**
