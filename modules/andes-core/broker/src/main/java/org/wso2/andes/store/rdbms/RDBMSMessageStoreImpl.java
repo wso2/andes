@@ -366,7 +366,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         PreparedStatement storeMetadataPS = null;
         PreparedStatement storeContentPS = null;
-       // PreparedStatement[] storeContentPS = new PreparedStatement[4];
         PreparedStatement storeExpiryMetadataPS = null;
 
         storeMetadataPS = conn.prepareStatement(getCachedQueueDetails(queueName).rdbmsMetadataConstants
@@ -474,6 +473,11 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
             close(connection, RDBMSConstants.TASK_ADDING_MESSAGES);
         }
+
+
+
+
+
     }
 
     /**
