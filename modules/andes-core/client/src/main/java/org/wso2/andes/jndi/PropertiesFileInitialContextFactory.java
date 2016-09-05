@@ -65,6 +65,7 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
     private String DESTINATION_PREFIX = "destination.";
     private String QUEUE_PREFIX = "queue.";
     private String TOPIC_PREFIX = "topic.";
+    private static String SECRET_ALIAS_PREFIX = "secretAlias:";
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
     public Context getInitialContext(Hashtable environment) throws NamingException
@@ -199,8 +200,12 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
             SecretResolver secretResolver = SecretResolverFactory.create(properties);
             for (Object key : environment.keySet()) {
                 if (secretResolver != null && secretResolver.isInitialized()) {
-                    if (secretResolver.isTokenProtected(key.toString())) {
-                        environment.put(key.toString(), secretResolver.resolve(key.toString()));
+                    String value = environment.get(key.toString()).toString();
+                    if(value != null && value.startsWith(SECRET_ALIAS_PREFIX)) {
+                        value = value.split(SECRET_ALIAS_PREFIX)[1];
+                    }
+                    if (secretResolver.isTokenProtected(value)) {
+                        environment.put(key.toString(), secretResolver.resolve(value));
                     }
                 }
             }
