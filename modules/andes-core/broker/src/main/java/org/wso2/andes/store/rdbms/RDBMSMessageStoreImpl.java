@@ -146,7 +146,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
         try {
             connection = getConnection();
-            //TODO preparedStatement = connection.prepareStatement(RDBMSConstants.PS_INSERT_MESSAGE_PART);
+            preparedStatement = connection.prepareStatement(new RDBMSContentConstants(1).PS_INSERT_MESSAGE_PART);
 
             for (AndesMessagePart messagePart : partList) {
                 addContentToBatch(preparedStatement, messagePart);
@@ -220,7 +220,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
         try {
             connection = getConnection();
-            //TODO preparedStatement = connection.prepareStatement(RDBMSConstants.PS_RETRIEVE_MESSAGE_PART);
+            preparedStatement = connection.prepareStatement(new RDBMSContentConstants(1).PS_RETRIEVE_MESSAGE_PART);
             preparedStatement.setLong(1, messageId);
             preparedStatement.setInt(2, offsetValue);
             results = preparedStatement.executeQuery();
@@ -359,53 +359,89 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         return stmtBuilder.toString();
     }
 
+    private void storeMessagesPerQueue(List<AndesMessage> messageList,
+            String queueName, ArrayList<PreparedStatement>
+     metadataPSPerQueue, ArrayList<PreparedStatement> contentPSPerQueue, ArrayList<PreparedStatement> expiryPSPerQueue
+    , Connection conn) throws AndesException, SQLException {
+
+        PreparedStatement storeMetadataPS = null;
+        PreparedStatement storeContentPS = null;
+        PreparedStatement storeExpiryMetadataPS = null;
+
+        storeMetadataPS = conn.prepareStatement(getCachedQueueDetails(queueName).rdbmsMetadataConstants
+                .PS_INSERT_METADATA);
+        storeContentPS = conn.prepareStatement(
+                getCachedQueueDetails(queueName).rdbmsContentConstants.PS_INSERT_MESSAGE_PART);
+
+        storeExpiryMetadataPS = conn.prepareStatement(PS_INSERT_EXPIRY_DATA);
+
+        for (AndesMessage message : messageList) {
+
+            addMetadataToBatch(
+                    storeMetadataPS, message.getMetadata(), message.getMetadata().getStorageQueueName());
+            //if message has expiration time store it into expiration table.
+
+            if (message.getMetadata().isExpirationDefined()) {
+                addExpiryTableEntryToBatch(storeExpiryMetadataPS, message.getMetadata());
+            }
+
+            for (AndesMessagePart messagePart : message.getContentChunkList()) {
+                addContentToBatch(storeContentPS, messagePart);
+            }
+
+        }
+
+        metadataPSPerQueue.add(storeMetadataPS);
+        contentPSPerQueue.add(storeContentPS);
+        expiryPSPerQueue.add(storeExpiryMetadataPS);
+
+    }
+
     /**
      * {@inheritDoc}
      */
     @Override
-    public void storeMessages(String queueName , List<AndesMessage> messageList) throws AndesException {
+    public void storeMessages(List<AndesMessage> messageList) throws AndesException {
 
+        HashMap <String , List<AndesMessage>> messageToQueueHashMap = new HashMap<>();
+        String queueName;
+
+        for (AndesMessage message : messageList) {
+            queueName = message.getMetadata().getStorageQueueName();
+            List<AndesMessage> messages = messageToQueueHashMap.get(queueName);
+            //long messageID = message.getMetadata().messageID;
+            if (null == messages) {
+                messages = new ArrayList<>();
+                messageToQueueHashMap.put(queueName, messages);
+            }
+            messages.add(message);
+        }
+
+        //Transaction
         Connection connection = null;
-        PreparedStatement storeMetadataPS = null;
-        PreparedStatement storeContentPS = null;
-       // PreparedStatement[] storeContentPS = new PreparedStatement[4];
-        PreparedStatement storeExpiryMetadataPS = null;
+
+        ArrayList<PreparedStatement> metadataPSPerQueue = new ArrayList<>();
+        ArrayList<PreparedStatement> contentPSPerQueue = new ArrayList<>();
+        ArrayList<PreparedStatement> expiryPSPerQueue = new ArrayList<>();
 
         try {
-
-            //int tableIDForQueue = getCachedQueueDetails(queueName).getTableID();
             connection = getConnection();
-            storeMetadataPS = connection.prepareStatement(getCachedQueueDetails(queueName).rdbmsMetadataConstants
-                    .PS_INSERT_METADATA);
-            //storeContentPS = connection.prepareStatement(PS_INSERT_MESSAGE_PART);
-            storeContentPS = connection.prepareStatement(
-                    getCachedQueueDetails(queueName).rdbmsContentConstants.PS_INSERT_MESSAGE_PART);
 
-            storeExpiryMetadataPS = connection.prepareStatement(PS_INSERT_EXPIRY_DATA);
-
-            for (AndesMessage message : messageList) {
-
-                //int tableID = getCachedQueueDetails(message.getMetadata().getStorageQueueName()).tableID;
-                addMetadataToBatch(
-                        storeMetadataPS, message.getMetadata(), message.getMetadata().getStorageQueueName());
-                //if message has expiration time store it into expiration table.
-
-                if (message.getMetadata().isExpirationDefined()) {
-                    addExpiryTableEntryToBatch(storeExpiryMetadataPS, message.getMetadata());
-                }
-
-                for (AndesMessagePart messagePart : message.getContentChunkList()) {
-                    addContentToBatch(storeContentPS, messagePart);
-                }
-
+            for (Map.Entry<String , List<AndesMessage>> entry : messageToQueueHashMap.entrySet()) {
+                storeMessagesPerQueue(entry.getValue(), entry.getKey(), metadataPSPerQueue, contentPSPerQueue,
+                        expiryPSPerQueue, connection);
             }
 
+            for (PreparedStatement preparedStatement : metadataPSPerQueue) {
+                preparedStatement.executeBatch();
+            }
+            for (PreparedStatement preparedStatement : contentPSPerQueue) {
+                preparedStatement.executeBatch();
+            }
+            for (PreparedStatement preparedStatement : expiryPSPerQueue) {
+                preparedStatement.executeBatch();
+            }
 
-
-            storeMetadataPS.executeBatch();
-            storeContentPS.executeBatch();
-
-            storeExpiryMetadataPS.executeBatch();
             connection.commit();
 
             // Add messages to cache after adding them to the database
@@ -424,11 +460,24 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             rollback(connection, RDBMSConstants.TASK_ADDING_METADATA);
             throw rdbmsStoreUtils.convertSQLException("Error occurred while inserting messages to queue ", e);
         } finally {
-            close(storeExpiryMetadataPS, RDBMSConstants.TASK_ADDING_MESSAGES);
-            close(storeMetadataPS, RDBMSConstants.TASK_ADDING_MESSAGES);
-            close(storeContentPS, RDBMSConstants.TASK_ADDING_MESSAGES);
+
+            for (PreparedStatement preparedStatement : metadataPSPerQueue) {
+                close(preparedStatement, RDBMSConstants.TASK_ADDING_MESSAGES);
+            }
+            for (PreparedStatement preparedStatement : contentPSPerQueue) {
+                close(preparedStatement, RDBMSConstants.TASK_ADDING_MESSAGES);
+            }
+            for (PreparedStatement preparedStatement : expiryPSPerQueue) {
+                close(preparedStatement, RDBMSConstants.TASK_ADDING_MESSAGES);
+            }
+
             close(connection, RDBMSConstants.TASK_ADDING_MESSAGES);
         }
+
+
+
+
+
     }
 
     /**
@@ -547,8 +596,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             QueueMappingDetails queueMappingDetails = getCachedQueueDetails(currentQueueName);
 
             connection = getConnection();
-            // TODO preparedStatement = connection.prepareStatement(queueMappingDetails.rdbmsMetadataConstants
-            //        .PS_UPDATE_METADATA_QUEUE);
+            preparedStatement = connection.prepareStatement(new RDBMSMetadataConstants(1).PS_UPDATE_METADATA_QUEUE);
 
             preparedStatement.setInt(1, getCachedQueueDetails(targetQueueName).queueID);
             preparedStatement.setLong(2, messageId);
@@ -571,7 +619,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
 
     @Override
-    public void moveMetadataToDLC(long messageId, String dlcQueueName) throws AndesException {
+    public void moveMetadataOLC(long messageId, String dlcQueueName) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
 
@@ -783,7 +831,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         try {
             connection = getConnection();
-            //TODO preparedStatement = connection.prepareStatement(RDBMSConstants.PS_UPDATE_METADATA);
+            preparedStatement = connection.prepareStatement(new RDBMSMetadataConstants(1).PS_UPDATE_METADATA);
 
             for (AndesMessageMetadata metadata : metadataList) {
                 preparedStatement.setInt(1, getCachedQueueDetails(metadata.getStorageQueueName()).queueID);
@@ -1311,7 +1359,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
             //Since referential integrity is imposed on the two tables: message content and metadata,
             //deleting message metadata will cause message content to be automatically deleted
-            //TODO metadataRemovalPreparedStatement = connection.prepareStatement( RDBMSConstants.PS_DELETE_METADATA);
+            metadataRemovalPreparedStatement = connection.prepareStatement(new RDBMSMetadataConstants(1).PS_DELETE_METADATA);
 
             for (long messageID : messagesToRemove) {
                 //add parameters to delete metadata
@@ -1355,8 +1403,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
             //Since referential integrity is imposed on the two tables: message content and metadata,
             //deleting message metadata will cause message content to be automatically deleted
-            //TODO metadataRemovalPreparedStatement = connection.prepareStatement(RDBMSConstants
-            // .PS_DELETE_METADATA_IN_DLC);
+            metadataRemovalPreparedStatement = connection.prepareStatement(new RDBMSMetadataConstants(1).PS_DELETE_METADATA_IN_DLC);
 
             for (AndesMessageMetadata message : messagesToRemove) {
                 //add parameters to delete metadata
@@ -1876,7 +1923,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         try {
 
             connection = getConnection();
-            //TODO preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_ALL_QUEUE_MESSAGE_COUNT);
+            preparedStatement = connection.prepareStatement(new RDBMSMetadataConstants(1).PS_SELECT_ALL_QUEUE_MESSAGE_COUNT);
             results = preparedStatement.executeQuery();
 
             // Each row in the result gives the queue name and the number of messages remaining. All these rows are

@@ -143,18 +143,11 @@ public class MessagingEngine {
         return messageStore.getContent(messageID, offsetInMessage);
     }
 
-    /**
-     * Read content for given message metadata list
-     *
-     * @param messageHash message id list for the content to be retrieved
-     * @return <code>Map<Long, List<AndesMessagePart>></code> Message id and its corresponding message part list
-     * @throws AndesException
-     */
-    public LongObjectHashMap<List<AndesMessagePart>> getContent(
-            HashMap<String, ArrayList<Long>> messageHash) throws AndesException {
+    public LongObjectHashMap<List<AndesMessagePart>> getContent(HashMap<String, ArrayList<Long>> messageHash)
+            throws AndesException {
         return messageStore.getContent(messageHash);
-
     }
+
     public LongObjectHashMap<List<AndesMessagePart>> getContent(LongArrayList messageIdList) throws AndesException {
         return messageStore.getContent(messageIdList);
     }
@@ -166,24 +159,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public void messagesReceived(List<AndesMessage> messageList) throws AndesException {
-        HashMap <String , List<AndesMessage>> messageToQueueHashMap = new HashMap<>();
-        String queueName;
-
-        for (AndesMessage message : messageList) {
-            queueName = message.getMetadata().getStorageQueueName();
-            List<AndesMessage> messages = messageToQueueHashMap.get(queueName);
-            //long messageID = message.getMetadata().messageID;
-            if (null == messages) {
-                messages = new ArrayList<>();
-                messageToQueueHashMap.put(queueName, messages);
-            }
-            messages.add(message);
-        }
-        for (Map.Entry<String , List<AndesMessage>> entry : messageToQueueHashMap.entrySet()) {
-
-            messageStore.storeMessages(entry.getKey() , entry.getValue());
-        }
-           // messageStore.storeMessages(messageList);
+        messageStore.storeMessages(messageList);
 
     }
 
