@@ -23,6 +23,7 @@ import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.ClusterNotificationListener;
+import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.SubscriptionListener;
 import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
@@ -49,6 +50,7 @@ import java.util.UUID;
 
 import static com.googlecode.cqengine.query.QueryFactory.and;
 import static com.googlecode.cqengine.query.QueryFactory.equal;
+import static com.googlecode.cqengine.query.QueryFactory.matchesRegex;
 
 /**
  * Managers subscription add/remove and subscription query tasks inside Andes kernel
@@ -335,6 +337,73 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
             log.warn("No subscription found for subscription ID " + subscriptionId);
             return null;
         }
+    }
+
+
+    /**
+     * Get filtered subscriptions (active/inactive) that matches to search criteria
+     * @param isDurable true if searching for durable subscriptions
+     * @param isActive true if searching for active subscriptions
+     * @param protocolType protocol of the subscription
+     * @param destinationType type of subscription (QUEUE/TOPIC/DURABLE_TOPIC)
+     * @param bindingKeyPattern regex to match with binding key of subscriber
+     * @param subscriptionIDPattern regex to match with ID of the subscriber
+     * @param connectedNode id of the node to which the subscriber is connected to
+     * @return Set of subscriptions filtered according to search criteria
+     * @throws AndesException
+     */
+    public Set<AndesSubscription> getFilteredSubscriptions(boolean isDurable, boolean isActive, ProtocolType
+            protocolType, DestinationType destinationType, String bindingKeyPattern, String subscriptionIDPattern,
+                                                           String connectedNode) throws AndesException {
+
+        Set<AndesSubscription> filteredSubscriptions = new HashSet<>();
+        String messageRouter;
+        switch (destinationType) {
+            case QUEUE:
+                messageRouter = AMQPUtils.DIRECT_EXCHANGE_NAME;
+                break;
+            case TOPIC:
+                messageRouter = AMQPUtils.TOPIC_EXCHANGE_NAME;
+                break;
+            case DURABLE_TOPIC:
+                messageRouter = AMQPUtils.TOPIC_EXCHANGE_NAME;
+                break;
+            default:
+                throw new SubscriptionException("Error while getting filtered subscriptions. Requested destination "
+                        + "type is not registered");
+        }
+
+        if(isActive) {
+            Query<AndesSubscription> subscriptionQuery = and
+                    (equal(AndesSubscription.DURABILITY, isDurable), equal(AndesSubscription
+                            .NODE_ID, connectedNode), equal(AndesSubscription
+                            .PROTOCOL, protocolType), equal(AndesSubscription.ROUTER_NAME, messageRouter),
+                            matchesRegex(AndesSubscription.ROUTING_KEY, bindingKeyPattern), matchesRegex
+                                    (AndesSubscription.SUB_ID, subscriptionIDPattern));
+            Iterable<AndesSubscription> subscriptions = subscriptionRegistry.exucuteQuery(subscriptionQuery);
+            for (AndesSubscription subscription : subscriptions) {
+                if(subscription.getSubscriptionId().matches(subscriptionIDPattern)) {
+                    filteredSubscriptions.add(subscription);
+                } else if(subscription.isDurable() && subscription.getStorageQueue().getMessageRouter().getName()
+                        .equals(AMQPUtils.TOPIC_EXCHANGE_NAME)) {
+                    if(((DurableTopicSubscriber)subscription).getClientID().matches(subscriptionIDPattern)) {
+                        filteredSubscriptions.add(subscription);
+                    }
+                }
+            }
+        } else {
+            List<AndesSubscription> allInactiveSubscriptions = getInactiveSubscriberRepresentations();
+            for (AndesSubscription inactiveSubscription : allInactiveSubscriptions) {
+                if(inactiveSubscription.isDurable() == isDurable
+                        && inactiveSubscription.getStorageQueue().getMessageRouter().getName().equals(messageRouter)
+                        && inactiveSubscription.getStorageQueue().getMessageRouterBindingKey().matches(bindingKeyPattern)
+                        && inactiveSubscription.getSubscriptionId().matches(subscriptionIDPattern)) {
+                    filteredSubscriptions.add(inactiveSubscription);
+                }
+            }
+        }
+
+        return filteredSubscriptions;
     }
 
     public AndesSubscription getSubscriptionByNode(String nodeID, ProtocolType

@@ -398,6 +398,14 @@ public class AndesSubscription {
                 }
             };
 
+    public static final Attribute<AndesSubscription, Boolean> DURABILITY = new
+            SimpleAttribute<AndesSubscription, Boolean>("isDurable") {
+                @Override
+                public Boolean getValue(AndesSubscription sub, QueryOptions queryOptions) {
+                    return sub.isDurable();
+                }
+            };
+
     public static final Attribute<AndesSubscription, Boolean> STATE = new SimpleAttribute<AndesSubscription, Boolean>
             ("isOutboundConnectionLive") {
         @Override
