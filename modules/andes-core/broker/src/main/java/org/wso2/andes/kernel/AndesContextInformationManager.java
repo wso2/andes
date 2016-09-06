@@ -436,7 +436,7 @@ public class AndesContextInformationManager {
                 getMessageRouterRegistry().getMessageRouter(messageRouterName);
 
         /*
-         * queue can be null if it is already removed. For non-durable topic we keep
+         * Queue can be null if it is already removed. For non-durable topic we keep
          * a single queue for all messages but Qpid issues binding remove calls for
          * every internal queues it create for each subscriber
          */
