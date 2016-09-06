@@ -129,9 +129,9 @@ public interface QueueManagementInformation {
      * @param andesMessageIds       The andes message Id list
      * @param destinationQueueName  Original destination queue of these messages.
      */
-    @MBeanAttribute(name = "restoreSelectedMessagesFromDeadLetterChannel", description = "Will restore a specific set of"
+    @MBeanAttribute(name = "restoreMessagesFromDeadLetterQueue", description = "Will restore a specific set of"
             + " messages back to their original queue")
-    void restoreSelectedMessagesFromDeadLetterChannel(
+    void restoreMessagesFromDeadLetterQueue(
             @MBeanOperationParameter(name = "andesMessageIds",
                                      description = "IDs of the Messages to Be restored") long[] andesMessageIds,
             @MBeanOperationParameter(name = "destinationQueueName",
@@ -146,9 +146,9 @@ public interface QueueManagementInformation {
      * @param andesMessageIds   The browser message Ids
      * @param targetQueue       The new destination
      */
-    @MBeanAttribute(name = "rerouteSelectedMessagesFromDeadLetterChannel", description = "Will reroute a specific set"
+    @MBeanAttribute(name = "restoreMessagesFromDeadLetterQueueWithDifferentDestination", description = "Will reroute a specific set"
             + " of Messages of QueueA in DLC to a new target QueueB")
-    void rerouteSelectedMessagesFromDeadLetterChannel(
+    void restoreMessagesFromDeadLetterQueueWithDifferentDestination(
             @MBeanOperationParameter(name = "andesMessageIds",
                                      description = "IDs of the Messages to Be Restored") long[] andesMessageIds,
             @MBeanOperationParameter(name = "sourceQueue",

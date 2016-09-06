@@ -345,7 +345,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      * {@inheritDoc}
      */
     @Override
-    public void restoreSelectedMessagesFromDeadLetterChannel(
+    public void restoreMessagesFromDeadLetterQueue(
             @MBeanOperationParameter(name = "andesMessageIds",
                             description = "IDs of the Messages to Be restored") long[] andesMessageIds,
             @MBeanOperationParameter(name = "destinationQueueName",
@@ -374,7 +374,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      * {@inheritDoc}
      */
     @Override
-    public void rerouteSelectedMessagesFromDeadLetterChannel(
+    public void restoreMessagesFromDeadLetterQueueWithDifferentDestination(
             @MBeanOperationParameter(name = "andesMessageIds",
                                      description = "IDs of the Messages to Be Restored") long[] andesMessageIds,
             @MBeanOperationParameter(name = "sourceQueue",
