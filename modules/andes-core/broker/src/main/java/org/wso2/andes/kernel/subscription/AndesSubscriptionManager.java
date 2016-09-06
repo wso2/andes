@@ -378,8 +378,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
                     (equal(AndesSubscription.DURABILITY, isDurable), equal(AndesSubscription
                             .NODE_ID, connectedNode), equal(AndesSubscription
                             .PROTOCOL, protocolType), equal(AndesSubscription.ROUTER_NAME, messageRouter),
-                            matchesRegex(AndesSubscription.ROUTING_KEY, bindingKeyPattern), matchesRegex
-                                    (AndesSubscription.SUB_ID, subscriptionIDPattern));
+                            matchesRegex(AndesSubscription.ROUTING_KEY, bindingKeyPattern));
             Iterable<AndesSubscription> subscriptions = subscriptionRegistry.exucuteQuery(subscriptionQuery);
             for (AndesSubscription subscription : subscriptions) {
                 if(subscription.getSubscriptionId().matches(subscriptionIDPattern)) {
