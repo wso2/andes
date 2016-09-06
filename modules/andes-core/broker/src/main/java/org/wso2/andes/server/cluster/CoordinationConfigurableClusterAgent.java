@@ -280,7 +280,8 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
         // If the config value is "default" we must generate the ID
         if (AndesConfiguration.COORDINATION_NODE_ID.get().getDefaultValue().equals(nodeId)) {
             Member localMember = hazelcastInstance.getCluster().getLocalMember();
-            nodeId = CoordinationConstants.NODE_NAME_PREFIX + localMember.getSocketAddress();
+            nodeId = CoordinationConstants.NODE_NAME_PREFIX + localMember.getSocketAddress().getHostName()
+                    + CoordinationConstants.HOSTNAME_PORT_SEPARATOR + localMember.getSocketAddress().getPort();
         }
 
         return nodeId;
