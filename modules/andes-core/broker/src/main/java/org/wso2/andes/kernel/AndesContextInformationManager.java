@@ -440,7 +440,7 @@ public class AndesContextInformationManager {
          * a single queue for all messages but Qpid issues binding remove calls for
          * every internal queues it create for each subscriber
          */
-        if((null != queue) && (null != messageRouter)) {
+        if ((null != queue) && (null != messageRouter)) {
             messageRouter.removeMapping(removeBindingEvent.getBindingKey(), queue);
 
             AndesBinding removedBinding = amqpConstructStore.removeBinding(messageRouterName, boundQueueName, true);
@@ -450,7 +450,7 @@ public class AndesContextInformationManager {
 
             //if a non durable queue on binding removal delete the queue if there are no more
             // subscribers. Delete call for non durable queues is prevented at Qpid-Andes bridge.
-            if(!queue.isDurable() && queue.getBoundedSubscriptions().isEmpty()) {
+            if (!queue.isDurable() && queue.getBoundedSubscriptions().isEmpty()) {
                 InboundQueueEvent queueDeleteEvent = new InboundQueueEvent(queue.getName(),
                         queue.isDurable(), queue.isShared(), queue.getQueueOwner(), queue.isExclusive());
                 deleteQueue(queueDeleteEvent);
