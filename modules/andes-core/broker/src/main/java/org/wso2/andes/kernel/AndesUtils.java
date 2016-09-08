@@ -143,13 +143,13 @@ public class AndesUtils {
         //as topic
         if (AMQPUtils.TOPIC_EXCHANGE_NAME.equals(messageRouterName)) {
             if (!isQueueDurable) {
-                storageQueueName = AMQP_TOPIC_STORAGE_QUEUE_PREFIX + "|" + routingKey + "|" + nodeID;
+                storageQueueName = AMQP_TOPIC_STORAGE_QUEUE_PREFIX + "_" + routingKey + "_" + nodeID;
             } else {
                 storageQueueName = queueName;
             }
         } else if(MQTTUtils.MQTT_EXCHANGE_NAME.equals(messageRouterName)) {
             if (!isQueueDurable) {
-                storageQueueName = MQTT_TOPIC_STORAGE_QUEUE_PREFIX + "|" + routingKey + "|" + nodeID;
+                storageQueueName = MQTT_TOPIC_STORAGE_QUEUE_PREFIX + "_" + routingKey + "_" + nodeID;
             } else {
                 storageQueueName = queueName;
             }

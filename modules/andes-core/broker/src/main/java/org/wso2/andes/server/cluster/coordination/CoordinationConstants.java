@@ -64,7 +64,12 @@ public final class CoordinationConstants {
     /**
      * Prefix to generate node ID
      */
-    public static String NODE_NAME_PREFIX = "NODE";
+    public static String NODE_NAME_PREFIX = "NODE:";
+
+    /**
+     * Separator for hostname and port 
+     */
+    public static String HOSTNAME_PORT_SEPARATOR = ":";
 
     /**
      * Hazelcast ID generator name to generate an unique ID for each node.
