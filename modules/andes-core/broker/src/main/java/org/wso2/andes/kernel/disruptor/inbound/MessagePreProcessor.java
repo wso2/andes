@@ -27,8 +27,6 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.AndesUtils;
-import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.router.AndesMessageRouter;
 import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.metrics.MetricsConstants;
@@ -212,7 +210,9 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
             event.pubAckHandler.ack(message.getMetadata());
 
             //Adding metrics meter for ack rate
-            Meter ackMeter = MetricManager.meter(Level.INFO, MetricsConstants.ACK_SENT_RATE);
+            Meter ackMeter = MetricManager.meter(MetricsConstants.ACK_SENT_RATE
+                    + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getMessageRouterName()
+                    + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getDestination(), Level.INFO);
             ackMeter.mark();
 
             // since inbound message has no routes, inbound message list will be cleared.

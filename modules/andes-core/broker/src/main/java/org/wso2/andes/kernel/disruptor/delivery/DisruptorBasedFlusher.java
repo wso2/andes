@@ -126,7 +126,7 @@ public class DisruptorBasedFlusher {
         ringBuffer = disruptor.getRingBuffer();
 
         //Will add the gauge listener to periodically calculate the outbound messages in the ring
-        MetricManager.gauge(Level.INFO, MetricsConstants.DISRUPTOR_OUTBOUND_RING, new OutBoundRingGauge());
+        MetricManager.gauge(MetricsConstants.DISRUPTOR_OUTBOUND_RING, Level.INFO, new OutBoundRingGauge());
     }
 
     /**
