@@ -66,7 +66,7 @@ public class DLCExpiryCheckEnabledDeletionTask extends PeriodicExpiryMessageDele
                     }
 
                     //delete message metadata, content from the meta data table, content table and expiry table
-                    MessagingEngine.getInstance().deleteMessagesById(expiredMessages);
+                   // MessagingEngine.getInstance().deleteMessagesById(expiredMessages);
 
                     if (log.isDebugEnabled()) {
                         log.debug("Expired message count in DLC is :" + expiredMessages.size());

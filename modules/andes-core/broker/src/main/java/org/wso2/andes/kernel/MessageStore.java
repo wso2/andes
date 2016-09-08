@@ -24,6 +24,8 @@ import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.store.HealthAwareStore;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -64,11 +66,13 @@ public interface MessageStore extends HealthAwareStore {
     /**
      * Read content for given message metadata list
      *
-     * @param messageIDList message id list for the content to be retrieved
-     * @return <code>Map<Long, List<AndesMessagePart>></code> Message id and its corresponding message part list
+     *
+     * @param messageHash@return <code>Map<Long, List<AndesMessagePart>></code> Message id and its corresponding message part list
      * @throws AndesException
      */
-    LongObjectHashMap<List<AndesMessagePart>> getContent(LongArrayList messageIDList) throws AndesException;
+    LongObjectHashMap<List<AndesMessagePart>> getContent(HashMap<String, ArrayList<Long>> messageHash) throws AndesException;
+
+    LongObjectHashMap<List<AndesMessagePart>> getContent(LongArrayList messageIdList) throws AndesException;
 
     /**
      * Store messages into database.

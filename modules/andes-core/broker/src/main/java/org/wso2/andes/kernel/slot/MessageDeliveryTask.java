@@ -135,6 +135,7 @@ final class MessageDeliveryTask extends Task {
         onStopDelivery();
     }
 
+
     /**
      * unque id of the {@link Task}
      * @return name of storage queue handle by this {@link MessageDeliveryTask}

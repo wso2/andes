@@ -85,25 +85,48 @@ public class ContentCacheCreator {
 
     }
 
+
     /**
      * Load content for a message in to the memory.
      *
      * @param eventDataList List of delivery event data
      * @throws AndesException Thrown when getting content from the message store.
      */
+
     public void onEvent(List<DeliveryEventData> eventDataList) throws AndesException {
 
         LongHashSet messagesToFetch = new LongHashSet();
         List<DeliveryEventData> messagesWithoutCachedContent = new ArrayList<>();
+        String storageQueueName = null;
 
+       // HashMap messageMap = new HashMap();
+        HashMap<String, ArrayList<Long>> messageMap = new HashMap<>();
+        
         for (DeliveryEventData deliveryEventData : eventDataList) {
             ProtocolMessage metadata = deliveryEventData.getMetadata();
             long messageID = metadata.getMessageID();
             int contentLength = metadata.getMessage().getMessageContentLength();
+            storageQueueName = metadata.getMessage().getSlot().getStorageQueueName();
 
+            ArrayList<Long> messageList = messageMap.get(storageQueueName);
+
+            if (null == messageList) {
+
+                messageList = new ArrayList<>();
+                messageMap.put(storageQueueName, messageList);
+            }
+                messageList.add(messageID);
+                //messageList.get(contentLength);
+ //               messageList.add(messageID);
+//                messageList = messageMap.get(storageQueueName);
+//                messageMap.put(storageQueueName, messageList);
+
+
+            //messageMap.put(storageQueueName, messageID);
             if (contentLength > 0) {
 
-                DisruptorCachedContent content = contentCache.getIfPresent(messageID);
+               // DisruptorCachedContent content = contentCache.getIfPresent(messageID);
+                DisruptorCachedContent content = null;
 
                 if (null != content) {
                     deliveryEventData.setAndesContent(content);
@@ -126,28 +149,29 @@ public class ContentCacheCreator {
 
         }
 
-        LongArrayList containMessegesToFetch = new LongArrayList();
-        containMessegesToFetch.addAll(messagesToFetch);
+        LongArrayList containMessagesToFetch = new LongArrayList();
+        containMessagesToFetch.addAll(messagesToFetch);
 
         LongObjectHashMap<List<AndesMessagePart>> contentListMap = MessagingEngine.getInstance()
-                .getContent(containMessegesToFetch);
+                .getContent( messageMap );
 
         for (DeliveryEventData deliveryEventData : messagesWithoutCachedContent) {
 
             ProtocolMessage metadata = deliveryEventData.getMetadata();
             long messageID = metadata.getMessageID();
+
             // We check again for content put in cache in the previous iteration
-            DisruptorCachedContent content = contentCache.getIfPresent(messageID);
+            DisruptorCachedContent content;
 
-            if (null != content) {
-                deliveryEventData.setAndesContent(content);
-
-                if (log.isTraceEnabled()) {
-                    log.trace("Content read from cache for message " + messageID);
-                }
-
-                continue;
-            }
+//            if (null != content) {
+//                deliveryEventData.setAndesContent(content);
+//
+//                if (log.isTraceEnabled()) {
+//                    log.trace("Content read from cache for message " + messageID);
+//                }
+//
+//                continue;
+//            }
 
             int contentSize = metadata.getMessage().getMessageContentLength();
             List<AndesMessagePart> contentList = contentListMap.get(messageID);
@@ -160,7 +184,7 @@ public class ContentCacheCreator {
                 }
 
                 content = new DisruptorCachedContent(messagePartMap, contentSize, maxChunkSize);
-                contentCache.put(messageID, content);
+//                contentCache.put(messageID, content);
                 deliveryEventData.setAndesContent(content);
 
                 if (log.isTraceEnabled()) {
@@ -168,7 +192,7 @@ public class ContentCacheCreator {
                 }
             } else {
                 // potential scenario this could happen is when there is a split
-                // brain scenario (with two coodinator working with same set of
+                // brain scenario (with two coordinator working with same set of
                 // messages
                 // in parallel. e.g. when this node tries to send messages,
                 // another node (in other network partition) sends these
