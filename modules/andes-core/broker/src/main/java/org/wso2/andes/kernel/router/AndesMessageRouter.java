@@ -144,7 +144,7 @@ public abstract class AndesMessageRouter {
      * @throws AndesException when there are active subscriptions
      */
     public void removeMapping(String bindingKey, StorageQueue queue) throws AndesException {
-        if (queue.getBoundedSubscriptions().isEmpty()) {
+        if (queue.getBoundSubscriptions().isEmpty()) {
             List<StorageQueue> boundQueues = routingMap.get(bindingKey);
             if (boundQueues != null && !boundQueues.isEmpty()) {
                 boundQueues.remove(queue);

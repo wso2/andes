@@ -386,7 +386,7 @@ public class AndesSubscription {
             ("routingKey") {
         @Override
         public String getValue(AndesSubscription sub, QueryOptions queryOptions) {
-            return sub.getStorageQueue().getMessageRouterBindingKey();
+            return sub.getStorageQueue().getMessageRouterBindingKey().toLowerCase();
         }
     };
 
@@ -395,6 +395,14 @@ public class AndesSubscription {
                 @Override
                 public String getValue(AndesSubscription sub, QueryOptions queryOptions) {
                     return sub.storageQueue.getName();
+                }
+            };
+
+    public static final Attribute<AndesSubscription, Boolean> DURABILITY = new
+            SimpleAttribute<AndesSubscription, Boolean>("isDurable") {
+                @Override
+                public Boolean getValue(AndesSubscription sub, QueryOptions queryOptions) {
+                    return sub.isDurable();
                 }
             };
 

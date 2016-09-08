@@ -327,7 +327,7 @@ public class PersistenceStoreConnector implements MQTTConnector {
             Andes.getInstance().closeLocalSubscription(subscriptionCloseEvent);
 
             //remove binding from MQTT message router so that no longer messages are persisted to that queue
-            if(localSubscription.getStorageQueue().getBoundedSubscriptions().isEmpty()
+            if(localSubscription.getStorageQueue().getBoundSubscriptions().isEmpty()
                     && !mqttTopicSubscriber.isDurable()) {
 
                 QueueInfo queueInfo = new QueueInfo(localSubscription.getStorageQueue().getName(),
