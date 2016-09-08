@@ -141,7 +141,7 @@ public class FlowControlManager  implements StoreHealthListener, NetworkPartitio
         executor = Executors.newSingleThreadScheduledExecutor(namedThreadFactory);
 
         //Will start the gauge
-        MetricManager.gauge(Level.INFO, MetricsConstants.ACTIVE_CHANNELS, new ChannelGauge());
+        MetricManager.gauge(MetricsConstants.ACTIVE_CHANNELS, Level.INFO, new ChannelGauge());
     }
 
     /**

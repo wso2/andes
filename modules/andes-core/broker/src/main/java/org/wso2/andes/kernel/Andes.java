@@ -199,11 +199,15 @@ public class Andes {
         inboundEventManager.messageReceived(message, andesChannel, pubAckHandler);
 
         //Adding metrics meter for message rate
-        Meter messageMeter = MetricManager.meter(Level.INFO, MetricsConstants.MSG_RECEIVE_RATE);
+        Meter messageMeter = MetricManager.meter(MetricsConstants.MSG_RECEIVE_RATE
+                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getMessageRouterName()
+                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getDestination(), Level.INFO);
         messageMeter.mark();
 
         //Adding metrics counter for enqueue messages
-        Counter counter = MetricManager.counter(Level.INFO, MetricsConstants.ENQUEUE_MESSAGES);
+        Counter counter = MetricManager.counter(MetricsConstants.ENQUEUE_MESSAGES
+                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getMessageRouterName()
+                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getDestination(), Level.INFO);
         counter.inc();
     }
 
@@ -220,11 +224,15 @@ public class Andes {
                 ackData.getAcknowledgedMessage().getDestination(), MessageTracer.ACK_RECEIVED_FROM_PROTOCOL);
 
         //Adding metrics meter for ack rate
-        Meter ackMeter = MetricManager.meter(Level.INFO, MetricsConstants.ACK_RECEIVE_RATE);
+        Meter ackMeter = MetricManager.meter(MetricsConstants.ACK_RECEIVE_RATE + MetricsConstants.METRICS_NAME_SEPARATOR
+                + ackData.getAcknowledgedMessage().getMessageRouterName() + MetricsConstants.METRICS_NAME_SEPARATOR
+                + ackData.getAcknowledgedMessage().getDestination(), Level.INFO);
         ackMeter.mark();
 
         //Adding metrics counter for ack messages
-        Counter counter = MetricManager.counter(Level.INFO, MetricsConstants.ACK_MESSAGES);
+        Counter counter = MetricManager.counter(MetricsConstants.ACK_MESSAGES + MetricsConstants.METRICS_NAME_SEPARATOR
+                + ackData.getAcknowledgedMessage().getMessageRouterName() + MetricsConstants.METRICS_NAME_SEPARATOR
+                + ackData.getAcknowledgedMessage().getDestination(), Level.INFO);
         counter.inc();
 
         //We call this later as this call removes the ackData.getAcknowledgedMessage() message

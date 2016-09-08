@@ -172,8 +172,8 @@ public class InboundEventManager {
         ringBuffer = disruptor.start();
 
         //Will add the gauge to metrics manager
-        MetricManager.gauge(Level.INFO, MetricsConstants.DISRUPTOR_INBOUND_RING, new InBoundRingGauge());
-        MetricManager.gauge(Level.INFO, MetricsConstants.DISRUPTOR_MESSAGE_ACK, new AckedMessageCountGauge());
+        MetricManager.gauge(MetricsConstants.DISRUPTOR_INBOUND_RING, Level.INFO, new InBoundRingGauge());
+        MetricManager.gauge(MetricsConstants.DISRUPTOR_MESSAGE_ACK, Level.INFO, new AckedMessageCountGauge());
     }
 
     /**

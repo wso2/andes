@@ -215,4 +215,6 @@ public class MetricsConstants {
      */
     public static final String REJECT_MESSAGES = PREFIX + "reject.count";
 
+    public static final String METRICS_NAME_SEPARATOR = "|";
+
 }
