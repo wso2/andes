@@ -29,7 +29,13 @@ import org.wso2.andes.client.failover.FailoverRetrySupport;
 import org.wso2.andes.client.protocol.AMQProtocolSession;
 import org.wso2.andes.client.state.AMQState;
 import org.wso2.andes.client.state.StateWaiter;
-import org.wso2.andes.framing.*;
+import org.wso2.andes.framing.BasicQosBody;
+import org.wso2.andes.framing.BasicQosOkBody;
+import org.wso2.andes.framing.ChannelOpenBody;
+import org.wso2.andes.framing.ChannelOpenOkBody;
+import org.wso2.andes.framing.ProtocolVersion;
+import org.wso2.andes.framing.TxSelectBody;
+import org.wso2.andes.framing.TxSelectOkBody;
 import org.wso2.andes.jms.BrokerDetails;
 import org.wso2.andes.jms.ChannelLimitReachedException;
 import org.wso2.andes.jms.Session;
@@ -39,8 +45,6 @@ import org.wso2.andes.transport.network.NetworkConnection;
 import org.wso2.andes.transport.network.OutgoingNetworkTransport;
 import org.wso2.andes.transport.network.Transport;
 
-import javax.jms.JMSException;
-import javax.jms.XASession;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.nio.channels.UnresolvedAddressException;
@@ -49,6 +53,8 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.Set;
+import javax.jms.JMSException;
+import javax.jms.XASession;
 
 public class AMQConnectionDelegate_8_0 implements AMQConnectionDelegate
 {
@@ -293,7 +299,10 @@ public class AMQConnectionDelegate_8_0 implements AMQConnectionDelegate
             // _protocolHandler.addSessionByChannel(s.getChannelId(), s);
             reopenChannel(s.getChannelId(), s.getDefaultPrefetchHigh(), s.getDefaultPrefetchLow(), s.getTransacted());
             s.resubscribe();
-            s.recover();
+
+            if (!s.getTransacted()) {
+                s.recover();
+            }
         }
     }
 
