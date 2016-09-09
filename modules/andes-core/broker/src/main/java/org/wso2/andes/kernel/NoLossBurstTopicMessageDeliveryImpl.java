@@ -56,7 +56,7 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
          * are duplicated messages for each different subscribed destination.
          */
         List<org.wso2.andes.kernel.subscription.AndesSubscription> subscriptions4Queue =
-                storageQueue.getBoundedSubscriptions();
+                storageQueue.getBoundSubscriptions();
 
         List<org.wso2.andes.kernel.subscription.AndesSubscription> currentSubscriptions =
                 Collections.unmodifiableList(subscriptions4Queue);

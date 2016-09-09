@@ -25,7 +25,7 @@ import java.util.UUID;
  * This class represents a mock subscription representing a inactive subscriber
  * (for durable topic)
  */
-public class InactiveMockSubscriber extends DurableTopicSubscriber{
+public class InactiveSubscriber extends DurableTopicSubscriber{
 
 
     /**
@@ -36,7 +36,7 @@ public class InactiveMockSubscriber extends DurableTopicSubscriber{
      * @param storageQueue   queue to which subscriber is bound
      * @param protocol       protocol of the subscription
      */
-    public InactiveMockSubscriber(String subscriptionID, String clientID, StorageQueue storageQueue, ProtocolType
+    public InactiveSubscriber(String subscriptionID, String clientID, StorageQueue storageQueue, ProtocolType
             protocol) {
         super(subscriptionID, clientID, storageQueue, protocol, null);
         isActive = false;

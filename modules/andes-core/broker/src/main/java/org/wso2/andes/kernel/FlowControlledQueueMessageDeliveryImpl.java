@@ -56,7 +56,7 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
          * bound to unique queue based on subscription id
          */
         List<org.wso2.andes.kernel.subscription.AndesSubscription> subscriptions4Queue =
-                storageQueue.getBoundedSubscriptions();
+                storageQueue.getBoundSubscriptions();
 
         List<org.wso2.andes.kernel.subscription.AndesSubscription> currentSubscriptions =
                 Collections.unmodifiableList(subscriptions4Queue);

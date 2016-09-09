@@ -450,7 +450,7 @@ public class AndesContextInformationManager {
 
             //if a non durable queue on binding removal delete the queue if there are no more
             // subscribers. Delete call for non durable queues is prevented at Qpid-Andes bridge.
-            if (!queue.isDurable() && queue.getBoundedSubscriptions().isEmpty()) {
+            if (!queue.isDurable() && queue.getBoundSubscriptions().isEmpty()) {
                 InboundQueueEvent queueDeleteEvent = new InboundQueueEvent(queue.getName(),
                         queue.isDurable(), queue.isShared(), queue.getQueueOwner(), queue.isExclusive());
                 deleteQueue(queueDeleteEvent);

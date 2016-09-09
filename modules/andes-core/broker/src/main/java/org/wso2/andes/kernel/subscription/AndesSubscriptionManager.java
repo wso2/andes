@@ -23,6 +23,7 @@ import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.ClusterNotificationListener;
+import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.SubscriptionListener;
 import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
@@ -49,6 +50,8 @@ import java.util.UUID;
 
 import static com.googlecode.cqengine.query.QueryFactory.and;
 import static com.googlecode.cqengine.query.QueryFactory.equal;
+import static com.googlecode.cqengine.query.QueryFactory.matchesRegex;
+import static com.googlecode.cqengine.query.QueryFactory.contains;
 
 /**
  * Managers subscription add/remove and subscription query tasks inside Andes kernel
@@ -243,28 +246,25 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
      */
     public List<AndesSubscription> getInactiveSubscriberRepresentations() {
         List<AndesSubscription> inactiveSubscriptions = new ArrayList<>();
-        List<StorageQueue> storageQueues = AndesContext.getInstance().
-                getStorageQueueRegistry().getAllStorageQueues();
+        List<StorageQueue> storageQueues = AndesContext.getInstance().getStorageQueueRegistry().getAllStorageQueues();
         for (StorageQueue storageQueue : storageQueues) {
             boolean isQueueDurable = storageQueue.isDurable();
             if (isQueueDurable) {
                 //only durable queues are kept bounded to message routers
                 String messageRouterName = storageQueue.getMessageRouter().getName();
                 if (AMQPUtils.TOPIC_EXCHANGE_NAME.equals(messageRouterName)) {
-                    List<AndesSubscription> boundSubscriptions = storageQueue.getBoundedSubscriptions();
+                    List<AndesSubscription> boundSubscriptions = storageQueue.getBoundSubscriptions();
                     if (boundSubscriptions.isEmpty()) {
-                        AndesSubscription mockSubscription = new InactiveMockSubscriber(storageQueue.getName(),
-                                storageQueue.getName(),
-                                storageQueue, ProtocolType.AMQP);
-                        inactiveSubscriptions.add(mockSubscription);
+                        AndesSubscription inactiveSubscriber = new InactiveSubscriber(storageQueue.getName(),
+                                storageQueue.getName(), storageQueue, ProtocolType.AMQP);
+                        inactiveSubscriptions.add(inactiveSubscriber);
                     }
                 } else if (MQTTUtils.MQTT_EXCHANGE_NAME.equals(messageRouterName)) {
-                    List<AndesSubscription> boundSubscriptions = storageQueue.getBoundedSubscriptions();
+                    List<AndesSubscription> boundSubscriptions = storageQueue.getBoundSubscriptions();
                     if (boundSubscriptions.isEmpty()) {
-                        AndesSubscription mockSubscription = new InactiveMockSubscriber(storageQueue.getName(),
-                                storageQueue.getName(),
-                                storageQueue, ProtocolType.MQTT);
-                        inactiveSubscriptions.add(mockSubscription);
+                        AndesSubscription inactiveSubscriber = new InactiveSubscriber(storageQueue.getName(),
+                                storageQueue.getName(), storageQueue, ProtocolType.MQTT);
+                        inactiveSubscriptions.add(inactiveSubscriber);
                     }
                 }
             }
@@ -272,6 +272,242 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
         }
         return inactiveSubscriptions;
     }
+
+    /**
+     * Get filtered subscriptions (active/inactive) that matches to search criteria
+     * @param isDurable true if searching for durable subscriptions
+     * @param isActive true if searching for active subscriptions
+     * @param protocolType protocol of the subscription
+     * @param destinationType type of subscription (QUEUE/TOPIC/DURABLE_TOPIC)
+     * @param bindingKeyPattern regex to match with binding key of subscriber
+     * @param subscriptionIdPattern regex to match with ID of the subscriber
+     * @param connectedNode id of the node to which the subscriber is connected to
+     * @return Set of subscriptions filtered according to search criteria
+     * @throws AndesException
+     */
+    public Set<AndesSubscription> getFilteredSubscriptions(boolean isDurable, boolean isActive, ProtocolType
+            protocolType, DestinationType destinationType, String bindingKeyPattern, boolean isExactMatchBindingKey,
+            String subscriptionIdPattern, boolean isExactMatchSubscriptionId, String connectedNode)
+            throws AndesException {
+
+        Set<AndesSubscription> filteredSubscriptions;
+
+        if (isActive) {
+            if (isExactMatchBindingKey) {
+                filteredSubscriptions = getActiveSubscriptionsByExactBindingKeyMatch(isDurable, protocolType,
+                        destinationType, bindingKeyPattern, connectedNode);
+                filteredSubscriptions = filterActiveSubscriptionsBySubscriptionId(filteredSubscriptions,
+                        subscriptionIdPattern, isExactMatchSubscriptionId);
+            } else {
+                filteredSubscriptions = getActiveSubscriptionsByTokenizedBindingKeyMatch(isDurable, protocolType,
+                        destinationType, bindingKeyPattern, connectedNode);
+                filteredSubscriptions = filterActiveSubscriptionsBySubscriptionId(filteredSubscriptions,
+                        subscriptionIdPattern, isExactMatchSubscriptionId);
+            }
+        } else {
+            if (isExactMatchBindingKey) {
+                filteredSubscriptions = getInactiveSubscriptionsByByExactBindingKeyMatch(bindingKeyPattern);
+                filteredSubscriptions = filterInactiveSubscriptionsBySubscriptionId(filteredSubscriptions,
+                        protocolType, destinationType, subscriptionIdPattern, isExactMatchSubscriptionId);
+            } else {
+                filteredSubscriptions = getInactiveSubscriptionsByTokenizedBindingKeyMatch(bindingKeyPattern);
+                filteredSubscriptions = filterInactiveSubscriptionsBySubscriptionId(filteredSubscriptions,
+                        protocolType, destinationType, subscriptionIdPattern, isExactMatchSubscriptionId);
+            }
+        }
+
+        return filteredSubscriptions;
+    }
+
+    /**
+     * Get active subscriptions filtered by identifier pattern and exact binding key
+     *
+     * @param isDurable true if searching for durable subscriptions
+     * @param protocolType protocol of the subscription
+     * @param destinationType type of subscription (QUEUE/TOPIC/DURABLE_TOPIC)
+     * @param bindingKeyPattern regex to match with binding key of subscriber
+     * @param connectedNode id of the node to which the subscriber is connected to
+     * @return Set of subscriptions filtered according to search criteria
+     * @throws AndesException
+     */
+    private Set<AndesSubscription> getActiveSubscriptionsByExactBindingKeyMatch(boolean isDurable,
+            ProtocolType protocolType, DestinationType destinationType, String bindingKeyPattern, String connectedNode)
+            throws AndesException {
+
+        Set<AndesSubscription> filteredSubscriptions = new HashSet<>();
+        String messageRouter = destinationType.getAndesMessageRouter();
+
+        Query<AndesSubscription> subscriptionQuery = and
+                (equal(AndesSubscription.DURABILITY, isDurable), equal(AndesSubscription.NODE_ID, connectedNode),
+                 equal(AndesSubscription.PROTOCOL, protocolType), equal(AndesSubscription.ROUTER_NAME, messageRouter),
+                 equal(AndesSubscription.ROUTING_KEY, bindingKeyPattern.toLowerCase()));
+
+        Iterable<AndesSubscription> subscriptions = subscriptionRegistry.exucuteQuery(subscriptionQuery);
+
+        for(AndesSubscription subscription : subscriptions){
+            filteredSubscriptions.add(subscription);
+        }
+        return filteredSubscriptions;
+    }
+
+    /**
+     * Get inactive subscriptions filtered by identifier pattern and exact binding key
+     *
+     * @param bindingKeyPattern regex to match with binding key of subscriber
+     * @return Set of subscriptions filtered according to search criteria
+     * @throws AndesException
+     */
+    private Set<AndesSubscription> getInactiveSubscriptionsByByExactBindingKeyMatch(String bindingKeyPattern)
+            throws AndesException {
+
+        Set<AndesSubscription> filteredSubscriptions = new HashSet<>();
+        List<AndesSubscription> allInactiveSubscriptions = getInactiveSubscriberRepresentations();
+
+        for (AndesSubscription inactiveSubscription : allInactiveSubscriptions) {
+            if(inactiveSubscription.getStorageQueue().getMessageRouterBindingKey().equalsIgnoreCase
+                    (bindingKeyPattern)){
+                filteredSubscriptions.add(inactiveSubscription);
+            }
+        }
+        return filteredSubscriptions;
+    }
+
+    /**
+     * Get active subscriptions filtered by identifier pattern and tokenized binding key
+     *
+     * @param isDurable         true if searching for durable subscriptions
+     * @param protocolType      protocol of the subscription
+     * @param destinationType   type of subscription (QUEUE/TOPIC/DURABLE_TOPIC)
+     * @param bindingKeyPattern regex to match with binding key of subscriber
+     * @param connectedNode     id of the node to which the subscriber is connected to
+     * @return Set of subscriptions filtered according to search criteria
+     * @throws AndesException
+     */
+    private Set<AndesSubscription> getActiveSubscriptionsByTokenizedBindingKeyMatch(boolean isDurable,
+            ProtocolType protocolType, DestinationType destinationType, String bindingKeyPattern, String
+            connectedNode) throws AndesException {
+
+        Set<AndesSubscription> filteredSubscriptions = new HashSet<>();
+        String messageRouter = destinationType.getAndesMessageRouter();
+
+        Query<AndesSubscription> subscriptionQuery = and
+                (equal(AndesSubscription.DURABILITY, isDurable), equal(AndesSubscription.NODE_ID, connectedNode),
+                 equal(AndesSubscription.PROTOCOL, protocolType), equal(AndesSubscription.ROUTER_NAME, messageRouter),
+                 contains(AndesSubscription.ROUTING_KEY, bindingKeyPattern.toLowerCase()));
+
+        Iterable<AndesSubscription> subscriptions = subscriptionRegistry.exucuteQuery(subscriptionQuery);
+
+        for (AndesSubscription subscription : subscriptions) {
+            filteredSubscriptions.add(subscription);
+        }
+        return filteredSubscriptions;
+    }
+
+
+
+    /**
+     * Get inactive subscriptions filtered by identifier pattern and tokenized binding key
+     *
+     * @param bindingKeyPattern regex to match with binding key of subscriber
+     * @return Set of subscriptions filtered according to search criteria
+     * @throws AndesException
+     */
+    private Set<AndesSubscription> getInactiveSubscriptionsByTokenizedBindingKeyMatch(String bindingKeyPattern)
+            throws AndesException {
+
+        Set<AndesSubscription> filteredSubscriptions = new HashSet<>();
+
+        List<AndesSubscription> allInactiveSubscriptions = getInactiveSubscriberRepresentations();
+
+        for (AndesSubscription inactiveSubscription : allInactiveSubscriptions) {
+            if(inactiveSubscription.getStorageQueue().getMessageRouterBindingKey().toLowerCase().
+                    contains(bindingKeyPattern.toLowerCase())){
+                filteredSubscriptions.add(inactiveSubscription);
+            }
+        }
+        return filteredSubscriptions;
+    }
+
+    /**
+     * Filter inactive subscriptions
+     *
+     * @param subscriptions subscription list for further filtering
+     * @param protocolType protocol of the subscription
+     * @param destinationType type of subscription (QUEUE/TOPIC/DURABLE_TOPIC)
+     * @param subscriptionIdPattern regex to match with ID of the subscriber
+     * @param isExactMatchSubscriptionId exact match of subscription id or not
+     * @return Set of subscriptions filtered according to search criteria
+     */
+    private Set<AndesSubscription> filterInactiveSubscriptionsBySubscriptionId(Set<AndesSubscription> subscriptions,
+            ProtocolType protocolType, DestinationType destinationType,String subscriptionIdPattern,
+            boolean isExactMatchSubscriptionId){
+
+        Set<AndesSubscription> filteredSubscriptions = new HashSet<>();
+        String messageRouter = destinationType.getAndesMessageRouter();
+
+        if(isExactMatchSubscriptionId){
+            for (AndesSubscription inactiveSubscription : subscriptions) {
+                if(inactiveSubscription.getStorageQueue().getMessageRouter().getName().equals(messageRouter)
+                        && inactiveSubscription.getProtocolType().equals(protocolType)
+                        && inactiveSubscription.getSubscriptionId().equalsIgnoreCase(subscriptionIdPattern)){
+                    filteredSubscriptions.add(inactiveSubscription);
+                }
+            }
+        }else{
+            for (AndesSubscription inactiveSubscription : subscriptions) {
+                if(inactiveSubscription.getStorageQueue().getMessageRouter().getName().equals(messageRouter)
+                        && inactiveSubscription.getProtocolType().equals(protocolType)
+                        && inactiveSubscription.getSubscriptionId().toLowerCase()
+                        .contains(subscriptionIdPattern.toLowerCase())){
+                    filteredSubscriptions.add(inactiveSubscription);
+                }
+            }
+        }
+        return filteredSubscriptions;
+    }
+
+    /**
+     * filter active subscriptions by subscription id
+     *
+     * @param subscriptions subscription list for further filtering
+     * @param subscriptionIdPattern regex to match with ID of the subscriber
+     * @param isExactMatchSubscriptionId exact match of subscription id or not
+     * @return Set of subscriptions filtered according to search criteria
+     */
+    private Set<AndesSubscription> filterActiveSubscriptionsBySubscriptionId(Set<AndesSubscription> subscriptions,String
+            subscriptionIdPattern, boolean isExactMatchSubscriptionId){
+
+        Set<AndesSubscription> filteredSubscriptions = new HashSet<>();
+
+        if(isExactMatchSubscriptionId) {
+            for (AndesSubscription subscription : subscriptions) {
+                if (subscriptionIdPattern.equalsIgnoreCase(subscription.getSubscriptionId())) {
+                    filteredSubscriptions.add(subscription);
+                } else if (subscription.isDurable() && subscription.getStorageQueue().getMessageRouter().getName()
+                        .equals(AMQPUtils.TOPIC_EXCHANGE_NAME)) {
+                    if (subscriptionIdPattern.equalsIgnoreCase(((DurableTopicSubscriber) subscription).getClientID())) {
+                        filteredSubscriptions.add(subscription);
+                    }
+                }
+            }
+        } else{
+            for (AndesSubscription subscription : subscriptions) {
+                if (subscription.getSubscriptionId().toLowerCase().contains(subscriptionIdPattern.toLowerCase())) {
+                    filteredSubscriptions.add(subscription);
+                } else if (subscription.isDurable() && subscription.getStorageQueue().getMessageRouter().getName()
+                        .equals(AMQPUtils.TOPIC_EXCHANGE_NAME)) {
+                    if (((DurableTopicSubscriber) subscription).getClientID().toLowerCase().contains
+                            (subscriptionIdPattern.toLowerCase())) {
+                        filteredSubscriptions.add(subscription);
+                    }
+                }
+            }
+        }
+        return filteredSubscriptions;
+    }
+
+
+
 
     /**
      * Remove the subscription from subscriptionRegistry
@@ -465,7 +701,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
     public void closeAllLocalSubscriptionsBoundToQueue(String storageQueueName) throws AndesException {
         StorageQueue queue = AndesContext.getInstance().
                 getStorageQueueRegistry().getStorageQueue(storageQueueName);
-        List<AndesSubscription> subscriptions = queue.getBoundedSubscriptions();
+        List<AndesSubscription> subscriptions = queue.getBoundSubscriptions();
         for (AndesSubscription subscription : subscriptions) {
             SubscriberConnection connection = subscription.getSubscriberConnection();
             UUID channelID = connection.getProtocolChannelID();

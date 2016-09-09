@@ -243,7 +243,7 @@ public class StorageQueue {
      *
      * @return list of subscriptions
      */
-    public List<AndesSubscription> getBoundedSubscriptions() {
+    public List<AndesSubscription> getBoundSubscriptions() {
         return boundedSubscriptions;
     }
 

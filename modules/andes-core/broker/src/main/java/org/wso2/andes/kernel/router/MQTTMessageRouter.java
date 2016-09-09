@@ -73,7 +73,7 @@ public class MQTTMessageRouter extends AndesMessageRouter {
      * @throws AndesException
      */
     public void removeMapping(String bindingKey, StorageQueue queue) throws AndesException {
-        if (queue.getBoundedSubscriptions().isEmpty()) {
+        if (queue.getBoundSubscriptions().isEmpty()) {
             List<StorageQueue> boundQueues = routingMap.get(bindingKey);
             if (boundQueues != null && !boundQueues.isEmpty()) {
                 boundQueues.remove(queue);
@@ -106,7 +106,7 @@ public class MQTTMessageRouter extends AndesMessageRouter {
             Iterator<StorageQueue> queueIterator = matchingQueues.iterator();
             while (queueIterator.hasNext()) {
                 StorageQueue matchingQueue = queueIterator.next();
-                if(matchingQueue.isDurable() && matchingQueue.getBoundedSubscriptions().isEmpty()) {
+                if(matchingQueue.isDurable() && matchingQueue.getBoundSubscriptions().isEmpty()) {
                     queueIterator.remove();
                 }
             }

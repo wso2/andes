@@ -71,7 +71,7 @@ public class TopicMessageRouter extends AndesMessageRouter {
      * @throws AndesException
      */
     public void removeMapping(String bindingKey, StorageQueue queue) throws AndesException {
-        if (queue.getBoundedSubscriptions().isEmpty() && !queue.isDurable()) {
+        if (queue.getBoundSubscriptions().isEmpty() && !queue.isDurable()) {
             List<StorageQueue> boundQueues = routingMap.get(bindingKey);
             if (boundQueues != null && !boundQueues.isEmpty()) {
                 boundQueues.remove(queue);

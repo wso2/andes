@@ -17,6 +17,7 @@
  */
 package org.wso2.andes.server.information.management;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
@@ -32,8 +33,11 @@ import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.management.AMQManagedObject;
 import javax.management.MBeanException;
 import javax.management.NotCompliantMBeanException;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * Class to handle data for all subscription related UI functions.
@@ -42,7 +46,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
 
     private static Log log = LogFactory.getLog(SubscriptionManagementInformationMBean.class);
 
-    private static final String ALL_WILDCARD = "*";
+    private static final String SEPARATOR = ";";
 
     /**
      * Subscription store used to query subscription related information
@@ -106,6 +110,105 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
             throw new MBeanException(e, "Error while invoking MBeans to retrieve subscription information");
         }
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    public String[] getFilteredSubscriptions(boolean isDurable, boolean isActive, String protocolType,
+                                             String destinationType, String filteredNamePattern,
+                                             boolean isFilteredNameByExactMatch,String identifierPattern,
+                                             boolean isIdentifierPatternByExactMatch, String ownNodeId, int pageNumber,
+                                             int maxSubscriptionCount) throws MBeanException {
+
+        try {
+            int startingIndex = pageNumber * maxSubscriptionCount;
+            String[] subscriptionArray;
+            int resultSetSize = maxSubscriptionCount;
+            int index = 0;
+            int subscriptionDetailsIndex = 0;
+
+            AndesSubscriptionManager subscriptionManager = AndesContext.getInstance().getAndesSubscriptionManager();
+
+            Set<AndesSubscription> searchSubscriptionList = subscriptionManager
+                    .getFilteredSubscriptions(isDurable, isActive, ProtocolType.valueOf(protocolType),
+                            DestinationType.valueOf(destinationType), filteredNamePattern,
+                            isFilteredNameByExactMatch,identifierPattern, isIdentifierPatternByExactMatch,
+                            ownNodeId);
+
+            int fullListSize = searchSubscriptionList.size() - startingIndex;
+
+            //Get only paginated subscription from search subscription result
+            if (fullListSize >= 0 && fullListSize < maxSubscriptionCount) {
+                resultSetSize = (searchSubscriptionList.size() - startingIndex);
+            }
+            subscriptionArray = new String[resultSetSize];
+
+            for (AndesSubscription subscription : searchSubscriptionList) {
+                if (startingIndex <= index) {
+
+                    Long pendingMessageCount
+                            = MessagingEngine.getInstance().getMessageCountOfQueue(subscription.getStorageQueue()
+                            .getName());
+                    subscriptionArray[subscriptionDetailsIndex] =
+                            renderSubscriptionForUI(isActive, destinationType,subscription,
+                                    pendingMessageCount.intValue());
+                    ;
+                    subscriptionDetailsIndex++;
+                    if (subscriptionDetailsIndex == maxSubscriptionCount) {
+                        break;
+                    }
+                }
+                index++;
+            }
+
+            return subscriptionArray;
+        } catch (Exception e) {
+            log.error("Error while invoking MBeans to retrieve subscription information", e);
+            throw new MBeanException(e, "Error while invoking MBeans to retrieve subscription information");
+        }
+    }
+
+    /**
+     * Create the regex pattern for filtering
+     *
+     * @param pattern String value of the patten
+     * @return Regex pattern
+     */
+    private Pattern createRegEx(String pattern){
+
+        String regex = pattern.replaceAll("\\*",".*");
+
+        return Pattern.compile(regex,Pattern.CASE_INSENSITIVE);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public int getTotalSubscriptionCountForSearchResult(boolean isDurable, boolean isActive, String protocolType,
+                                                        String destinationType, String filteredNamePattern, boolean
+                                                        isFilteredNameByExactMatch, String identifierPattern, boolean
+                                                        isIdentifierPatternByExactMatch, String ownNodeId)
+            throws MBeanException {
+        try {
+
+
+            AndesSubscriptionManager subscriptionManager =
+                    AndesContext.getInstance().getAndesSubscriptionManager();
+            //get the searched subscriptions
+            Set<AndesSubscription> searchSubscriptionList = subscriptionManager
+                    .getFilteredSubscriptions(isDurable,isActive,
+                            ProtocolType.valueOf(protocolType),DestinationType.valueOf(destinationType),
+                            filteredNamePattern,isFilteredNameByExactMatch, identifierPattern,
+                            isIdentifierPatternByExactMatch, ownNodeId);
+
+            //count of search subscriptions
+            return searchSubscriptionList.size();
+        }catch (Exception e){
+            log.error("Error while invoking MBeans to retrieve subscription information", e);
+            throw new MBeanException(e, "Error while invoking MBeans to retrieve subscription information");
+        }
+    }
+
 
     private Set<AndesSubscription> getSubscriptionsOfBroker(boolean isDurable, boolean isActive, String protocolType,
                                       String destinationType) throws AndesException {
@@ -206,16 +309,18 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
         String subscriptionIdentifier = subscription.getSubscriptionId();
 
         return subscriptionIdentifier
-                + ";" + subscription.getStorageQueue().getMessageRouterBindingKey()
-                + ";" + subscription.getStorageQueue().getMessageRouter().getName()
-                + ";" + subscription.getStorageQueue().getName()
-                + ";" + subscription.isDurable()
-                + ";" + isActive
-                + ";" + pendingMessageCount
-                + ";" + ((null == subscription.getSubscriberConnection()) ? "N/A": subscription
+                + SEPARATOR + subscription.getStorageQueue().getMessageRouterBindingKey()
+                + SEPARATOR + subscription.getStorageQueue().getMessageRouter().getName()
+                + SEPARATOR + subscription.getStorageQueue().getName()
+                + SEPARATOR + subscription.isDurable()
+                + SEPARATOR + isActive
+                + SEPARATOR + pendingMessageCount
+                + SEPARATOR + ((null == subscription.getSubscriberConnection()) ? "N/A": subscription
                                                             .getSubscriberConnection().getConnectedNode())
-                + ";" + subscription.getStorageQueue().getMessageRouterBindingKey()
-                + ";" + subscription.getProtocolType().name()
-                + ";" + destinationType;
+                + SEPARATOR + subscription.getStorageQueue().getMessageRouterBindingKey()
+                + SEPARATOR + subscription.getProtocolType().name()
+                + SEPARATOR + destinationType
+                + SEPARATOR + ((null == subscription.getSubscriberConnection()) ? "N/A": subscription
+                                                            .getSubscriberConnection().getConnectedIP());
     }
 }
