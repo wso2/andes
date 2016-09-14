@@ -115,8 +115,8 @@ public class RDBMSConstants {
     protected static final String SLOT_MESSAGE_ID_TABLE = "MB_SLOT_MESSAGE_ID";
     protected static final String QUEUE_TO_LAST_ASSIGNED_ID = "MB_QUEUE_TO_LAST_ASSIGNED_ID";
     // Coordination related tables
-    protected static final String CLUSTER_COORDINATOR_HEARTBEAT_TABLE = "MB_CLUSTER_COORDINATOR_HEARTBEAT";
-    protected static final String CLUSTER_NODE_HEARTBEAT_TABLE = "MB_CLUSTER_NODE_HEARTBEAT";
+    protected static final String CLUSTER_COORDINATOR_HEARTBEAT_TABLE = "MB_COORDINATOR_HEARTBEAT";
+    protected static final String CLUSTER_NODE_HEARTBEAT_TABLE = "MB_NODE_HEARTBEAT";
     //Cluster membership table
     protected static final String MEMBERSHIP_TABLE = "MB_MEMBERSHIP";
     // Tables for cluster communication
