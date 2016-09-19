@@ -23,7 +23,18 @@ import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.slot.*;
+
+import org.wso2.andes.kernel.disruptor.delivery.DeliveryEventData;
+import org.wso2.andes.kernel.slot.Slot;
+import org.wso2.andes.kernel.slot.SlotCoordinator;
+import org.wso2.andes.kernel.slot.SlotCoordinatorCluster;
+import org.wso2.andes.kernel.slot.SlotCoordinatorStandalone;
+import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
+import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
+import org.wso2.andes.kernel.slot.SlotManagerStandalone;
+import org.wso2.andes.kernel.slot.SlotMessageCounter;
+
+
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerator;
@@ -31,8 +42,12 @@ import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.thrift.MBThriftClient;
 import org.wso2.andes.tools.utils.MessageTracer;
 
-import java.util.*;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * This class will handle all message related functions of WSO2 Message Broker
@@ -130,14 +145,16 @@ public class MessagingEngine {
         return messageStore.getContent(messageID, offsetInMessage);
     }
 
-    public LongObjectHashMap<List<AndesMessagePart>> getContent(HashMap<String, ArrayList<Long>> messageHash)
+    public LongObjectHashMap<List<AndesMessagePart>> getContent(HashMap<String, ArrayList<DeliveryEventData>> messageHash)
             throws AndesException {
         return messageStore.getContent(messageHash);
+
     }
 
     public LongObjectHashMap<List<AndesMessagePart>> getContent(LongArrayList messageIdList) throws AndesException {
         return messageStore.getContent(messageIdList);
     }
+
     /**
      * Persist received messages. Implemented {@link org.wso2.andes.kernel.MessageStore} will be used to
      * persist the messages
@@ -147,6 +164,11 @@ public class MessagingEngine {
      */
     public void messagesReceived(List<AndesMessage> messageList) throws AndesException {
         messageStore.storeMessages(messageList);
+
+        HashMap<String, List<AndesMessage>> messageToQueueHashMap = new HashMap<>();
+        String queueName;
+        // messageStore.storeMessages(messageList);
+
 
     }
 
@@ -456,6 +478,7 @@ public class MessagingEngine {
 
     /**
      * Get expired but not yet deleted messages from DLC
+     *
      * @return List of expired message Ids
      * @throws AndesException
      */

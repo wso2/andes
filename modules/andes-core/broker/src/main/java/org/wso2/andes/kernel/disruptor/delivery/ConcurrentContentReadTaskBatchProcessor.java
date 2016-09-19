@@ -19,21 +19,13 @@
 package org.wso2.andes.kernel.disruptor.delivery;
 
 import com.gs.collections.impl.set.mutable.primitive.LongHashSet;
-import com.lmax.disruptor.AlertException;
-import com.lmax.disruptor.EventProcessor;
-import com.lmax.disruptor.ExceptionHandler;
-import com.lmax.disruptor.LifecycleAware;
-import com.lmax.disruptor.RingBuffer;
-import com.lmax.disruptor.Sequence;
-import com.lmax.disruptor.SequenceBarrier;
-import com.lmax.disruptor.SequenceReportingEventHandler;
-import com.lmax.disruptor.Sequencer;
+import com.lmax.disruptor.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.ProtocolMessage;
 
 import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -67,8 +59,8 @@ public class ConcurrentContentReadTaskBatchProcessor implements EventProcessor {
      * @param batchSize       size limit of total content size to batch. This is a loose limit
      */
     public ConcurrentContentReadTaskBatchProcessor(final RingBuffer<DeliveryEventData> ringBuffer,
-            final SequenceBarrier sequenceBarrier, final ContentCacheCreator eventHandler, long turn, int groupCount,
-            int batchSize) {
+                                                   final SequenceBarrier sequenceBarrier, final ContentCacheCreator eventHandler, long turn, int groupCount,
+                                                   int batchSize) {
         if (turn >= groupCount) {
             throw new IllegalArgumentException("Turn should be less than groupCount");
         }
@@ -129,41 +121,60 @@ public class ConcurrentContentReadTaskBatchProcessor implements EventProcessor {
         notifyStart();
         DeliveryEventData event = null;
         int totalContentLength = 0;
-        List<DeliveryEventData> eventList = new ArrayList<>(this.batchSize);
+       // List<DeliveryEventData> eventList = new ArrayList<>(this.batchSize);
+        HashMap<String, ArrayList<DeliveryEventData>> messageMap = new HashMap<>();
         LongHashSet messageIDSet = new LongHashSet();
         long currentTurn;
         long nextSequence = sequence.get() + 1L;
+
+        String storageQueueName;
+        // HashMap messageMap = new HashMap();
+
+
         while (true) {
             try {
                 final long availableSequence = sequenceBarrier.waitFor(nextSequence);
 
                 while (nextSequence <= availableSequence) {
+//                    HashMap<String, ArrayList<DeliveryEventData>> messageMap = new HashMap<>();
                     event = ringBuffer.get(nextSequence);
 
                     ProtocolMessage metadata = event.getMetadata();
                     long currentMessageID = metadata.getMessageID();
+                   // int contentLength = metadata.getMessage().getMessageContentLength();
+
+                    storageQueueName = metadata.getMessage().getStorageQueueName();
+//TODO : put delivery event data to the Hash map as the value.
                     currentTurn = currentMessageID % groupCount;
                     if (turn == currentTurn) {
-                        eventList.add(event);
+                        // eventList.add(event);
                         totalContentLength = totalContentLength + metadata.getMessage().getMessageContentLength();
                         messageIDSet.add(currentMessageID);
+                        ArrayList<DeliveryEventData> messageMetadataList = messageMap.get(storageQueueName);
+                        if (null == messageMetadataList) {
+                            messageMetadataList = new ArrayList<>();
+                            messageMap.put(storageQueueName, messageMetadataList);
+                        }
+                       // messageMetadataList.get(contentLength);
+                        messageMetadataList.add(event);
                     }
                     if (log.isDebugEnabled()) {
                         log.debug("[ " + nextSequence + " ] Current turn " + currentTurn + ", turn " + turn
                                 + ", groupCount " + groupCount);
                     }
-
-                    // Batch and invoke event handler. 
-                    if (((totalContentLength >= batchSize) || (nextSequence == availableSequence)) && !eventList
+                    // Batch and invoke event handler.
+                    //todo check this if condition
+                    if (((totalContentLength >= batchSize) || (nextSequence == availableSequence)) && !messageMap
                             .isEmpty()) {
 
-                        eventHandler.onEvent(eventList);
+                        eventHandler.onEvent(messageMap);
                         if (log.isDebugEnabled()) {
                             log.debug("Event handler called with message id list " + messageIDSet);
                         }
 
                         // reset counters and lists
-                        eventList.clear();
+                       // eventList.clear();
+                        messageMap.clear();
                         messageIDSet.clear();
                         totalContentLength = 0;
                     }
@@ -181,7 +192,8 @@ public class ConcurrentContentReadTaskBatchProcessor implements EventProcessor {
 
                 // Dropping events with errors from batch processor. Relevant event handler should take care of
                 // the events. If not cleared next iteration would contain the previous iterations event list
-                eventList.clear();
+               // eventList.clear();
+                messageMap.clear();
                 messageIDSet.clear();
                 totalContentLength = 0;
                 nextSequence++;

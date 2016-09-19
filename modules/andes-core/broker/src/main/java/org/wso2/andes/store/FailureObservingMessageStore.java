@@ -29,6 +29,7 @@ import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
+import org.wso2.andes.kernel.disruptor.delivery.DeliveryEventData;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.tools.utils.MessageTracer;
 
@@ -107,9 +108,10 @@ public class FailureObservingMessageStore implements MessageStore {
 
     /**
      * {@inheritDoc}
+     * @param messageHash
      */
     @Override
-    public LongObjectHashMap<List<AndesMessagePart>> getContent(HashMap<String, ArrayList<Long>> messageHash) throws AndesException {
+    public LongObjectHashMap<List<AndesMessagePart>> getContent(HashMap<String, ArrayList<DeliveryEventData>> messageHash) throws AndesException {
         try {
             return wrappedInstance.getContent(messageHash);
         } catch (AndesStoreUnavailableException exception) {

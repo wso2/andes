@@ -27,6 +27,7 @@ import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.disruptor.delivery.DeliveryEventData;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.queue.DLCQueueUtils;
@@ -243,7 +244,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     @Override
     public LongObjectHashMap<List<AndesMessagePart>> getContent(
-            HashMap<String, ArrayList<Long>> messageHash) throws AndesException {
+            HashMap<String, ArrayList<DeliveryEventData>> messageHash) throws AndesException {
 
         LongObjectHashMap<List<AndesMessagePart>> contentList = new LongObjectHashMap<>(messageHash.size());
        // String currentQueueName =  queueName;
@@ -281,8 +282,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * @param contentList   this list will be filled with content retrieved from database
      * @throws AndesException an error
      */
-    private void fillContentFromStorage(HashMap<String, ArrayList<Long>> messageHash,
-            LongObjectHashMap<List<AndesMessagePart>> contentList) throws AndesException {
+    private void fillContentFromStorage(HashMap<String, ArrayList<DeliveryEventData>> messageHash,
+                                        LongObjectHashMap<List<AndesMessagePart>> contentList) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
@@ -291,14 +292,17 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         try {
             connection = getConnection();
 
-            for (Map.Entry<String, ArrayList<Long>> entry : messageHash.entrySet()) {
+            for (Map.Entry<String, ArrayList<DeliveryEventData>> entry : messageHash.entrySet()) {
 
                 preparedStatement = connection.prepareStatement(
                         getSelectContentPreparedStmt(entry.getValue().size(), entry.getKey()));
 
-                for (int messageIDCounter = 0; messageIDCounter < entry.getValue().size(); messageIDCounter++) {
+                int messageIDCounter = 0;
 
-                    preparedStatement.setLong(messageIDCounter + 1, entry.getValue().get(messageIDCounter));
+                for (DeliveryEventData deliveryEventData :  entry.getValue()) {
+
+                    preparedStatement.setLong(messageIDCounter + 1, deliveryEventData.getMetadata().getMessageID());
+                    messageIDCounter ++;
 
                 }
 
@@ -306,7 +310,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 while (resultSet.next()) {
                     long messageID = resultSet.getLong(MESSAGE_ID);
                     int offset = resultSet.getInt(MSG_OFFSET);
-                   // String contentQueueName = entry.getKey();
+                    // String contentQueueName = entry.getKey();
                     List<AndesMessagePart> partList = contentList.get(messageID);
                     if (null == partList) {
                         partList = new ArrayList<>();
@@ -342,10 +346,10 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * Create a prepared statement with given number of ? values set to IN operator
      *
      * @param numberOfMessages number of messages that content need to be retrieved from.
-     *                     CONDITION: messageCount > 0
+     *                         CONDITION: messageCount > 0
      * @return Prepared Statement
      */
-    private String getSelectContentPreparedStmt(int numberOfMessages ,  String queueName) {
+    private String getSelectContentPreparedStmt(int numberOfMessages, String queueName) {
 
         StringBuilder stmtBuilder = null;
         try {
@@ -353,16 +357,16 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             for (int i = 0; i < numberOfMessages - 1; i++) {
                 stmtBuilder.append("?,");
             }
-    }
-        catch ( AndesException e) {}
+        } catch (AndesException e) {
+        }
         stmtBuilder.append("?)");
         return stmtBuilder.toString();
     }
 
     private void storeMessagesPerQueue(List<AndesMessage> messageList,
-            String queueName, ArrayList<PreparedStatement>
-     metadataPSPerQueue, ArrayList<PreparedStatement> contentPSPerQueue, ArrayList<PreparedStatement> expiryPSPerQueue
-    , Connection conn) throws AndesException, SQLException {
+                                       String queueName, ArrayList<PreparedStatement>
+                                               metadataPSPerQueue, ArrayList<PreparedStatement> contentPSPerQueue, ArrayList<PreparedStatement> expiryPSPerQueue
+            , Connection conn) throws AndesException, SQLException {
 
         PreparedStatement storeMetadataPS = null;
         PreparedStatement storeContentPS = null;
@@ -427,7 +431,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         try {
             connection = getConnection();
 
-            for (Map.Entry<String , List<AndesMessage>> entry : messageToQueueHashMap.entrySet()) {
+            for (Map.Entry<String, List<AndesMessage>> entry : messageToQueueHashMap.entrySet()) {
                 storeMessagesPerQueue(entry.getValue(), entry.getKey(), metadataPSPerQueue, contentPSPerQueue,
                         expiryPSPerQueue, connection);
             }
@@ -473,9 +477,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
             close(connection, RDBMSConstants.TASK_ADDING_MESSAGES);
         }
-
-
-
 
 
     }
@@ -789,7 +790,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 }
                 metadataPS.executeBatch();
                 expiryDataPS.executeBatch();
-            }else{
+            } else {
                 for (AndesMessageMetadata message : messages) {
                     messageIDsToRemoveFromCache.add(message.getMessageID());
                     metadataPS.setInt(1, cachedQueueId);
@@ -1908,8 +1909,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         }
     }
 
-
-
     /**
      * {@inheritDoc}
      */
@@ -1947,18 +1946,18 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         return queueMessageCountForName;
     }
 //------------------------------------------------------------------------------
-
-    public String replaceMetaDataTable(String queueName, String originalQuery) throws AndesException {
-            int tableID;
-            tableID = getCachedQueueDetails(queueName).getTableID();
-            return  originalQuery.replace(RDBMSConstants.METADATA_TABLE , "MB_METADATA"+ (tableID+1));
-    }
-
-    public String replaceContentTable (String queueName, String originalQuery) throws AndesException {
-        int tableID;
-        tableID = getCachedQueueDetails(queueName).getTableID();
-        return  originalQuery.replace(RDBMSConstants.CONTENT_TABLE , "MB_CONTENT"+ (tableID+1));
-    }
+//TODO : No Usages here now.
+//    public String replaceMetaDataTable(String queueName, String originalQuery) throws AndesException {
+//        int tableID;
+//        tableID = getCachedQueueDetails(queueName).getTableID();
+//        return originalQuery.replace(RDBMSConstants.METADATA_TABLE, "MB_METADATA" + (tableID + 1));
+//    }
+//
+//    public String replaceContentTable(String queueName, String originalQuery) throws AndesException {
+//        int tableID;
+//        tableID = getCachedQueueDetails(queueName).getTableID();
+//        return originalQuery.replace(RDBMSConstants.CONTENT_TABLE, "MB_CONTENT" + (tableID + 1));
+//    }
 
 //    public String replaceInsertMetadataQuery (String queueName, String originalQuery) throws AndesException {
 //        int tableID;
@@ -1995,8 +1994,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             preparedStatement = connection.prepareStatement(
                     queueMappingDetails.rdbmsMetadataConstants.PS_SELECT_QUEUE_MESSAGE_COUNT);
 
-//            String a = "$abbcs";
-//            a.replace("$a", "k");
             preparedStatement.setInt(1, queueMappingDetails.queueID);
 
             results = preparedStatement.executeQuery();

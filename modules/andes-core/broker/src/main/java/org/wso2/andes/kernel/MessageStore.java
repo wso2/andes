@@ -21,6 +21,7 @@ package org.wso2.andes.kernel;
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
+import org.wso2.andes.kernel.disruptor.delivery.DeliveryEventData;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.store.HealthAwareStore;
 
@@ -67,10 +68,10 @@ public interface MessageStore extends HealthAwareStore {
      * Read content for given message metadata list
      *
      *
-     * @param messageHash@return <code>Map<Long, List<AndesMessagePart>></code> Message id and its corresponding message part list
+     * @param messageHash @return <code>Map<Long, List<AndesMessagePart>></code> Message id and its corresponding message part list
      * @throws AndesException
      */
-    LongObjectHashMap<List<AndesMessagePart>> getContent(HashMap<String, ArrayList<Long>> messageHash) throws AndesException;
+    LongObjectHashMap<List<AndesMessagePart>> getContent(HashMap<String, ArrayList<DeliveryEventData>> messageHash) throws AndesException;
 
     LongObjectHashMap<List<AndesMessagePart>> getContent(LongArrayList messageIdList) throws AndesException;
 
