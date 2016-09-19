@@ -60,6 +60,8 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
 
     private static Log log = LogFactory.getLog(AndesSubscriptionManager.class);
 
+    private static final String SELECT_ALL = "All";
+
     /**
      * Factory for creating subscriptions.
      */
@@ -338,9 +340,13 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
         String messageRouter = destinationType.getAndesMessageRouter();
 
         Query<AndesSubscription> subscriptionQuery = and
-                (equal(AndesSubscription.DURABILITY, isDurable), equal(AndesSubscription.NODE_ID, connectedNode),
-                 equal(AndesSubscription.PROTOCOL, protocolType), equal(AndesSubscription.ROUTER_NAME, messageRouter),
+                (equal(AndesSubscription.DURABILITY, isDurable), equal(AndesSubscription.PROTOCOL, protocolType),
+                 equal(AndesSubscription.ROUTER_NAME, messageRouter),
                  equal(AndesSubscription.ROUTING_KEY, bindingKeyPattern.toLowerCase()));
+
+        if(!SELECT_ALL.equals(connectedNode)){
+            subscriptionQuery = and (subscriptionQuery, equal(AndesSubscription.NODE_ID, connectedNode));
+        }
 
         Iterable<AndesSubscription> subscriptions = subscriptionRegistry.exucuteQuery(subscriptionQuery);
 
@@ -391,9 +397,13 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
         String messageRouter = destinationType.getAndesMessageRouter();
 
         Query<AndesSubscription> subscriptionQuery = and
-                (equal(AndesSubscription.DURABILITY, isDurable), equal(AndesSubscription.NODE_ID, connectedNode),
-                 equal(AndesSubscription.PROTOCOL, protocolType), equal(AndesSubscription.ROUTER_NAME, messageRouter),
+                (equal(AndesSubscription.DURABILITY, isDurable), equal(AndesSubscription.PROTOCOL, protocolType),
+                 equal(AndesSubscription.ROUTER_NAME, messageRouter),
                  contains(AndesSubscription.ROUTING_KEY, bindingKeyPattern.toLowerCase()));
+
+        if(!SELECT_ALL.equals(connectedNode)){
+            subscriptionQuery = and (subscriptionQuery, equal(AndesSubscription.NODE_ID, connectedNode));
+        }
 
         Iterable<AndesSubscription> subscriptions = subscriptionRegistry.exucuteQuery(subscriptionQuery);
 
