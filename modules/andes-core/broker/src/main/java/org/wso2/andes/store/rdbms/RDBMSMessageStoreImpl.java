@@ -83,7 +83,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     @Override
     public DurableStoreConnection initializeMessageStore(AndesContextStore contextStore,
-            ConfigurationProperties connectionProperties) throws AndesException {
+                                                         ConfigurationProperties connectionProperties) throws AndesException {
 
         this.rdbmsConnection = new RDBMSConnection();
         // read data source name from config and use
@@ -142,7 +142,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     public void storeMessagePart(List<AndesMessagePart> partList) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
-        Context messageContentAdditionContext = MetricManager.timer(MetricsConstants.ADD_MESSAGE_PART, Level.INFO)
+        Context messageContentAdditionContext = MetricManager.timer(Level.INFO, MetricsConstants.ADD_MESSAGE_PART)
                 .start();
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
         try {
@@ -188,10 +188,10 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public AndesMessagePart getContent(long messageId, int offsetValue  ) throws AndesException {
+    public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException {
 
         AndesMessagePart messagePart = null;
-        Context messageContentRetrievalContext = MetricManager.timer(MetricsConstants.GET_CONTENT, Level.INFO).start();
+        Context messageContentRetrievalContext = MetricManager.timer(Level.INFO, MetricsConstants.GET_CONTENT).start();
         try {
             messagePart = getContentFromCache(messageId, offsetValue);
 
@@ -218,7 +218,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         PreparedStatement preparedStatement = null;
         ResultSet results = null;
 
-        Context contextRead = MetricManager.timer(MetricsConstants.DB_READ, Level.INFO).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
         try {
             connection = getConnection();
             preparedStatement = connection.prepareStatement(new RDBMSContentConstants(1).PS_RETRIEVE_MESSAGE_PART);
@@ -240,6 +240,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
     /**
      * {@inheritDoc}
+     *
      * @param messageHash
      */
     @Override
@@ -247,7 +248,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             HashMap<String, ArrayList<DeliveryEventData>> messageHash) throws AndesException {
 
         LongObjectHashMap<List<AndesMessagePart>> contentList = new LongObjectHashMap<>(messageHash.size());
-       // String currentQueueName =  queueName;
+        // String currentQueueName =  queueName;
         Context messageContentRetrievalContext = MetricManager.timer(Level.INFO, MetricsConstants.GET_CONTENT_BATCH)
                 .start();
 
@@ -256,11 +257,11 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 return contentList;
             }
 
-           // fillContentFromCache(messageHash, contentList);
+            // fillContentFromCache(messageHash, contentList);
 
-           // if (!messageHash.isEmpty()) {
-                fillContentFromStorage(messageHash, contentList);
-           // }
+            // if (!messageHash.isEmpty()) {
+            fillContentFromStorage(messageHash, contentList);
+            // }
 
         } finally {
             messageContentRetrievalContext.stop();
@@ -279,7 +280,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * Utility method to retrieve content given the list of messages Ids.
      *
      * @param messageHash message ids and Queue Name
-     * @param contentList   this list will be filled with content retrieved from database
+     * @param contentList this list will be filled with content retrieved from database
      * @throws AndesException an error
      */
     private void fillContentFromStorage(HashMap<String, ArrayList<DeliveryEventData>> messageHash,
@@ -287,7 +288,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
-        Context contextRead = MetricManager.timer(MetricsConstants.DB_READ, Level.INFO).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
 
         try {
             connection = getConnection();
@@ -405,10 +406,10 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void storeMessages(String queueName, List<AndesMessage> messageList) throws AndesException {
+    public void storeMessages(List<AndesMessage> messageList) throws AndesException {
 
-        HashMap <String , List<AndesMessage>> messageToQueueHashMap = new HashMap<>();
-        //String queueName;
+        HashMap<String, List<AndesMessage>> messageToQueueHashMap = new HashMap<>();
+        String queueName;
 
         for (AndesMessage message : messageList) {
             queueName = message.getMetadata().getStorageQueueName();
@@ -483,38 +484,33 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
     /**
      * Create MB_METADATA Table name using tableID
+     *
      * @param tableID generated table ID using Queue ID
      * @return MB_METADATA table Name
      */
     private String generateMetaDataTableName(int tableID) {
 
-         if (tableID == 0) {
-             return  RDBMSConstants.PS_INSERT_METADATA1;
-         }
-         else if (tableID == 1) {
-             return  RDBMSConstants.PS_INSERT_METADATA2;
-         }
-         else if (tableID == 2) {
-             return  RDBMSConstants.PS_INSERT_METADATA3;
-         }
-         else {
-             return  RDBMSConstants.PS_INSERT_METADATA4;
-         }
-         // return  "MB_METADATA"+ tableID;
+        if (tableID == 0) {
+            return RDBMSConstants.PS_INSERT_METADATA1;
+        } else if (tableID == 1) {
+            return RDBMSConstants.PS_INSERT_METADATA2;
+        } else if (tableID == 2) {
+            return RDBMSConstants.PS_INSERT_METADATA3;
+        } else {
+            return RDBMSConstants.PS_INSERT_METADATA4;
+        }
+        // return  "MB_METADATA"+ tableID;
     }
 
-    private String  generateContentTableName (int tableID) {
+    private String generateContentTableName(int tableID) {
         if (tableID == 0) {
-            return  RDBMSConstants.PS_INSERT_MESSAGE_PART1;
-        }
-        else if (tableID == 1) {
-            return  RDBMSConstants.PS_INSERT_MESSAGE_PART2;
-        }
-        else if (tableID == 2) {
-            return  RDBMSConstants.PS_INSERT_MESSAGE_PART3;
-        }
-        else {
-            return  RDBMSConstants.PS_INSERT_MESSAGE_PART4;
+            return RDBMSConstants.PS_INSERT_MESSAGE_PART1;
+        } else if (tableID == 1) {
+            return RDBMSConstants.PS_INSERT_MESSAGE_PART2;
+        } else if (tableID == 2) {
+            return RDBMSConstants.PS_INSERT_MESSAGE_PART3;
+        } else {
+            return RDBMSConstants.PS_INSERT_MESSAGE_PART4;
         }
         //return  "MB_CONTENT" + tableID;
     }
@@ -550,11 +546,11 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             for (AndesMessagePart messagePart : message.getContentChunkList()) {
                 addContentToBatch(storeContentPS, messagePart);
             }
-            if(metadata.isExpirationDefined()){
+            if (metadata.isExpirationDefined()) {
                 storeExpiryMetadataPS.setLong(1, metadata.getMessageID());
                 storeExpiryMetadataPS.setLong(2, metadata.getExpirationTime());
                 storeExpiryMetadataPS.setString(3, metadata.getStorageQueueName());
-                storeExpiryMetadataPS.execute();
+                // storeExpiryMetadataPS.execute();
             }
             storeMetadataPS.execute();
             storeContentPS.executeBatch();
@@ -575,7 +571,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 throw andesException;
             }
         } finally {
-            close(storeExpiryMetadataPS,RDBMSConstants.TASK_ADDING_MESSAGE);
+            close(storeExpiryMetadataPS, RDBMSConstants.TASK_ADDING_MESSAGE);
             close(storeMetadataPS, RDBMSConstants.TASK_ADDING_MESSAGE);
             close(storeContentPS, RDBMSConstants.TASK_ADDING_MESSAGE);
             close(connection, RDBMSConstants.TASK_ADDING_MESSAGE);
@@ -592,7 +588,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;
-        Context contextWrite = MetricManager.timer(MetricsConstants.DB_WRITE, Level.INFO).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
         try {
             QueueMappingDetails queueMappingDetails = getCachedQueueDetails(currentQueueName);
 
@@ -618,78 +614,66 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
     /**
      * {@inheritDoc}
-
-    @Override
-    public void moveMetadataOLC(long messageId, String dlcQueueName) throws AndesException {
-        Connection connection = null;
-        PreparedStatement preparedStatement = null;
-
-        Context moveMetadataToDLCContext = MetricManager.timer(MetricsConstants.MOVE_METADATA_TO_DLC, Level.INFO)
-                .start();
-
-        //Remove the message from cache
-        removeFromCache(messageId);
-
-        Context contextWrite = MetricManager.timer(MetricsConstants.DB_WRITE, Level.INFO).start();
-        try {
-            connection = getConnection();
-            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_MOVE_METADATA_TO_DLC);
-            preparedStatement.setInt(1, getCachedQueueDetails(dlcQueueName));
-            preparedStatement.setLong(2, messageId);
-            preparedStatement.execute();
-            connection.commit();
-        } catch (SQLException e) {
-            rollback(connection, RDBMSConstants.TASK_MOVING_METADATA_TO_DLC);
-            throw rdbmsStoreUtils
-                    .convertSQLException("Error occurred while moving message metadata to dead letter " + "channel.",
-                            e);
-        } finally {
-            contextWrite.stop();
-            moveMetadataToDLCContext.stop();
-            close(connection, preparedStatement, RDBMSConstants.TASK_MOVING_METADATA_TO_DLC);
-        }
-    } */
+     @Override public void moveMetadataOLC(long messageId, String dlcQueueName) throws AndesException {
+     Connection connection = null;
+     PreparedStatement preparedStatement = null;
+     Context moveMetadataToDLCContext = MetricManager.timer(Level.INFO, MetricsConstants.MOVE_METADATA_TO_DLC)
+     .start();
+     //Remove the message from cache
+     removeFromCache(messageId);
+     Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
+     try {
+     connection = getConnection();
+     preparedStatement = connection.prepareStatement(RDBMSConstants.PS_MOVE_METADATA_TO_DLC);
+     preparedStatement.setInt(1, getCachedQueueDetails(dlcQueueName));
+     preparedStatement.setLong(2, messageId);
+     preparedStatement.execute();
+     connection.commit();
+     } catch (SQLException e) {
+     rollback(connection, RDBMSConstants.TASK_MOVING_METADATA_TO_DLC);
+     throw rdbmsStoreUtils
+     .convertSQLException("Error occurred while moving message metadata to dead letter " + "channel.",
+     e);
+     } finally {
+     contextWrite.stop();
+     moveMetadataToDLCContext.stop();
+     close(connection, preparedStatement, RDBMSConstants.TASK_MOVING_METADATA_TO_DLC);
+     }
+     } */
 
     /**
      * {@inheritDoc}
-
-    @Override
-    public void moveMetadataToDLC(List<AndesMessageMetadata> messages, String dlcQueueName) throws AndesException {
-        Connection connection = null;
-        PreparedStatement preparedStatement = null;
-
-        Context moveMetadataToDLCContext = MetricManager.timer(MetricsConstants.MOVE_METADATA_TO_DLC, Level.INFO)
-                .start();
-        Context contextWrite = MetricManager.timer(MetricsConstants.DB_WRITE, Level.INFO).start();
-        LongArrayList messageIDsToRemoveFromCache = new LongArrayList();
-
-        try {
-            connection = getConnection();
-            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_MOVE_METADATA_TO_DLC);
-            for (AndesMessageMetadata message : messages) {
-                messageIDsToRemoveFromCache.add(message.getMessageID());
-                preparedStatement.setInt(1, getCachedQueueDetails(dlcQueueName));
-                preparedStatement.setLong(2, message.getMessageID());
-                preparedStatement.addBatch();
-            }
-
-            //remove messages from cache
-            removeFromCache(messageIDsToRemoveFromCache);
-
-            preparedStatement.executeBatch();
-            connection.commit();
-
-        } catch (SQLException e) {
-            rollback(connection, RDBMSConstants.TASK_MOVING_METADATA_TO_DLC);
-            throw rdbmsStoreUtils
-                    .convertSQLException("Error occurred while moving message metadata to dead letter " + "channel.",
-                            e);
-        } finally {
-            contextWrite.stop();
-            moveMetadataToDLCContext.stop();
-            close(connection, preparedStatement, RDBMSConstants.TASK_MOVING_METADATA_TO_DLC);
-        }
-    } */
+     @Override public void moveMetadataToDLC(List<AndesMessageMetadata> messages, String dlcQueueName) throws AndesException {
+     Connection connection = null;
+     PreparedStatement preparedStatement = null;
+     Context moveMetadataToDLCContext = MetricManager.timer(Level.INFO, MetricsConstants.MOVE_METADATA_TO_DLC)
+     .start();
+     Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
+     LongArrayList messageIDsToRemoveFromCache = new LongArrayList();
+     try {
+     connection = getConnection();
+     preparedStatement = connection.prepareStatement(RDBMSConstants.PS_MOVE_METADATA_TO_DLC);
+     for (AndesMessageMetadata message : messages) {
+     messageIDsToRemoveFromCache.add(message.getMessageID());
+     preparedStatement.setInt(1, getCachedQueueDetails(dlcQueueName));
+     preparedStatement.setLong(2, message.getMessageID());
+     preparedStatement.addBatch();
+     }
+     //remove messages from cache
+     removeFromCache(messageIDsToRemoveFromCache);
+     preparedStatement.executeBatch();
+     connection.commit();
+     } catch (SQLException e) {
+     rollback(connection, RDBMSConstants.TASK_MOVING_METADATA_TO_DLC);
+     throw rdbmsStoreUtils
+     .convertSQLException("Error occurred while moving message metadata to dead letter " + "channel.",
+     e);
+     } finally {
+     contextWrite.stop();
+     moveMetadataToDLCContext.stop();
+     close(connection, preparedStatement, RDBMSConstants.TASK_MOVING_METADATA_TO_DLC);
+     }
+     } */
 
     /**
      * Edited according to the getCachedQueueDetails changes. 2016/08/23
@@ -703,13 +687,13 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Connection connection = null;
         PreparedStatement metadataPS = null;
         PreparedStatement expiryDataPS = null;
-        Context moveMetadataToDLCContext = MetricManager.timer(MetricsConstants.MOVE_METADATA_TO_DLC, Level.INFO)
+        Context moveMetadataToDLCContext = MetricManager.timer(Level.INFO, MetricsConstants.MOVE_METADATA_TO_DLC)
                 .start();
 
         //Remove the message from cache
         removeFromCache(messageId);
 
-        Context contextWrite = MetricManager.timer(MetricsConstants.DB_WRITE, Level.INFO).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
         try {
             connection = getConnection();
 
@@ -726,7 +710,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             /**
              * If message expiry is enabled in the configuration need to update the DLC info in the expiration table.
              */
-            if (expireMessageInDLC){
+            if (expireMessageInDLC) {
                 expiryDataPS = connection.prepareStatement(RDBMSConstants.PS_UPDATE_DLC_STATUS_IN_EXPIRY_TABLE);
                 expiryDataPS.setInt(1, cachedQueueId);
                 expiryDataPS.setLong(2, messageId);
@@ -762,9 +746,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         PreparedStatement metadataPS = null;
         PreparedStatement expiryDataPS = null;
 
-        Context moveMetadataToDLCContext = MetricManager.timer(MetricsConstants.MOVE_METADATA_TO_DLC, Level.INFO)
+        Context moveMetadataToDLCContext = MetricManager.timer(Level.INFO, MetricsConstants.MOVE_METADATA_TO_DLC)
                 .start();
-        Context contextWrite = MetricManager.timer(MetricsConstants.DB_WRITE, Level.INFO).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
         LongArrayList messageIDsToRemoveFromCache = new LongArrayList();
 
         try {
@@ -777,7 +761,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
              * If message expiry is enabled in the configuration need to update the DLC info in the expiration table,
              * else no need to do that.
              */
-            if(expireMessageInDLC){
+            if (expireMessageInDLC) {
                 expiryDataPS = connection.prepareStatement(RDBMSConstants.PS_UPDATE_DLC_STATUS_IN_EXPIRY_TABLE);
                 for (AndesMessageMetadata message : messages) {
                     messageIDsToRemoveFromCache.add(message.getMessageID());
@@ -826,9 +810,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
 
-        Context metaUpdateContext = MetricManager.timer(MetricsConstants.UPDATE_META_DATA_INFORMATION, Level.INFO)
+        Context metaUpdateContext = MetricManager.timer(Level.INFO, MetricsConstants.UPDATE_META_DATA_INFORMATION)
                 .start();
-        Context contextWrite = MetricManager.timer(MetricsConstants.DB_WRITE, Level.INFO).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
         try {
             connection = getConnection();
@@ -869,11 +853,11 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * @throws SQLException
      */
     private void addMetadataToBatch(PreparedStatement preparedStatement, AndesMessageMetadata metadata,
-            final String queueName) throws AndesException {
+                                    final String queueName) throws AndesException {
 
-        Context metaAdditionToBatchContext = MetricManager.timer(MetricsConstants.ADD_META_DATA_TO_BATCH, Level.INFO)
+        Context metaAdditionToBatchContext = MetricManager.timer(Level.INFO, MetricsConstants.ADD_META_DATA_TO_BATCH)
                 .start();
-        Context contextWrite = MetricManager.timer(MetricsConstants.DB_WRITE, Level.INFO).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
         try {
             //int hashValueOfQueue = queueName.hashCode();
             preparedStatement.setLong(1, metadata.getMessageID());
@@ -923,8 +907,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         PreparedStatement preparedStatement = null;
         ResultSet results = null;
 
-        Context metaRetrievalContext = MetricManager.timer(MetricsConstants.GET_META_DATA, Level.INFO).start();
-        Context contextRead = MetricManager.timer(MetricsConstants.DB_READ, Level.INFO).start();
+        Context metaRetrievalContext = MetricManager.timer(Level.INFO, MetricsConstants.GET_META_DATA).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
 
         try {
             connection = getConnection();
@@ -953,15 +937,15 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     @Override
     public List<DeliverableAndesMetadata> getMetadataList(Slot slot, final String storageQueueName, long firstMsgId,
-            long lastMsgID) throws AndesException {
+                                                          long lastMsgID) throws AndesException {
 
         List<DeliverableAndesMetadata> metadataList = new ArrayList<>();
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
 
-        Context metaListRetrievalContext = MetricManager.timer(MetricsConstants.GET_META_DATA_LIST, Level.INFO).start();
-        Context contextRead = MetricManager.timer(MetricsConstants.DB_READ, Level.INFO).start();
+        Context metaListRetrievalContext = MetricManager.timer(Level.INFO, MetricsConstants.GET_META_DATA_LIST).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
 
         try {
             QueueMappingDetails queueMappingDetails = getCachedQueueDetails(storageQueueName);
@@ -1015,14 +999,14 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
         long messageCount = 0;
-        Context contextRead = MetricManager.timer(MetricsConstants.DB_READ, Level.INFO).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
         try {
 
             QueueMappingDetails queueMappingDetails = getCachedQueueDetails(storageQueueName);
 
             connection = getConnection();
             preparedStatement = connection.prepareStatement(queueMappingDetails.rdbmsMetadataConstants
-                            .PS_SELECT_RANGED_QUEUE_MESSAGE_COUNT);
+                    .PS_SELECT_RANGED_QUEUE_MESSAGE_COUNT);
             preparedStatement.setInt(1, queueMappingDetails.queueID);
             preparedStatement.setLong(2, firstMessageId);
             preparedStatement.setLong(3, lastMessageId);
@@ -1058,7 +1042,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         Context nextMessageIdsRetrievalContext = MetricManager
                 .timer(Level.INFO, MetricsConstants.GET_NEXT_MESSAGE_IDS_FROM_QUEUE).start();
-        Context contextRead = MetricManager.timer(MetricsConstants.DB_READ, Level.INFO).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
 
         try {
             QueueMappingDetails queueMappingDetails = getCachedQueueDetails(storageQueueName);
@@ -1097,7 +1081,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     @Override
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String storageQueueName, long firstMsgId,
-            int count) throws AndesException {
+                                                                       int count) throws AndesException {
 
         List<AndesMessageMetadata> mdList = new ArrayList<>(count);
         Connection connection = null;
@@ -1106,7 +1090,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         Context nextMetaRetrievalContext = MetricManager
                 .timer(Level.INFO, MetricsConstants.GET_NEXT_MESSAGE_METADATA_FROM_QUEUE).start();
-        Context contextRead = MetricManager.timer(MetricsConstants.DB_READ, Level.INFO).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
 
         try {
             QueueMappingDetails queueMappingDetails = getCachedQueueDetails(storageQueueName);
@@ -1148,7 +1132,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     @Override
     public List<AndesMessageMetadata> getNextNMessageMetadataForQueueFromDLC(String storageQueueName,
-            String dlcQueueName, long firstMsgId, int count) throws AndesException {
+                                                                             String dlcQueueName, long firstMsgId, int count) throws AndesException {
 
         List<AndesMessageMetadata> mdList = new ArrayList<>(count);
         Connection connection = null;
@@ -1157,7 +1141,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         Context nextMetaRetrievalContext = MetricManager
                 .timer(Level.INFO, MetricsConstants.GET_NEXT_MESSAGE_METADATA_IN_DLC_FOR_QUEUE).start();
-        Context contextRead = MetricManager.timer(MetricsConstants.DB_READ, Level.INFO).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
 
         try {
             QueueMappingDetails queueMappingDetails = getCachedQueueDetails(storageQueueName);
@@ -1208,7 +1192,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         Context nextMetaRetrievalContext = MetricManager
                 .timer(Level.INFO, MetricsConstants.GET_NEXT_MESSAGE_METADATA_IN_DLC).start();
-        Context contextRead = MetricManager.timer(MetricsConstants.DB_READ, Level.INFO).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
 
         try {
             QueueMappingDetails queueMappingDetails = getCachedQueueDetails(dlcQueueName);
@@ -1249,14 +1233,14 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     @Override
     public void deleteMessageMetadataFromQueue(final String storageQueueName,
-            List<AndesMessageMetadata> messagesToRemove) throws AndesException {
+                                               List<AndesMessageMetadata> messagesToRemove) throws AndesException {
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;
 
         Context metaDeletionContext = MetricManager
                 .timer(Level.INFO, MetricsConstants.DELETE_MESSAGE_META_DATA_FROM_QUEUE).start();
-        Context contextWrite = MetricManager.timer(MetricsConstants.DB_WRITE, Level.INFO).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
         try {
             QueueMappingDetails queueMappingDetails = getCachedQueueDetails(storageQueueName);
@@ -1297,7 +1281,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         Context messageDeletionContext = MetricManager
                 .timer(Level.INFO, MetricsConstants.DELETE_MESSAGE_META_DATA_AND_CONTENT).start();
-        Context contextWrite = MetricManager.timer(MetricsConstants.DB_WRITE, Level.INFO).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
         try {
 
@@ -1357,7 +1341,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             connection = getConnection();
 
 
-
             //Since referential integrity is imposed on the two tables: message content and metadata,
             //deleting message metadata will cause message content to be automatically deleted
             metadataRemovalPreparedStatement = connection.prepareStatement(new RDBMSMetadataConstants(1).PS_DELETE_METADATA);
@@ -1397,7 +1380,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         Context messageDeletionContext = MetricManager
                 .timer(Level.INFO, MetricsConstants.DELETE_MESSAGE_META_DATA_AND_CONTENT).start();
-        Context contextWrite = MetricManager.timer(MetricsConstants.DB_WRITE, Level.INFO).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
         try {
             connection = getConnection();
@@ -1440,7 +1423,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
 
-        Context contextRead = MetricManager.timer(MetricsConstants.DB_READ, Level.INFO).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
 
         try {
             connection = getConnection();
@@ -1472,7 +1455,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
 
-        Context contextRead = MetricManager.timer(MetricsConstants.DB_READ, Level.INFO).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
 
         try {
             connection = getConnection();
@@ -1512,7 +1495,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     private QueueMappingDetails getCachedQueueDetails(final String destinationQueueName) throws AndesException {
         try {
-           // QueueMappingDetails queueMappingDetails;
+            // QueueMappingDetails queueMappingDetails;
             return queueMappings.get(destinationQueueName);
         } catch (ExecutionException e) {
             throw new AndesException("Error retrieving queue id for queue: " + destinationQueueName + " from cache", e);
@@ -1535,7 +1518,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
-        Context contextRead = MetricManager.timer(MetricsConstants.DB_READ, Level.INFO).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
         try {
             connection = getConnection();
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_QUEUE_DETAILS);
@@ -1588,22 +1571,21 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         public RDBMSContentConstants rdbmsContentConstants;
 
 
-
         public QueueMappingDetails(int queueID, int tableID) {
 
             this.queueID = queueID;
             this.tableID = tableID;
-           //set queue id here
+            //set queue id here
 
             rdbmsMetadataConstants = new RDBMSMetadataConstants(tableID);
             rdbmsContentConstants = new RDBMSContentConstants(tableID);
         }
 
-        public int getQueueID () {
+        public int getQueueID() {
             return queueID;
         }
 
-        public int getTableID () {
+        public int getTableID() {
             return tableID;
         }
 
@@ -1619,14 +1601,14 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     private void createNewQueue(final Connection connection, final String destinationQueueName) throws SQLException {
 
         PreparedStatement preparedStatement = null;
-        Context contextWrite = MetricManager.timer(MetricsConstants.DB_WRITE, Level.INFO).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
         try {
 
             //Add the queue to the database
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_INSERT_QUEUE);
-            preparedStatement.setString(1 , destinationQueueName);
-           // preparedStatement.setInt(2 , tableID);
+            preparedStatement.setString(1, destinationQueueName);
+            // preparedStatement.setInt(2 , tableID);
             preparedStatement.executeUpdate();
             connection.commit();
             preparedStatement.close();
@@ -1753,8 +1735,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     }
 
 
-
-
     /**
      * closes the result set resources
      *
@@ -1776,7 +1756,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     @Override
     public void addMessageToExpiryQueue(Long messageId, Long expirationTime, boolean isMessageForTopic,
-            String destination) throws AndesException {
+                                        String destination) throws AndesException {
         // NOTE: Feature Message Expiration moved to a future release
     }
 
@@ -1788,7 +1768,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     public int deleteAllMessageMetadata(String storageQueueName) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
-        Context contextWrite = MetricManager.timer(MetricsConstants.DB_WRITE, Level.INFO).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
         int deletedMessagecount = 0;
         try {
             QueueMappingDetails queueMappingDetails = getCachedQueueDetails(storageQueueName);
@@ -1822,7 +1802,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     public int clearDLCQueue(String dlcQueueName) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
-        Context contextWrite = MetricManager.timer(MetricsConstants.DB_WRITE, Level.INFO).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
         int deletedMessagecount = 0;
         try {
             QueueMappingDetails queueMappingDetails = getCachedQueueDetails(dlcQueueName);
@@ -1863,7 +1843,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         PreparedStatement preparedStatement = null;
         ResultSet results = null;
 
-        Context contextRead = MetricManager.timer(MetricsConstants.DB_READ, Level.INFO).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
 
         try {
             QueueMappingDetails queueMappingDetails = getCachedQueueDetails(storageQueueName);
@@ -1918,7 +1898,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         PreparedStatement preparedStatement = null;
         ResultSet results = null;
         Map<String, Integer> queueMessageCountForName = new HashMap<>();
-        Context contextRead = MetricManager.timer(MetricsConstants.DB_READ, Level.INFO).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
         try {
 
             connection = getConnection();
@@ -1972,10 +1952,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 //    }
 
 
-
-
-
 //--------------------------------------------------------------------------------
+
     /**
      * {@inheritDoc}
      * Edited according to the getCachedQueueDetails changes. 2016/08/23
@@ -1986,7 +1964,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         PreparedStatement preparedStatement = null;
         ResultSet results = null;
         long messageCount = 0;
-        Context contextRead = MetricManager.timer(MetricsConstants.DB_READ, Level.INFO).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
         try {
             QueueMappingDetails queueMappingDetails = getCachedQueueDetails(storageQueueName);
 
@@ -2024,7 +2002,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         PreparedStatement preparedStatement = null;
         ResultSet results = null;
         long messageCount = 0;
-        Context contextRead = MetricManager.timer(MetricsConstants.DB_READ, Level.INFO).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
         try {
             QueueMappingDetails queueMappingDetails = getCachedQueueDetails(storageQueueName);
 
@@ -2059,7 +2037,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         PreparedStatement preparedStatement = null;
         ResultSet results = null;
         long messageCount = 0;
-        Context contextRead = MetricManager.timer(MetricsConstants.DB_READ, Level.INFO).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
         try {
             QueueMappingDetails queueMappingDetails = getCachedQueueDetails(dlcQueueName);
 
@@ -2099,7 +2077,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         // Remove the queue from the database
         Connection connection = null;
         PreparedStatement preparedStatement = null;
-        Context contextWrite = MetricManager.timer(MetricsConstants.DB_WRITE, Level.INFO).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
         try {
             connection = getConnection();
@@ -2159,7 +2137,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         PreparedStatement deleteContentPreparedStatement = null;
         PreparedStatement deleteMetadataPreparedStatement = null;
         PreparedStatement insertContentPreparedStatement = null;
-        Context contextWrite = MetricManager.timer(MetricsConstants.DB_WRITE, Level.INFO).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
         boolean batchEmpty = true;
 
@@ -2256,9 +2234,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * @throws SQLException
      */
     private void addRetainedMessageToUpdateBatch(PreparedStatement updateMetadataPreparedStatement,
-            PreparedStatement deleteContentPreparedStatement, PreparedStatement deleteMetadataPreparedStatement,
-            PreparedStatement insertContentPreparedStatement, AndesMessage message, AndesMessageMetadata metadata,
-            RetainedItemData retainedItemData) throws SQLException {
+                                                 PreparedStatement deleteContentPreparedStatement, PreparedStatement deleteMetadataPreparedStatement,
+                                                 PreparedStatement insertContentPreparedStatement, AndesMessage message, AndesMessageMetadata metadata,
+                                                 RetainedItemData retainedItemData) throws SQLException {
 
         // Will set to true if payload of retained message is empty. Therefore, instead of update
         // retain topic entry will be deleted from database.
@@ -2317,7 +2295,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     private RetainedItemData getRetainedTopicID(Connection connection, String destination) throws SQLException {
         PreparedStatement preparedStatementForMetadataSelect = null;
         RetainedItemData itemData = null;
-        Context contextRead = MetricManager.timer(MetricsConstants.DB_READ, Level.INFO).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
         try {
             preparedStatementForMetadataSelect = connection
                     .prepareStatement(RDBMSConstants.PS_SELECT_RETAINED_MESSAGE_ID);
@@ -2353,7 +2331,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         String destination = metadata.getDestination();
         Integer topicID = destination.hashCode();
         long messageID = metadata.getMessageID();
-        Context contextWrite = MetricManager.timer(MetricsConstants.DB_WRITE, Level.INFO).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
         try {
             // create metadata entry
             preparedStatementForMetadata = connection.prepareStatement(RDBMSConstants.PS_INSERT_RETAINED_METADATA);
@@ -2393,7 +2371,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         PreparedStatement preparedStatementForTopicSelect = null;
         List<String> topicList = new ArrayList<>();
         ResultSet results = null;
-        Context contextRead = MetricManager.timer(MetricsConstants.DB_READ, Level.INFO).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
         try {
             connection = getConnection();
 
@@ -2423,7 +2401,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet results = null;
-        Context contextRead = MetricManager.timer(MetricsConstants.DB_READ, Level.INFO).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
 
         try {
 
@@ -2464,7 +2442,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         ResultSet results = null;
         Map<Integer, AndesMessagePart> contentParts = new HashMap<>();
 
-        Context contextRead = MetricManager.timer(MetricsConstants.DB_READ, Level.INFO).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
 
         try {
             connection = getConnection();
@@ -2568,7 +2546,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * @param contentList   the list the fill
      */
     private void fillContentFromCache(LongArrayList messageIDList,
-            LongObjectHashMap<List<AndesMessagePart>> contentList) {
+                                      LongObjectHashMap<List<AndesMessagePart>> contentList) {
         messageCache.fillContentFromCache(messageIDList, contentList);
     }
 
@@ -2584,4 +2562,3 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     }
 
 }
-

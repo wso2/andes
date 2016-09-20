@@ -44,7 +44,7 @@ public interface MessageStore extends HealthAwareStore {
      * @throws AndesException
      */
     DurableStoreConnection initializeMessageStore(AndesContextStore contextStore,
-            ConfigurationProperties connectionProperties) throws AndesException;
+                                                  ConfigurationProperties connectionProperties) throws AndesException;
 
     /**
      * store a message content chunk set
@@ -80,7 +80,7 @@ public interface MessageStore extends HealthAwareStore {
      *
      * @param messageList messages to be stored
      */
-    void storeMessages(String queueName, List<AndesMessage> messageList) throws AndesException;
+    void storeMessages(List<AndesMessage> messageList) throws AndesException;
 
     /**
      * Store a message in a different Queue without altering the meta data.
@@ -143,7 +143,7 @@ public interface MessageStore extends HealthAwareStore {
      * @throws AndesException
      */
     List<DeliverableAndesMetadata> getMetadataList(Slot slot, final String storageQueueName, long firstMsgId,
-            long lastMsgID) throws AndesException;
+                                                   long lastMsgID) throws AndesException;
 
     /**
      * Get number of messages in the queue within the message id range
@@ -167,7 +167,7 @@ public interface MessageStore extends HealthAwareStore {
      * @throws AndesException
      */
     List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String storageQueueName, long firstMsgId,
-            int count) throws AndesException;
+                                                                int count) throws AndesException;
 
     /**
      * Read a list of message ids from store specifying a starting message id
@@ -194,7 +194,7 @@ public interface MessageStore extends HealthAwareStore {
      * @throws AndesException
      */
     List<AndesMessageMetadata> getNextNMessageMetadataForQueueFromDLC(final String storageQueueName,
-            String dlcQueueName, long firstMsgId, int count) throws AndesException;
+                                                                      String dlcQueueName, long firstMsgId, int count) throws AndesException;
 
     /**
      * Retrieve a metadata list from dead letter channel specifying a starting message id and a count

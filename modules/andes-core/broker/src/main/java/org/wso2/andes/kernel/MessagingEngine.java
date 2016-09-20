@@ -285,7 +285,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public void deleteMessagesById(List<Long> messagesToRemove) throws AndesException {
-            messageStore.deleteMessages(messagesToRemove);
+        messageStore.deleteMessages(messagesToRemove);
     }
 
 
@@ -416,7 +416,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public List<DeliverableAndesMetadata> getMetaDataList(final Slot slot, final String queueName, long firstMsgId,
-            long lastMsgID) throws AndesException {
+                                                          long lastMsgID) throws AndesException {
         return messageStore.getMetadataList(slot, queueName, firstMsgId, lastMsgID);
     }
 
@@ -431,7 +431,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName, long firstMsgId,
-            int count) throws AndesException {
+                                                                       int count) throws AndesException {
         return messageStore.getNextNMessageMetadataFromQueue(queueName, firstMsgId, count);
     }
 
@@ -446,7 +446,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public List<AndesMessageMetadata> getNextNMessageMetadataInDLCForQueue(final String queueName,
-            final String dlcQueueName, long firstMsgId, int count) throws AndesException {
+                                                                           final String dlcQueueName, long firstMsgId, int count) throws AndesException {
         return messageStore.getNextNMessageMetadataForQueueFromDLC(queueName, dlcQueueName, firstMsgId, count);
     }
 
@@ -460,7 +460,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public List<AndesMessageMetadata> getNextNMessageMetadataFromDLC(final String dlcQueueName, long firstMsgId,
-            int count) throws AndesException {
+                                                                     int count) throws AndesException {
         return messageStore.getNextNMessageMetadataFromDLC(dlcQueueName, firstMsgId, count);
     }
 
@@ -468,7 +468,7 @@ public class MessagingEngine {
      * Get expired but not yet deleted messages from message store
      *
      * @param lowerBoundMessageID lower bound message Id of the safe zone for delete
-     * @param  queueName Queue name
+     * @param queueName           Queue name
      * @return AndesRemovableMetadata
      * @throws AndesException
      */
