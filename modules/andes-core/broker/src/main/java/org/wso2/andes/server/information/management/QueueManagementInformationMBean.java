@@ -268,6 +268,31 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CompositeData getMessageCountOfQueuesAsCompositeData() {
+        CompositeDataSupport support;
+        try {
+            Map<String, java.lang.Integer> messageCounts = getAllQueueCounts();
+
+            OpenType[] messageCountAttributeTypes = new OpenType[messageCounts.size()];
+            String[] itemNames = messageCounts.keySet().toArray(new String[0]);
+            String[] itemDescriptions = messageCounts.keySet().toArray(new String[0]);
+            for (int count = 0; count < messageCounts.size(); count++) {
+                messageCountAttributeTypes[count] = SimpleType.INTEGER;
+            }
+            CompositeType messageCountCompositeType = new CompositeType("Message Count of Queues",
+                    "Message count of queues", itemNames, itemDescriptions, messageCountAttributeTypes);
+            support = new CompositeDataSupport(messageCountCompositeType, messageCounts);
+        } catch (OpenDataException e) {
+            log.error("Error in accessing retrieving message count information", e);
+            throw new RuntimeException("Error in accessing retrieving message count information", e);
+        }
+        return support;
+    }
+
+    /**
      * Get names of all durable queues created and registered in broker.
      * @return set of unique names of queues
      */

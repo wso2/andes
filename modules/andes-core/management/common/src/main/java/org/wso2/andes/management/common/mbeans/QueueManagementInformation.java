@@ -72,6 +72,18 @@ public interface QueueManagementInformation {
     @MBeanAttribute(name = "AllQueueCounts", description = "Message counts of all queues")
     Map<String, Integer> getAllQueueCounts();
 
+
+    /**
+     * Retrieve message counts of all queues
+     *
+     * @return Composite data object of format <queueName, queueCount>
+     */
+    @MBeanAttribute(name = "MessageCountOfQueuesAsCompositeData", description = "Message counts of all queues as " +
+            "Composite data")
+    CompositeData getMessageCountOfQueuesAsCompositeData();
+
+
+
     @MBeanAttribute(name = "NamesOfAllDurableQueues", description = "Names of all durable queues")
     Set<String> getNamesOfAllDurableQueues();
 
