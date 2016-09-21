@@ -614,13 +614,17 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
     /**
      * {@inheritDoc}
+
      @Override public void moveMetadataOLC(long messageId, String dlcQueueName) throws AndesException {
      Connection connection = null;
      PreparedStatement preparedStatement = null;
+
      Context moveMetadataToDLCContext = MetricManager.timer(Level.INFO, MetricsConstants.MOVE_METADATA_TO_DLC)
      .start();
+
      //Remove the message from cache
      removeFromCache(messageId);
+
      Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
      try {
      connection = getConnection();
@@ -643,13 +647,16 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
     /**
      * {@inheritDoc}
+
      @Override public void moveMetadataToDLC(List<AndesMessageMetadata> messages, String dlcQueueName) throws AndesException {
      Connection connection = null;
      PreparedStatement preparedStatement = null;
+
      Context moveMetadataToDLCContext = MetricManager.timer(Level.INFO, MetricsConstants.MOVE_METADATA_TO_DLC)
      .start();
      Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
      LongArrayList messageIDsToRemoveFromCache = new LongArrayList();
+
      try {
      connection = getConnection();
      preparedStatement = connection.prepareStatement(RDBMSConstants.PS_MOVE_METADATA_TO_DLC);
@@ -659,10 +666,13 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      preparedStatement.setLong(2, message.getMessageID());
      preparedStatement.addBatch();
      }
+
      //remove messages from cache
      removeFromCache(messageIDsToRemoveFromCache);
+
      preparedStatement.executeBatch();
      connection.commit();
+
      } catch (SQLException e) {
      rollback(connection, RDBMSConstants.TASK_MOVING_METADATA_TO_DLC);
      throw rdbmsStoreUtils
