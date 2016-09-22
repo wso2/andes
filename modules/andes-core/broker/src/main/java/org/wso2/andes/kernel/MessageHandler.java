@@ -403,7 +403,7 @@ public class MessageHandler {
 
         FileWriter information = null;
         try {
-            information = new FileWriter(fileToWrite);
+            information = new FileWriter(fileToWrite, true);
             for (Slot slot : slotsRead.values()) {
                 List<DeliverableAndesMetadata> messagesOfSlot = slot.getAllMessagesOfSlot();
                 if (!messagesOfSlot.isEmpty()) {
