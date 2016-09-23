@@ -47,6 +47,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
     private static Log log = LogFactory.getLog(SubscriptionManagementInformationMBean.class);
 
     private static final String SEPARATOR = ";";
+    private static final String SELECT_ALL = "All";
 
     /**
      * Subscription store used to query subscription related information
@@ -108,6 +109,19 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
         } catch (Exception e) {
             log.error("Error while invoking MBeans to retrieve subscription information", e);
             throw new MBeanException(e, "Error while invoking MBeans to retrieve subscription information");
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public long getPendingMessageCount(String queueName) throws MBeanException {
+        try {
+            return MessagingEngine.getInstance().getMessageCountOfQueue(queueName);
+        } catch (Exception e) {
+            log.error("Error while invoking MBeans to calculate the pending message count for storage queue", e);
+            throw new MBeanException(e, "Error while invoking MBeans to calculate the pending message count for "
+                    + "storage queue");
         }
     }
 

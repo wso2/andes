@@ -46,7 +46,17 @@ public interface SubscriptionManagementInformation {
             @MBeanOperationParameter(
                     name = "destinationType",
                     description = "Destination type of the subscriptions") String destinationType)
-    throws MBeanException;
+            throws MBeanException;
+
+    /**
+     * Get the pending message count for the specified subscription
+     * @param queueName for which the pending message cound need to be calculated
+     * @return The pending message count for that subscription
+     * @throws MBeanException
+     */
+    long getPendingMessageCount(
+            @MBeanOperationParameter(name = "queueName" ,description ="get queue name ?") String queueName)
+            throws MBeanException;
 
     /**
      * Search subscription according to provided patterns and return paginated subscription array to
