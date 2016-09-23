@@ -210,7 +210,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
         _actor = new AMQPChannelActor(this, session.getLogActor().getRootMessageLogger());
         _logSubject = new ChannelLogSubject(this);
-        _id = getConfigStore().createId();
+        _id = UUID.randomUUID();
         _actor.message(ChannelMessages.CREATE());
 
         // message tracking related to this channel is initialised
