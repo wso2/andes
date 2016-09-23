@@ -569,7 +569,8 @@ public class QpidAndesBridge {
                     }
 
                     ProtocolType protocol = ProtocolType.AMQP;
-                    String subscriptionIdentifier = "";
+                    // We are using storage queue name as the subscription identifier
+                    String subscriptionIdentifier = queue.getName();
                     String boundExchangeName = b.getExchange().getName();
                     String bindingKey = b.getBindingKey();
                     String queueName = queue.getName();
