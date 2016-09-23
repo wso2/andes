@@ -373,6 +373,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         PreparedStatement storeMetadataPS = null;
         PreparedStatement storeContentPS = null;
         PreparedStatement storeExpiryMetadataPS = null;
+        boolean messageWithExpirationDetected = false;
 
         try {
 
@@ -386,6 +387,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 addMetadataToBatch(storeMetadataPS, message.getMetadata(), message.getMetadata().getStorageQueueName());
                 //if message has expiration time store it into expiration table
                 if (message.getMetadata().isExpirationDefined()) {
+                    messageWithExpirationDetected = true;
                     addExpiryTableEntryToBatch(storeExpiryMetadataPS, message.getMetadata());
                 }
 
@@ -396,7 +398,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
             storeMetadataPS.executeBatch();
             storeContentPS.executeBatch();
-            storeExpiryMetadataPS.executeBatch();
+            if (messageWithExpirationDetected) {
+                storeExpiryMetadataPS.executeBatch();
+            }
             connection.commit();
 
             // Add messages to cache after adding them to the database
@@ -404,6 +408,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             // database.
             addToCache(messageList);
         } catch (BatchUpdateException bue) {
+            log.warn("Error occurred while inserting message list. Messages will be stored individually.", bue);
+            rollback(connection, RDBMSConstants.TASK_ADDING_METADATA);
             // If adding some of the messages failed, add them individually
             for (AndesMessage message : messageList) {
                 storeMessage(message);
@@ -444,19 +450,18 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             storeMetadataPS.setLong(1, metadata.getMessageID());
             storeMetadataPS.setInt(2, getCachedQueueID(metadata.getStorageQueueName()));
             storeMetadataPS.setBytes(3, metadata.getMetadata());
+            storeMetadataPS.execute();
 
             for (AndesMessagePart messagePart : message.getContentChunkList()) {
                 addContentToBatch(storeContentPS, messagePart);
             }
+            storeContentPS.executeBatch();
             if(metadata.isExpirationDefined()){
                 storeExpiryMetadataPS.setLong(1, metadata.getMessageID());
                 storeExpiryMetadataPS.setLong(2, metadata.getExpirationTime());
                 storeExpiryMetadataPS.setString(3, metadata.getStorageQueueName());
                 storeExpiryMetadataPS.execute();
             }
-            storeMetadataPS.execute();
-            storeContentPS.executeBatch();
-            storeExpiryMetadataPS.execute();
             connection.commit();
             addToCache(message);
         } catch (AndesException e) {
