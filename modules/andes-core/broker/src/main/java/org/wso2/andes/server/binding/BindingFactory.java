@@ -124,16 +124,23 @@ public class BindingFactory {
 
     }
 
-    public boolean addBinding(String bindingKey, AMQQueue queue, Exchange exchange, Map<String, Object> arguments) throws AMQSecurityException, AMQInternalException {
-        //    CassandraMessageStore.getInstance().addBinding(exchange,queue,bindingKey);
-        return makeBinding(bindingKey, queue, exchange, arguments, false, false, true);
+    public boolean addBinding(String bindingKey, AMQQueue queue, Exchange exchange, Map<String, Object> arguments)
+            throws AMQSecurityException, AMQInternalException {
+        boolean bindingAdded = makeBinding(bindingKey, queue, exchange, arguments, false, false, true);
+        //tell Andes kernel to create binding
+        QpidAndesBridge.createBinding(exchange, new AMQShortString(bindingKey), queue);
+        return bindingAdded;
     }
 
     public boolean replaceBinding(final String bindingKey,
                                   final AMQQueue queue,
                                   final Exchange exchange,
-                                  final Map<String, Object> arguments) throws AMQSecurityException, AMQInternalException {
-        return makeBinding(bindingKey, queue, exchange, arguments, false, true, true);
+                                  final Map<String, Object> arguments) throws AMQSecurityException,
+                                  AMQInternalException {
+        boolean isBindingAdded = makeBinding(bindingKey, queue, exchange, arguments, false, true, true);
+        //tell Andes kernel to create binding
+        QpidAndesBridge.createBinding(exchange, new AMQShortString(bindingKey), queue);
+        return isBindingAdded;
     }
 
     private synchronized boolean makeBinding(String bindingKey, AMQQueue queue, Exchange exchange, Map<String, Object> arguments, boolean restore, boolean force, boolean isLocal) throws AMQSecurityException, AMQInternalException {
@@ -192,11 +199,6 @@ public class BindingFactory {
             if (binding.isDurable() && !restore) {
                 _configSource.getDurableConfigurationStore().bindQueue
                         (exchange, new AMQShortString(bindingKey), queue, FieldTable.convertToFieldTable(arguments));
-            }
-
-            if(isLocal) {
-                //tell Andes kernel to create binding
-                QpidAndesBridge.createBinding(exchange, new AMQShortString(bindingKey), queue);
             }
 
             queue.addQueueDeleteTask(binding);
