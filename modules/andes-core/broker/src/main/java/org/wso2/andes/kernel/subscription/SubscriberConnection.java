@@ -69,9 +69,9 @@ public class SubscriberConnection {
         this.connectedNode = connectedNode;
         this.protocolChannelID = protocolChannelID;
         //create a tracker with maximum number of messages to keep in memory
-        int maxNumberOfMessagesToKeepInMemory = AndesConfigurationManager.readValue
-                (AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLING_MAX_UNACKED_MESSAGES);
-        this.outBoundMessageTracker = new OutBoundMessageTracker(maxNumberOfMessagesToKeepInMemory);
+        int maxNumberOfDeliveredButNotAckedMessages = AndesConfigurationManager
+                .readValue(AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLING_MAX_UNACKED_MESSAGES);
+        this.outBoundMessageTracker = new OutBoundMessageTracker(maxNumberOfDeliveredButNotAckedMessages);
         this.outboundSubscription = outboundSubscription;
     }
 
@@ -147,7 +147,7 @@ public class SubscriberConnection {
      * Forcefully disconnects protocol subscriber connection from server. This is initiated by a server admin using the
      * management console.
      *
-     * @throws AndesException on an protocol level issue disconnecting
+     * @throws AndesException on a protocol level issue disconnecting
      */
     public void forcefullyDisconnect() throws AndesException {
         log.info("forcefully disconnecting subscription connection: channelID=" + getProtocolChannelID() + " client " +
