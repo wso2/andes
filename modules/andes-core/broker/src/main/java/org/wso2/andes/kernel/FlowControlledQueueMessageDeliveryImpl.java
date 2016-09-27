@@ -21,11 +21,11 @@ package org.wso2.andes.kernel;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.kernel.subscription.*;
 import org.wso2.andes.kernel.subscription.AndesSubscription;
+import org.wso2.andes.kernel.subscription.StorageQueue;
 
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -58,8 +58,8 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
         List<org.wso2.andes.kernel.subscription.AndesSubscription> subscriptions4Queue =
                 storageQueue.getBoundSubscriptions();
 
-        List<org.wso2.andes.kernel.subscription.AndesSubscription> currentSubscriptions =
-                Collections.unmodifiableList(subscriptions4Queue);
+        List<org.wso2.andes.kernel.subscription.AndesSubscription> currentSubscriptions
+                = new ArrayList<>(subscriptions4Queue);
 
         int numOfConsumers = currentSubscriptions.size();
         int consumerIndexCounter = 0;
