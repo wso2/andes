@@ -18,6 +18,8 @@ package org.wso2.andes.kernel.subscription;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
@@ -67,7 +69,9 @@ public class SubscriberConnection {
         this.connectedNode = connectedNode;
         this.protocolChannelID = protocolChannelID;
         //create a tracker with maximum number of messages to keep in memory
-        this.outBoundMessageTracker = new OutBoundMessageTracker(10000);
+        int maxNumberOfDeliveredButNotAckedMessages = AndesConfigurationManager
+                .readValue(AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLING_MAX_UNACKED_MESSAGES);
+        this.outBoundMessageTracker = new OutBoundMessageTracker(maxNumberOfDeliveredButNotAckedMessages);
         this.outboundSubscription = outboundSubscription;
     }
 
@@ -143,7 +147,7 @@ public class SubscriberConnection {
      * Forcefully disconnects protocol subscriber connection from server. This is initiated by a server admin using the
      * management console.
      *
-     * @throws AndesException
+     * @throws AndesException on a protocol level issue disconnecting
      */
     public void forcefullyDisconnect() throws AndesException {
         log.info("forcefully disconnecting subscription connection: channelID=" + getProtocolChannelID() + " client " +
@@ -157,7 +161,7 @@ public class SubscriberConnection {
      * @param messageMetadata metadata of the message
      * @param content         content of the message
      * @return true if the send is a success
-     * @throws AndesException
+     * @throws AndesException on an issue writing message to the protocol
      */
     public boolean writeMessageToConnection(ProtocolMessage messageMetadata, AndesContent content)
             throws AndesException {
@@ -247,10 +251,10 @@ public class SubscriberConnection {
      * Perform on acknowledgement receive for a message
      *
      * @param messageID id of the message acknowledged
-     * @return  DeliverableAndesMetadata reference of message acknowledged
+     * @return DeliverableAndesMetadata reference of message acknowledged
      * @throws AndesException
      */
-    public DeliverableAndesMetadata onMessageAck(long messageID) throws AndesException{
+    public DeliverableAndesMetadata onMessageAck(long messageID) throws AndesException {
         DeliverableAndesMetadata ackedMessage =
                 outBoundMessageTracker.removeSentMessageFromTracker(messageID);
         if (log.isDebugEnabled()) {
