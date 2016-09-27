@@ -27,8 +27,9 @@ import org.wso2.andes.kernel.slot.SlotState;
 import org.wso2.andes.kernel.subscription.AndesSubscription;
 import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.server.cluster.NodeHeartBeatData;
-import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEvent;
+import org.wso2.andes.server.cluster.TransportData;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
+import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEvent;
 import org.wso2.andes.store.HealthAwareStore;
 
 import java.net.InetSocketAddress;
@@ -651,5 +652,38 @@ public interface AndesContextStore extends HealthAwareStore {
      * @throws AndesException
      */
     void clearClusterNotifications(String nodeID) throws AndesException;
+
+    /**
+     * Add AMQP node Ip and the AMQP port
+     * @param amqpPort AMQP Port
+     * @param nodeIdentifier Node details
+     * @throws AndesException
+     */
+    void addAmqpAddress(String nodeIdentifier, int amqpPort, int sslAmqpPort)
+            throws
+            AndesException;
+
+    /**
+     * Add Address details to table
+     * @param nodeIdentifier Node detail
+     * @param interfaceDetail Interface name
+     * @param ipAddress Ip Address relavant to interface
+     * @throws AndesException
+     */
+    void addAddressDetails(String nodeIdentifier, String interfaceDetail, String ipAddress) throws AndesException;
+
+    /**
+     * Remove Node when Host go down.
+     * @param nodeID Node identifier
+     * @throws AndesException
+     */
+    void removeAmqpAddress(String nodeID) throws AndesException;
+
+    /**
+     * Get the all AMQP details
+     * @return List of TransportData objects which contains AMQP Host and AMQP Port
+     * @throws AndesException
+     */
+    List<TransportData> getAllTransportDetails() throws AndesException;
 
 }

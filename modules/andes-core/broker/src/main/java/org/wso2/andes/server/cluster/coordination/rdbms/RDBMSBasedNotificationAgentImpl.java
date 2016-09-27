@@ -149,6 +149,15 @@ public class RDBMSBasedNotificationAgentImpl implements ClusterNotificationAgent
         publishNotificationToDB(clusterNotification);
     }
 
+    @Override
+    public void publishDyanamicDiscovery() throws AndesException {
+
+        ClusterNotification clusterNotification = new ClusterNotification("", ClusterNotificationListener
+                .NotifiedArtifact.DynamicDiscoveryUpdate.toString(), "", "DynamicDiscoveryEvent", "");
+        publishNotificationToDB(clusterNotification);
+
+    }
+
     /**
      * Store notification in the DB. Duplicate the cluster notification for all nodes in
      * the cluster and store them destined to the respective  to each node.

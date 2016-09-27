@@ -57,6 +57,11 @@ public final class CoordinationConstants {
     public static String HAZELCAST_CLUSTER_EVENT_NOTIFIER_TOPIC_NAME = "CLUSTER_EVENT";
 
     /**
+     * Hazelcast distributed topic name to send Dynamic discovery details.
+     */
+    public static String HAZELCAST_CLUSTER_DYNAMIC_DISCOVERY_NOTIFIER_TOPIC_NAME = "DYNAMIC_DISCOVERY_EVENT";
+
+    /**
      * Distributed lock name used to initialize the slot map
      */
     public static final String INITIALIZATION_LOCK = "InitializationLock";

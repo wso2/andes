@@ -34,7 +34,8 @@ public interface ClusterNotificationListener {
         Binding,
         Queue,
         Subscription,
-        DBUpdate
+        DBUpdate,
+        DynamicDiscoveryUpdate
     }
 
     /**

@@ -46,11 +46,14 @@ public class HazelcastClusterNotificationListenerImpl implements ClusterNotifica
      */
     private ITopic<ClusterNotification> clusterNotifierChannel;
 
+    private ITopic<ClusterNotification> dynamicDiscoveryNotifierChannel;
+
     /**
      * IDs of subscribers registered for Hazelcast topics
      */
     private String dbSyncNotificationListenerId;
     private String clusterEventListenerId;
+    private String dynamicDiscoveryEventListenerId;
 
     /**
      * Hazelcast agent for forwarding HZ related requests
@@ -144,6 +147,11 @@ public class HazelcastClusterNotificationListenerImpl implements ClusterNotifica
                 ENABLE_STATISTICS, HAZELCAST_RELIABLE_TOPIC_READ_BACH_SIZE, HAZELCAST_RING_BUFFER_CAPACITY,
                 hazelcastRingBufferTTL);
 
+        this.dynamicDiscoveryNotifierChannel = hazelcastAgent.createReliableTopic(
+                CoordinationConstants.HAZELCAST_CLUSTER_DYNAMIC_DISCOVERY_NOTIFIER_TOPIC_NAME,
+                ENABLE_STATISTICS, HAZELCAST_RELIABLE_TOPIC_READ_BACH_SIZE, HAZELCAST_RING_BUFFER_CAPACITY,
+                hazelcastRingBufferTTL);
+
     }
 
     private void addTopicListeners(InboundEventManager inboundEventManager,
@@ -172,6 +180,13 @@ public class HazelcastClusterNotificationListenerImpl implements ClusterNotifica
 
         dbSyncNotificationListenerId = checkAndRegisterListerToTopic(dbSyncNotifierChannel,
                 HZBasedDatabaseSyncNotificationListener, dbSyncNotificationListenerId);
+
+
+     HzBasedDynamicDiscoveryListener hzBasedDynamicDiscoveryListener = new HzBasedDynamicDiscoveryListener();
+
+        dynamicDiscoveryEventListenerId = checkAndRegisterListerToTopic(dynamicDiscoveryNotifierChannel,
+                hzBasedDynamicDiscoveryListener, dynamicDiscoveryEventListenerId);
+
     }
 
     /**
@@ -209,5 +224,10 @@ public class HazelcastClusterNotificationListenerImpl implements ClusterNotifica
      */
     public ITopic<ClusterNotification> getDBSyncNotificationChannel() {
         return dbSyncNotifierChannel;
+    }
+
+
+    public ITopic<ClusterNotification> getDynamicDiscoveryNotificationChannel() {
+        return dynamicDiscoveryNotifierChannel;
     }
 }

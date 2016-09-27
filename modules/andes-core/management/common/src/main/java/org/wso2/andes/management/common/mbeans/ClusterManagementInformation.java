@@ -2,8 +2,8 @@ package org.wso2.andes.management.common.mbeans;
 
 import org.wso2.andes.management.common.mbeans.annotations.MBeanAttribute;
 
-import java.util.List;
 import javax.management.JMException;
+import java.util.List;
 
 /**
  * <code>ClusterManagementInformation</code>
@@ -47,4 +47,13 @@ public interface ClusterManagementInformation {
      */
     @MBeanAttribute(name = "getStoreHealth", description = "Gets the message stores health status")
     boolean getStoreHealth();
+
+    /**
+     * Get the all live node's IP address and port which is bound to AMQP
+     * @return Transport data objects which contains IPs and the Ports
+     * @throws AndesException
+     */
+    @MBeanAttribute(name = "getBrokerDetail", description = "Gets the all live nodes")
+   String getBrokerDetail() throws JMException;
+
 }

@@ -27,11 +27,12 @@ import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.router.AndesMessageRouter;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
-import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEvent;
-import org.wso2.andes.server.cluster.NodeHeartBeatData;
-import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 import org.wso2.andes.kernel.subscription.AndesSubscription;
 import org.wso2.andes.kernel.subscription.StorageQueue;
+import org.wso2.andes.server.cluster.NodeHeartBeatData;
+import org.wso2.andes.server.cluster.TransportData;
+import org.wso2.andes.server.cluster.coordination.ClusterNotification;
+import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEvent;
 
 import java.net.InetSocketAddress;
 import java.util.List;
@@ -1151,5 +1152,42 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
             notifyFailures(exception);
             throw exception;
         }
+    }
+
+
+    /**
+     * Add AMQP details.
+     * @param amqpPort AMQP Port
+     * @throws AndesException
+     */
+    @Override
+    public void addAmqpAddress(String nodeIdentifiers, int amqpPort, int sslAmqpPort)
+            throws AndesException {
+        wrappedAndesContextStoreInstance.addAmqpAddress(nodeIdentifiers,amqpPort, sslAmqpPort);
+    }
+
+    @Override
+    public void addAddressDetails(String nodeIdentifier, String interfaceDetail, String ipAddress) throws AndesException {
+        wrappedAndesContextStoreInstance.addAddressDetails(nodeIdentifier,interfaceDetail,ipAddress);
+    }
+
+    /**
+     * Clear AMQP details when node down.
+     * @param nodeIdentifier  Host
+     * @throws AndesException
+     */
+    @Override
+    public void removeAmqpAddress(String nodeIdentifier) throws AndesException {
+        wrappedAndesContextStoreInstance.removeAmqpAddress(nodeIdentifier);
+    }
+
+    /**
+     * Get list of transport details.
+     * @return TransportData list.
+     * @throws AndesException
+     */
+    @Override
+    public List<TransportData> getAllTransportDetails() throws AndesException {
+        return wrappedAndesContextStoreInstance.getAllTransportDetails();
     }
 }

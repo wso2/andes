@@ -26,6 +26,7 @@ import org.wso2.andes.kernel.registry.MessageRouterRegistry;
 import org.wso2.andes.kernel.registry.StorageQueueRegistry;
 import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.server.cluster.ClusterAgent;
+import org.wso2.andes.server.cluster.IpAddressRetriever;
 import org.wso2.andes.server.cluster.coordination.ClusterNotificationListenerManager;
 
 
@@ -45,6 +46,7 @@ public class AndesContext {
     private static AndesContext instance = new AndesContext();
     private MessageStore messageStore;
     private int deliveryTimeoutForMessage;
+    private IpAddressRetriever addressRetriever;
 
     /**
      * This is mainly used by Cluster Manager to manger cluster communication
@@ -354,5 +356,21 @@ public class AndesContext {
     public void setClusterNotificationListenerManager(ClusterNotificationListenerManager
                                                               clusterNotificationListenerManager) {
         this.clusterNotificationListenerManager = clusterNotificationListenerManager;
+    }
+
+    /**
+     * Set IpAddressRetriver
+     * @param ipAddressRetriever ipAddressRetriever object.
+     */
+    public void setAddressRetriever(IpAddressRetriever ipAddressRetriever){
+        this.addressRetriever=ipAddressRetriever;
+    }
+
+    /**
+     * Get the IpAddressRetriever object.
+     * @return addressRetriever
+     */
+    public IpAddressRetriever getAddressRetriever(){
+        return addressRetriever;
     }
 }

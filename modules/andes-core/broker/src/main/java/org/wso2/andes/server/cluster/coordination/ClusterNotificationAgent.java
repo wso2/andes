@@ -77,4 +77,11 @@ public interface ClusterNotificationAgent {
      */
     void notifyAnyDBChange() throws AndesException;
 
+
+    /**
+     * Notofy Dynamically Changes of nodes
+     * @throws AndesException
+     */
+    void publishDyanamicDiscovery() throws AndesException;
+
 }

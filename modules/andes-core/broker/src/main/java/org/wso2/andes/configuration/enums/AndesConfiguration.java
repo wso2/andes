@@ -163,6 +163,12 @@ public enum AndesConfiguration implements ConfigurationProperty {
             "true", Boolean.class),
 
     /**
+     * OSGI service register this implementation to get dynamic discovery details.
+     */
+    DYNAMIC_DISCOVERY("transports/amqp/dynamicDiscovery","org.wso2.carbon.andes.discovery.LocalCluster",
+            String.class),
+
+    /**
      * Enable this to support lightweight messaging with the MQTT protocol.
      */
     TRANSPORTS_MQTT_ENABLED("transports/mqtt/@enabled", "true", Boolean.class),

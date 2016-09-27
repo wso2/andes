@@ -72,4 +72,12 @@ public class StandaloneMockNotificationAgent implements ClusterNotificationAgent
     public void notifyAnyDBChange() throws AndesException {
 
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void publishDyanamicDiscovery() throws AndesException {
+
+    }
 }

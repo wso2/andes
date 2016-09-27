@@ -31,7 +31,9 @@ import org.wso2.andes.kernel.slot.SlotState;
 import org.wso2.andes.kernel.subscription.AndesSubscription;
 import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.metrics.MetricsConstants;
+import org.wso2.andes.server.cluster.MultipleAddressDetails;
 import org.wso2.andes.server.cluster.NodeHeartBeatData;
+import org.wso2.andes.server.cluster.TransportData;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEvent;
 import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEventType;
@@ -2681,4 +2683,198 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             close(connection, task);
         }
     }
+
+    /**
+     * Add AMQP host and the port when add node to cluster.
+     * @param amqpPort AMQP Port
+     * @throws AndesException
+     */
+    @Override
+    public void addAmqpAddress(String NodeIdentifier, int amqpPort, int sslAmqpPort) throws
+            AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        PreparedStatement checkPreparedStatement = null;
+        ResultSet resultSet = null;
+        List<String> existingBrokerList = new ArrayList<String>();
+        try {
+            connection = getConnection();
+            checkPreparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_ORDERD_NODE_DETAILS);
+            resultSet = checkPreparedStatement.executeQuery();
+
+            while (resultSet.next()) {
+                existingBrokerList.add(resultSet.getString(RDBMSConstants.NODE_IDENTIFIER));
+            }
+            if (!existingBrokerList.contains(NodeIdentifier) || existingBrokerList.isEmpty()) {
+                connection = getConnection();
+                preparedStatement =
+                        connection.prepareStatement(RDBMSConstants.PS_NODE_DETAIL_INSERT);
+                preparedStatement.setString(1, NodeIdentifier);
+                preparedStatement.setInt(2, amqpPort);
+                preparedStatement.setInt(3, sslAmqpPort);
+                preparedStatement.executeUpdate();
+                connection.commit();
+            }
+
+        } catch (SQLException e) {
+            String errMsg =
+                    RDBMSConstants.TASK_CREATING_NODE_DETAILS + " amqpIP: " + " amqpPort: " + amqpPort;
+            rollback(connection, RDBMSConstants.TASK_CREATING_NODE_DETAILS);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
+
+        } finally {
+            close(resultSet, RDBMSConstants.TASK_SELECT_ORDERD_NODE_DETAILS);
+            close(checkPreparedStatement, RDBMSConstants.TASK_SELECT_ORDERD_NODE_DETAILS);
+            close(preparedStatement, RDBMSConstants.TASK_CREATING_NODE_DETAILS);
+            close(connection, RDBMSConstants.TASK_CREATING_NODE_DETAILS);
+        }
+    }
+
+    @Override
+    public void addAddressDetails(String nodeIdentifier, String interfaceDetail, String ipAddress) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        PreparedStatement checkPreparedStatement = null;
+        ResultSet resultSet = null;
+        HashMap<String,String> existingAddressList = new HashMap<String, String>();
+        try {
+            connection = getConnection();
+            checkPreparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_ADDRESS_DETAILS);
+            checkPreparedStatement.setString(1, nodeIdentifier);
+            resultSet = checkPreparedStatement.executeQuery();
+
+            while (resultSet.next()) {
+                existingAddressList.put(resultSet.getString(RDBMSConstants.NODE_IDENTIFIER),resultSet.getString
+                        (RDBMSConstants.NODE_INTERFACE));
+            }
+            if (!existingAddressList.containsKey(nodeIdentifier)|| !existingAddressList.containsValue(interfaceDetail)||
+                    existingAddressList
+                    .isEmpty()) {
+
+                connection = getConnection();
+                preparedStatement =
+                        connection.prepareStatement(RDBMSConstants.PS_ADDRESS_DETAIL_INSERT);
+                preparedStatement.setString(1, nodeIdentifier);
+                preparedStatement.setString(2, interfaceDetail);
+                preparedStatement.setString(3, ipAddress);
+
+                preparedStatement.executeUpdate();
+                connection.commit();
+            }
+
+        } catch (SQLException e) {
+            String errMsg =
+                    RDBMSConstants.TASK_CREATING_NODE_DETAILS + " ip Address: " + ipAddress + " interfaceDetail: " +
+                            interfaceDetail;
+            rollback(connection, RDBMSConstants.TASK_CREATING_NODE_DETAILS);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
+
+        } finally {
+            close(resultSet, RDBMSConstants.TASK_SELECT_ORDERD_NODE_DETAILS);
+            close(checkPreparedStatement, RDBMSConstants.TASK_SELECT_ORDERD_NODE_DETAILS);
+            close(preparedStatement, RDBMSConstants.TASK_CREATING_NODE_DETAILS);
+            close(connection, RDBMSConstants.TASK_CREATING_NODE_DETAILS);
+        }
+    }
+
+    /**
+     * Clear AMQP host.
+     * @param nodeID  Host
+     * @throws AndesException
+     */
+    @Override
+    public void removeAmqpAddress(String nodeID) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        try {
+            connection = getConnection();
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_REMOVE_NODE_DETAIL);
+            preparedStatement.setString(1,nodeID);
+            preparedStatement.executeUpdate();
+            connection.commit();
+
+        } catch (SQLException e) {
+            String errMsg =
+                    RDBMSConstants.TASK_REMOVE_NODE_DETAILS + " Host: " + nodeID;
+            rollback(connection, RDBMSConstants.TASK_REMOVE_NODE_DETAILS);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg,e);
+
+        } finally {
+            close(preparedStatement, RDBMSConstants.TASK_REMOVE_NODE_DETAILS);
+            close(connection, RDBMSConstants.TASK_REMOVE_NODE_DETAILS);
+        }
+    }
+
+    /**
+     * Get all live nodes transport details and set set falg.
+     * @return List of transport data.
+     * @throws AndesException
+     */
+    @Override
+    public List<TransportData> getAllTransportDetails() throws AndesException {
+
+         String nodeIdentifier;
+         List<MultipleAddressDetails> multipleAddressDetailses;
+         int amqpPort;
+         int sslAmqpPort;
+
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+
+        PreparedStatement preparedStatement1 = null;
+        ResultSet resultSet1 = null;
+
+        try {
+            connection = getConnection();
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_ORDERD_NODE_DETAILS);
+            resultSet = preparedStatement.executeQuery();
+
+
+
+            List<TransportData> transportDataList = new ArrayList<>();
+            // iterate through the result set and add to transport data List
+            while (resultSet.next()) {
+
+                List<MultipleAddressDetails> multipleAddressDetailsList = new ArrayList<>();
+
+                nodeIdentifier = resultSet.getString(RDBMSConstants.NODE_IDENTIFIER);
+                amqpPort = resultSet.getInt(RDBMSConstants.NODE_PORT);
+                sslAmqpPort = resultSet.getInt(RDBMSConstants.NODE_SSL_PORT);
+
+
+                connection = getConnection();
+                preparedStatement1 = connection.prepareStatement(RDBMSConstants.PS_SELECT_ADDRESS_DETAILS);
+                preparedStatement1.setString(1, nodeIdentifier);
+                resultSet1 = preparedStatement1.executeQuery();
+
+               while (resultSet1.next()){
+
+                  MultipleAddressDetails multipleAddressDetails =
+                          new MultipleAddressDetails(resultSet1.getString(RDBMSConstants.NODE_INTERFACE),
+                                  resultSet1.getString(RDBMSConstants.NODE_ADDRESS));
+
+                   multipleAddressDetailsList.add(multipleAddressDetails);
+
+               }
+
+                TransportData transportData = new TransportData(nodeIdentifier, multipleAddressDetailsList,amqpPort,
+                        sslAmqpPort);
+
+                transportDataList.add(transportData);
+
+            }
+
+            connection.commit();
+            return transportDataList;
+        } catch (SQLException e) {
+            throw rdbmsStoreUtils.convertSQLException(
+                    "Error occurred while " + RDBMSConstants.TASK_SELECT_ORDERD_NODE_DETAILS, e);
+        } finally {
+            close(resultSet, RDBMSConstants.TASK_SELECT_ORDERD_NODE_DETAILS);
+            close(preparedStatement, RDBMSConstants.TASK_SELECT_ORDERD_NODE_DETAILS);
+            close(connection, RDBMSConstants.TASK_SELECT_ORDERD_NODE_DETAILS);
+        }
+    }
+
 }

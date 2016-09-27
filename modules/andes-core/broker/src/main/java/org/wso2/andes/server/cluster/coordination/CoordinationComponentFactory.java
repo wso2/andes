@@ -90,7 +90,7 @@ public class CoordinationComponentFactory {
                 if (null != hazelcastBasedListener) {
                     clusterNotificationAgent = new HazelcastBasedNotificationAgentImpl(
                             hazelcastBasedListener.getClusterNotificationChannel(),
-                            hazelcastBasedListener.getDBSyncNotificationChannel());
+                            hazelcastBasedListener.getDBSyncNotificationChannel(),hazelcastBasedListener.getDynamicDiscoveryNotificationChannel());
                 } else {
                     throw new AndesException("Cannot create HazelcastBasedNotificationAgentImpl. Create " +
                             "HazelcastClusterNotificationListenerImpl first to register Hazelcast topics");

@@ -68,6 +68,13 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
     }
 
     /**
+     * Get the connections details.
+     * @return connection details
+     */
+    public ConnectionURL getAmqpConnection(){
+        return _connectionDetails;
+    }
+    /**
      * This constructor is never used!
      */
     public AMQConnectionFactory(ConnectionURL url)

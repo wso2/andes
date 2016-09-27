@@ -48,23 +48,22 @@ import java.util.concurrent.TimeUnit;
  * Cluster Manager is responsible for Handling the Broker Cluster Management Tasks like
  * Queue Worker distribution. Fail over handling for cluster nodes. etc.
  */
-public class ClusterManager implements StoreHealthListener{
+public class ClusterManager implements StoreHealthListener {
+
+    public static final int SLOT_SUBMIT_TASK_POOL_SIZE = 1;
 
     /**
      * Class logger
      */
     private Log log = LogFactory.getLog(ClusterManager.class);
-
     /**
      * Id of the local node
      */
     private String nodeId;
-
     /**
      * AndesContextStore instance
      */
     private AndesContextStore andesContextStore;
-
     /**
      * Cluster agent for managing cluster communication
      */
@@ -74,16 +73,15 @@ public class ClusterManager implements StoreHealthListener{
      * This is the cached value of the operational status of the store
      */
     private boolean storeOperational;
-
     private ScheduledExecutorService slotRecoveryTaskService;
-
-    public static final int SLOT_SUBMIT_TASK_POOL_SIZE = 1;
+    private DiscoveryInformation discoveryInformation;
 
     /**
      * Create a ClusterManager instance
      */
-    public ClusterManager() {
+    public ClusterManager() throws AndesException {
         this.andesContextStore = AndesContext.getInstance().getAndesContextStore();
+        this.discoveryInformation = new DiscoveryInformation();
     }
 
     /**
@@ -91,7 +89,7 @@ public class ClusterManager implements StoreHealthListener{
      *
      * @throws AndesException
      */
-    public void init() throws AndesException{
+    public void init() throws AndesException {
 
         if (AndesContext.getInstance().isClusteringEnabled()) {
             initClusterMode();
@@ -117,20 +115,30 @@ public class ClusterManager implements StoreHealthListener{
      */
     public void memberAdded(String addedNodeId) {
         log.info("Handling cluster gossip: Node " + addedNodeId + "  Joined the Cluster");
+
+        try{
+            discoveryInformation.addTransportData(addedNodeId);
+        } catch (AndesException e) {
+            log.info("Error while getting Transport data from database in Cluster Manager",e);
+        }
     }
 
     /**
      * Handles changes needs to be done in current node when a node leaves the cluster
+     *
      * @param deletedNodeId deleted node id
+     * @throws AndesException
      */
     public void memberRemoved(String deletedNodeId) throws AndesException {
         log.info("Handling cluster gossip: Node " + deletedNodeId + "  left the Cluster");
 
-        if(clusterAgent.isCoordinator()) {
+        if (clusterAgent.isCoordinator()) {
             SlotManagerClusterMode.getInstance().deletePublisherNode(deletedNodeId);
 
             //Reassign the slot to free slots pool
             SlotManagerClusterMode.getInstance().reassignSlotsWhenMemberLeaves(deletedNodeId);
+
+          discoveryInformation.updateTransportData(deletedNodeId);
 
             // Schedule a slot recovery task for lost submit slot event from left member node
             log.info("Scheduling slot recovery task.");
@@ -140,10 +148,8 @@ public class ClusterManager implements StoreHealthListener{
                     Andes.getInstance().triggerRecoveryEvent();
                 }
             }, SlotMessageCounter.getInstance().SLOT_SUBMIT_TIMEOUT, TimeUnit.MILLISECONDS);
-        }
 
-        // Deactivate durable subscriptions belonging to the node
-        if(clusterAgent.isCoordinator()) {
+            // Deactivate durable subscriptions belonging to the node
             ClusterResourceHolder.getInstance().getSubscriptionManager().
                     closeAllActiveSubscriptionsOfNode(deletedNodeId);
         }
@@ -171,6 +177,8 @@ public class ClusterManager implements StoreHealthListener{
      * Perform cleanup tasks before shutdown
      */
     public void prepareLocalNodeForShutDown() throws AndesException {
+
+        discoveryInformation.deleteTransportData(nodeId);
         //clear stored node IDS and mark subscriptions of node as closed
         clearAllPersistedStatesOfDisappearedNode(nodeId);
     }
@@ -192,7 +200,7 @@ public class ClusterManager implements StoreHealthListener{
      *
      * @throws AndesException, UnknownHostException
      */
-    private void initStandaloneMode() throws AndesException{
+    private void initStandaloneMode() throws AndesException {
 
         try {
             // Get Node ID configured by user in broker.xml (if not "default" we must use it as the ID)
@@ -210,7 +218,7 @@ public class ClusterManager implements StoreHealthListener{
             }
 
             log.info("Initializing Standalone Mode. Current Node ID:" + this.nodeId + " "
-                     + InetAddress.getLocalHost().getHostAddress());
+                    + InetAddress.getLocalHost().getHostAddress());
 
             andesContextStore.storeNodeDetails(nodeId, InetAddress.getLocalHost().getHostAddress());
         } catch (UnknownHostException e) {
@@ -227,18 +235,18 @@ public class ClusterManager implements StoreHealthListener{
 
         // Set the cluster agent from the Andes Context.
         this.clusterAgent = AndesContext.getInstance().getClusterAgent();
-
         clusterAgent.start(this);
-
         this.nodeId = clusterAgent.getLocalNodeIdentifier();
         log.info("Initializing Cluster Mode. Current Node ID:" + this.nodeId);
 
         String localMemberHostAddress = clusterAgent.getLocalNodeIdentifier();
+        //  discoveryInformation.getDiscoveryInformation();
 
         if (log.isDebugEnabled()) {
-            log.debug("Stored node ID : " + this.nodeId +  ". Stored node data(Hazelcast local "
-                      + "member host address) : " + localMemberHostAddress);
+            log.debug("Stored node ID : " + this.nodeId + ". Stored node data(Hazelcast local "
+                    + "member host address) : " + localMemberHostAddress);
         }
+
     }
 
     /**
@@ -266,7 +274,7 @@ public class ClusterManager implements StoreHealthListener{
 
     /**
      * Gets details  of all the members in the cluster in the format of,
-     *    "node_ID,host_address,port,isCoordinator->(true|false)"
+     * "node_ID,host_address,port,isCoordinator->(true|false)"
      *
      * @return A list of address of the nodes in a cluster
      */
@@ -286,7 +294,7 @@ public class ClusterManager implements StoreHealthListener{
      * @return true if healthy, else false.
      */
     public boolean getStoreHealth() {
-       return storeOperational;
+        return storeOperational;
     }
 
     /**

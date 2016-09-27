@@ -18,7 +18,6 @@
 
 package org.wso2.andes.kernel;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -39,6 +38,7 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.ClusterAgent;
 import org.wso2.andes.server.cluster.ClusterManagementInformationMBean;
 import org.wso2.andes.server.cluster.ClusterManager;
+import org.wso2.andes.server.cluster.DiscoveryInformation;
 import org.wso2.andes.server.cluster.coordination.ClusterNotificationListenerManager;
 import org.wso2.andes.server.cluster.coordination.CoordinationComponentFactory;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
@@ -54,6 +54,7 @@ import org.wso2.andes.thrift.MBThriftServer;
 import org.wso2.carbon.context.CarbonContext;
 import org.wso2.carbon.user.api.UserStoreException;
 
+import javax.management.JMException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -61,9 +62,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-import javax.management.JMException;
+
 
 /**
  * Andes kernel startup/shutdown related work is done through this class.
@@ -375,6 +375,16 @@ public class AndesKernelBoot {
     }
 
     /**
+     * Activate Dynamic Discovery
+     * @throws AndesException
+     */
+    private static void activeDynamicDiscovery() throws AndesException {
+
+        DiscoveryInformation discoveryInformation = new DiscoveryInformation();
+        discoveryInformation.getDiscoveryInformation();
+    }
+
+    /**
      * Starts the andes cluster.
      */
     public static void startAndesCluster() throws Exception {
@@ -390,6 +400,9 @@ public class AndesKernelBoot {
 
         //Start components such as the subscription manager, subscription engine, messaging engine, etc.
         startAndesComponents();
+
+        //Active dynamic discovery.
+        activeDynamicDiscovery();
 
     }
 
@@ -511,8 +524,7 @@ public class AndesKernelBoot {
     }
 
     /**
-     * Start manager to join node to the cluster and register
-     * node in the cluster
+     * Start manager to join node to the cluster and register node in the cluster.
      *
      * @throws AndesException
      */

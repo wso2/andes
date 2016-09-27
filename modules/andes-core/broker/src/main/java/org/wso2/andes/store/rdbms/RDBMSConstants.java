@@ -85,6 +85,12 @@ public class RDBMSConstants {
     protected static final String MSG_STORE_STATUS_TABLE = "MB_MSG_STORE_STATUS";
     protected static final String RETAINED_METADATA_TABLE = "MB_RETAINED_METADATA";
     protected static final String RETAINED_CONTENT_TABLE = "MB_RETAINED_CONTENT";
+
+    //Node details table
+    protected static final String NODE_DETAIL_TABLE = "NODE_DETAIL_TABLE";
+    protected static final String ADDRESS_DETAIL_TABLE = "ADDRESS_DETAIL_TABLE";
+
+
     // Message Store table columns
     protected static final String MESSAGE_ID = "MESSAGE_ID";
     protected static final String QUEUE_ID = "QUEUE_ID";
@@ -142,6 +148,15 @@ public class RDBMSConstants {
     protected static final String THRIFT_PORT = "THRIFT_PORT";
     protected static final String CLUSTER_AGENT_HOST = "CLUSTER_AGENT_HOST";
     protected static final String CLUSTER_AGENT_PORT = "CLUSTER_AGENT_PORT";
+
+
+    //Node detail table columns
+    protected static final String NODE_PORT = "NODE_PORT";
+    protected static final String FLAG= "FLAG";
+    protected static final String NODE_SSL_PORT= "NODE_SSL_PORT";
+    protected static final String NODE_IDENTIFIER = "NODE_IDENTIFIER";
+    protected static final String NODE_INTERFACE = "NODE_INTERFACE";
+    protected static final String NODE_ADDRESS = "NODE_ADDRESS";
 
     //Slot table columns
     protected static final String SLOT_ID = "SLOT_ID";
@@ -1033,13 +1048,61 @@ public class RDBMSConstants {
             "DELETE FROM " + MEMBERSHIP_TABLE;
 
     /**
-     * Prepared statement to slear membership change events destined to a particular member.
+     * Prepared statement to clear membership change events destined to a particular member.
      */
     protected static final String PS_CLEAN_MEMBERSHIP_EVENTS_FOR_NODE =
             "DELETE FROM " + MEMBERSHIP_TABLE
             + " WHERE " + NODE_ID + "=?";
 
+
+    /**
+     * Prepared statement to insert live node details.
+     */
+    protected static final String PS_NODE_DETAIL_INSERT =
+            "INSERT INTO " + NODE_DETAIL_TABLE + " ("
+                    + NODE_IDENTIFIER + ","
+                    + NODE_PORT +","
+                    + NODE_SSL_PORT + ")"
+                    + " VALUES (?,?,?)";
+
+
+    /**
+     * Prepared statement to remove live nodes.
+     */
+    protected static final String PS_REMOVE_NODE_DETAIL =
+            "DELETE FROM " + NODE_DETAIL_TABLE
+                    + " WHERE " + NODE_IDENTIFIER + "=?";
+
+
+    /**
+     * Prepared statement to select live node details.
+     */
+    protected static final String PS_SELECT_ORDERD_NODE_DETAILS =
+            "SELECT " +NODE_IDENTIFIER+","+ NODE_PORT + ","+NODE_SSL_PORT
+                    + " FROM " + NODE_DETAIL_TABLE;
+
+
+    protected static final String PS_ADDRESS_DETAIL_INSERT =
+            "INSERT INTO " + ADDRESS_DETAIL_TABLE + " ("
+                    + NODE_IDENTIFIER + ","
+                    + NODE_INTERFACE + ","
+                    + NODE_ADDRESS + ")"
+                    + " VALUES (?,?,?)";
+
+    protected static final String PS_SELECT_ADDRESS_DETAILS=
+            "SELECT " +NODE_IDENTIFIER+"," +NODE_INTERFACE+","+ NODE_ADDRESS
+                    + " FROM " + ADDRESS_DETAIL_TABLE
+                    + " WHERE " + NODE_IDENTIFIER + "=?";
+
+
+
+
     // Message Store related jdbc tasks executed
+    protected static final String TASK_CREATING_NODE_DETAILS = "creating node details";
+    protected static final String TASK_REMOVE_NODE_DETAILS = "  removing node details";
+    protected static final String TASK_UPDATE_NODE_DETAILS = "updating node flag";
+    protected static final String TASK_SELECT_ORDERD_NODE_DETAILS = " selecting orderd node details";
+
     protected static final String TASK_STORING_MESSAGE_PARTS = "storing message parts.";
     protected static final String TASK_DELETING_MESSAGE_PARTS = "deleting message parts.";
     protected static final String TASK_RETRIEVING_MESSAGE_PARTS = "retrieving message parts.";

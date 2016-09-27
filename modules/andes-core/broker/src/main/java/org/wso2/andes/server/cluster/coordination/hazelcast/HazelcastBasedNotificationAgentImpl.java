@@ -46,6 +46,11 @@ public class HazelcastBasedNotificationAgentImpl implements ClusterNotificationA
     private ITopic<ClusterNotification> dbSyncNotificationChannel;
 
     /**
+     * This channel is used for dynamic discovery events.
+     */
+    private ITopic<ClusterNotification> dynamicDiscoveryNotificationChannel;
+
+    /**
      * ID of the local node
      */
     private String localNodeID;
@@ -57,12 +62,14 @@ public class HazelcastBasedNotificationAgentImpl implements ClusterNotificationA
      *                                   queue, binding, message router, subscription changes
      * @param dbSyncNotificationChannel  the channel that is used to publish and
      *                                   subscribe db sync events.
+     * @param dynamicDiscoveryChannel the channel that is used to publish dynamic discovery message.
      */
     public HazelcastBasedNotificationAgentImpl(ITopic<ClusterNotification> clusterNotificationChannel,
-            ITopic<ClusterNotification> dbSyncNotificationChannel) {
+            ITopic<ClusterNotification> dbSyncNotificationChannel, ITopic<ClusterNotification> dynamicDiscoveryChannel) {
         this.localNodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         this.clusterNotificationChannel = clusterNotificationChannel;
         this.dbSyncNotificationChannel = dbSyncNotificationChannel;
+        this.dynamicDiscoveryNotificationChannel = dynamicDiscoveryChannel;
     }
 
 
@@ -199,5 +206,16 @@ public class HazelcastBasedNotificationAgentImpl implements ClusterNotificationA
             throw new AndesException("Error while sending db sync notification"
                     + clusterNotification.getEncodedObjectAsString(), e);
         }
+    }
+
+    /**
+     * Publish message to dynamic discovery channel. This method call by dynamic discovery OSGI component.
+     */
+    public void publishDyanamicDiscovery() throws AndesException{
+
+        ClusterNotification clusterNotification = new ClusterNotification("", ClusterNotificationListener
+                .NotifiedArtifact.DynamicDiscoveryUpdate.toString(), "", "DynamicDiscoveryEvent", "");
+        dynamicDiscoveryNotificationChannel.publish(clusterNotification);
+
     }
 }
