@@ -46,6 +46,8 @@ public class ConcurrentContentReadTaskBatchProcessor implements EventProcessor {
     private final int groupCount;
     private int batchSize;
 
+    private static int count =0;
+
     /**
      * Construct a {@link EventProcessor} that will automatically track the progress by updating its sequence when
      * the {@link com.lmax.disruptor.EventHandler#onEvent(Object, long, boolean)} method returns.
@@ -130,9 +132,12 @@ public class ConcurrentContentReadTaskBatchProcessor implements EventProcessor {
         String storageQueueName;
         // HashMap messageMap = new HashMap();
 
+        log.info("ConcurrentContentReadTaskBatchProcessor" + count);
+        count ++;
 
         while (true) {
             try {
+
                 final long availableSequence = sequenceBarrier.waitFor(nextSequence);
 
                 while (nextSequence <= availableSequence) {

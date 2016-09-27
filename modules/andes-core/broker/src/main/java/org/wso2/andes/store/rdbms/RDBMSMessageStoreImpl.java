@@ -56,6 +56,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
     private static final Logger log = Logger.getLogger(RDBMSMessageStoreImpl.class);
 
+    private static int count =0;
+
     /**
      * Cache queue name to queue_id mapping to avoid extra sql queries
      */
@@ -411,7 +413,17 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         HashMap<String, List<AndesMessage>> messageToQueueHashMap = new HashMap<>();
         String queueName;
 
+
+
+
+
         for (AndesMessage message : messageList) {
+            count++;
+            log.info("RDBMSMessageStoreImpl" + count);
+            // the following statement is used to log any messages
+
+            //log.info("Udaka" + count);
+
             queueName = message.getMetadata().getStorageQueueName();
             List<AndesMessage> messages = messageToQueueHashMap.get(queueName);
             //long messageID = message.getMetadata().messageID;

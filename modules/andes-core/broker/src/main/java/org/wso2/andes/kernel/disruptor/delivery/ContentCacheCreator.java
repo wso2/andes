@@ -49,6 +49,8 @@ public class ContentCacheCreator {
      */
     private static final Logger log = Logger.getLogger(ContentCacheCreator.class);
 
+    private static int count =0;
+
     /**
      * Maximum content chunk size stored in DB
      */
