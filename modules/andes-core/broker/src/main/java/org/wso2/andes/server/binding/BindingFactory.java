@@ -126,7 +126,7 @@ public class BindingFactory {
 
     public boolean addBinding(String bindingKey, AMQQueue queue, Exchange exchange, Map<String, Object> arguments)
             throws AMQSecurityException, AMQInternalException {
-        boolean bindingAdded = makeBinding(bindingKey, queue, exchange, arguments, false, false, true);
+        boolean bindingAdded = makeBinding(bindingKey, queue, exchange, arguments, false, false);
         //tell Andes kernel to create binding
         QpidAndesBridge.createBinding(exchange, new AMQShortString(bindingKey), queue);
         return bindingAdded;
@@ -137,13 +137,16 @@ public class BindingFactory {
                                   final Exchange exchange,
                                   final Map<String, Object> arguments) throws AMQSecurityException,
                                   AMQInternalException {
-        boolean isBindingAdded = makeBinding(bindingKey, queue, exchange, arguments, false, true, true);
+        boolean isBindingAdded = makeBinding(bindingKey, queue, exchange, arguments, false, true);
         //tell Andes kernel to create binding
         QpidAndesBridge.createBinding(exchange, new AMQShortString(bindingKey), queue);
         return isBindingAdded;
     }
 
-    private synchronized boolean makeBinding(String bindingKey, AMQQueue queue, Exchange exchange, Map<String, Object> arguments, boolean restore, boolean force, boolean isLocal) throws AMQSecurityException, AMQInternalException {
+    private synchronized boolean makeBinding(String bindingKey, AMQQueue queue, Exchange exchange,
+                                             Map<String, Object> arguments, boolean restore, boolean force)
+            throws AMQSecurityException, AMQInternalException {
+
         assert queue != null;
         if (bindingKey == null) {
             bindingKey = "";
@@ -155,7 +158,7 @@ public class BindingFactory {
             arguments = Collections.emptyMap();
         }
 
-        /**
+        /*
          * We should check cluster-wide if the queue has a binding with a key A and now it is going to bind with a different key
          * (say B) we should not allow it. It is enough to check with local bindings as whenever we create a binding in cluster
          * it is syned and created locally. We test it before binding authorization to avoid
@@ -233,7 +236,7 @@ public class BindingFactory {
     public void restoreBinding(final String bindingKey, final AMQQueue queue,
                                final Exchange exchange, final Map<String, Object> argumentMap)
             throws AMQSecurityException, AMQInternalException {
-        makeBinding(bindingKey, queue, exchange, argumentMap, true, false, false);
+        makeBinding(bindingKey, queue, exchange, argumentMap, true, false);
     }
 
     public void removeBinding(final Binding b) throws AMQSecurityException, AMQInternalException {
