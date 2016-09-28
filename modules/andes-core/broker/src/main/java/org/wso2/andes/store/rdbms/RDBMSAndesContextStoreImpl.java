@@ -2363,6 +2363,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             throw rdbmsStoreUtils.convertSQLException("error occurred while " + RDBMSConstants.TASK_MARK_NODE_NOT_NEW, e);
         } finally {
             close(preparedStatement, RDBMSConstants.TASK_MARK_NODE_NOT_NEW);
+            close(connection, RDBMSConstants.TASK_MARK_NODE_NOT_NEW);
         }
     }
 
