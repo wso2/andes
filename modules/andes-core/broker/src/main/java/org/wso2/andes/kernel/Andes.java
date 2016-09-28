@@ -648,8 +648,8 @@ public class Andes {
      * Get expired but not yet deleted messages from message store.
      *
      * @param lowerBoundMessageID lower bound message Id of the safe zone for delete
-     * @param queueName Queue name
-     * @return AndesRemovableMetadata
+     * @param queueName queue name in which the expired messages needs to be checked
+     * @return list of expired message Ids
      * @throws AndesException
      */
     public List<Long> getExpiredMessages(long lowerBoundMessageID, String queueName) throws AndesException {

@@ -25,14 +25,14 @@ import java.util.concurrent.ExecutionException;
 
 /**
  * DLCExpiryCheckEnabledDeletionTask responsible for deleting the expired messages from unassigned slots,
- * and dead letter channel
+ * and dead letter channel.
  */
 public class DLCExpiryCheckEnabledDeletionTask extends PeriodicExpiryMessageDeletionTask {
 
     private static Log log = LogFactory.getLog(DLCExpiryCheckEnabledDeletionTask.class);
 
     /**
-     * Get the messages form the DLC which are expired and delete those from DB
+     * Get the messages form the DLC which are expired and delete those from DB.
      */
     public void deleteExpiredMessagesFromDLC() {
 

@@ -159,7 +159,7 @@ public class SlotManagerClusterMode extends AbstractSlotManager {
          * End message id that needs to be allocated to this slot
          * End messageID will be the lowest in published message ID list. Get and remove
          */
-        if(null != messageIDSet){
+        if (null != messageIDSet) {
             endMessageId = messageIDSet.pollFirst();
         }
         /**
@@ -665,9 +665,7 @@ public class SlotManagerClusterMode extends AbstractSlotManager {
 
             if (messageIDSet.size() >= safetySlotCount) {
                 lowerBoundId = messageIDSet.toArray(new Long[messageIDSet.size()])[safetySlotCount - 1] + 1;
-                /**
-                 * Inform the slot manager regarding the current expiry deletion range and queue
-                 */
+                // Inform the slot manager regarding the current expiry deletion range and queue
                 setDeletionTaskState(queueName, lowerBoundId);
             }
         }

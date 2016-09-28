@@ -289,8 +289,7 @@ public class HazelcastAgent implements SlotAgent {
                 }
             }
         } catch (HazelcastInstanceNotActiveException ex) {
-            throw new AndesException("Failed to delete slot for queue : " +
-                    queueName + " from node " + nodeId, ex);
+            throw new AndesException("Failed to delete slot for queue : " + queueName + " from node " + nodeId, ex);
         }
         return slotDeleted;
     }

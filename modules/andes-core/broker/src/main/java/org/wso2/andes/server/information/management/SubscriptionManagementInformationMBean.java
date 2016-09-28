@@ -46,8 +46,15 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
 
     private static Log log = LogFactory.getLog(SubscriptionManagementInformationMBean.class);
 
+    /**
+     * Separator used for render the subscriptions for UI
+     */
     private static final String SEPARATOR = ";";
-    private static final String SELECT_ALL = "All";
+
+    /**
+     * Used when the subscriber connection is not available
+     */
+    private static final String NOT_AVAILABLE = "N/A";
 
     /**
      * Subscription store used to query subscription related information
@@ -159,14 +166,12 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
 
             for (AndesSubscription subscription : searchSubscriptionList) {
                 if (startingIndex <= index) {
-
                     Long pendingMessageCount
                             = MessagingEngine.getInstance().getMessageCountOfQueue(subscription.getStorageQueue()
                             .getName());
                     subscriptionArray[subscriptionDetailsIndex] =
                             renderSubscriptionForUI(isActive, destinationType,subscription,
                                     pendingMessageCount.intValue());
-                    ;
                     subscriptionDetailsIndex++;
                     if (subscriptionDetailsIndex == maxSubscriptionCount) {
                         break;
@@ -177,13 +182,19 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
 
             return subscriptionArray;
         } catch (Exception e) {
-            log.error("Error while invoking MBeans to retrieve subscription information", e);
+            log.error("Error while invoking MBeans to retrieve subscription information. The given method parameters "
+                    + "are: isDurable- " + isDurable + " isActive- " + isActive + " protocolType- " + protocolType
+                    + " destinationType- " + destinationType + " filteredNamePattern- " + filteredNamePattern
+                    + " isFilteredNameByExactMatch- " + isFilteredNameByExactMatch + " identifierPattern- "
+                    + identifierPattern + " isIdentifierPatternByExactMatch- " + isIdentifierPatternByExactMatch
+                    + " ownNodeId- " + ownNodeId + " pageNumber- " + pageNumber + " maxSubscriptionCount- "
+                    + maxSubscriptionCount, e);
             throw new MBeanException(e, "Error while invoking MBeans to retrieve subscription information");
         }
     }
 
     /**
-     * Create the regex pattern for filtering
+     * Create the regex pattern for filtering.
      *
      * @param pattern String value of the patten
      * @return Regex pattern
@@ -204,8 +215,6 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
                                                         isIdentifierPatternByExactMatch, String ownNodeId)
             throws MBeanException {
         try {
-
-
             AndesSubscriptionManager subscriptionManager =
                     AndesContext.getInstance().getAndesSubscriptionManager();
             //get the searched subscriptions
@@ -322,19 +331,32 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
 
         String subscriptionIdentifier = subscription.getSubscriptionId();
 
-        return subscriptionIdentifier
-                + SEPARATOR + subscription.getStorageQueue().getMessageRouterBindingKey()
-                + SEPARATOR + subscription.getStorageQueue().getMessageRouter().getName()
-                + SEPARATOR + subscription.getStorageQueue().getName()
-                + SEPARATOR + subscription.isDurable()
-                + SEPARATOR + isActive
-                + SEPARATOR + pendingMessageCount
-                + SEPARATOR + ((null == subscription.getSubscriberConnection()) ? "N/A": subscription
-                                                            .getSubscriberConnection().getConnectedNode())
-                + SEPARATOR + subscription.getStorageQueue().getMessageRouterBindingKey()
-                + SEPARATOR + subscription.getProtocolType().name()
-                + SEPARATOR + destinationType
-                + SEPARATOR + ((null == subscription.getSubscriberConnection()) ? "N/A": subscription
-                                                            .getSubscriberConnection().getConnectedIP());
+        StringBuilder subscriptionForUI = new StringBuilder(subscriptionIdentifier);
+        subscriptionForUI.append(SEPARATOR);
+        subscriptionForUI.append(subscription.getStorageQueue().getMessageRouterBindingKey());
+        subscriptionForUI.append(SEPARATOR);
+        subscriptionForUI.append(subscription.getStorageQueue().getMessageRouter().getName());
+        subscriptionForUI.append(SEPARATOR);
+        subscriptionForUI.append(subscription.getStorageQueue().getName());
+        subscriptionForUI.append(SEPARATOR);
+        subscriptionForUI.append(subscription.isDurable());
+        subscriptionForUI.append(SEPARATOR);
+        subscriptionForUI.append(isActive);
+        subscriptionForUI.append(SEPARATOR);
+        subscriptionForUI.append(pendingMessageCount);
+        subscriptionForUI.append(SEPARATOR);
+        subscriptionForUI.append(((null == subscription.getSubscriberConnection()) ? NOT_AVAILABLE: subscription
+                .getSubscriberConnection().getConnectedNode()));
+        subscriptionForUI.append(SEPARATOR);
+        subscriptionForUI.append(subscription.getStorageQueue().getMessageRouterBindingKey());
+        subscriptionForUI.append(SEPARATOR);
+        subscriptionForUI.append(subscription.getProtocolType().name());
+        subscriptionForUI.append(SEPARATOR);
+        subscriptionForUI.append(destinationType);
+        subscriptionForUI.append(SEPARATOR);
+        subscriptionForUI.append(((null == subscription.getSubscriberConnection()) ? NOT_AVAILABLE: subscription
+                .getSubscriberConnection().getConnectedIP()));
+
+        return subscriptionForUI.toString();
     }
 }

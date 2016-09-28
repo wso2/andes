@@ -21,12 +21,12 @@ import java.util.List;
 /**
  * DLCMessageExpiryManager is responsible for update the message status in metadata table and the,
  * expiry table since this is associated with the configuration DLC expiry check is set
- * to true
+ * to true.
  */
 public class DLCMessageExpiryManager implements MessageExpiryManager {
 
     /**
-     * Reference to MessageStore. This holds the messages received by andes
+     * Reference to MessageStore. This holds the messages received by andes.
      */
     private MessageStore messageStore;
 
@@ -35,7 +35,7 @@ public class DLCMessageExpiryManager implements MessageExpiryManager {
     }
 
     /**
-     * Responsible to move metadata to DLC when DLC expiry check is set to true
+     * Responsible to move metadata to DLC when DLC expiry check is set to true.
      * {@inheritDoc}
      */
     @Override
@@ -44,7 +44,7 @@ public class DLCMessageExpiryManager implements MessageExpiryManager {
     }
 
     /**
-     * Responsible to move metadata to DLC when DLC expiry check is set to true
+     * Responsible to move metadata to DLC when DLC expiry check is set to true.
      * {@inheritDoc}
      */
     @Override

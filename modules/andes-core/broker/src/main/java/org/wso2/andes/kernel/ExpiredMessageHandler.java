@@ -22,8 +22,7 @@ import org.wso2.andes.kernel.subscription.AndesSubscription;
 import org.wso2.andes.tools.utils.MessageTracer;
 
 /**
- * ExpiredMessageHandler skips the expired messages from delivery and add them into a set for
- * a batch delete
+ * ExpiredMessageHandler skips the expired messages from delivery and add them into a set for a batch delete.
  */
 public class ExpiredMessageHandler extends DeliveryResponsibility {
 
@@ -35,33 +34,29 @@ public class ExpiredMessageHandler extends DeliveryResponsibility {
     private PreDeliveryExpiryMessageDeletionTask preDeliveryExpiryMessageDeletionTask;
 
     /**
-     * Set the expiry message deletion task
-     * @param task Deletion task
+     * Set the expiry message deletion task.
+     *
+     * @param task deletion task
      */
     public void setExpiryMessageDeletionTask(PreDeliveryExpiryMessageDeletionTask task){
         this.preDeliveryExpiryMessageDeletionTask = task;
     }
 
     /**
-     * Check the messages for expiry and add them in a set for a batch delete if expired
+     * Check the messages for expiry and add them in a set for a batch delete if expired.
+     *
      * {@inheritDoc}
      */
     @Override
     protected boolean performResponsibility(AndesSubscription subscription,
                                             DeliverableAndesMetadata message) throws AndesException {
         boolean isOkayToProceed = true;
-        /**
-         * Check if destination entry has expired. Any expired message will not be delivered
-         */
+         // Check if destination entry has expired. Any expired message will not be delivered
         if (message.isExpired()) {
             log.warn("Message is expired. Therefore, it will not be sent. : id= " + message.getMessageID());
-            /**
-             * Since this message is not going to be delivered, no point in wait for ack.
-             */
+             // Since this message is not going to be delivered, no point in wait for ack.
             message.getSlot().decrementPendingMessageCount();
-            /**
-             * Add the expired messages to a list for a batch delete
-             */
+             // Add the expired messages to a list for a batch delete
             preDeliveryExpiryMessageDeletionTask.addMessageIdToExpiredQueue(message.getMessageID());
             MessageTracer.trace(message,MessageTracer.EXPIRED_MESSAGE_DETECTED_AND_QUEUED);
             isOkayToProceed = false;
