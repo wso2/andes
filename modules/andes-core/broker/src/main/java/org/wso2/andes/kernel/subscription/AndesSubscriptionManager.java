@@ -53,9 +53,8 @@ import java.util.Set;
 import java.util.UUID;
 
 import static com.googlecode.cqengine.query.QueryFactory.and;
-import static com.googlecode.cqengine.query.QueryFactory.equal;
-import static com.googlecode.cqengine.query.QueryFactory.matchesRegex;
 import static com.googlecode.cqengine.query.QueryFactory.contains;
+import static com.googlecode.cqengine.query.QueryFactory.equal;
 
 /**
  * Managers subscription add/remove and subscription query tasks inside Andes kernel
@@ -276,15 +275,13 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
                 //only durable queues are kept bounded to message routers
                 String messageRouterName = storageQueue.getMessageRouter().getName();
                 if (AMQPUtils.TOPIC_EXCHANGE_NAME.equals(messageRouterName)) {
-                    List<AndesSubscription> boundSubscriptions = storageQueue.getBoundSubscriptions();
-                    if (boundSubscriptions.isEmpty()) {
+                    if (!getAllSubscriptionsByQueue(ProtocolType.AMQP, storageQueue.getName()).iterator().hasNext()) {
                         AndesSubscription inactiveSubscriber = new InactiveSubscriber(storageQueue.getName(),
                                 storageQueue.getName(), storageQueue, ProtocolType.AMQP);
                         inactiveSubscriptions.add(inactiveSubscriber);
                     }
                 } else if (MQTTUtils.MQTT_EXCHANGE_NAME.equals(messageRouterName)) {
-                    List<AndesSubscription> boundSubscriptions = storageQueue.getBoundSubscriptions();
-                    if (boundSubscriptions.isEmpty()) {
+                    if (!getAllSubscriptionsByQueue(ProtocolType.MQTT, storageQueue.getName()).iterator().hasNext()) {
                         AndesSubscription inactiveSubscriber = new InactiveSubscriber(storageQueue.getName(),
                                 storageQueue.getName(), storageQueue, ProtocolType.MQTT);
                         inactiveSubscriptions.add(inactiveSubscriber);
