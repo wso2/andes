@@ -38,6 +38,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -286,22 +287,25 @@ public class FlowControlManager  implements StoreHealthListener, NetworkPartitio
             for (AndesChannel channel : channels) {
                 channel.notifyGlobalErrorBasedFlowControlActivation();
             }
-            
-            
-            if (forcefullyDisconnect){
+            log.info("Global error based flow control enabled.");
+            if (forcefullyDisconnect) {
                 // before the iteration its important to have a constant view on available channels.
-                // if we send 'disconnect' to channels using the original collection that will result in a 
+                // if we send 'disconnect' to channels using the original collection that will result in a
                 // concurrent modification ( since underlying socket/client is asked to disconnect,
                 // client disconnects, and this collection is modified while we iterating.
                 ArrayList<AndesChannel> constantView = new ArrayList<>(channels);
-                
-                for (AndesChannel channel : constantView){
-                    channel.disconnect();
+
+                for (AndesChannel channel : constantView) {
+                    try {
+                        channel.disconnect();
+                    }
+                    catch (Exception exception){
+                        log.warn("Error occurred while disconnecting channel: " + channel.getId());
+                    }
                 }
-                
+                log.info("Disconnected all clients due to store being non-operational.");
             }
-            
-            log.info("Global error based flow control enabled.");
+
         }
     }
     
@@ -376,6 +380,7 @@ public class FlowControlManager  implements StoreHealthListener, NetworkPartitio
     @Override
     public void storeNonOperational(HealthAwareStore store, Exception ex) {
         //Remove all local subscriptions and enable error based flow control when the store becomes non-operational.
+        log.warn("Stores became non-operational. Enabling error based flow control.");
         blockListenersOnErrorBasedFlowControl(true);
     }
 
@@ -388,6 +393,7 @@ public class FlowControlManager  implements StoreHealthListener, NetworkPartitio
      */
     @Override
     public void storeOperational(HealthAwareStore store) {
+        log.info("Stores became operational. Disabling error based flow control.");
         unblockListenersOnErrorBasedFlowControl();
     }
 

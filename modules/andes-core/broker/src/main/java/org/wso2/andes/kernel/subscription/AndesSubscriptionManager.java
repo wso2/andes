@@ -36,6 +36,10 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.ClusterNotificationAgent;
 import org.wso2.andes.server.cluster.coordination.CoordinationComponentFactory;
 import org.wso2.andes.server.cluster.error.detection.NetworkPartitionListener;
+import org.wso2.andes.store.AndesStoreUnavailableException;
+import org.wso2.andes.store.FailureObservingStoreManager;
+import org.wso2.andes.store.HealthAwareStore;
+import org.wso2.andes.store.StoreHealthListener;
 import org.wso2.carbon.metrics.manager.Gauge;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
@@ -56,7 +60,7 @@ import static com.googlecode.cqengine.query.QueryFactory.contains;
 /**
  * Managers subscription add/remove and subscription query tasks inside Andes kernel
  */
-public class AndesSubscriptionManager implements NetworkPartitionListener {
+public class AndesSubscriptionManager implements NetworkPartitionListener, StoreHealthListener {
 
     private static Log log = LogFactory.getLog(AndesSubscriptionManager.class);
 
@@ -104,6 +108,11 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
     private AndesContextStore andesContextStore;
 
     /**
+     * Indicates if the underlying context/message store is available or not. True if the store is unavailable.
+     */
+    private boolean storeUnavailable;
+
+    /**
      * Create a AndesSubscription manager instance. This is a static class managing
      * subscriptions.
      *
@@ -119,6 +128,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
         this.storageQueueRegistry = AndesContext.getInstance().getStorageQueueRegistry();
         this.andesContextStore = andesContextStore;
         this.localNodeId = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
+        storeUnavailable = false;
 
         CoordinationComponentFactory coordinationComponentFactory = new CoordinationComponentFactory();
         this.clusterNotificationAgent = coordinationComponentFactory.createClusterNotificationAgent();
@@ -132,6 +142,8 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
         MetricManager.gauge(MetricsConstants.QUEUE_SUBSCRIBERS, Level.INFO, new QueueSubscriberGauge());
         //Add topic gauge to metrics manager
         MetricManager.gauge(MetricsConstants.TOPIC_SUBSCRIBERS, Level.INFO, new TopicSubscriberGauge());
+
+        FailureObservingStoreManager.registerStoreHealthListener(this);
     }
 
     /**
@@ -166,8 +178,11 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
         storageQueue.bindSubscription(subscription, subscriptionRequest.getRoutingKey());
         registerSubscription(subscription);
         //Store the subscription
-        andesContextStore.storeDurableSubscription(subscription);
-
+        try {
+            andesContextStore.storeDurableSubscription(subscription);
+        } catch (AndesStoreUnavailableException exception) {
+            log.warn("Could not add subscription to the store since the store became unavailable", exception);
+        }
         log.info("Add Local subscription " + subscription.getProtocolType() + " " + subscription.toString());
 
         notifySubscriptionListeners(subscription, ClusterNotificationListener.SubscriptionChange.Added);
@@ -230,9 +245,15 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
         subscriptionRegistry.removeSubscription(subscription);
 
         subscription.getStorageQueue().unbindSubscription(subscription);
-
-        andesContextStore.removeDurableSubscription(subscription);
-
+        if (!storeUnavailable) {
+            try {
+                andesContextStore.removeDurableSubscription(subscription);
+            } catch (AndesStoreUnavailableException exception) {
+                log.warn("Could not remove subscription from store since the store is unavailable", exception);
+            }
+        } else {
+            log.warn("Cannot not remove subscription from store since the store is non-operational");
+        }
         notifySubscriptionListeners(subscription, ClusterNotificationListener.SubscriptionChange.Closed);
 
         clusterNotificationAgent.notifySubscriptionsChange(subscription,
@@ -829,6 +850,19 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
         //if DB does not have the local subscription add it
         localSubscriptions.removeAll(dbSubscriptions);
         for (AndesSubscription subscription : localSubscriptions) {
+
+            //If there are 2 subscriptions with the same subscription identifier but a different connected node,
+            // disconnect local subscription.
+            for (AndesSubscription dbSubscription : dbSubscriptions) {
+                if (subscription.getStorageQueue().equals(dbSubscription.getStorageQueue())
+                    && !(subscription.getSubscriberConnection().getConnectedNode()
+                        .equals(dbSubscription.getSubscriberConnection().getConnectedNode()))) {
+                    SubscriberConnection connection = subscription.getSubscriberConnection();
+                    log.warn("Conflicting subscriptions detected with same subscription id and different connected "
+                             + "nodes. Thus disconnecting local subscription=" + subscription.toString());
+                    subscription.closeConnection(connection.getProtocolChannelID(), connection.getConnectedNode());
+                }
+            }
             log.warn("Subscriptions are not in sync. Local Subscription available "
                     + "in subscription registry of node " + localNodeId
                     + " but not in DB. Thus adding to DB subscription="
@@ -962,5 +996,18 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
         } catch (AndesException e) {
             log.error("error occurred while forcefully disconnecting subscriptions", e);
         }
+    }
+
+    @Override
+    public void storeNonOperational(HealthAwareStore store, Exception ex) {
+        log.warn("Store became non-operational. Subscription changes will not be reflected in the store until the "
+                 + "store is available.");
+        storeUnavailable = true;
+    }
+
+    @Override
+    public void storeOperational(HealthAwareStore store) {
+        log.info("Store became operational.");
+        storeUnavailable = false;
     }
 }

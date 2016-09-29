@@ -144,7 +144,7 @@ public class AMQPLocalSubscription implements OutboundSubscription {
     public void forcefullyDisconnect() throws AndesException {
         try {
             channel.mgmtClose();
-        } catch (AMQException e) {
+        } catch (Exception e) {
             throw new AndesException(e);
         }
     }

@@ -30,6 +30,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.mail.event.StoreListener;
 
 /**
@@ -51,20 +52,17 @@ public class FailureObservingStoreManager {
     /**
      * A named thread factory build executor.
      */
-    private final static ThreadFactory namedThreadFactory =
+    private final ThreadFactory namedThreadFactory =
                                   new ThreadFactoryBuilder().setNameFormat("FailureObservingStores-HealthCheckPool")
                                                                                       .build();
     /**
      * Executor used for health checking
      */
-    private final static ScheduledExecutorService executor = Executors.newScheduledThreadPool(2, namedThreadFactory);
+    private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(2, namedThreadFactory);
 
-    /**
-     * A Private constructor
-     */
-    private FailureObservingStoreManager() {
-    }
-
+    private AtomicBoolean isStoreAvailable = new AtomicBoolean(true);
+    private AtomicBoolean isContextStoreAvailable = new AtomicBoolean(true);
+    private AtomicBoolean isMessageStoreAvailable = new AtomicBoolean(true);
     
     /**
      * Registers specified {@link StoreHealthListener} to receive events.
@@ -80,7 +78,7 @@ public class FailureObservingStoreManager {
      * @param store which became in-operational
      * @return a future referring to the periodic health check task.
      */
-    static ScheduledFuture<?> scheduleHealthCheckTask(HealthAwareStore store) {
+    ScheduledFuture<?> scheduleHealthCheckTask(HealthAwareStore store) {
         
         int taskDelay = (Integer) AndesConfigurationManager.readValue(
                                     AndesConfiguration.PERSISTENCE_STORE_HEALTH_CHECK_INTERVAL);
@@ -92,37 +90,121 @@ public class FailureObservingStoreManager {
 
     /**
      * A utility method to broadcast that a store became non-operational.
-     *  TODO: Name Change
-     * @param e
-     *            error occurred
-     * @param healthAwareStore
-     *            in-operational store
+     *
+     * @param exception        error occurred
+     * @param healthAwareStore in-operational store
      */
-    synchronized static void notifyStoreNonOperational(AndesStoreUnavailableException e, 
-                                                      HealthAwareStore healthAwareStore) {
-            // this is the first failure
-            for (StoreHealthListener listener : healthListeners) {
-                listener.storeNonOperational(healthAwareStore, e);
-            }
+    public void notifyContextStoreNonOperational(AndesStoreUnavailableException exception, HealthAwareStore
+            healthAwareStore) {
+        isContextStoreAvailable.compareAndSet(true, false);
+        if (isStoreAvailable.compareAndSet(true, false)) {
+            notifyStoreNonOperational(exception, healthAwareStore);
+        }
+    }
+
+    /**
+     * Method to notify all the listeners that the context/message store became non-operational.
+     *
+     * @param exception        the exception occurred
+     * @param healthAwareStore the store that became non-operational
+     */
+    private void notifyStoreNonOperational(AndesStoreUnavailableException exception, HealthAwareStore
+            healthAwareStore) {
+        ThreadFactory namedNotifierThreadFactory = new ThreadFactoryBuilder()
+                .setNameFormat("StoreFailure-NotifierPool").build();
+        ScheduledExecutorService listenerNotifyingExecutor
+                = Executors.newScheduledThreadPool(healthListeners.size(), namedNotifierThreadFactory);
+        for (StoreHealthListener listener : healthListeners) {
+            StoreFailureNotifier notifier = new StoreFailureNotifier(healthAwareStore, exception, listener);
+            listenerNotifyingExecutor.schedule(notifier, 0, TimeUnit.SECONDS);
+        }
+    }
+
+    /**
+     * A utility method to broadcast that a store became non-operational.
+     *
+     * @param exception        error occurred
+     * @param healthAwareStore in-operational store
+     */
+    public void notifyMessageStoreNonOperational(AndesStoreUnavailableException exception, HealthAwareStore
+            healthAwareStore) {
+        isMessageStoreAvailable.compareAndSet(true, false);
+        if (isStoreAvailable.compareAndSet(true, false)) {
+            notifyStoreNonOperational(exception, healthAwareStore);
+        }
     }
 
     /**
      * A utility method to broadcast that a store became operational.
-     * @param healthAwareStore
-     *            the store which became operational.
+     *
+     * @param healthAwareStore the store which became operational.
      */
-    synchronized static void notifyStoreOperational(HealthAwareStore healthAwareStore) {
-        // this is the first failure
-        for (StoreHealthListener listener : healthListeners) {
-            listener.storeOperational(healthAwareStore);
+    private void notifyStoreOperational(HealthAwareStore healthAwareStore) {
+        if (isContextStoreAvailable.get() && isMessageStoreAvailable.get()) {
+            if (isStoreAvailable.compareAndSet(false, true)) {
+                for (StoreHealthListener listener : healthListeners) {
+                    listener.storeOperational(healthAwareStore);
+                }
+            }
         }
-
     }
-    
+
+    /**
+     * A utility method to broadcast that a store became operational.
+     *
+     * @param healthAwareStore the store which became operational.
+     */
+    public void notifyContextStoreOperational(HealthAwareStore healthAwareStore) {
+        if (isContextStoreAvailable.compareAndSet(false, true)) {
+            notifyStoreOperational(healthAwareStore);
+        }
+    }
+
+    /**
+     * A utility method to broadcast that a store became operational.
+     *
+     * @param healthAwareStore the store which became operational.
+     */
+    public void notifyMessageStoreOperational(HealthAwareStore healthAwareStore) {
+        if (isMessageStoreAvailable.compareAndSet(false, true)) {
+            notifyStoreOperational(healthAwareStore);
+        }
+    }
+
     /**
      * Stop the scheduled tasks which are checking for message stores availability.
      */
-    /*package*/ static void close(){
+    void close(){
         executor.shutdown();
+    }
+
+    private class StoreFailureNotifier extends Thread {
+
+        /**
+         * The store which became operational.
+         */
+        private HealthAwareStore healthAwareStore;
+
+        /**
+         * The store failure exception that was thrown.
+         */
+        private Exception exception;
+
+        /**
+         * The listener to which store failures will be notified.
+         */
+        private StoreHealthListener listener;
+
+        public StoreFailureNotifier(HealthAwareStore store, Exception exception,
+                StoreHealthListener storeHealthListener) {
+            healthAwareStore = store;
+            this.exception = exception;
+            listener = storeHealthListener;
+        }
+
+        @Override
+        public void run() {
+            listener.storeNonOperational(healthAwareStore, exception);
+        }
     }
 }

@@ -49,6 +49,7 @@ import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
 import org.wso2.andes.store.FailureObservingAndesContextStore;
 import org.wso2.andes.store.FailureObservingMessageStore;
+import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.thrift.MBThriftServer;
 import org.wso2.carbon.context.CarbonContext;
 import org.wso2.carbon.user.api.UserStoreException;
@@ -288,11 +289,14 @@ public class AndesKernelBoot {
 
         //Create a andes context store and register
         AndesContextStore contextStoreInConfig = createAndesContextStoreFromConfig();
-        AndesKernelBoot.contextStore = new FailureObservingAndesContextStore(contextStoreInConfig);
+        FailureObservingStoreManager failureObservingStoreManager = new FailureObservingStoreManager();
+        AndesKernelBoot.contextStore = new FailureObservingAndesContextStore(contextStoreInConfig,
+                failureObservingStoreManager);
         AndesContext.getInstance().setAndesContextStore(contextStore);
 
         // directly wire the instance without wrapped instance
-        messageStore = new FailureObservingMessageStore(createMessageStoreFromConfig(contextStoreInConfig));
+        messageStore = new FailureObservingMessageStore(createMessageStoreFromConfig(contextStoreInConfig),
+                failureObservingStoreManager);
         // Setting the message store in the context store
         AndesContext.getInstance().setMessageStore(messageStore);
 

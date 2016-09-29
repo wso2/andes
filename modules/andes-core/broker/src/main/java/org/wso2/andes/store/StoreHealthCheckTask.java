@@ -38,19 +38,12 @@ public class StoreHealthCheckTask implements Runnable {
     private HealthAwareStore store;
 
     /**
-     * {@link StoreHealthListener}s which gets notified once the store becomes
-     * operational.
-     */
-    private Collection<StoreHealthListener> healthListeners;
-
-    /**
      * Instantiates a new task with a specified store and a list of listeners.
      * @param store in-operational store.
      * @param healthListeners listeners which this task needs to notify.
      */
     StoreHealthCheckTask(HealthAwareStore store, Collection<StoreHealthListener> healthListeners) {
         this.store = store;
-        this.healthListeners = healthListeners;
     }
 
     /**
@@ -58,19 +51,10 @@ public class StoreHealthCheckTask implements Runnable {
      */
     @Override
     public void run() {
-
         try {
             String myNodeId = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
-
             logger.info(String.format("about to check store [%s]'s operational status ", store.getClass()));
-
-            if (store.isOperational(myNodeId, System.currentTimeMillis())) {
-
-                for (StoreHealthListener listener : healthListeners) {
-                    listener.storeOperational(store);
-                }
-
-            }
+            store.isOperational(myNodeId, System.currentTimeMillis());
         } catch (Throwable e) {
             logger.error("Error occurred while checking store availability.", e);
         }

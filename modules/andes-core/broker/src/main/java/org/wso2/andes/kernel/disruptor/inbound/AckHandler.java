@@ -36,7 +36,6 @@ import org.wso2.andes.store.StoreHealthListener;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 /**
  * Acknowledgement Handler for the Disruptor based inbound event handling.
@@ -60,7 +59,7 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
      * marked as volatile since this value could be set from a different thread
      * (other than those of disrupter)
      */
-    private volatile SettableFuture<Boolean> messageStoresUnavailable;
+    private volatile boolean messageStoresUnavailable;
     
     /**
      * Keeps message meta-data that needs to be removed from the message store.
@@ -70,7 +69,7 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
     AckHandler(MessagingEngine messagingEngine) {
         this.messagingEngine = messagingEngine;
         this.subscriptionManager = AndesContext.getInstance().getAndesSubscriptionManager();
-        this.messageStoresUnavailable = null;
+        this.messageStoresUnavailable = false;
         this.messagesToRemove = new ArrayList<>();
         FailureObservingStoreManager.registerStoreHealthListener(this);
     }
@@ -129,25 +128,11 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
         }
 
         /*
-         * Checks for the message store availability if its not available
-         * Ack handler needs to await until message store becomes available
+         * Checks for the message store availability. Messages will be deleted only if the store is available.
          */
-        if (messageStoresUnavailable != null) {
-            try {
-
-                log.info("Message store has become unavailable therefore waiting until store becomes available");
-                messageStoresUnavailable.get();
-                log.info("Message store became available. Resuming ack handler");
-                messageStoresUnavailable = null; // we are passing the blockade
-                                                 // (therefore clear the it).
-            } catch (InterruptedException e) {
-                throw new AndesException("Thread interrupted while waiting for message stores to come online", e);
-            } catch (ExecutionException e) {
-                throw new AndesException("Error occurred while waiting for message stores to come online", e);
-            }
+        if (!messageStoresUnavailable) {
+            deleteMessagesFromStore(0);
         }
-
-        deleteMessagesFromStore(0);
     }
 
     /**
@@ -198,7 +183,7 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
     public void storeNonOperational(HealthAwareStore store, Exception ex) {
         log.info(String.format("Message store became not operational. messages to delete : %d",
                 messagesToRemove.size()));
-        messageStoresUnavailable = SettableFuture.create();
+        messageStoresUnavailable = true;
     }
 
     /**
@@ -211,6 +196,6 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
     public void storeOperational(HealthAwareStore store) {
         log.info(String.format("Message store became operational. messages to delete : %d",
                 messagesToRemove.size()));
-        messageStoresUnavailable.set(false);
+        messageStoresUnavailable = false;
     }
 }

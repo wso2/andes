@@ -18,6 +18,7 @@
 
 package org.wso2.andes.store;
 
+import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesBinding;
 import org.wso2.andes.kernel.AndesContextStore;
@@ -38,6 +39,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Implementation of {@link AndesContextStore} which observes failures such is
@@ -52,6 +54,13 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
      */
     private AndesContextStore wrappedAndesContextStoreInstance;
 
+    private static final Logger log = Logger.getLogger(FailureObservingAndesContextStore.class);
+
+    /**
+     * Variable that holds the operational status of the context store. True if store is operational.
+     */
+    private AtomicBoolean isStoreAvailable;
+
     /**
      * Future referring to a scheduled task which check the connectivity to the
      * store.
@@ -60,11 +69,18 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     private ScheduledFuture<?> storeHealthDetectingFuture;
 
     /**
+     * {@link FailureObservingStoreManager} to notify about store's operational status.
+     */
+    private FailureObservingStoreManager failureObservingStoreManager;
+
+    /**
      * {@inheritDoc}
      */
-    public FailureObservingAndesContextStore(AndesContextStore wrapped) {
+    public FailureObservingAndesContextStore(AndesContextStore wrapped, FailureObservingStoreManager manager) {
         this.wrappedAndesContextStoreInstance = wrapped;
-        this.storeHealthDetectingFuture = null;
+        isStoreAvailable = new AtomicBoolean(true);
+        storeHealthDetectingFuture = null;
+        failureObservingStoreManager = manager;
     }
 
     /**
@@ -444,9 +460,8 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
      */
     @Override
     public boolean isOperational(String testString, long testTime) {
-        boolean operational = false;
         if (wrappedAndesContextStoreInstance.isOperational(testString, testTime)) {
-            operational = true;
+            isStoreAvailable.set(true);
             if (storeHealthDetectingFuture != null) {
                 // we have detected that store is operational therefore
                 // we don't need to run the periodic task to check weather store
@@ -454,9 +469,10 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
                 storeHealthDetectingFuture.cancel(false);
                 storeHealthDetectingFuture = null;
             }
-
+            failureObservingStoreManager.notifyContextStoreOperational(this);
+            return true;
         }
-        return operational;
+        return false;
     }
 
     /**
@@ -466,17 +482,14 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
      * @param e
      *            the exception occurred.
      */
-    private synchronized void notifyFailures(AndesStoreUnavailableException e) {
+    private void notifyFailures(AndesStoreUnavailableException e) {
 
-        if (storeHealthDetectingFuture == null) {
-            // this is the first failure
-            FailureObservingStoreManager.notifyStoreNonOperational(e,
-                                                                   wrappedAndesContextStoreInstance);
-            storeHealthDetectingFuture = FailureObservingStoreManager.scheduleHealthCheckTask(this);
-
+        if (isStoreAvailable.compareAndSet(true, false)) {
+            log.warn("Context store became non-operational");
+            failureObservingStoreManager.notifyContextStoreNonOperational(e, wrappedAndesContextStoreInstance);
+            storeHealthDetectingFuture = failureObservingStoreManager.scheduleHealthCheckTask(this);
         }
     }
-
 
     /**
      * Create a new slot in store
