@@ -35,4 +35,9 @@ public class AndesConstants {
      */
     public static final String TENANT_SEPARATOR = "/";
 
+    /**
+     * The prefix which distinguishes a durable subscription.
+     */
+    public static final String DURABLE_SUBSCRIPTION_QUEUE_PREFIX = "carbon:";
+
 }
