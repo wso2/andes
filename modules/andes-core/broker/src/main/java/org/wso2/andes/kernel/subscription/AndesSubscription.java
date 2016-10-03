@@ -312,8 +312,6 @@ public class AndesSubscription {
                         + " on non durable subscription close");
             }
         }
-
-        this.subscriberConnection = null;
     }
 
     /**
