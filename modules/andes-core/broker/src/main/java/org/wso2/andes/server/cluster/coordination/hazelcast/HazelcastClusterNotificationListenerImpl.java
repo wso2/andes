@@ -23,7 +23,6 @@ import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextInformationManager;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.ClusterNotificationListener;
 import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
 import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.server.cluster.coordination.BindingNotificationHandler;
@@ -35,45 +34,23 @@ import org.wso2.andes.server.cluster.coordination.ExchangeNotificationHandler;
 import org.wso2.andes.server.cluster.coordination.QueueNotificationHandler;
 import org.wso2.andes.server.cluster.coordination.SubscriptionNotificationHandler;
 
-import java.util.HashMap;
-import java.util.Map;
-
 public class HazelcastClusterNotificationListenerImpl implements ClusterNotificationListenerManager {
-
-    /**
-     * Distributed topic to communicate subscription change notifications among cluster nodes.
-     */
-    private ITopic<ClusterNotification> subscriptionChangedNotifierChannel;
-
-    /**
-     * Distributed topic to communicate binding change notifications among cluster nodes.
-     */
-    private ITopic<ClusterNotification> bindingChangeNotifierChannel;
-
-    /**
-     * Distributed topic to communicate queue purge notifications among cluster nodes.
-     */
-    private ITopic<ClusterNotification> queueChangedNotifierChannel;
-
-    /**
-     * Distributed topic to communicate exchange change notification among cluster nodes.
-     */
-    private ITopic<ClusterNotification> messageRouterChangeNotifierChannel;
 
     /**
      * Distributed topic to sent among cluster nodes to run andes recover task.
      */
     private ITopic<ClusterNotification> dbSyncNotifierChannel;
 
+    /**
+     * Distributed topic to send cluster notifications among cluster nodes.
+     */
+    private ITopic<ClusterNotification> clusterNotifierChannel;
 
     /**
      * IDs of subscribers registered for Hazelcast topics
      */
-    private String subscriptionListenerId;
-    private String bindingListenerId;
-    private String exchangeListenerId;
-    private String queueListenerId;
     private String dbSyncNotificationListenerId;
+    private String clusterEventListenerId;
 
     /**
      * Hazelcast agent for forwarding HZ related requests
@@ -155,43 +132,15 @@ public class HazelcastClusterNotificationListenerImpl implements ClusterNotifica
         int hazelcastRingBufferTTL = AndesConfigurationManager.readValue(AndesConfiguration
                 .COORDINATION_CLUSTER_NOTIFICATION_TIMEOUT);
 
-        /**
-         * subscription changes
-         */
-        this.subscriptionChangedNotifierChannel = hazelcastAgent.createReliableTopic(CoordinationConstants
-                        .HAZELCAST_SUBSCRIPTION_CHANGED_NOTIFIER_TOPIC_NAME,
+        // Creating the channel for communicating database sync notification to run andes recovery task.
+        this.dbSyncNotifierChannel = hazelcastAgent.createReliableTopic(
+                CoordinationConstants.HAZELCAST_DB_SYNC_NOTIFICATION_TOPIC_NAME,
                 ENABLE_STATISTICS, HAZELCAST_RELIABLE_TOPIC_READ_BACH_SIZE, HAZELCAST_RING_BUFFER_CAPACITY,
                 hazelcastRingBufferTTL);
 
-        /**
-         * exchange changes
-         */
-        this.messageRouterChangeNotifierChannel = hazelcastAgent.createReliableTopic(CoordinationConstants
-                        .HAZELCAST_EXCHANGE_CHANGED_NOTIFIER_TOPIC_NAME,
-                ENABLE_STATISTICS, HAZELCAST_RELIABLE_TOPIC_READ_BACH_SIZE, HAZELCAST_RING_BUFFER_CAPACITY,
-                hazelcastRingBufferTTL);
-
-        /**
-         * queue changes
-         */
-        this.queueChangedNotifierChannel = hazelcastAgent.createReliableTopic(CoordinationConstants
-                        .HAZELCAST_QUEUE_CHANGED_NOTIFIER_TOPIC_NAME,
-                ENABLE_STATISTICS, HAZELCAST_RELIABLE_TOPIC_READ_BACH_SIZE, HAZELCAST_RING_BUFFER_CAPACITY,
-                hazelcastRingBufferTTL);
-
-        /**
-         * binding changes
-         */
-        this.bindingChangeNotifierChannel = hazelcastAgent.createReliableTopic(CoordinationConstants
-                        .HAZELCAST_BINDING_CHANGED_NOTIFIER_TOPIC_NAME,
-                ENABLE_STATISTICS, HAZELCAST_RELIABLE_TOPIC_READ_BACH_SIZE, HAZELCAST_RING_BUFFER_CAPACITY,
-                hazelcastRingBufferTTL);
-
-        /**
-         * Adding database sync notification to run andes recovery task
-         */
-        this.dbSyncNotifierChannel = hazelcastAgent.createReliableTopic(CoordinationConstants
-                        .HAZELCAST_DB_SYNC_NOTIFICATION_TOPIC_NAME,
+        // Creating the channel for publishing and subscribing cluster notifications.
+        this.clusterNotifierChannel = hazelcastAgent.createReliableTopic(
+                CoordinationConstants.HAZELCAST_CLUSTER_EVENT_NOTIFIER_TOPIC_NAME,
                 ENABLE_STATISTICS, HAZELCAST_RELIABLE_TOPIC_READ_BACH_SIZE, HAZELCAST_RING_BUFFER_CAPACITY,
                 hazelcastRingBufferTTL);
 
@@ -201,65 +150,28 @@ public class HazelcastClusterNotificationListenerImpl implements ClusterNotifica
                                    AndesSubscriptionManager subscriptionManager,
                                    AndesContextInformationManager contextInformationManager) throws AndesException {
 
-        /**
-         * Register subscription listener
-         */
-        HZBasedClusterSubscriptionChangedListener HZBasedClusterSubscriptionChangedListener = new
-                HZBasedClusterSubscriptionChangedListener();
-
-        HZBasedClusterSubscriptionChangedListener.addSubscriptionListener(new SubscriptionNotificationHandler
+        // Register cluster notification listener and add handlers assigned for different types of artifacts.
+        HZBasedClusterNotificationListener hzBasedClusterNotificationListener = new
+                HZBasedClusterNotificationListener();
+        hzBasedClusterNotificationListener.addSubscriptionNotificationHandler(new SubscriptionNotificationHandler
                 (subscriptionManager, inboundEventManager));
+        hzBasedClusterNotificationListener.addBindingNotificationHandler(new BindingNotificationHandler
+                (contextInformationManager, inboundEventManager));
+        hzBasedClusterNotificationListener.addExchangeNotificationHandler(new ExchangeNotificationHandler
+                (contextInformationManager, inboundEventManager));
+        hzBasedClusterNotificationListener.addQueueNotificationHandler(new QueueNotificationHandler
+                (contextInformationManager, inboundEventManager));
 
-        subscriptionListenerId = checkAndRegisterListerToTopic(subscriptionChangedNotifierChannel,
-                HZBasedClusterSubscriptionChangedListener, subscriptionListenerId);
+        clusterEventListenerId = checkAndRegisterListerToTopic(clusterNotifierChannel,
+                hzBasedClusterNotificationListener, clusterEventListenerId);
 
-        /**
-         * Register exchange listener
-         */
-        HZBasedClusterExchangeChangedListener HZBasedClusterExchangeChangedListener = new
-                HZBasedClusterExchangeChangedListener();
-
-        HZBasedClusterExchangeChangedListener.
-                addExchangeListener(new ExchangeNotificationHandler(contextInformationManager, inboundEventManager));
-
-        exchangeListenerId = checkAndRegisterListerToTopic(messageRouterChangeNotifierChannel,
-                HZBasedClusterExchangeChangedListener, exchangeListenerId);
-
-        /**
-         * Register queue listener
-         */
-        HZBasedClusterQueueChangedListener HZBasedClusterQueueChangedListener = new
-                HZBasedClusterQueueChangedListener();
-
-        HZBasedClusterQueueChangedListener.
-                addQueueListener(new QueueNotificationHandler(contextInformationManager, inboundEventManager));
-
-        queueListenerId = checkAndRegisterListerToTopic(queueChangedNotifierChannel,
-                HZBasedClusterQueueChangedListener, queueListenerId);
-
-
-        /**
-         * Register binding listener
-         */
-        HZBasedClusterBindingChangedListener HZBasedClusterBindingChangedListener = new
-                HZBasedClusterBindingChangedListener();
-
-        HZBasedClusterBindingChangedListener.
-                addBindingListener(new BindingNotificationHandler(contextInformationManager, inboundEventManager));
-
-        bindingListenerId = checkAndRegisterListerToTopic(bindingChangeNotifierChannel,
-                HZBasedClusterBindingChangedListener, bindingListenerId);
-
-
-        /**
-         * Register DB sync notification listener
-         */
+        // Register DB sync notification listener.
         HZBasedDatabaseSyncNotificationListener HZBasedDatabaseSyncNotificationListener = new
                 HZBasedDatabaseSyncNotificationListener();
         HZBasedDatabaseSyncNotificationListener.addHandler(new DBSyncNotificationHandler());
 
         dbSyncNotificationListenerId = checkAndRegisterListerToTopic(dbSyncNotifierChannel,
-                HZBasedClusterBindingChangedListener, dbSyncNotificationListenerId);
+                HZBasedDatabaseSyncNotificationListener, dbSyncNotificationListenerId);
     }
 
     /**
@@ -282,18 +194,20 @@ public class HazelcastClusterNotificationListenerImpl implements ClusterNotifica
     }
 
     /**
-     * Get Map of Hazelcast topics w:r:t artifact type {@link org.wso2.andes.kernel.ClusterNotificationListener
-     * .NotifiedArtifact}
+     * Get channel for publishing and subscribing cluster notifications.
      *
-     * @return Map with Hazelcast topics
+     * @return {@link ITopic} for cluster notifications
      */
-    public Map<ClusterNotificationListener.NotifiedArtifact, ITopic<ClusterNotification>> getTopicMap() {
-        Map<ClusterNotificationListener.NotifiedArtifact, ITopic<ClusterNotification>> topicMap = new HashMap<>(5);
-        topicMap.put(ClusterNotificationListener.NotifiedArtifact.MessageRouter, messageRouterChangeNotifierChannel);
-        topicMap.put(ClusterNotificationListener.NotifiedArtifact.Queue, queueChangedNotifierChannel);
-        topicMap.put(ClusterNotificationListener.NotifiedArtifact.Binding, bindingChangeNotifierChannel);
-        topicMap.put(ClusterNotificationListener.NotifiedArtifact.Subscription, subscriptionChangedNotifierChannel);
-        topicMap.put(ClusterNotificationListener.NotifiedArtifact.DBUpdate, dbSyncNotifierChannel);
-        return topicMap;
+    public ITopic<ClusterNotification> getClusterNotificationChannel() {
+        return clusterNotifierChannel;
+    }
+
+    /**
+     * Get channel for publishing and subscribing db sync events.
+     *
+     * @return {@link ITopic} for db sync events
+     */
+    public ITopic<ClusterNotification> getDBSyncNotificationChannel() {
+        return dbSyncNotifierChannel;
     }
 }
