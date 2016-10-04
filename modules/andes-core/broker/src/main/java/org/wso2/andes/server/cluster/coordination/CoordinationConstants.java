@@ -52,6 +52,11 @@ public final class CoordinationConstants {
     public static String HAZELCAST_COORDINATOR_CHANGED_NOTIFIER_TOPIC_NAME = "COORDINATOR_CHANGED";
 
     /**
+     * Hazelcast distributed topic name to send cluster notifications to cluster nodes.
+     */
+    public static String HAZELCAST_CLUSTER_EVENT_NOTIFIER_TOPIC_NAME = "CLUSTER_EVENT";
+
+    /**
      * Distributed lock name used to initialize the slot map
      */
     public static final String INITIALIZATION_LOCK = "InitializationLock";

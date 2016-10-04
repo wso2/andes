@@ -26,8 +26,6 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 import org.wso2.andes.server.cluster.coordination.ClusterNotificationAgent;
 
-import java.util.Map;
-
 /**
  * This class represents a ClusterNotificationAgent implementation which uses
  * Hazelcast for notifying changes to the other nodes.
@@ -38,10 +36,14 @@ public class HazelcastBasedNotificationAgentImpl implements ClusterNotificationA
     private static Log log = LogFactory.getLog(HazelcastBasedNotificationAgentImpl.class);
 
     /**
-     * This notification agent uses different channels (ITopics) to notify changes on different
-     * artifacts. this map keeps which channel is used for which artifact type
+     * The channel that is used for publishing cluster notifications.
      */
-    private Map<ClusterNotificationListener.NotifiedArtifact, ITopic<ClusterNotification>> channelMAP;
+    private ITopic<ClusterNotification> clusterNotificationChannel;
+
+    /**
+     * This channel is used for notifying db sync events.
+     */
+    private ITopic<ClusterNotification> dbSyncNotificationChannel;
 
     /**
      * ID of the local node
@@ -51,13 +53,16 @@ public class HazelcastBasedNotificationAgentImpl implements ClusterNotificationA
     /**
      * Create a Hazelcast based ClusterNotificationAgent
      *
-     * @param channelInfoMap Map of Map<ClusterNotificationListener.NotifiedArtifact,ITopic<ClusterNotification>>
-     *                       having channels to publish according to artifact
+     * @param clusterNotificationChannel the channel that is used for publishing and cluster notifications such as
+     *                                   queue, binding, message router, subscription changes
+     * @param dbSyncNotificationChannel  the channel that is used to publish and
+     *                                   subscribe db sync events.
      */
-    public HazelcastBasedNotificationAgentImpl(Map<ClusterNotificationListener.NotifiedArtifact,
-            ITopic<ClusterNotification>> channelInfoMap) {
+    public HazelcastBasedNotificationAgentImpl(ITopic<ClusterNotification> clusterNotificationChannel,
+            ITopic<ClusterNotification> dbSyncNotificationChannel) {
         this.localNodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
-        this.channelMAP = channelInfoMap;
+        this.clusterNotificationChannel = clusterNotificationChannel;
+        this.dbSyncNotificationChannel = dbSyncNotificationChannel;
     }
 
 
@@ -80,7 +85,7 @@ public class HazelcastBasedNotificationAgentImpl implements ClusterNotificationA
             log.debug("Sending GOSSIP: " + clusterNotification.getEncodedObjectAsString());
         }
         try {
-            channelMAP.get(ClusterNotificationListener.NotifiedArtifact.MessageRouter).publish(clusterNotification);
+            clusterNotificationChannel.publish(clusterNotification);
         } catch (Exception e) {
             log.error("Error while sending exchange change notification"
                     + clusterNotification.getEncodedObjectAsString(), e);
@@ -111,7 +116,7 @@ public class HazelcastBasedNotificationAgentImpl implements ClusterNotificationA
             log.debug("Sending GOSSIP: " + clusterNotification.getEncodedObjectAsString());
         }
         try {
-            channelMAP.get(ClusterNotificationListener.NotifiedArtifact.Queue).publish(clusterNotification);
+            clusterNotificationChannel.publish(clusterNotification);
         } catch (Exception e) {
             log.error("Error while sending queue change notification : "
                     + clusterNotification.getEncodedObjectAsString(), e);
@@ -137,7 +142,7 @@ public class HazelcastBasedNotificationAgentImpl implements ClusterNotificationA
             log.debug("GOSSIP: " + clusterNotification.getEncodedObjectAsString());
         }
         try {
-            channelMAP.get(ClusterNotificationListener.NotifiedArtifact.Binding).publish(clusterNotification);
+            clusterNotificationChannel.publish(clusterNotification);
         } catch (Exception e) {
             log.error("Error while sending binding change notification"
                     + clusterNotification.getEncodedObjectAsString(), e);
@@ -167,8 +172,7 @@ public class HazelcastBasedNotificationAgentImpl implements ClusterNotificationA
             log.debug("Sending GOSSIP: " + clusterNotification.getEncodedObjectAsString());
         }
         try {
-            this.channelMAP.get(ClusterNotificationListener.NotifiedArtifact.Subscription).
-                    publish(clusterNotification);
+            clusterNotificationChannel.publish(clusterNotification);
         } catch (Exception ex) {
             log.error("Error while sending subscription change notification : "
                     + clusterNotification.getEncodedObjectAsString(), ex);
@@ -185,7 +189,7 @@ public class HazelcastBasedNotificationAgentImpl implements ClusterNotificationA
         ClusterNotification clusterNotification = new ClusterNotification("", ClusterNotificationListener
                 .NotifiedArtifact.DBUpdate.toString(), "", "DBSyncEvent", localNodeID);
         try {
-            channelMAP.get(ClusterNotificationListener.NotifiedArtifact.DBUpdate).publish(clusterNotification);
+            dbSyncNotificationChannel.publish(clusterNotification);
             if (log.isDebugEnabled()) {
                 log.debug("Requested for DB sync across the cluster.");
             }
