@@ -416,16 +416,14 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         for (AndesMessage message : messageList) {
             //TODO
-            count++;
-//            log.info("RDBMSMessageStoreImpl" + count);
-            // the following statement is used to log any messages
-
-            //log.info("Udaka" + count);
+            // count++;
 
             queueName = message.getMetadata().getStorageQueueName();
             List<AndesMessage> messages = messageToQueueHashMap.get(queueName);
-            long messageID = message.getMetadata().getMessageID();
-            log.info("RDBMSMessageStoreImpl-Udaka X " + messageID + " Y Count , " + count);
+
+            // the following statement is used to log any messages for the tracking purpose
+            //long messageID = message.getMetadata().getMessageID();
+            //log.info("RDBMSMessageStoreImpl-Udaka X " + messageID + " Y Count , " + count);
             if (null == messages) {
                 messages = new ArrayList<>();
                 messageToQueueHashMap.put(queueName, messages);

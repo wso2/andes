@@ -138,10 +138,10 @@ public class ConcurrentContentReadTaskBatchProcessor implements EventProcessor {
             try {
 
                 final long availableSequence = sequenceBarrier.waitFor(nextSequence);
-                ProtocolMessage metadata1 = event.getMetadata();
-                long currentMessageID1 = metadata1.getMessageID();;
-                log.info("ConcurrentContentReadTaskBatchProcessor-Udaka X , " + currentMessageID1 + ", Y Count ," + count);
-                count ++;
+              //  ProtocolMessage metadata1 = event.getMetadata();
+             //   long currentMessageID1 = metadata1.getMessageID();;
+               // log.info("ConcurrentContentReadTaskBatchProcessor-Udaka X , " + currentMessageID1 + ", Y Count ," + count);
+                //count ++;
                 while (nextSequence <= availableSequence) {
 //                    HashMap<String, ArrayList<DeliveryEventData>> messageMap = new HashMap<>();
                     event = ringBuffer.get(nextSequence);
