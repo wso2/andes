@@ -73,7 +73,7 @@ final class MessageDeliveryTask extends Task {
 
             // Get a slot from coordinator.
             Slot currentSlot = requestSlot(storageQueueName);
-
+            currentSlot.setStorageQueue(storageQueue);
             // If the slot is empty
             if (0 == currentSlot.getEndMessageId()) {
 

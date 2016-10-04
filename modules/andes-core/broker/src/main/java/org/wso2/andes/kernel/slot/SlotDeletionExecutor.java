@@ -121,10 +121,8 @@ public class SlotDeletionExecutor implements NetworkPartitionListener {
                                 // Delete attempt not success, therefore adding slot to the queue
                                 slotsToDelete.put(slot);
                             } else {
-                                StorageQueue storageQueue = AndesContext.getInstance().getStorageQueueRegistry()
-                                        .getStorageQueue(slot.getStorageQueueName());
+                                StorageQueue storageQueue = slot.getStorageQueue();
                                 storageQueue.deleteSlot(slot);
-
                             }
                         } else {
                             slotsToDelete.put(slot); // Not deleted. Hence putting back in queue
