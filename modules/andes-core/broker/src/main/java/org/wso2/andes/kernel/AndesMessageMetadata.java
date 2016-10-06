@@ -62,10 +62,6 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      * The timestamp at which the message arrived at the first gates of the broker.
      */
     long arrivalTime;
-    /**
-     * Whether Expiration value is defined for the message
-     */
-    boolean isExpirationDefined;
 
     /**
      * Destination (routing key) of message
@@ -496,14 +492,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      * True if the expiration time is defined for the message.
      */
     public boolean isExpirationDefined() {
-        return isExpirationDefined;
+        return 0L < expirationTime;
     }
 
-    /**
-     * Set whether the message expiration value is defined.
-     * @param expirationDefined
-     */
-    public void setIsExpirationDefined(boolean expirationDefined) {
-        isExpirationDefined = expirationDefined;
-    }
 }
