@@ -24,6 +24,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
+import org.wso2.andes.kernel.subscription.StorageQueue;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -62,6 +63,11 @@ public class Slot implements Serializable, Comparable<Slot> {
      * QueueName which the slot belongs to. This is set when the slot is assigned to a subscriber
      */
     private String storageQueueName;
+
+    /**
+     * Storage queue for which the slot belongs to. This is set when the slot is assigned to a subscriber.
+     */
+    private StorageQueue storageQueue;
 
     /**
      * Keep if slot is active, if not it is eligible to be removed
@@ -110,6 +116,24 @@ public class Slot implements Serializable, Comparable<Slot> {
 
     public void setStorageQueueName(String storageQueueName) {
         this.storageQueueName = storageQueueName;
+    }
+
+    /**
+     * Set the storage queue name.
+     *
+     * @param storageQueue
+     */
+    public void setStorageQueue(StorageQueue storageQueue) {
+        this.storageQueue = storageQueue;
+    }
+
+    /**
+     * Get the storage queue for which the slot belongs to.
+     *
+     * @return {@link StorageQueue}
+     */
+    public StorageQueue getStorageQueue() {
+        return storageQueue;
     }
 
     public String getStorageQueueName() {

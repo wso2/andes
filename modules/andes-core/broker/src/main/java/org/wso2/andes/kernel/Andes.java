@@ -586,20 +586,6 @@ public class Andes {
     }
 
     /**
-     * Get message metadata from queue between two message id values.
-     *
-     * @param queueName  queue name
-     * @param firstMsgId id of the starting id
-     * @param lastMsgID  id of the last id
-     * @return List of message metadata
-     * @throws AndesException
-     */
-    public List<DeliverableAndesMetadata> getMetaDataList(Slot slot, final String queueName, long firstMsgId,
-            long lastMsgID) throws AndesException {
-        return MessagingEngine.getInstance().getMetaDataList(slot, queueName, firstMsgId, lastMsgID);
-    }
-
-    /**
      * Get message metadata from queue starting from given id up a given
      * message count.
      *
