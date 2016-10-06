@@ -76,10 +76,7 @@ public class RDBMSConstants {
      *
      */
     protected static final String DATA_ERROR_SQL_STATE_CLASSES = "dataErrorSQLStateClasses";
-
-
     protected static final String TRANSACTION_ROLLBACK_ERROR_SQL_STATE_CLASSES = "transactionRollbackSQLStateClasses";
-
     // Message Store tables
     protected static final String CONTENT_TABLE = "MB_CONTENT";
     protected static final String METADATA_TABLE = "MB_METADATA";
@@ -88,8 +85,6 @@ public class RDBMSConstants {
     protected static final String MSG_STORE_STATUS_TABLE = "MB_MSG_STORE_STATUS";
     protected static final String RETAINED_METADATA_TABLE = "MB_RETAINED_METADATA";
     protected static final String RETAINED_CONTENT_TABLE = "MB_RETAINED_CONTENT";
-
-
     // Message Store table columns
     protected static final String MESSAGE_ID = "MESSAGE_ID";
     protected static final String QUEUE_ID = "QUEUE_ID";
@@ -102,7 +97,6 @@ public class RDBMSConstants {
     protected static final String DESTINATION_QUEUE = "MESSAGE_DESTINATION";
     protected static final String TOPIC_NAME = "TOPIC_NAME";
     protected static final String TOPIC_ID = "TOPIC_ID";
-
     // Andes Context Store tables
     protected static final String DURABLE_SUB_TABLE = "MB_DURABLE_SUBSCRIPTION";
     protected static final String NODE_INFO_TABLE = "MB_NODE";
@@ -1010,8 +1004,8 @@ public class RDBMSConstants {
      */
     protected static final String PS_UPDATE_DLC_STATUS_IN_EXPIRY_TABLE =
             "UPDATE " + EXPIRATION_TABLE
-                    + " SET " + DLC_QUEUE_ID + "=?"
-                    + " WHERE " + MESSAGE_ID + "=?";
+            + " SET " + DLC_QUEUE_ID + "=?"
+            + " WHERE " + MESSAGE_ID + "=?";
 
     /**
      * Prepared statement to insert membership change event.

@@ -53,12 +53,12 @@ public class PeriodicExpiryMessageDeletionTask implements Runnable, StoreHealthL
     private AndesContextStore andesContextStore = AndesContext.getInstance().getAndesContextStore();
 
     /**
-     * Holds the slot manager based on broker running mode
+     * Holds the slot manager based on broker running mode.
      */
     private AbstractSlotManager abstractSlotManagerSlotManager;
 
     /**
-     * Indicate the cluster mode is enabled or not
+     * Indicate the cluster mode is enabled or not.
      */
     protected boolean isClusteringEnabled;
 
@@ -81,7 +81,7 @@ public class PeriodicExpiryMessageDeletionTask implements Runnable, StoreHealthL
     /**
      * Get the expiry messages queue wise from unallocated region  and delete those from DB
      */
-    protected void deleteExpiredMessages(){
+    protected void deleteExpiredMessages() {
 
         try {
             /**
@@ -100,7 +100,7 @@ public class PeriodicExpiryMessageDeletionTask implements Runnable, StoreHealthL
                      * Get the expired messages for that queue in the range of message ID starting form the lower
                      * bound ID. Lower bound id -1 represents that there is no valid region to perform the delete
                      */
-                    if(currentDeletionRangeLowerBoundId != -1) {
+                    if (currentDeletionRangeLowerBoundId != -1) {
 
                         List<Long> expiredMessages = MessagingEngine.getInstance()
                                 .getExpiredMessages(currentDeletionRangeLowerBoundId, queueName);
@@ -141,8 +141,6 @@ public class PeriodicExpiryMessageDeletionTask implements Runnable, StoreHealthL
                     }
                 }
             }
-            //sleep the message expiration worker for specified amount of time
-            // sleepForWaitInterval(workerWaitInterval);
         } catch (AndesException e) {
             log.error("Error running Message Expiration Checker " + e.getMessage(), e);
         } catch (InterruptedException e) {

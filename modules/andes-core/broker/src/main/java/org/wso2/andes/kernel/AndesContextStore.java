@@ -460,8 +460,9 @@ public interface AndesContextStore extends HealthAwareStore {
     Set<String> getAllQueues() throws AndesException;
 
     /**
-     * Get all queue names for which messages are published
-     * @return Set of queue names
+     * Get all queue names for which messages are published.
+     *
+     * @return set of queue names
      * @throws AndesException
      */
     Set<String> getAllQueuesInSubmittedSlots() throws AndesException;

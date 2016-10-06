@@ -49,9 +49,10 @@ public interface SubscriptionManagementInformation {
             throws MBeanException;
 
     /**
-     * Get the pending message count for the specified subscription
+     * Get the pending message count for the specified subscription.
+     *
      * @param queueName for which the pending message cound need to be calculated
-     * @return The pending message count for that subscription
+     * @return the pending message count for that subscription
      * @throws MBeanException
      */
     long getPendingMessageCount(
@@ -61,6 +62,7 @@ public interface SubscriptionManagementInformation {
     /**
      * Search subscription according to provided patterns and return paginated subscription array to
      * render in the management console.
+     *
      * @param isDurable of type String (acceptable values => true | false)
      * @param isActive of type String (acceptable values => true | false)
      * @param protocolType The protocol type of the subscriptions
@@ -102,7 +104,8 @@ public interface SubscriptionManagementInformation {
             throws MBeanException;
 
     /**
-     * Return subscription result count according to provided patterns
+     * Return subscription result count according to provided patterns.
+     *
      * @param isDurable of type String (acceptable values => true | false)
      * @param isActive of type String (acceptable values => true | false)
      * @param protocolType The protocol type of the subscriptions
@@ -110,7 +113,7 @@ public interface SubscriptionManagementInformation {
      * @param filteredNamePattern pattern to search by queue name
      * @param isFilteredNameByExactMatch exact match or not
      * @param identifierPattern pattern to search by subscription identifier
-     * @param  isIdentifierPatternByExactMatch exact match or not
+     * @param isIdentifierPatternByExactMatch exact match or not
      * @param ownNodeId pattern to search subscription own node id
      * @return subscription count
      * @throws MBeanException

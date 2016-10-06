@@ -12,6 +12,9 @@ public enum DestinationType {
     QUEUE(AMQPUtils.DIRECT_EXCHANGE_NAME),
     DURABLE_TOPIC(AMQPUtils.TOPIC_EXCHANGE_NAME);
 
+    /**
+     * Message router mapping to a destination type.
+     */
     private String andesMessageRouter;
 
     private DestinationType(String andesMessageRouter) {
@@ -19,7 +22,7 @@ public enum DestinationType {
     }
 
     /**
-     * Get andes messages router
+     * Get andes messages router.
      *
      * @return Andes message router
      */

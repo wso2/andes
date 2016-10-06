@@ -117,10 +117,10 @@ public class SlotManagerStandalone extends AbstractSlotManager {
     }
 
     /**
-     * Get a new slot from slotIDMap
+     * Get a new slot from slotIDMap.
      *
-     * @param queueName Name of the queue
-     * @return Slot object
+     * @param queueName name of the queue
+     * @return slot object
      */
     private Slot getFreshSlot(String queueName) {
 
@@ -130,17 +130,13 @@ public class SlotManagerStandalone extends AbstractSlotManager {
         //start msgID will be last assigned ID + 1 so that slots are created with no
         // message ID gaps in-between
         Long lastAssignedId = queueToLastAssignedIDMap.get(queueName);
-        /**
-         * Last message id that needs to be allocated to this slot
-         * End messageID will be the lowest in published message ID list. Get and remove
-         */
-         if(null != messageIDSet){
-             endMessageId = messageIDSet.pollFirst();
-         }
-        /**
-         * Check the current slot allocation not interfere into the range where expiry deletion happens.
-         * The check is done based on the queue name and the end message id for this slot
-         */
+         // Last message id that needs to be allocated to this slot
+         // End messageID will be the lowest in published message ID list. Get and remove
+        if (null != messageIDSet) {
+            endMessageId = messageIDSet.pollFirst();
+        }
+         // Check the current slot allocation not interfere into the range where expiry deletion happens.
+         // The check is done based on the queue name and the end message id for this slot.
         if (isSafeToDeliverSlots(queueName,endMessageId)) {
 
             if (null != endMessageId) {
@@ -155,9 +151,8 @@ public class SlotManagerStandalone extends AbstractSlotManager {
                 slotToBeAssigned.setStorageQueueName(queueName);
                 slotIDMap.put(queueName, messageIDSet);
                 if (log.isDebugEnabled()) {
-                    log.debug(slotToBeAssigned.getEndMessageId() + " removed to slotIdMap. Current " +
-                            "values in " +
-                            "map " + messageIDSet);
+                    log.debug(slotToBeAssigned.getEndMessageId() + " removed to slotIdMap. Current values in map "
+                            + messageIDSet);
                 }
                 queueToLastAssignedIDMap.put(queueName, slotToBeAssigned.getEndMessageId());
             }
@@ -319,9 +314,7 @@ public class SlotManagerStandalone extends AbstractSlotManager {
             //set the lower bound Id for safety delete region as the safety slot count interval upper bound id + 1
             if (messageIDSet.size() >= safetySlotCount) {
                 lowerBoundId = messageIDSet.toArray(new Long[messageIDSet.size()])[safetySlotCount - 1] + 1;
-                /**
-                 * Inform the slot manager regarding the current expiry deletion range and queue
-                 */
+                // Inform the slot manager regarding the current expiry deletion range and queue.
                 setDeletionTaskState(queueName, lowerBoundId);
             }
         }

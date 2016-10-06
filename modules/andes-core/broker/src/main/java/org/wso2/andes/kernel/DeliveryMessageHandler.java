@@ -36,18 +36,14 @@ public class DeliveryMessageHandler extends DeliveryResponsibility {
     @Override
     protected boolean performResponsibility(AndesSubscription subscription,
                                             DeliverableAndesMetadata message) throws AndesException {
-
         if (log.isDebugEnabled()) {
             log.debug("Scheduled message id= " + message.getMessageID() + " to be sent to subscription= " + subscription);
         }
-        /**
-         * Mark message as came into the subscription for deliver.
-         */
+        // Mark message as came into the subscription for deliver.
         UUID subscriptionChannelID = subscription.getSubscriberConnection().getProtocolChannelID();
         message.markAsDispatchedToDeliver(subscriptionChannelID);
         ProtocolMessage protocolMessage = message.generateProtocolDeliverableMessage(subscriptionChannelID);
         MessageFlusher.getInstance().getFlusherExecutor().submit(subscription, protocolMessage);
-
         return true;
     }
 }

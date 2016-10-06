@@ -120,8 +120,6 @@ public class AndesKernelBoot {
         //loadConfigurations - done from outside
         //startAndesStores - done from outside
         int threadPoolCount = 1;
-        ThreadFactory recoveryTaskThreadFactory = new ThreadFactoryBuilder()
-                .setNameFormat("AndesRecoveryTask-%d").build();
         andesRecoveryTaskScheduler = Executors.newScheduledThreadPool(threadPoolCount);
         expiryMessageDeletionTaskScheduler = Executors.newScheduledThreadPool(threadPoolCount);
         startHouseKeepingThreads();
@@ -479,8 +477,9 @@ public class AndesKernelBoot {
             expiryMessageDeletionTaskScheduler.scheduleAtFixedRate(periodicExpiryMessageDeletionTask,
                     dbBasedDeletionTaskScheduledPeriod, dbBasedDeletionTaskScheduledPeriod, TimeUnit.SECONDS);
         } else {
-            log.error("DB based expiry message deletion task is not scheduled due to not providing " +
-                    "a valid safe delete region slot count is not given");
+            log.error("DB based expiry message deletion task is not scheduled due to not providing "
+                    + "a valid safe delete region slot count is not given. Given slot count is "
+                    + safeDeleteRegionSlotCount);
         }
 
         ClusterResourceHolder.getInstance().setAndesRecoveryTask(andesRecoveryTask);

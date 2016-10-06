@@ -16,6 +16,7 @@
 package org.wso2.andes.kernel.subscription;
 
 import com.googlecode.cqengine.query.Query;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
@@ -63,7 +64,10 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
 
     private static Log log = LogFactory.getLog(AndesSubscriptionManager.class);
 
-    private static final String SELECT_ALL = "All";
+    /**
+     * Select all nodes regardless of the filtering parameters.
+     */
+    private static final String SELECT_ALL_NODES = "All";
 
     /**
      * Factory for creating subscriptions.
@@ -294,7 +298,8 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
     }
 
     /**
-     * Get filtered subscriptions (active/inactive) that matches to search criteria
+     * Get filtered subscriptions (active/inactive) that matches to search criteria.
+     *
      * @param isDurable true if searching for durable subscriptions
      * @param isActive true if searching for active subscriptions
      * @param protocolType protocol of the subscription
@@ -356,13 +361,13 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
 
         Set<AndesSubscription> filteredSubscriptions = new HashSet<>();
         String messageRouter = destinationType.getAndesMessageRouter();
-
+        // query for CQ engine to get the active subscriptions based on the filtering parameters
         Query<AndesSubscription> subscriptionQuery = and
                 (equal(AndesSubscription.DURABILITY, isDurable), equal(AndesSubscription.PROTOCOL, protocolType),
                  equal(AndesSubscription.ROUTER_NAME, messageRouter),
                  equal(AndesSubscription.ROUTING_KEY, bindingKeyPattern.toLowerCase()));
 
-        if(!SELECT_ALL.equals(connectedNode)){
+        if(!SELECT_ALL_NODES.equals(connectedNode)){
             subscriptionQuery = and (subscriptionQuery, equal(AndesSubscription.NODE_ID, connectedNode));
         }
 
@@ -397,13 +402,13 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
     }
 
     /**
-     * Get active subscriptions filtered by identifier pattern and tokenized binding key
+     * Get active subscriptions filtered by identifier pattern and tokenized binding key.
      *
-     * @param isDurable         true if searching for durable subscriptions
-     * @param protocolType      protocol of the subscription
-     * @param destinationType   type of subscription (QUEUE/TOPIC/DURABLE_TOPIC)
+     * @param isDurable true if searching for durable subscriptions
+     * @param protocolType protocol of the subscription
+     * @param destinationType type of subscription (QUEUE/TOPIC/DURABLE_TOPIC)
      * @param bindingKeyPattern regex to match with binding key of subscriber
-     * @param connectedNode     id of the node to which the subscriber is connected to
+     * @param connectedNode id of the node to which the subscriber is connected to
      * @return Set of subscriptions filtered according to search criteria
      * @throws AndesException
      */
@@ -413,13 +418,14 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
 
         Set<AndesSubscription> filteredSubscriptions = new HashSet<>();
         String messageRouter = destinationType.getAndesMessageRouter();
-
+        // query for CQ engine to get the active subscriptions based on the filtering parameters.
+        // since there is a need for contains search in binding key, contains operation of CQ engine is used in query
         Query<AndesSubscription> subscriptionQuery = and
                 (equal(AndesSubscription.DURABILITY, isDurable), equal(AndesSubscription.PROTOCOL, protocolType),
                  equal(AndesSubscription.ROUTER_NAME, messageRouter),
                  contains(AndesSubscription.ROUTING_KEY, bindingKeyPattern.toLowerCase()));
 
-        if(!SELECT_ALL.equals(connectedNode)){
+        if(!SELECT_ALL_NODES.equals(connectedNode)){
             subscriptionQuery = and (subscriptionQuery, equal(AndesSubscription.NODE_ID, connectedNode));
         }
 
@@ -434,7 +440,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
 
 
     /**
-     * Get inactive subscriptions filtered by identifier pattern and tokenized binding key
+     * Get inactive subscriptions filtered by identifier pattern and tokenized binding key.
      *
      * @param bindingKeyPattern regex to match with binding key of subscriber
      * @return Set of subscriptions filtered according to search criteria
@@ -448,8 +454,8 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
         List<AndesSubscription> allInactiveSubscriptions = getInactiveSubscriberRepresentations();
 
         for (AndesSubscription inactiveSubscription : allInactiveSubscriptions) {
-            if(inactiveSubscription.getStorageQueue().getMessageRouterBindingKey().toLowerCase().
-                    contains(bindingKeyPattern.toLowerCase())){
+            if(StringUtils.containsIgnoreCase(inactiveSubscription.getStorageQueue().getMessageRouterBindingKey(),
+                    bindingKeyPattern)){
                 filteredSubscriptions.add(inactiveSubscription);
             }
         }
@@ -457,7 +463,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
     }
 
     /**
-     * Filter inactive subscriptions
+     * Filter inactive subscriptions.
      *
      * @param subscriptions subscription list for further filtering
      * @param protocolType protocol of the subscription
@@ -485,8 +491,8 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
             for (AndesSubscription inactiveSubscription : subscriptions) {
                 if(inactiveSubscription.getStorageQueue().getMessageRouter().getName().equals(messageRouter)
                         && inactiveSubscription.getProtocolType().equals(protocolType)
-                        && inactiveSubscription.getSubscriptionId().toLowerCase()
-                        .contains(subscriptionIdPattern.toLowerCase())){
+                        && StringUtils.containsIgnoreCase(inactiveSubscription.getSubscriptionId(),
+                        subscriptionIdPattern)){
                     filteredSubscriptions.add(inactiveSubscription);
                 }
             }
@@ -495,7 +501,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
     }
 
     /**
-     * filter active subscriptions by subscription id
+     * Filter active subscriptions by subscription id.
      *
      * @param subscriptions subscription list for further filtering
      * @param subscriptionIdPattern regex to match with ID of the subscriber
@@ -520,12 +526,12 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
             }
         } else{
             for (AndesSubscription subscription : subscriptions) {
-                if (subscription.getSubscriptionId().toLowerCase().contains(subscriptionIdPattern.toLowerCase())) {
+                if (StringUtils.containsIgnoreCase(subscription.getSubscriptionId(), subscriptionIdPattern)) {
                     filteredSubscriptions.add(subscription);
                 } else if (subscription.isDurable() && subscription.getStorageQueue().getMessageRouter().getName()
                         .equals(AMQPUtils.TOPIC_EXCHANGE_NAME)) {
-                    if (((DurableTopicSubscriber) subscription).getClientID().toLowerCase().contains
-                            (subscriptionIdPattern.toLowerCase())) {
+                    if (StringUtils.containsIgnoreCase(((DurableTopicSubscriber) subscription).getClientID(),
+                            subscriptionIdPattern)) {
                         filteredSubscriptions.add(subscription);
                     }
                 }

@@ -483,8 +483,8 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         if (!(o instanceof AndesMessageMetadata)){
             return false;
         }
-        AndesMessageMetadata that = (AndesMessageMetadata) o;
-        return getMessageID() == that.getMessageID();
+        AndesMessageMetadata andesMessageMetadata = (AndesMessageMetadata) o;
+        return getMessageID() == andesMessageMetadata.getMessageID();
     }
 
     @Override

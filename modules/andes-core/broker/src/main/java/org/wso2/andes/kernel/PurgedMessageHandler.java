@@ -22,7 +22,7 @@ import org.wso2.andes.kernel.subscription.AndesSubscription;
 
 /**
  * PurgedMessageHandler skips the purged messages from the delivery path and
- * handover the un-purged messages to the next delivery responsibility
+ * handover the un-purged messages to the next delivery responsibility.
  */
 public class PurgedMessageHandler extends DeliveryResponsibility {
 

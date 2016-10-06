@@ -18,6 +18,7 @@
 
 package org.wso2.andes.kernel;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
@@ -31,6 +32,7 @@ import org.wso2.andes.mqtt.utils.MQTTUtils;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 
@@ -113,11 +115,13 @@ public class MessageFlusher {
         //link the third handler
         expiredMessageHandler.setNextDeliveryFilter(new DeliveryMessageHandler());
 
-        int threadPoolCount = 1;
         int preDeliveryDeletionTaskScheduledPeriod = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_PRE_DELIVERY_EXPIRY_DELETION_INTERVAL);
+        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("ExpiryMessageDeletionTask-%d")
+                .build();
         //executor service for pre delivery deletion task
-        ScheduledExecutorService expiryMessageDeletionTaskScheduler = Executors.newScheduledThreadPool(threadPoolCount);
+        ScheduledExecutorService expiryMessageDeletionTaskScheduler =
+                Executors.newSingleThreadScheduledExecutor(namedThreadFactory);
         //pre-delivery deletion task initialization
         PreDeliveryExpiryMessageDeletionTask preDeliveryExpiryMessageDeletionTask =
                 new PreDeliveryExpiryMessageDeletionTask();
@@ -173,7 +177,7 @@ public class MessageFlusher {
     public void deliverMessageAsynchronously(AndesSubscription subscription, DeliverableAndesMetadata message)
             throws AndesException {
 
-        deliveryResponsibilityHead.handleDeliveryMessage(subscription,message);
+        deliveryResponsibilityHead.handleDeliveryMessage(subscription, message);
     }
 
     /**

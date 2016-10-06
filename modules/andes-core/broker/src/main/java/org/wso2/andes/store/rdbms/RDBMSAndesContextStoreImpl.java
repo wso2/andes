@@ -1847,14 +1847,11 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
         Set<String> queueList = new TreeSet<>();
-
         try {
             connection = getConnection();
-
             preparedStatement =
                     connection.prepareStatement(RDBMSConstants.PS_GET_ALL_QUEUES);
             resultSet = preparedStatement.executeQuery();
-
             while (resultSet.next()) {
                 queueList.add(resultSet.getString(RDBMSConstants.STORAGE_QUEUE_NAME));
             }
@@ -1882,7 +1879,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         Set<String> queueList = new TreeSet<>();
         try {
             connection = getConnection();
-
             preparedStatement =
                     connection.prepareStatement(RDBMSConstants.PS_GET_ALL_QUEUES_IN_SUBMITTED_SLOTS);
             resultSet = preparedStatement.executeQuery();

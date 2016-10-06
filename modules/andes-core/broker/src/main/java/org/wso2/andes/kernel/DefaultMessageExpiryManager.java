@@ -21,12 +21,12 @@ import java.util.List;
 /**
  * DefaultMessageExpiryManager is responsible for update the message status in metadata table only,
  * not in the expiry table since this is associated with the configuration DLC expiry check is set
- * to false
+ * to false.
  */
 public class DefaultMessageExpiryManager implements MessageExpiryManager {
 
     /**
-     * Reference to MessageStore. This holds the messages received by andes
+     * Reference to MessageStore. This holds the messages received by Andes.
      */
     private MessageStore messageStore;
 
@@ -35,21 +35,21 @@ public class DefaultMessageExpiryManager implements MessageExpiryManager {
     }
 
     /**
-     * Responsible to move metadata to DLC when DLC expiry check is set to false
+     * Responsible to move metadata to DLC when DLC expiry check is set to false.
      * {@inheritDoc}
      */
     @Override
     public void moveMetadataToDLC(List<AndesMessageMetadata> messages, String dlcQueueName)
-            throws AndesException{
-        messageStore.moveMetadataToDLC(messages,dlcQueueName,false);
+            throws AndesException {
+        messageStore.moveMetadataToDLC(messages, dlcQueueName, false);
     }
 
     /**
-     * Responsible to move metadata to DLC when DLC expiry check is set to false
+     * Responsible to move metadata to DLC when DLC expiry check is set to false.
      * {@inheritDoc}
      */
     @Override
     public void moveMetadataToDLC(long messageId, String dlcQueueName) throws AndesException {
-        messageStore.moveMetadataToDLC(messageId,dlcQueueName,false);
+        messageStore.moveMetadataToDLC(messageId, dlcQueueName, false);
     }
 }
