@@ -2576,8 +2576,8 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
                 storeMembershipEventPreparedStatement.setString(2, originatedNode);
                 storeMembershipEventPreparedStatement.setString(3, notifiedArtifact);
                 storeMembershipEventPreparedStatement.setString(4, clusterNotificationType);
-                storeMembershipEventPreparedStatement.setString(5, notification);
-                storeMembershipEventPreparedStatement.setString(6, description);
+                storeMembershipEventPreparedStatement.setString(5, description);
+                storeMembershipEventPreparedStatement.setString(6, notification);
                 storeMembershipEventPreparedStatement.addBatch();
             }
             storeMembershipEventPreparedStatement.executeBatch();
