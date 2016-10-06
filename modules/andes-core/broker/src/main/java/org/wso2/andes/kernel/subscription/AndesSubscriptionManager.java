@@ -607,14 +607,17 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
         }
     }
 
-    public AndesSubscription getSubscriptionByNode(String nodeID, ProtocolType
-            protocolType) {
-        Query<AndesSubscription> subscriptionQuery = and
-                (equal(AndesSubscription
-                        .NODE_ID, nodeID), equal(AndesSubscription
-                        .PROTOCOL, protocolType));
-        return subscriptionRegistry.exucuteQuery(subscriptionQuery).iterator().next();
+    /**
+     * Get all subscriptions connected to given node
+     *
+     * @param nodeId Id of the node
+     * @return Iterable over matching subscriptions
+     */
+    public Iterable<AndesSubscription> getSubscriptionsByNode(String nodeId) {
+        Query<AndesSubscription> subscriptionQuery = equal(AndesSubscription.NODE_ID, nodeId);
+        return subscriptionRegistry.exucuteQuery(subscriptionQuery);
     }
+
 
     public Iterable<AndesSubscription> getAllLocalSubscriptions(ProtocolType protocolType) {
         Query<AndesSubscription> subscriptionQuery = and
@@ -717,16 +720,15 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
      * closes subscriptions from local registry, update the DB, and notify other active
      * nodes. If subscriptions are local it will forcefully disconnect subscriber from server side.
      *
-     * @param nodeID ID of the node
-     * @throws AndesException
+     * @param nodeId ID of the node
+     * @throws AndesException on an issue removing subscription and notifying
      */
-    public void closeAllActiveSubscriptionsOfNode(String nodeID) throws AndesException {
-        Query<AndesSubscription> subscriptionQuery = equal(AndesSubscription
-                .STATE, true);
-        for (AndesSubscription sub : subscriptionRegistry.exucuteQuery(subscriptionQuery)) {
+    public void closeAllActiveSubscriptionsOfNode(String nodeId) throws AndesException {
+        Iterable<AndesSubscription> subscriptionsOfNode = getSubscriptionsByNode(nodeId);
+        for (AndesSubscription sub : subscriptionsOfNode) {
             SubscriberConnection connectionInfo = sub.getSubscriberConnection();
             UUID channelID = connectionInfo.getProtocolChannelID();
-            sub.closeConnection(channelID, nodeID);
+            sub.closeConnection(channelID, nodeId);
             //simulate a local subscription remove. Notify the cluster
             removeLocalSubscriptionAndNotify(sub);
         }
