@@ -118,7 +118,7 @@ public final class SlotDeliveryWorkerManager implements StoreHealthListener, Net
      * Stop all stop delivery workers in the thread pool
      */
     public void stopMessageDelivery() {
-        taskManager.stop();
+        taskManager.shutdown();
     }
 
     /**

@@ -261,6 +261,54 @@ public class AndesSubscription {
     }
 
     /**
+     * Handle sent but unacked messages of the subscriber. For durable subscriptions, all sent but un-acknowledged
+     * messages back to the queue it is bound
+     */
+    public void rebufferUnackedMessages() throws AndesException {
+        List<DeliverableAndesMetadata> unAckedMessages = subscriberConnection.getSentButUnAckedMessages();
+        if (isDurable()) {     // add un-acknowledged messages back to queue
+
+            for (DeliverableAndesMetadata unAckedMessage : unAckedMessages) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Recovered message id= " + unAckedMessage.getMessageID() + " channel = "
+                            + subscriberConnection.getProtocolChannelID());
+                }
+
+                MessageTracer.trace(unAckedMessage.getMessageID(), unAckedMessage.getStorageQueueName(),
+                        "rebuffering message due to subscription left");
+
+                UUID protocolChannelID = getSubscriberConnection().getProtocolChannelID();
+                unAckedMessage.markDeliveredChannelAsClosed(protocolChannelID);
+                unAckedMessage.markAsNackedByClient(subscriberConnection.getProtocolChannelID());
+                storageQueue.bufferMessageForDelivery(unAckedMessage);
+            }
+        } else {    // removed messages acked by all
+            List<DeliverableAndesMetadata> messagesToRemove = new ArrayList<>();
+
+            for (DeliverableAndesMetadata unAckedMessage : unAckedMessages) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Re message id= " + unAckedMessage.getMessageID() + " channel = " + subscriberConnection
+                            .getProtocolChannelID());
+                }
+
+                UUID protocolChannelID = getSubscriberConnection().getProtocolChannelID();
+                unAckedMessage.markDeliveredChannelAsClosed(protocolChannelID);
+                unAckedMessage.evaluateMessageAcknowledgement();
+
+                //for topic messages see if we can delete the message
+                if ((!unAckedMessage.isOKToDispose()) && (unAckedMessage.isTopic())) {
+                    if (unAckedMessage.getLatestState().equals(MessageStatus.ACKED_BY_ALL)) {
+                        messagesToRemove.add(unAckedMessage);
+                    }
+                }
+            }
+
+            MessagingEngine.getInstance().deleteMessages(messagesToRemove);
+        }
+    }
+
+
+    /**
      * Schedule to redeliver a message to this subscriber
      *
      * @param messageMetadata message to redeliver
@@ -292,11 +340,12 @@ public class AndesSubscription {
             //close the actual connection to the broker
             subscriberConnection.forcefullyDisconnect();
             try {
+                List<DeliverableAndesMetadata> messagesToRemove = new ArrayList<>();
+
                 for (DeliverableAndesMetadata andesMetadata : getSubscriberConnection().getUnAckedMessages()) {
                     andesMetadata.markDeliveredChannelAsClosed(channelID);
                     //re-evaluate ACK if a topic subscriber has closed
                     if (!isDurable()) {
-                        List<DeliverableAndesMetadata> messagesToRemove = new ArrayList<>();
                         andesMetadata.evaluateMessageAcknowledgement();
                         //for topic messages see if we can delete the message
                         if ((!andesMetadata.isOKToDispose()) && (andesMetadata.isTopic())) {
@@ -304,9 +353,10 @@ public class AndesSubscription {
                                 messagesToRemove.add(andesMetadata);
                             }
                         }
-                        MessagingEngine.getInstance().deleteMessages(messagesToRemove);
                     }
                 }
+
+                MessagingEngine.getInstance().deleteMessages(messagesToRemove);
             } catch (AndesException e) {
                 throw new SubscriptionException("Could not delete ACKED_BY_ALL messages"
                         + " on non durable subscription close");

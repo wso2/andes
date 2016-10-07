@@ -29,6 +29,7 @@ import java.util.concurrent.DelayQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Manage processing of {@link Task}. Holds the {@link TaskHolder} ring and the {@link TaskProcessor} list that
@@ -149,6 +150,31 @@ public final class TaskExecutorService<T extends Task> {
             taskProcessor.deactivate();
         }
         taskProcessorQueue.clear();
+    }
+
+    /**
+     * Stop processing tasks and shutdown the executor pool. This call is blocked until the maxTerminationAwaitTime
+     * time is reached or all the tasks are stopped and the executor pool is shutdown.
+     */
+    public void shutdown() {
+        stop();
+
+        taskExecutorPool.shutdownNow();
+
+        try {
+            // Maximum time waited for a SDW to terminate in minutes
+            int maxTerminationAwaitTime = 1;
+
+            boolean terminationSuccessful = taskExecutorPool
+                    .awaitTermination(maxTerminationAwaitTime, TimeUnit.MINUTES);
+
+            if (!terminationSuccessful) {
+                log.error("Could not stop task manager.");
+            }
+        } catch (InterruptedException e) {
+            log.error("Task manager shutdown process was interrupted", e);
+            Thread.currentThread().interrupt();
+        }
     }
 
     /**

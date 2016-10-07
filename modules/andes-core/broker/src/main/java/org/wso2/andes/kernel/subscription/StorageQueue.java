@@ -315,8 +315,7 @@ public class StorageQueue {
             }
             messageHandler.stopMessageDelivery(this);
         } else {
-            // Return un-acknowledged messages of the subscriber to queue so other subscribers can get them
-            subscription.recoverMessages();
+            subscription.rebufferUnackedMessages();
         }
     }
 
