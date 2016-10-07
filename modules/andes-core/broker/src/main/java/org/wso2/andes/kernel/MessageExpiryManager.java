@@ -19,24 +19,38 @@ package org.wso2.andes.kernel;
 import java.util.List;
 
 /**
- * Message expiry manager ir responsible for keep track of expiry related data in
- * appropriate database tables
+ * Message expiry manager is responsible for keep track of expiry related data in appropriate database tables.
  */
-public interface MessageExpiryManager {
+public class MessageExpiryManager {
 
     /**
-     * Move the meta data to DLC and update the status of messages
-     * @param messages Lis of message metadata
+     * Reference to MessageStore. This holds the messages received by Andes.
+     */
+    private MessageStore messageStore;
+
+    public MessageExpiryManager(MessageStore messageStore){
+        this.messageStore = messageStore;
+    }
+
+    /**
+     * Move the meta data to DLC and update the status of messages.
+     *
+     * @param messages list of message metadata
      * @param dlcQueueName DLC queue name
      */
     public void moveMetadataToDLC(List<AndesMessageMetadata> messages, String dlcQueueName)
-            throws AndesException;
+            throws AndesException{
+        messageStore.moveMetadataToDLC(messages, dlcQueueName);
+    }
 
     /**
-     * Move the meta data to DLC and update the status of messages
-     * @param messageId  Message ID
+     * Move the meta data to DLC and update the status of messages.
+     *
+     * @param messageId  message ID
      * @param dlcQueueName DLC Queue name for which the message is routed to
      * @throws AndesException
      */
-    public void moveMetadataToDLC(long messageId, String dlcQueueName) throws AndesException;
+    public void moveMetadataToDLC(long messageId, String dlcQueueName) throws AndesException{
+        messageStore.moveMetadataToDLC(messageId, dlcQueueName);
+    }
 }

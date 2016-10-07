@@ -472,8 +472,8 @@ public class MessagingEngine {
      * @return list of expired message Ids
      * @throws AndesException
      */
-    public List<Long> getExpiredMessagesFromDLC() throws AndesException {
-        return messageStore.getExpiredMessagesFromDLC();
+    public List<Long> getExpiredMessagesFromDLC(long messageCount) throws AndesException {
+        return messageStore.getExpiredMessagesFromDLC(messageCount);
     }
 
     /**

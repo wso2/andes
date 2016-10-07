@@ -517,19 +517,16 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     }
 
     /**
-     * Update the DLC queue id in metadata table and expiration table since need to check for expiry
-     * in DLC messages
+     * Update the DLC queue id in metadata table and expiration table since need to check for expiry in DLC messages.
      * {@inheritDoc}
      */
     @Override
-    public void moveMetadataToDLC(long messageId, String dlcQueueName, boolean expireMessageInDLC)
-            throws AndesException {
+    public void moveMetadataToDLC(long messageId, String dlcQueueName) throws AndesException {
         Connection connection = null;
         PreparedStatement metadataPS = null;
         PreparedStatement expiryDataPS = null;
         Context moveMetadataToDLCContext = MetricManager.timer(MetricsConstants.MOVE_METADATA_TO_DLC, Level.INFO)
                 .start();
-
         //Remove the message from cache
         removeFromCache(messageId);
 
@@ -538,26 +535,20 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             connection = getConnection();
             //update the DLC queue ID in metadata table
             metadataPS = connection.prepareStatement(RDBMSConstants.PS_MOVE_METADATA_TO_DLC);
-
             int cachedQueueId = getCachedQueueID(dlcQueueName);
-            //update the DLC queue ID in the expiration table
             metadataPS.setInt(1, cachedQueueId);
             metadataPS.setLong(2, messageId);
             metadataPS.execute();
-            //If message expiry is enabled in the configuration need to update the DLC info in the expiration table.
-            if (expireMessageInDLC) {
-                expiryDataPS = connection.prepareStatement(RDBMSConstants.PS_UPDATE_DLC_STATUS_IN_EXPIRY_TABLE);
-                expiryDataPS.setInt(1, cachedQueueId);
-                expiryDataPS.setLong(2, messageId);
-                expiryDataPS.execute();
-            }
-
+            //update the DLC queue ID in the expiration table
+            expiryDataPS = connection.prepareStatement(RDBMSConstants.PS_UPDATE_DLC_STATUS_IN_EXPIRY_TABLE);
+            expiryDataPS.setInt(1, cachedQueueId);
+            expiryDataPS.setLong(2, messageId);
+            expiryDataPS.execute();
             connection.commit();
         } catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_MOVING_METADATA_TO_DLC);
-            throw rdbmsStoreUtils
-                    .convertSQLException("Error occurred while moving message metadata to dead letter " + "channel.",
-                            e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while moving message metadata to dead letter "
+                    + "channel.", e);
         } finally {
             contextWrite.stop();
             moveMetadataToDLCContext.stop();
@@ -568,13 +559,11 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     }
 
     /**
-     * Update the DLC queue id in metadata table and expiration table since need to check for expiry
-     * in DLC messages
+     * Update the DLC queue id in metadata table and expiration table since need to check for expiry in DLC messages
      * {@inheritDoc}
      */
     @Override
-    public void moveMetadataToDLC(List<AndesMessageMetadata> messages, String dlcQueueName, boolean expireMessageInDLC)
-            throws AndesException {
+    public void moveMetadataToDLC(List<AndesMessageMetadata> messages, String dlcQueueName) throws AndesException {
         Connection connection = null;
         PreparedStatement metadataPS = null;
         PreparedStatement expiryDataPS = null;
@@ -588,38 +577,25 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             connection = getConnection();
             metadataPS = connection.prepareStatement(RDBMSConstants.PS_MOVE_METADATA_TO_DLC);
             int cachedQueueId = getCachedQueueID(dlcQueueName);
-            // If message expiry is enabled in the configuration need to update the DLC info in the expiration table,
-            // else no need to do that.
-            if (expireMessageInDLC) {
-                expiryDataPS = connection.prepareStatement(RDBMSConstants.PS_UPDATE_DLC_STATUS_IN_EXPIRY_TABLE);
-                for (AndesMessageMetadata message : messages) {
-                    messageIDsToRemoveFromCache.add(message.getMessageID());
-                    metadataPS.setInt(1, cachedQueueId);
-                    metadataPS.setLong(2, message.getMessageID());
-                    expiryDataPS.setInt(1, cachedQueueId);
-                    expiryDataPS.setLong(2, message.getMessageID());
-                    metadataPS.addBatch();
-                    expiryDataPS.addBatch();
-                }
-                metadataPS.executeBatch();
-                expiryDataPS.executeBatch();
-            }else{
-                for (AndesMessageMetadata message : messages) {
-                    messageIDsToRemoveFromCache.add(message.getMessageID());
-                    metadataPS.setInt(1, cachedQueueId);
-                    metadataPS.setLong(2, message.getMessageID());
-                    metadataPS.addBatch();
-                }
-                metadataPS.executeBatch();
+            expiryDataPS = connection.prepareStatement(RDBMSConstants.PS_UPDATE_DLC_STATUS_IN_EXPIRY_TABLE);
+            for (AndesMessageMetadata message : messages) {
+                messageIDsToRemoveFromCache.add(message.getMessageID());
+                metadataPS.setInt(1, cachedQueueId);
+                metadataPS.setLong(2, message.getMessageID());
+                expiryDataPS.setInt(1, cachedQueueId);
+                expiryDataPS.setLong(2, message.getMessageID());
+                metadataPS.addBatch();
+                expiryDataPS.addBatch();
             }
+            metadataPS.executeBatch();
+            expiryDataPS.executeBatch();
             //remove messages from cache
             removeFromCache(messageIDsToRemoveFromCache);
             connection.commit();
         } catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_MOVING_METADATA_TO_DLC);
-            throw rdbmsStoreUtils
-                    .convertSQLException("Error occurred while moving message metadata to dead letter " + "channel.",
-                            e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while moving message metadata to dead letter "
+                    + "channel.", e);
         } finally {
             contextWrite.stop();
             moveMetadataToDLCContext.stop();
@@ -1247,7 +1223,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     }
 
     @Override
-    public List<Long> getExpiredMessagesFromDLC() throws AndesException {
+    public List<Long> getExpiredMessagesFromDLC(long messageCount) throws AndesException {
 
         Connection connection = null;
         List<Long> list = new ArrayList<>();
@@ -1262,9 +1238,14 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_EXPIRED_MESSAGES_FROM_DLC);
             preparedStatement.setLong(1, System.currentTimeMillis());
             resultSet = preparedStatement.executeQuery();
+            long resultCount = 0L;
 
             while (resultSet.next()) {
+                if (resultCount == messageCount) {
+                    break;
+                }
                 list.add(resultSet.getLong(RDBMSConstants.MESSAGE_ID));
+                resultCount++;
             }
             return list;
         } catch (SQLException e) {

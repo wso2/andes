@@ -161,9 +161,9 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void moveMetadataToDLC(long messageId, String dlcQueueName, boolean expireMessageInDLC) throws AndesException {
+    public void moveMetadataToDLC(long messageId, String dlcQueueName) throws AndesException {
         try {
-            wrappedInstance.moveMetadataToDLC(messageId, dlcQueueName, expireMessageInDLC);
+            wrappedInstance.moveMetadataToDLC(messageId, dlcQueueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -174,10 +174,10 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void moveMetadataToDLC(List<AndesMessageMetadata> messages, String dlcQueueName, boolean expireMessageInDLC)
+    public void moveMetadataToDLC(List<AndesMessageMetadata> messages, String dlcQueueName)
             throws AndesException {
         try {
-            wrappedInstance.moveMetadataToDLC(messages, dlcQueueName, expireMessageInDLC);
+            wrappedInstance.moveMetadataToDLC(messages, dlcQueueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -382,9 +382,9 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public List<Long> getExpiredMessagesFromDLC() throws AndesException {
+    public List<Long> getExpiredMessagesFromDLC(long messageCount) throws AndesException {
         try {
-            return wrappedInstance.getExpiredMessagesFromDLC();
+            return wrappedInstance.getExpiredMessagesFromDLC(messageCount);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
