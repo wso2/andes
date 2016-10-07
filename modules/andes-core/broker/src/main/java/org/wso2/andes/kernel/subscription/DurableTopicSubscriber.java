@@ -72,7 +72,6 @@ public class DurableTopicSubscriber extends AndesSubscription {
      */
     public void closeConnection(UUID channelID, String nodeID) throws SubscriptionException {
         if (this.isActive) {
-            this.subscriberConnection = null;
             this.isActive = false;
         } else {
             throw new SubscriptionException("Cannot close inactive subscription id= " + getSubscriptionId()
