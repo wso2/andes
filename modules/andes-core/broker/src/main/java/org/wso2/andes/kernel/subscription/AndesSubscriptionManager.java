@@ -150,8 +150,8 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
     }
 
     /**
-     * Register a subscription lister
-     * It will be notified when a subscription change happened
+     * Register a subscription lister.
+     * It will be notified when a subscription change happened.
      *
      * @param listener subscription listener
      */
@@ -238,7 +238,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
     /**
      * Remove local subscription. Unbind subscription from queue,
      * remove from registry, notify local subscription listeners and notify
-     * cluster on subscription close
+     * cluster on subscription close.
      *
      * @param subscription AndesSubscription to close
      * @throws AndesException
@@ -266,7 +266,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
     }
 
     /**
-     * Get mock subscribers representing inactive durable topic subscriptions on broker
+     * Get mock subscribers representing inactive durable topic subscriptions on broker.
      *
      * @return List of inactive
      */
@@ -345,7 +345,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
     }
 
     /**
-     * Get active subscriptions filtered by identifier pattern and exact binding key
+     * Get active subscriptions filtered by identifier pattern and exact binding key.
      *
      * @param isDurable true if searching for durable subscriptions
      * @param protocolType protocol of the subscription
@@ -380,7 +380,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
     }
 
     /**
-     * Get inactive subscriptions filtered by identifier pattern and exact binding key
+     * Get inactive subscriptions filtered by identifier pattern and exact binding key.
      *
      * @param bindingKeyPattern regex to match with binding key of subscriber
      * @return Set of subscriptions filtered according to search criteria
@@ -544,7 +544,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
 
 
     /**
-     * Remove the subscription from subscriptionRegistry
+     * Remove the subscription from subscriptionRegistry.
      *
      * @param channelID protocol channel ID
      * @param nodeID    ID of the node subscription bound to
@@ -591,11 +591,12 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
     }
 
     /**
-     * Get the AndesSubscription by subscription ID
+     * Get the AndesSubscription by subscription ID.
+     *
      * @param subscriptionId subscription ID to query
      * @return matching subscription
      */
-    public AndesSubscription getSubscriptionById(String  subscriptionId) {
+    public AndesSubscription getSubscriptionById(String subscriptionId) {
         Query<AndesSubscription> subscriptionQuery = equal(AndesSubscription.SUB_ID, subscriptionId);
         Iterable<AndesSubscription> subscriptions = subscriptionRegistry.exucuteQuery(subscriptionQuery);
         Iterator<AndesSubscription> subIterator = subscriptions.iterator();
@@ -607,14 +608,17 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
         }
     }
 
-    public AndesSubscription getSubscriptionByNode(String nodeID, ProtocolType
-            protocolType) {
-        Query<AndesSubscription> subscriptionQuery = and
-                (equal(AndesSubscription
-                        .NODE_ID, nodeID), equal(AndesSubscription
-                        .PROTOCOL, protocolType));
-        return subscriptionRegistry.exucuteQuery(subscriptionQuery).iterator().next();
+    /**
+     * Get all subscriptions connected to given node.
+     *
+     * @param nodeId Id of the node
+     * @return Iterable over matching subscriptions
+     */
+    public Iterable<AndesSubscription> getSubscriptionsByNode(String nodeId) {
+        Query<AndesSubscription> subscriptionQuery = equal(AndesSubscription.NODE_ID, nodeId);
+        return subscriptionRegistry.exucuteQuery(subscriptionQuery);
     }
+
 
     public Iterable<AndesSubscription> getAllLocalSubscriptions(ProtocolType protocolType) {
         Query<AndesSubscription> subscriptionQuery = and
@@ -717,16 +721,15 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
      * closes subscriptions from local registry, update the DB, and notify other active
      * nodes. If subscriptions are local it will forcefully disconnect subscriber from server side.
      *
-     * @param nodeID ID of the node
-     * @throws AndesException
+     * @param nodeId ID of the node
+     * @throws AndesException on an issue removing subscription and notifying
      */
-    public void closeAllActiveSubscriptionsOfNode(String nodeID) throws AndesException {
-        Query<AndesSubscription> subscriptionQuery = equal(AndesSubscription
-                .STATE, true);
-        for (AndesSubscription sub : subscriptionRegistry.exucuteQuery(subscriptionQuery)) {
+    public void closeAllActiveSubscriptionsOfNode(String nodeId) throws AndesException {
+        Iterable<AndesSubscription> subscriptionsOfNode = getSubscriptionsByNode(nodeId);
+        for (AndesSubscription sub : subscriptionsOfNode) {
             SubscriberConnection connectionInfo = sub.getSubscriberConnection();
             UUID channelID = connectionInfo.getProtocolChannelID();
-            sub.closeConnection(channelID, nodeID);
+            sub.closeConnection(channelID, nodeId);
             //simulate a local subscription remove. Notify the cluster
             removeLocalSubscriptionAndNotify(sub);
         }
@@ -748,7 +751,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
     }
 
     /**
-     * Get Number of subscriptions cluster-wide by queue name
+     * Get Number of subscriptions cluster-wide by queue name.
      *
      * @param queueName    name of the queue
      * @param protocolType ProtocolType (AMQP/MQTT)
@@ -934,7 +937,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
     }
 
     /**
-     * Gauge will return total number of queue subscriptions for current node
+     * Gauge will return total number of queue subscriptions for current node.
      */
     private class QueueSubscriberGauge implements Gauge<Integer> {
         @Override
@@ -949,7 +952,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
     }
 
     /**
-     * Gauge will return total number of topic subscriptions current node
+     * Gauge will return total number of topic subscriptions current node.
      */
     private class TopicSubscriberGauge implements Gauge {
         @Override
