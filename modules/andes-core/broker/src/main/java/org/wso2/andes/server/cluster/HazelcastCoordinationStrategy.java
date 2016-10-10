@@ -197,27 +197,28 @@ public class HazelcastCoordinationStrategy implements CoordinationStrategy, Memb
         checkAndNotifyCoordinatorChange();
 
         int maximumNumOfTries = 3;
-        String nodeId = null;
+        String nodeId;
         int numberOfAttemptsTried = 0;
         /*
          * Try a few times until nodeId is read from distributed Hazelcast Map
          * and give up
          */
-        while (numberOfAttemptsTried < 3) {
-            nodeId = configurableClusterAgent.getIdOfNode(member);
-            numberOfAttemptsTried = numberOfAttemptsTried + 1;
-            if ((StringUtils.isEmpty(nodeId)) && (numberOfAttemptsTried < maximumNumOfTries)) {
+        nodeId = configurableClusterAgent.getIdOfNode(member);
+        if(null == nodeId) {
+            while (numberOfAttemptsTried < maximumNumOfTries) {
                 try {
                     // Exponentially increase waiting time
-                    long sleepTime = Math.round(Math.pow(2, (numberOfAttemptsTried - 1)));
+                    long sleepTime = Math.round(Math.pow(2, (numberOfAttemptsTried)));
                     TimeUnit.SECONDS.sleep(sleepTime);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
-            } else {
-                break;
+                nodeId = configurableClusterAgent.getIdOfNode(member);
+                numberOfAttemptsTried = numberOfAttemptsTried + 1;
+                if (!(StringUtils.isEmpty(nodeId))){
+                    break;
+                }
             }
-
         }
         if (StringUtils.isEmpty(nodeId)) {
             log.warn("Node ID is not set for member " + member + " when newly joined");
