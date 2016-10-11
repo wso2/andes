@@ -92,21 +92,18 @@ public interface MessageStore extends HealthAwareStore {
      *
      * @param messageId    The message id to move.
      * @param dlcQueueName The dead letter channel queue name for the message to be moved.
-     * @param expireMessageInDLC Whether expiration enabled in DLC.
      * @throws AndesException
      */
-    void moveMetadataToDLC(long messageId, String dlcQueueName, boolean expireMessageInDLC) throws AndesException;
+    void moveMetadataToDLC(long messageId, String dlcQueueName) throws AndesException;
 
     /**
      * Method to move a list of messages to a specified dead letter channel.
      *
      * @param messages     The list of messages to move.
      * @param dlcQueueName The dead letter channel queue name for the message to be moved.
-     * @param expireMessageInDLC Whether expiration enabled in DLC.
      * @throws AndesException
      */
-    void moveMetadataToDLC(List<AndesMessageMetadata> messages, String dlcQueueName, boolean expireMessageInDLC)
-            throws AndesException;
+    void moveMetadataToDLC(List<AndesMessageMetadata> messages, String dlcQueueName) throws AndesException;
 
     /**
      * Update the meta data for the given message with the given information in the AndesMetaData. Update destination
@@ -257,7 +254,7 @@ public interface MessageStore extends HealthAwareStore {
      * @return List of expired message Ids
      * @throws AndesException
      */
-    List<Long> getExpiredMessagesFromDLC() throws AndesException;
+    List<Long> getExpiredMessagesFromDLC(long messageCount) throws AndesException;
 
     /**
      * add messages to expiry queue

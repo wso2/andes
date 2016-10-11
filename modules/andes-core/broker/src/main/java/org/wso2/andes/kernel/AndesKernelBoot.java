@@ -327,19 +327,8 @@ public class AndesKernelBoot {
         AndesContext.getInstance().setAndesSubscriptionManager(subscriptionManager);
         ClusterResourceHolder.getInstance().setSubscriptionManager(subscriptionManager);
 
-        // Whether expiry check is enabled/disabled for DLC
-        boolean isExpiryCheckEnabledInDLC
-                = AndesConfigurationManager.readValue(AndesConfiguration.PERFORMANCE_TUNING_EXPIRE_MESSAGES_IN_DLC);
-        MessageExpiryManager messageExpiryManager;
-        //depends on the configuration bind the appropriate expiry manger with the messaging engine
-        if (isExpiryCheckEnabledInDLC) {
-            messageExpiryManager = new DLCMessageExpiryManager(messageStore);
-        } else {
-            messageExpiryManager = new DefaultMessageExpiryManager(messageStore);
-        }
-
         MessagingEngine messagingEngine = MessagingEngine.getInstance();
-        messagingEngine.initialise(messageStore, messageExpiryManager);
+        messagingEngine.initialise(messageStore, new MessageExpiryManager(messageStore));
 
         // initialise Andes context information related manager class
         AndesContextInformationManager contextInformationManager =
@@ -461,15 +450,8 @@ public class AndesKernelBoot {
                 (AndesConfiguration.PERFORMANCE_TUNING_PERIODIC_EXPIRY_MESSAGE_DELETION_INTERVAL);
         int safeDeleteRegionSlotCount = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_SAFE_DELETE_REGION_SLOT_COUNT);
-        boolean isDLCExpiryCheckEnabled = AndesConfigurationManager.readValue
-                (AndesConfiguration.PERFORMANCE_TUNING_EXPIRE_MESSAGES_IN_DLC);
 
-        //based on the DLC expiration check configuration bind the appropriate deletion task
-        if (isDLCExpiryCheckEnabled) {
-            periodicExpiryMessageDeletionTask = new DLCExpiryCheckEnabledDeletionTask();
-        } else {
-            periodicExpiryMessageDeletionTask = new PeriodicExpiryMessageDeletionTask();
-        }
+        periodicExpiryMessageDeletionTask = new PeriodicExpiryMessageDeletionTask();
 
         andesRecoveryTaskScheduler.scheduleAtFixedRate(andesRecoveryTask, recoveryTaskScheduledPeriod,
                 recoveryTaskScheduledPeriod, TimeUnit.SECONDS);
