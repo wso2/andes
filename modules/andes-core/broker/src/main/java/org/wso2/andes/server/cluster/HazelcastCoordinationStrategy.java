@@ -21,6 +21,7 @@ import com.hazelcast.core.Member;
 import com.hazelcast.core.MemberAttributeEvent;
 import com.hazelcast.core.MembershipEvent;
 import com.hazelcast.core.MembershipListener;
+import org.apache.commons.lang.StringUtils;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.slot.SlotCoordinationConstants;
@@ -30,6 +31,7 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.catalina.ha.session.DeltaRequest.log;
@@ -193,7 +195,35 @@ public class HazelcastCoordinationStrategy implements CoordinationStrategy, Memb
                 + member.getSocketAddress() + " UUID:" + member.getUuid());
 
         checkAndNotifyCoordinatorChange();
-        configurableClusterAgent.memberAdded(configurableClusterAgent.getIdOfNode(member));
+
+        int maximumNumOfTries = 3;
+        String nodeId;
+        int numberOfAttemptsTried = 0;
+        /*
+         * Try a few times until nodeId is read from distributed Hazelcast Map
+         * and give up
+         */
+        nodeId = configurableClusterAgent.getIdOfNode(member);
+        if (null == nodeId) {
+            while (numberOfAttemptsTried < maximumNumOfTries) {
+                try {
+                    // Exponentially increase waiting time
+                    long sleepTime = Math.round(Math.pow(2, (numberOfAttemptsTried)));
+                    TimeUnit.SECONDS.sleep(sleepTime);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                nodeId = configurableClusterAgent.getIdOfNode(member);
+                numberOfAttemptsTried = numberOfAttemptsTried + 1;
+                if (!(StringUtils.isEmpty(nodeId))) {
+                    break;
+                }
+            }
+        }
+        if (StringUtils.isEmpty(nodeId)) {
+            log.warn("Node ID is not set for member " + member + " when newly joined");
+        }
+        configurableClusterAgent.memberAdded(nodeId);
     }
 
     /**
