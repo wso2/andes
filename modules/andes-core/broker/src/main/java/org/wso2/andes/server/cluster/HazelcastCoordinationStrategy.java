@@ -204,7 +204,7 @@ public class HazelcastCoordinationStrategy implements CoordinationStrategy, Memb
          * and give up
          */
         nodeId = configurableClusterAgent.getIdOfNode(member);
-        if(null == nodeId) {
+        if (null == nodeId) {
             while (numberOfAttemptsTried < maximumNumOfTries) {
                 try {
                     // Exponentially increase waiting time
@@ -215,7 +215,7 @@ public class HazelcastCoordinationStrategy implements CoordinationStrategy, Memb
                 }
                 nodeId = configurableClusterAgent.getIdOfNode(member);
                 numberOfAttemptsTried = numberOfAttemptsTried + 1;
-                if (!(StringUtils.isEmpty(nodeId))){
+                if (!(StringUtils.isEmpty(nodeId))) {
                     break;
                 }
             }
