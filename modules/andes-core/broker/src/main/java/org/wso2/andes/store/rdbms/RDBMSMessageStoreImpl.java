@@ -35,6 +35,7 @@ import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.kernel.slot.Slot;
+import org.wso2.andes.kernel.slot.RecoverySlotCreator;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.store.AndesDataIntegrityViolationException;
@@ -88,6 +89,11 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * the message cache in use ( intension is to optimize reads)
      */
     private AndesMessageCache messageCache;
+
+    /**
+     * Interval between two consecutive stat logs in milliseconds for slot recovery process
+     */
+    private static final int STAT_PUBLISHING_INTERVAL = 10 * 1000;
 
     /**
      * Partially created prepared statement to retrieve content of multiple messages using IN operator
@@ -842,6 +848,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
+        long getMetadataListExecutionStart = 0;
 
         Context metaListRetrievalContext = MetricManager.timer(MetricsConstants.GET_META_DATA_LIST, Level.INFO).start();
         Context contextRead = MetricManager.timer(MetricsConstants.DB_READ, Level.INFO).start();
@@ -853,7 +860,16 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             preparedStatement.setLong(2, firstMsgId);
             preparedStatement.setLong(3, lastMsgID);
 
+            if (log.isDebugEnabled()) {
+                log.debug("Started executing get metadata range query for queue :" + storageQueueName);
+                getMetadataListExecutionStart = System.currentTimeMillis();
+            }
             resultSet = preparedStatement.executeQuery();
+            if (log.isDebugEnabled()) {
+                log.debug("Time elapsed for execute get metadata range query "+ storageQueueName + " : " +
+                        (System.currentTimeMillis() - getMetadataListExecutionStart)+" milliseconds.");
+            }
+
             while (resultSet.next()) {
                 DeliverableAndesMetadata md = new DeliverableAndesMetadata(slot,
                         resultSet.getLong(RDBMSConstants.MESSAGE_ID), resultSet.getBytes(RDBMSConstants.METADATA),
@@ -925,15 +941,18 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     /**
      * {@inheritDoc}
      */
-    public LongArrayList getNextNMessageIdsFromQueue(final String storageQueueName, long firstMsgId, int count)
-            throws AndesException {
-        LongArrayList mdList = new LongArrayList(count);
+    public int recoverSlotsForQueue(final String storageQueueName, long firstMsgId, int messageLimitPerSlot,
+                                    RecoverySlotCreator.CallBack callBack) throws AndesException {
+
+        long messageCountForQueue = getMessageCountForQueue(storageQueueName);
+
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet results = null;
+        int restoreMessagesCounter = 0;
 
         Context nextMessageIdsRetrievalContext = MetricManager
-                .timer(Level.INFO, MetricsConstants.GET_NEXT_MESSAGE_IDS_FROM_QUEUE).start();
+                .timer(MetricsConstants.GET_NEXT_MESSAGE_IDS_FROM_QUEUE, Level.INFO).start();
         Context contextRead = MetricManager.timer(MetricsConstants.DB_READ, Level.INFO).start();
 
         try {
@@ -943,17 +962,35 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             preparedStatement.setInt(2, getCachedQueueID(storageQueueName));
 
             results = preparedStatement.executeQuery();
-            int resultCount = 0;
-            while (results.next()) {
 
-                if (resultCount == count) {
-                    break;
+            long lastStatPublishTime = System.currentTimeMillis();
+
+            long batchStartMessageID = 0;
+            int currentBatchCount = 0;
+            long currentMessageId = 0;
+            while (results.next()) {
+                currentMessageId = results.getLong(RDBMSConstants.MESSAGE_ID);
+
+                if (currentBatchCount == 0) {
+                    batchStartMessageID = currentMessageId;
                 }
 
-                long messageId = results.getLong(RDBMSConstants.MESSAGE_ID);
+                currentBatchCount++;
 
-                mdList.add(messageId);
-                resultCount++;
+                if (currentBatchCount == messageLimitPerSlot) {
+                    callBack.initializeSlotMapForQueue(storageQueueName, batchStartMessageID, currentMessageId,
+                            messageLimitPerSlot);
+                    restoreMessagesCounter = restoreMessagesCounter + currentBatchCount;
+                    currentBatchCount = 0;
+                }
+                lastStatPublishTime = publishStat(storageQueueName, messageCountForQueue, restoreMessagesCounter,
+                                                    lastStatPublishTime);
+            }
+
+            if (currentBatchCount < messageLimitPerSlot) {
+                restoreMessagesCounter = restoreMessagesCounter + currentBatchCount;
+                callBack.initializeSlotMapForQueue(storageQueueName, batchStartMessageID, currentMessageId,
+                                                    messageLimitPerSlot);
             }
         } catch (SQLException e) {
             throw rdbmsStoreUtils.convertSQLException("error occurred while retrieving message ids from queue ", e);
@@ -962,7 +999,29 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             contextRead.stop();
             close(connection, preparedStatement, results, RDBMSConstants.TASK_RETRIEVING_NEXT_N_IDS_FROM_QUEUE);
         }
-        return mdList;
+        return restoreMessagesCounter;
+    }
+
+    /**
+     * Publish restore slot process progress in given time intervals
+     *
+     * @param storageQueueName storage queue name
+     * @param messageCountForQueue message count for queue
+     * @param restoreMessagesCounter restore message counter
+     * @param lastStatPublishTime last stat publish time
+     * @return last stat publish time
+     */
+    private long publishStat(String storageQueueName, long messageCountForQueue,
+                             int restoreMessagesCounter, long lastStatPublishTime) {
+        long currentTimeInMillis = System.currentTimeMillis();
+        if (currentTimeInMillis - lastStatPublishTime > STAT_PUBLISHING_INTERVAL) {
+            // messageCountOfQueue is multiplied by 1.0 to convert it to double
+            double recoveredPercentage = (restoreMessagesCounter / (messageCountForQueue * 1.0)) * 100.0;
+            log.info(restoreMessagesCounter + "/" + messageCountForQueue + " (" + Math.round(recoveredPercentage)
+                    + "%) messages recovered for queue \"" + storageQueueName + "\"");
+            lastStatPublishTime = currentTimeInMillis;
+        }
+        return lastStatPublishTime;
     }
 
     /**

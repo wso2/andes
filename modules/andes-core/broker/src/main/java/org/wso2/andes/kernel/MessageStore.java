@@ -22,6 +22,7 @@ import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.slot.Slot;
+import org.wso2.andes.kernel.slot.RecoverySlotCreator;
 import org.wso2.andes.store.HealthAwareStore;
 
 import java.util.List;
@@ -165,17 +166,17 @@ public interface MessageStore extends HealthAwareStore {
             int count) throws AndesException;
 
     /**
-     * Read a list of message ids from store specifying a starting message id
-     * and a count
+     * Recover slots for given queue. Will update slot message ids during startup.
      *
-     * @param storageQueueName name of the queue
-     * @param firstMsgId       first id
-     * @param count            how many messages to read
-     * @return list of messageIds
+     * @param storageQueueName storage queue name
+     * @param firstMsgId first message id
+     * @param messageLimitPerSlot slot size
+     * @param callBack callBack for slot creator
+     * @return total number of recovered message count
      * @throws AndesException
      */
-    public LongArrayList getNextNMessageIdsFromQueue(final String storageQueueName, long firstMsgId, int count)
-            throws AndesException;
+    int recoverSlotsForQueue(final String storageQueueName, long firstMsgId, int messageLimitPerSlot,
+                             RecoverySlotCreator.CallBack callBack) throws AndesException;
 
     /**
      * Retrieve a metadata list from dead letter channel for a specific queue specifying a starting message id and a

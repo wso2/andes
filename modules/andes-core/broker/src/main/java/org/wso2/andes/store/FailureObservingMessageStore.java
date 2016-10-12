@@ -30,6 +30,7 @@ import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.kernel.slot.Slot;
+import org.wso2.andes.kernel.slot.RecoverySlotCreator;
 import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.List;
@@ -225,10 +226,10 @@ public class FailureObservingMessageStore implements MessageStore {
     /**
      * {@inheritDoc}
      */
-    public LongArrayList getNextNMessageIdsFromQueue(final String storageQueueName, long firstMsgId, int count)
-            throws AndesException {
+    public int recoverSlotsForQueue(final String storageQueueName, long firstMsgId, int count,
+                                    RecoverySlotCreator.CallBack callBack) throws AndesException {
         try {
-            return wrappedInstance.getNextNMessageIdsFromQueue(storageQueueName, firstMsgId, count);
+            return wrappedInstance.recoverSlotsForQueue(storageQueueName,firstMsgId,count,callBack);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
