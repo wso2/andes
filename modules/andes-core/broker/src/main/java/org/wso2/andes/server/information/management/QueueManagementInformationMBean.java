@@ -397,13 +397,14 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      *
      * @param andesMetadataIDs     The browser message Ids
      * @param destinationQueueName The Dead Letter Queue Name for the tenant
+     * @return unavailable message count
      */
     @Override
-    public void restoreMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "andesMetadataIDs",
-                                                                            description = "IDs of the Messages to Be Restored") long[] andesMetadataIDs,
+    public long restoreMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "andesMetadataIDs",
+            description = "IDs of the Messages to Be Restored") long[] andesMetadataIDs,
             @MBeanOperationParameter(name = "destinationQueueName",
-                                     description = "The Dead Letter Queue Name for the selected tenant") String destinationQueueName) {
-
+            description = "The Dead Letter Queue Name for the selected tenant") String destinationQueueName) {
+        long unavailableMessageCount = 0L;
         if (null != andesMetadataIDs) {
             LongArrayList andesMessageIdList = new LongArrayList(andesMetadataIDs.length);
             andesMessageIdList.addAll(andesMetadataIDs);
@@ -424,26 +425,18 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                         break;
                     }
                     AndesMessageMetadata metadata = Andes.getInstance().getMessageMetaData(messageId);
-                    String destination = metadata.getDestination();
-
-                    metadata.setStorageQueueName(AndesUtils.getStorageQueueForDestination(destination,
-                            AMQPUtils.DIRECT_EXCHANGE_NAME,destination,true));
-
-                    messagesToRemove.add(metadata);
-
-                    AndesMessageMetadata clonedMetadata = metadata.shallowCopy(metadata.getMessageID());
-                    AndesMessage andesMessage = new AndesMessage(clonedMetadata);
-
-                    // Update Andes message with all the chunk details
-                    List<AndesMessagePart> messageParts = messageContent.get(messageId);
-                    for (AndesMessagePart messagePart : messageParts) {
-                        andesMessage.addMessagePart(messagePart);
+                    if (null != metadata) {
+                        messagesToRemove.add(metadata);
+                        // get the message chunk details
+                        List<AndesMessagePart> messageParts = messageContent.get(messageId);
+                        AndesMessage andesMessage = createMessage(metadata, messageParts);
+                        // Handover message to Andes. This will generate a new message ID and store it
+                        Andes.getInstance().messageReceived(andesMessage, andesChannel, disablePubAck);
+                    } else {
+                        log.warn("Message Id: " + messageId +" could not be restored due to message being unavailable.");
+                        unavailableMessageCount++;
                     }
-
-                    // Handover message to Andes. This will generate a new message ID and store it
-                    Andes.getInstance().messageReceived(andesMessage, andesChannel, disablePubAck);
                 }
-
                 // Delete old messages
                 Andes.getInstance().deleteMessagesFromDLC(messagesToRemove);
 
@@ -457,7 +450,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                 throw new RuntimeException("Error restoring messages from " + destinationQueueName, e);
             }
         }
-
+        return unavailableMessageCount;
     }
 
     /**
@@ -467,14 +460,16 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      * @param destinationQueueName    The Dead Letter Queue Name for the tenant
      * @param andesMetadataIDs        The browser message Ids
      * @param newDestinationQueueName The new destination
+     * @return unavailable message count
      */
     @Override
-    public void restoreMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "andesMetadataIDs",
-                                                                            description = "IDs of the Messages to Be Restored") long[] andesMetadataIDs,
+    public long restoreMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "andesMetadataIDs",
+            description = "IDs of the Messages to Be Restored") long[] andesMetadataIDs,
             @MBeanOperationParameter(name = "destination",
-                                     description = "Destination of the message to be restored") String newDestinationQueueName,
+            description = "Destination of the message to be restored") String newDestinationQueueName,
             @MBeanOperationParameter(name = "destinationQueueName",
-                                     description = "The Dead Letter Queue Name for the selected tenant") String destinationQueueName) {
+            description = "The Dead Letter Queue Name for the selected tenant") String destinationQueueName) {
+        long unavailableMessageCount = 0L;
         if (null != andesMetadataIDs) {
 
             LongArrayList andesMessageIdList = new LongArrayList(andesMetadataIDs.length);
@@ -495,30 +490,27 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                         interruptedByFlowControl = true;
                         break;
                     }
-
                     AndesMessageMetadata metadata = Andes.getInstance().getMessageMetaData(messageId);
-
-                    // Set the new destination queue
-                    metadata.setDestination(newDestinationQueueName);
-                    metadata.setStorageQueueName(AndesUtils.getStorageQueueForDestination(newDestinationQueueName,
-                            AMQPUtils.DIRECT_EXCHANGE_NAME,newDestinationQueueName,true));
-                    metadata.setMessageRouterName(AMQPUtils.DIRECT_EXCHANGE_NAME);
-                    metadata.updateMetadata(newDestinationQueueName, AMQPUtils.DIRECT_EXCHANGE_NAME);
-                    AndesMessageMetadata clonedMetadata = metadata.shallowCopy(metadata.getMessageID());
-                    AndesMessage andesMessage = new AndesMessage(clonedMetadata);
-
-                    messagesToRemove.add(metadata);
-
-                    // Update Andes message with all the chunk details
-                    List<AndesMessagePart> messageParts = messageContent.get(messageId);
-                    for (AndesMessagePart messagePart : messageParts) {
-                        andesMessage.addMessagePart(messagePart);
+                    if(null != metadata) {
+                        StorageQueue newStorageQueue = AndesContext.getInstance().getStorageQueueRegistry()
+                                .getStorageQueue(newDestinationQueueName);
+                        // Set the new destination queue
+                        metadata.setDestination(newDestinationQueueName);
+                        metadata.setStorageQueueName(newDestinationQueueName);
+                        metadata.setMessageRouterName(newStorageQueue.getMessageRouter().getName());
+                        metadata.updateMetadata(newDestinationQueueName, newStorageQueue.getMessageRouter().getName());
+                        messagesToRemove.add(metadata);
+                        // get the message chunk details
+                        List<AndesMessagePart> messageParts = messageContent.get(messageId);
+                        AndesMessage andesMessage = createMessage(metadata, messageParts);
+                        // Handover message to Andes. This will generate a new message ID and store it
+                        Andes.getInstance().messageReceived(andesMessage, andesChannel, disablePubAck);
+                    } else {
+                        log.warn("Message Id: " + messageId + " could not be rerouted due to message being "
+                                + "unavailable.");
+                        unavailableMessageCount++;
                     }
-
-                    // Handover message to Andes. This will generate a new message ID and store it
-                    Andes.getInstance().messageReceived(andesMessage, andesChannel, disablePubAck);
                 }
-
                 // Delete old messages
                 Andes.getInstance().deleteMessagesFromDLC(messagesToRemove);
 
@@ -532,6 +524,24 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                 throw new RuntimeException("Error restoring messages from " + destinationQueueName, e);
             }
         }
+        return unavailableMessageCount;
+    }
+
+    /**
+     * Create new andes message and update the chunk details.
+     *
+     * @param messageMetadata message metadata
+     * @param messageParts message parts list
+     * @return andesMessage
+     */
+    private AndesMessage createMessage(AndesMessageMetadata messageMetadata, List<AndesMessagePart> messageParts) {
+        AndesMessageMetadata clonedMetadata = messageMetadata.shallowCopy(messageMetadata.getMessageID());
+        AndesMessage andesMessage = new AndesMessage(clonedMetadata);
+        // Update Andes message with all the chunk details
+        for (AndesMessagePart messagePart : messageParts) {
+            andesMessage.addMessagePart(messagePart);
+        }
+        return  andesMessage;
     }
 
     /**

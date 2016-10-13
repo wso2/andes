@@ -157,9 +157,10 @@ public interface QueueManagementInformation {
      *
      * @param andesMetadataIDs     The browser message Ids
      * @param destinationQueueName The Dead Letter Queue Name for the tenant
+     * @return unavailable message count
      */
     @MBeanAttribute(name = " Restore Back a Specific set of Messages ", description = "Will Restore a Specific Set of Messages Back to Its Original Queue")
-    void restoreMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "andesMetadataIDs",
+    long restoreMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "andesMetadataIDs",
             description = "IDs of the Messages to Be Restored") long[] andesMetadataIDs, @MBeanOperationParameter(name = "destinationQueueName",
             description = "The Dead Letter Queue Name for the selected tenant") String destinationQueueName);
 
@@ -170,9 +171,10 @@ public interface QueueManagementInformation {
      * @param destinationQueueName    The Dead Letter Queue Name for the tenant
      * @param andesMetadataIDs        The browser message Ids
      * @param newDestinationQueueName The new destination
+     * @return unavailable message count
      */
     @MBeanAttribute(name = " Restore Back a Specific set of Messages ", description = "Will Restore a Specific Set of Messages Back to a Queue differnt from the original")
-    void restoreMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "andesMetadataIDs",
+    long restoreMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "andesMetadataIDs",
             description = "IDs of the Messages to Be Restored") long[] andesMetadataIDs,@MBeanOperationParameter(name = "destination",
             description = "Destination of the message to be restored") String newDestinationQueueName, @MBeanOperationParameter(name = "deadLetterQueueName",
             description = "The Dead Letter Queue Name for the selected tenant") String destinationQueueName);
