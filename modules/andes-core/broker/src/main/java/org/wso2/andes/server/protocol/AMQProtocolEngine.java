@@ -404,6 +404,7 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
             {
                 if (getChannel(channelId) != null)
                 {
+                    e.printStackTrace();
                     if (_logger.isInfoEnabled())
                     {
                         _logger.info("Closing channel due to: " + e.getMessage());
@@ -412,11 +413,13 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
 //                    writeFrame(e.getCloseFrame(channelId));
 //                    closeChannel(channelId);
                     AMQConnectionException ce = evt.getMethod().getConnectionException(e.getErrorCode(), e.getMessage());
-                    _logger.info(e.getMessage() + " whilst processing:" + methodBody);
+                    _logger.info(e.getMessage() + " whilst processing:" + methodBody, e);
                     closeConnection(channelId, ce, false);
                 }
                 else
                 {
+                    System.out.println("Channel null");
+                    e.printStackTrace();
                     if (_logger.isDebugEnabled())
                     {
                         _logger.debug("ChannelException occured on non-existent channel:" + e.getMessage());
@@ -437,11 +440,15 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
             }
             catch (AMQConnectionException e)
             {
+                System.out.println("Connection exception...");
+                e.printStackTrace();
                 _logger.info(e.getMessage() + " whilst processing:" + methodBody);
                 closeConnection(channelId, e, false);
             }
             catch (AMQSecurityException e)
             {
+                System.out.println("Security exception.....");
+                e.printStackTrace();
                 AMQConnectionException ce = evt.getMethod().getConnectionException(AMQConstant.ACCESS_REFUSED, e.getMessage());
                 _logger.info(e.getMessage() + " whilst processing:" + methodBody);
                 closeConnection(channelId, ce, false);
