@@ -18,24 +18,19 @@
 
 package org.wso2.andes.kernel.slot;
 
-import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.MessageStore;
+
+import java.sql.SQLException;
 
 /**
  * SlotCreator is used to recover slots belonging to a storage queue when the cluster is restarted.
  */
 public class SlotCreator implements Runnable {
-
-    /**
-     * Interval between two consecutive stat logs in milliseconds
-     */
-    private static final int STAT_PUBLISHING_INTERVAL = 10 * 1000;
 
     /**
      * Class logger
@@ -76,62 +71,17 @@ public class SlotCreator implements Runnable {
     }
 
     /**
-     * Iteratively recover messages for the storage queue
+     * Recover messages for the storage queue
      *
      * @throws AndesException
-     * @throws ConnectionException
+     * @throws SQLException
      */
-    private void initializeSlotMapForQueue() throws AndesException, ConnectionException {
-        int databaseReadsCounter = 0;
-        int restoreMessagesCounter = 0;
-        long messageCountOfQueue = messageStore.getMessageCountForQueue(queueName);
+    private void initializeSlotMapForQueue() throws AndesException, SQLException {
 
-        LongArrayList messageIdList = messageStore.getNextNMessageIdsFromQueue(queueName, 0, slotSize);
-        int numberOfMessages = messageIdList.size();
+        RecoverySlotCreator.CallBack slotCreatorCallBack = new RecoverySlotCreator.CallBack();
+        int restoreMessagesCounter = messageStore.recoverSlotsForQueue(queueName, 0, slotSize, slotCreatorCallBack);
 
-        databaseReadsCounter++;
-        restoreMessagesCounter = restoreMessagesCounter + messageIdList.size();
+        log.info("Recovered " + restoreMessagesCounter + " messages for queue \"" + queueName + "\".");
 
-        long lastMessageID;
-        long firstMessageID;
-        long lastStatPublishTime = System.currentTimeMillis();
-
-        while (numberOfMessages > 0) {
-            int lastMessageArrayIndex = numberOfMessages - 1;
-            lastMessageID = messageIdList.get(lastMessageArrayIndex);
-            firstMessageID = messageIdList.get(0);
-
-            if (log.isDebugEnabled()) {
-                log.debug("Created a slot with " + messageIdList.size() + " messages for queue (" + queueName + ")");
-            }
-
-            if (AndesContext.getInstance().isClusteringEnabled()) {
-                SlotManagerClusterMode.getInstance().updateMessageID(queueName,
-                        AndesContext.getInstance().getClusterAgent().getLocalNodeIdentifier(), firstMessageID,
-                        lastMessageID, lastMessageID);
-            } else {
-                SlotManagerStandalone.getInstance().updateMessageID(queueName, lastMessageID);
-            }
-
-            long currentTimeInMillis = System.currentTimeMillis();
-            if (currentTimeInMillis - lastStatPublishTime > STAT_PUBLISHING_INTERVAL) {
-                // messageCountOfQueue is multiplied by 1.0 to convert it to double
-                double recoveredPercentage = (restoreMessagesCounter / (messageCountOfQueue * 1.0)) * 100.0;
-                log.info(restoreMessagesCounter + "/" + messageCountOfQueue + " (" + Math.round(recoveredPercentage)
-                        + "%) messages recovered for queue \"" + queueName + "\"");
-                lastStatPublishTime = currentTimeInMillis;
-            }
-
-            // We need to increment lastMessageID since the getNextNMessageMetadataFromQueue returns message list
-            // including the given starting ID.
-            messageIdList = messageStore.getNextNMessageIdsFromQueue(queueName, lastMessageID + 1, slotSize);
-            numberOfMessages = messageIdList.size();
-            //increase value of counters
-            databaseReadsCounter++;
-            restoreMessagesCounter = restoreMessagesCounter + messageIdList.size();
-        }
-
-        log.info("Recovered " + restoreMessagesCounter + " messages for queue \"" + queueName + "\" using "
-                + databaseReadsCounter + " database calls");
     }
 }
