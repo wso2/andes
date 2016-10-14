@@ -35,7 +35,6 @@ import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
-import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.subscription.AndesSubscription;
 import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.kernel.subscription.StorageQueue;
@@ -150,6 +149,14 @@ public class Andes {
     public void recoverMessage(UUID channelID) throws AndesException {
         AndesSubscription subscription  = AndesContext.getInstance().
                 getAndesSubscriptionManager().getSubscriptionByProtocolChannel(channelID);
+
+        // Subscription can be null if we send a recover call without subscribing. In this case we do not have
+        // to recover any messages. Therefore print a log and return.
+        if (null == subscription) {
+            log.warn("Cannot handle recover. No subscriptions found for channel " + channelID);
+            return;
+        }
+
         subscription.recoverMessages();
     }
 
