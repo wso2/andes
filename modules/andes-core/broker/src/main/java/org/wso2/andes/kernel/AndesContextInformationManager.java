@@ -209,9 +209,9 @@ public class AndesContextInformationManager {
 
         // Clear in memory messages of self (node)
         StorageQueue queueWithEvent = queuePurgeNotification.toStorageQueue();
-        StorageQueue registeredQueue = AndesContext.getInstance().getStorageQueueRegistry().getStorageQueue
-                (queueWithEvent.getName());
-        registeredQueue.clearMessagesReadToBufferForDelivery();
+        StorageQueue registeredQueue = AndesContext.getInstance().getStorageQueueRegistry()
+                .getStorageQueue(queueWithEvent.getName());
+        registeredQueue.purgeMessages();
 
         log.info("Queue Sync [purge]: " + registeredQueue.getName());
     }
@@ -224,7 +224,6 @@ public class AndesContextInformationManager {
      */
     public void createQueue(InboundQueueEvent queueCreateEvent) throws AndesException {
         StorageQueue queueEvent = queueCreateEvent.toStorageQueue();
-
         StorageQueue queue = AndesContext.getInstance().
                 getStorageQueueRegistry().registerStorageQueue(queueEvent.getName(),
                 queueEvent.isDurable(), queueEvent.isShared(), queueEvent.getQueueOwner(),
@@ -246,7 +245,6 @@ public class AndesContextInformationManager {
      */
     public void syncQueueCreate(InboundQueueSyncEvent queueCreateEvent) throws AndesException {
         StorageQueue queueEvent = queueCreateEvent.toStorageQueue();
-
         StorageQueue storageQueueToAdd = AndesContext.getInstance().
                 getStorageQueueRegistry().registerStorageQueue(queueEvent.getName(),
                 queueEvent.isDurable(), queueEvent.isShared(), queueEvent.getQueueOwner(),
@@ -306,7 +304,6 @@ public class AndesContextInformationManager {
 
         // Remove queue information from database
         contextStore.deleteQueueInformation(storageQueueName);
-        messageStore.removeQueue(storageQueueName);
 
         // Remove queue mapping from cache after removing it from DB
         messageStore.removeLocalQueueData(storageQueueName);
