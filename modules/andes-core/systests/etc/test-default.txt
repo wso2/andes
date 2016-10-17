@@ -59,7 +59,7 @@ ACL ALLOW client BIND EXCHANGE name="amq.direct" temporary=true
 ACL ALLOW client UNBIND EXCHANGE name="amq.direct" temporary=true
 ACL ALLOW client BIND EXCHANGE name="amq.direct" durable=true
 ACL ALLOW client UNBIND EXCHANGE name="amq.direct" durable=true
-ACL ALLOW server BIND EXCHANGE name="amq.direct" queueName="example.RequestQueue"
+ACL ALLOW server BIND EXCHANGE name="amq.direct" storageQueueName="example.RequestQueue"
 
 ## Allow client and server exchange access for the relevant topics
 ACL ALLOW client BIND EXCHANGE name="amq.topic" durable=true routingKey=kipper

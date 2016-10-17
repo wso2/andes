@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2014-2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -19,7 +19,6 @@
 package org.wso2.andes.kernel;
 
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
-import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -46,6 +45,7 @@ import org.wso2.carbon.metrics.manager.Meter;
 import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -463,9 +463,6 @@ public class Andes {
      * @return AndesMessagePart
      * @throws AndesException
      */
-    public AndesMessagePart getMessageContentChunk(long messageID, int offsetInMessage) throws AndesException {
-        return MessagingEngine.getInstance().getMessageContentChunk(messageID, offsetInMessage);
-    }
 
     /**
      * Get a single metadata object.
@@ -526,26 +523,15 @@ public class Andes {
     }
 
     /**
-     * Get content chunk from store.
-     *
-     * @param messageId   id of the message
-     * @param offsetValue chunk id
-     * @return message content
-     * @throws AndesException
-     */
-    public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException {
-        return MessagingEngine.getInstance().getContent(messageId, offsetValue);
-    }
-
-    /**
      * Get content chunks for a list of message ids from store.
      *
      * @param messageIdList list of messageIds
+     * @param destinationQueueName queue Name for each messageID lists
      * @return map of message id:content chunk list
      * @throws AndesException
      */
-    public LongObjectHashMap<List<AndesMessagePart>> getContent(LongArrayList messageIdList) throws AndesException {
-        return MessagingEngine.getInstance().getContent(messageIdList);
+    public HashMap<Long ,List<AndesMessagePart>> getContent(LongArrayList messageIdList, String destinationQueueName) throws AndesException {
+        return MessagingEngine.getInstance().getContent(destinationQueueName , messageIdList);
     }
 
     /**

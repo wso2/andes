@@ -70,7 +70,6 @@ public class ContentDecompressionHandler implements EventHandler<DeliveryEventDa
      */
     @Override
     public void onEvent(DeliveryEventData deliveryEventData, long sequence, boolean endOfBatch) throws Exception {
-
         // If the content is already decompressed, there is no point in further decompressing
         // Therefore ignore
         if (!(deliveryEventData.availableForDecompression())) {
@@ -82,7 +81,6 @@ public class ContentDecompressionHandler implements EventHandler<DeliveryEventDa
         ProtocolMessage metadata = deliveryEventData.getMetadata();
         int originalMessageSize = metadata.getMessage().getMessageContentLength();
         long messageID = metadata.getMessageID();
-
         boolean isCompressed = metadata.getMessage().isCompressed();
 
         if (log.isDebugEnabled()) {

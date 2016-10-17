@@ -19,7 +19,6 @@
 package org.wso2.andes.kernel.disruptor.inbound;
 
 import com.google.common.util.concurrent.SettableFuture;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
@@ -27,7 +26,6 @@ import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.disruptor.BatchEventHandler;
 import org.wso2.andes.store.AndesBatchUpdateException;
-import org.wso2.andes.store.AndesStoreUnavailableException;
 import org.wso2.andes.store.AndesTransactionRollbackException;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
@@ -96,6 +94,7 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
             currentMessageList.addAll(event.getMessageList());
 
             if (null != event.retainMessage) {
+                // TODO : we can get queueName here, one by one using a Hash map.
                 retainMap.put(event.retainMessage.getMetadata().getDestination(), event.retainMessage);
             }
         }

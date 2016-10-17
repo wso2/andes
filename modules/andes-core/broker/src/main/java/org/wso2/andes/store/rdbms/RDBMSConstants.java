@@ -211,12 +211,6 @@ public class RDBMSConstants {
 
     protected static final String PS_ALIAS_FOR_COUNT = "count";
 
-    protected static final String PS_SELECT_QUEUE_MESSAGE_COUNT =
-            "SELECT COUNT(" + QUEUE_ID + ") AS " + PS_ALIAS_FOR_COUNT
-            + " FROM " + METADATA_TABLE
-            + " WHERE " + QUEUE_ID + "=?"
-            + " AND " + DLC_QUEUE_ID + "=-1";
-
     /**
      * Prepared statement to retrieve message count within a message id range for a queue.
      */
@@ -335,6 +329,11 @@ public class RDBMSConstants {
             "DELETE  FROM " + METADATA_TABLE
             + " WHERE " + DLC_QUEUE_ID + "=?";
 
+    /**
+     * MB_EXPIRATION_DATA table is ON DELETE CASCADE to MB_METADATA table.
+     * So when MB_METADATA# deletes it automatically deletes MB_EXPIRATION_DATA#
+     * So need to create MB_EXPIRATION_DATA tables as to number of tables.
+     */
     protected static final String PS_SELECT_EXPIRED_MESSAGES =
             "SELECT " + MESSAGE_ID + "," + DESTINATION_QUEUE
             + " FROM " + EXPIRATION_TABLE
@@ -1000,7 +999,8 @@ public class RDBMSConstants {
             + " WHERE " + MESSAGE_ID + "=?";
 
     /**
-     * Prepared statement to update DLC status in expiry table
+     * Prepared statement to update DLC status in expiry table. Since EXPIRATION_TABLE is cascade delete with
+     * MB_METADATA table, This should move to RDBMSMultipleTableHandler.
      */
     protected static final String PS_UPDATE_DLC_STATUS_IN_EXPIRY_TABLE =
             "UPDATE " + EXPIRATION_TABLE

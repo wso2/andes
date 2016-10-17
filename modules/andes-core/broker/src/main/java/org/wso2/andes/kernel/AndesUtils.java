@@ -26,14 +26,12 @@ import org.wso2.andes.kernel.subscription.AndesSubscription;
 import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.store.MessageMetaDataType;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -58,12 +56,6 @@ public class AndesUtils {
     private static ConcurrentHashMap<String, Long> browserMessageIdCorrelater = new ConcurrentHashMap<>();
 
     private static PrintWriter printWriterGlobal;
-
-    public static String printAMQMessage(QueueEntry message) {
-        ByteBuffer buf = ByteBuffer.allocate(100);
-        int readCount = message.getMessage().getContent(buf, 0);
-        return "(" + message.getMessage().getMessageNumber() + ")" + new String(buf.array(), 0, readCount);
-    }
 
     /**
      * Register a mapping between browser message Id and Andes message Id. This is expected to be invoked

@@ -19,10 +19,10 @@
 package org.wso2.andes.store.cache;
 
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
-import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessagePart;
 
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -51,7 +51,7 @@ public interface AndesMessageCache {
     /**
      * Removes a message with a given id from the cache
      *
-     * @param messagesToRemove list of message Ids
+     * @param messageToRemove list of message Ids
      */
     abstract void removeFromCache(long messageToRemove);
 
@@ -66,12 +66,12 @@ public interface AndesMessageCache {
     /**
      * Get the list of messages found from the cache.
      * <b> This method modifies the provided messageIDList </b>
-     *
-     * @param messageIDList message id to be found in cache.
+     *  @param messageIDList message id to be found in cache.
      * @param contentList   the list the fill
+     * @param queueName
      */
     abstract void fillContentFromCache(LongArrayList messageIDList,
-            LongObjectHashMap<List<AndesMessagePart>> contentList);
+                                       HashMap<Long, List<AndesMessagePart>> contentList, String queueName);
 
     /**
      * Return a {@link AndesMessagePart} from the cache.

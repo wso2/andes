@@ -19,7 +19,6 @@
 package org.wso2.andes.store;
 
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
-import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesContextStore;
@@ -30,10 +29,11 @@ import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
-import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.RecoverySlotCreator;
+import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.tools.utils.MessageTracer;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledFuture;
@@ -98,19 +98,6 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void storeMessagePart(List<AndesMessagePart> partList) throws AndesException {
-        try {
-            wrappedInstance.storeMessagePart(partList);
-        } catch (AndesStoreUnavailableException exception) {
-            notifyFailures(exception);
-            throw exception;
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException {
         try {
             return wrappedInstance.getContent(messageId, offsetValue);
@@ -122,11 +109,13 @@ public class FailureObservingMessageStore implements MessageStore {
 
     /**
      * {@inheritDoc}
+     * @param queueName
+     * @param messageIDList
      */
     @Override
-    public LongObjectHashMap<List<AndesMessagePart>> getContent(LongArrayList messageIDList) throws AndesException {
+    public HashMap<Long, List<AndesMessagePart>> getContent(String queueName, LongArrayList messageIDList) throws AndesException {
         try {
-            return wrappedInstance.getContent(messageIDList);
+            return wrappedInstance.getContent(queueName, messageIDList);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

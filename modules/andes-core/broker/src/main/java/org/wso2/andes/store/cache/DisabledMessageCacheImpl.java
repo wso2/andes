@@ -19,10 +19,10 @@
 package org.wso2.andes.store.cache;
 
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
-import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessagePart;
 
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -68,7 +68,7 @@ public class DisabledMessageCacheImpl implements AndesMessageCache {
      */
     @Override
     public void fillContentFromCache(LongArrayList messageIDList,
-            LongObjectHashMap<List<AndesMessagePart>> contentList) {
+                                     HashMap<Long, List<AndesMessagePart>> contentList, String queueName) {
     }
 
     /**

@@ -456,6 +456,11 @@ public enum AndesConfiguration implements ConfigurationProperty {
                                                          Integer.class),
 
     /**
+     * Number of MB_METADATA and MB_CONTENT tables that create in the database.
+     */
+    PERFORMANCE_TUNING_NUMBER_OF_TABLES ("performanceTuning/numberOfMessagingTables", "5", Integer.class),
+
+    /**
      * Number of parallel decompression handlers used to decompress messages before send to subscribers. Increasing
      * this value will speedup the message decompressing mechanism. But the system load will increase.
      */
@@ -471,6 +476,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
 
     /**
      * Content batch size for each content batch read. This is a loose guarantee.
+     * The Batch size is 65000 bytes.
      */
     PERFORMANCE_TUNING_DELIVERY_CONTENT_READ_BATCH_SIZE("performanceTuning/delivery/contentReadBatchSize", "65000",
             Integer.class),

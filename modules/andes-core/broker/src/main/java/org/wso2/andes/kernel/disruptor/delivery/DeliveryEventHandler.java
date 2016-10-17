@@ -91,7 +91,6 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
             try {
                 if (deliveryEventData.isErrorOccurred()) {
                     onSendError(message, subscription);
-                    
                     routeMessageToDLC(message, subscription, deliveryEventData.isErrorOccurred());
                     return;
                 }

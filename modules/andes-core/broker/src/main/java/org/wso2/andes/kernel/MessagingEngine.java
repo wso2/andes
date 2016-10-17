@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2014-2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -19,7 +19,6 @@
 package org.wso2.andes.kernel;
 
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
-import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
@@ -115,8 +114,6 @@ public class MessagingEngine {
 
         this.messageStore = messageStore;
         this.messageExpiryManager = messageExpiryManager;
-
-
         /*
         Initialize the SlotCoordinator
          */
@@ -140,15 +137,15 @@ public class MessagingEngine {
     }
 
     /**
-     * Read content for given message metadata list
+     * Read content for given message metadata list per queue
      *
      * @param messageIdList message id list for the content to be retrieved
      * @return <code>Map<Long, List<AndesMessagePart>></code> Message id and its corresponding message part list
      * @throws AndesException
      */
-    public LongObjectHashMap<List<AndesMessagePart>> getContent(LongArrayList messageIdList) throws AndesException {
-        return messageStore.getContent(messageIdList);
-
+    public HashMap<Long, List<AndesMessagePart>> getContent(String queueName, LongArrayList messageIdList)
+            throws AndesException {
+        return messageStore.getContent(queueName, messageIdList);
     }
 
     /**
@@ -275,7 +272,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public void deleteMessagesById(List<Long> messagesToRemove) throws AndesException {
-            messageStore.deleteMessages(messagesToRemove);
+        messageStore.deleteMessages(messagesToRemove);
     }
 
 
@@ -405,7 +402,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public List<DeliverableAndesMetadata> getMetaDataList(final Slot slot, final String queueName, long firstMsgId,
-            long lastMsgID) throws AndesException {
+                                                          long lastMsgID) throws AndesException {
         return messageStore.getMetadataList(slot, queueName, firstMsgId, lastMsgID);
     }
 
@@ -420,7 +417,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName, long firstMsgId,
-            int count) throws AndesException {
+                                                                       int count) throws AndesException {
         return messageStore.getNextNMessageMetadataFromQueue(queueName, firstMsgId, count);
     }
 
@@ -435,7 +432,9 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public List<AndesMessageMetadata> getNextNMessageMetadataInDLCForQueue(final String queueName,
-            final String dlcQueueName, long firstMsgId, int count) throws AndesException {
+                                                                           final String dlcQueueName,
+                                                                           long firstMsgId, int count)
+            throws AndesException {
         return messageStore.getNextNMessageMetadataForQueueFromDLC(queueName, dlcQueueName, firstMsgId, count);
     }
 
@@ -449,7 +448,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public List<AndesMessageMetadata> getNextNMessageMetadataFromDLC(final String dlcQueueName, long firstMsgId,
-            int count) throws AndesException {
+                                                                     int count) throws AndesException {
         return messageStore.getNextNMessageMetadataFromDLC(dlcQueueName, firstMsgId, count);
     }
 
@@ -457,7 +456,7 @@ public class MessagingEngine {
      * Get expired but not yet deleted messages from message store
      *
      * @param lowerBoundMessageID lower bound message Id of the safe zone for delete
-     * @param  queueName Queue name
+     * @param queueName           Queue name
      * @return AndesRemovableMetadata
      * @throws AndesException
      */

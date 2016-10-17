@@ -20,7 +20,6 @@ package org.wso2.andes.server.information.management;
 
 import com.gs.collections.api.iterator.MutableLongIterator;
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
-import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
@@ -411,8 +410,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             List<AndesMessageMetadata> messagesToRemove = new ArrayList<>(andesMessageIdList.size());
 
             try {
-                LongObjectHashMap<List<AndesMessagePart>> messageContent = Andes.getInstance()
-                        .getContent(andesMessageIdList);
+                HashMap<Long, List<AndesMessagePart>> messageContent = Andes.getInstance()
+                        .getContent(andesMessageIdList, destinationQueueName);
 
                 boolean interruptedByFlowControl = false;
 
@@ -477,8 +476,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             List<AndesMessageMetadata> messagesToRemove = new ArrayList<>(andesMessageIdList.size());
 
             try {
-                LongObjectHashMap<List<AndesMessagePart>> messageContent = Andes.getInstance()
-                        .getContent(andesMessageIdList);
+                HashMap<Long, List<AndesMessagePart>> messageContent = Andes.getInstance()
+                        .getContent(andesMessageIdList, destinationQueueName);
 
                 boolean interruptedByFlowControl = false;
 
@@ -558,6 +557,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             throws MBeanException {
         List<CompositeData> compositeDataList = new ArrayList<>();
         try {
+
 
             List<AndesMessageMetadata> nextNMessageMetadataFromQueue;
             if (!DLCQueueUtils.isDeadLetterQueue(queueName)) {
@@ -985,6 +985,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             Object[] itemValues = null;
             //get AMQMessage from AndesMessageMetadata
             AMQMessage amqMessage = AMQPUtils.getAMQMessageFromAndesMetaData(andesMessageMetadata);
+            //get queue name for each Message
+            String queueName = andesMessageMetadata.getStorageQueueName();
             //header properties from AMQMessage
             BasicContentHeaderProperties properties = (BasicContentHeaderProperties) amqMessage.getContentHeaderBody()
                     .getProperties();
@@ -1021,7 +1023,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             //content is constructing
             final int bodySize = (int) amqMessage.getSize();
 
-            AndesMessagePart constructedContent = constructContent(bodySize, amqMessage);
+            AndesMessagePart constructedContent = constructContent(bodySize, amqMessage, queueName);
             byte[] messageContent = constructedContent.getData();
             int position = constructedContent.getOffset();
 
@@ -1057,11 +1059,11 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      *
      * @param bodySize   Original content size of the message
      * @param amqMessage AMQMessage
+     * @param queueName queueName for each message
      * @return Message content and last position of written data as an AndesMessagePart
      * @throws MBeanException
      */
-    private AndesMessagePart constructContent(int bodySize, AMQMessage amqMessage) throws MBeanException {
-
+    private AndesMessagePart constructContent(int bodySize, AMQMessage amqMessage, String queueName) throws MBeanException {
         AndesMessagePart andesMessagePart;
 
         if (amqMessage.getMessageMetaData().isCompressed()) {
@@ -1073,8 +1075,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             messList.add(messageID);
 
             try {
-                LongObjectHashMap<List<AndesMessagePart>> contentListMap = MessagingEngine.getInstance()
-                        .getContent(messList);
+                HashMap<Long, List<AndesMessagePart>> contentListMap = MessagingEngine.getInstance()
+                        .getContent(queueName ,messList );
                 List<AndesMessagePart> contentList = contentListMap.get(messageID);
 
                 andesMessagePart = lz4CompressionHelper.getDecompressedMessage(contentList, bodySize);

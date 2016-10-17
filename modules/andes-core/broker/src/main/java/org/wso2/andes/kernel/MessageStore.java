@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2005-2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -19,12 +19,12 @@
 package org.wso2.andes.kernel;
 
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
-import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.RecoverySlotCreator;
 import org.wso2.andes.store.HealthAwareStore;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -45,14 +45,6 @@ public interface MessageStore extends HealthAwareStore {
             ConfigurationProperties connectionProperties) throws AndesException;
 
     /**
-     * store a message content chunk set
-     *
-     * @param partList message content chunk list
-     * @throws AndesException
-     */
-    void storeMessagePart(List<AndesMessagePart> partList) throws AndesException;
-
-    /**
      * read content chunk from store
      *
      * @param messageId   id of the message chunk belongs
@@ -65,11 +57,12 @@ public interface MessageStore extends HealthAwareStore {
     /**
      * Read content for given message metadata list
      *
-     * @param messageIDList message id list for the content to be retrieved
+     * @param queueName queueName for each messageID list.
      * @return <code>Map<Long, List<AndesMessagePart>></code> Message id and its corresponding message part list
      * @throws AndesException
      */
-    LongObjectHashMap<List<AndesMessagePart>> getContent(LongArrayList messageIDList) throws AndesException;
+    HashMap<Long, List<AndesMessagePart>> getContent(String queueName, LongArrayList messageIdList)
+            throws AndesException;
 
     /**
      * Store messages into database.

@@ -22,7 +22,6 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.gs.collections.api.iterator.MutableLongIterator;
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
-import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import com.gs.collections.impl.set.mutable.primitive.LongHashSet;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -88,23 +87,23 @@ public class ContentCacheCreator {
     /**
      * Load content for a message in to the memory.
      *
-     * @param eventDataList List of delivery event data
+     * @param queueName                 QueueName for each DeliveryEventData
+     * @param deliveryEventDataPerQueue List of delivery event data perQueue
      * @throws AndesException Thrown when getting content from the message store.
      */
-    public void onEvent(List<DeliveryEventData> eventDataList) throws AndesException {
+    public void onEvent(String queueName, ArrayList<DeliveryEventData> deliveryEventDataPerQueue) throws AndesException {
 
         LongHashSet messagesToFetch = new LongHashSet();
         List<DeliveryEventData> messagesWithoutCachedContent = new ArrayList<>();
 
-        for (DeliveryEventData deliveryEventData : eventDataList) {
+        for (DeliveryEventData deliveryEventData : deliveryEventDataPerQueue) {
             ProtocolMessage metadata = deliveryEventData.getMetadata();
             long messageID = metadata.getMessageID();
             int contentLength = metadata.getMessage().getMessageContentLength();
 
             if (contentLength > 0) {
-
+                //first check if the message is available in the cache.
                 DisruptorCachedContent content = contentCache.getIfPresent(messageID);
-
                 if (null != content) {
                     deliveryEventData.setAndesContent(content);
 
@@ -126,11 +125,12 @@ public class ContentCacheCreator {
 
         }
 
-        LongArrayList containMessegesToFetch = new LongArrayList();
-        containMessegesToFetch.addAll(messagesToFetch);
-
-        LongObjectHashMap<List<AndesMessagePart>> contentListMap = MessagingEngine.getInstance()
-                .getContent(containMessegesToFetch);
+        LongArrayList containMessagesToFetch = new LongArrayList();
+        containMessagesToFetch.addAll(messagesToFetch);
+        //if the message is not available in the cache, get content from the database
+        HashMap<Long, List<AndesMessagePart>> contentListMap =
+                MessagingEngine.getInstance().getContent(queueName, containMessagesToFetch);
+//        log.info(" contentListMap : " + contentListMap);
 
         for (DeliveryEventData deliveryEventData : messagesWithoutCachedContent) {
 
@@ -138,7 +138,6 @@ public class ContentCacheCreator {
             long messageID = metadata.getMessageID();
             // We check again for content put in cache in the previous iteration
             DisruptorCachedContent content = contentCache.getIfPresent(messageID);
-
             if (null != content) {
                 deliveryEventData.setAndesContent(content);
 
@@ -151,14 +150,13 @@ public class ContentCacheCreator {
 
             int contentSize = metadata.getMessage().getMessageContentLength();
             List<AndesMessagePart> contentList = contentListMap.get(messageID);
-
+           // log.info("contentList : " + contentList + " for message IDs " + messageID);
             if (null != contentList) {
                 Map<Integer, AndesMessagePart> messagePartMap = new HashMap<>(contentList.size());
 
                 for (AndesMessagePart messagePart : contentList) {
                     messagePartMap.put(messagePart.getOffset(), messagePart);
                 }
-
                 content = new DisruptorCachedContent(messagePartMap, contentSize, maxChunkSize);
                 contentCache.put(messageID, content);
                 deliveryEventData.setAndesContent(content);

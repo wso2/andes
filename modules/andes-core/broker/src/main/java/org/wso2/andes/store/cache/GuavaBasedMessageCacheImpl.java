@@ -23,7 +23,6 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.Weigher;
 import com.gs.collections.api.iterator.MutableLongIterator;
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
-import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
@@ -31,8 +30,8 @@ import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessagePart;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -176,7 +175,7 @@ public class GuavaBasedMessageCacheImpl implements AndesMessageCache {
      */
     @Override
     public void fillContentFromCache(LongArrayList messageIDList,
-            LongObjectHashMap<List<AndesMessagePart>> contentList) {
+                                     HashMap<Long, List<AndesMessagePart>> contentList, String queueName) {
 
         MutableLongIterator iterator = messageIDList.longIterator();
 
