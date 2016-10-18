@@ -20,7 +20,6 @@ package org.wso2.andes.server;
 import org.apache.commons.cli.*;
 import org.apache.log4j.Logger;
 import org.apache.mina.util.SessionLog;
-import org.dna.mqtt.moquette.server.Server;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.server.Broker.InitException;
@@ -132,10 +131,6 @@ public class Main {
                         .withDescription("SSL port. Overrides any value in the config file")
                         .withLongOpt("sslport").create(BrokerOptions.SSL_PORTS);
 
-        Option mqttPort =
-                OptionBuilder.withArgName("mqttport").hasArg()
-                        .withDescription("MQTT port. Overrides any value in the config file")
-                        .withLongOpt("mqttport").create(BrokerOptions.MQTT_PORT);
 
         options.addOption(help);
         options.addOption(version);
@@ -150,7 +145,6 @@ public class Main {
         options.addOption(mport);
         options.addOption(bind);
         options.addOption(sslport);
-        options.addOption(mqttPort);
     }
 
     protected void execute() throws Exception {
@@ -196,29 +190,13 @@ public class Main {
             }
         }
 
-        String mqttPortStr = commandLine.getOptionValue(BrokerOptions.MQTT_PORT);
-        if (mqttPortStr != null) {
-            parseMQTTPort(options, mqttPortStr);
-        } else {
-            options.setMQTTPort(Server.DEFAULT_MQTT_PORT);
-        }
-
         startBroker(options);
-    }
-
-    protected void startMQTTBroker(final BrokerOptions options) throws Exception {
-        Server server = new Server();
-        server.startServer(options.getMQTTPort());
     }
 
     protected void startBroker(final BrokerOptions options) throws Exception {
         Broker broker = new Broker();
         //TODO Fix this properly
         broker.startup(options);
-
-        //Will start the MQTT Broker
-        //todo need to startup with the broker options inclusive
-        startMQTTBroker(options);
     }
 
     protected void shutdown(final int status) {
@@ -240,16 +218,6 @@ public class Main {
                 } catch (NumberFormatException e) {
                     throw new InitException("Invalid port: " + port, e);
                 }
-            }
-        }
-    }
-
-    private static void parseMQTTPort(final BrokerOptions options, final String port) throws InitException {
-        if (port != null) {
-            try {
-                options.setMQTTPort(Integer.parseInt(String.valueOf(port)));
-            } catch (NumberFormatException e) {
-                throw new InitException("Invalid port: " + port, e);
             }
         }
     }

@@ -764,28 +764,6 @@ public class Andes {
     }
 
     /**
-     * Get deliverable metadata if exist for the given topic.
-     *
-     * @param topicName topic name
-     * @return List of retain deliverable metadata
-     * @throws AndesException
-     */
-    public List<DeliverableAndesMetadata> getRetainedMetadataByTopic(String topicName) throws AndesException {
-        return MessagingEngine.getInstance().getRetainedMessageByTopic(topicName);
-    }
-
-    /**
-     * Get andes content for given message metadata.
-     *
-     * @param metadata message metadata
-     * @return Andes content of given metadata
-     * @throws AndesException
-     */
-    public AndesContent getRetainedMessageContent(AndesMessageMetadata metadata) throws AndesException {
-        return MessagingEngine.getInstance().getRetainedMessageContent(metadata);
-    }
-
-    /**
      * On a member left event trigger recovery event. This will trigger a mock submit slot event to coordinator for all
      * the queues and topics. This is to avoid any lost submit slot events from left member node
      */

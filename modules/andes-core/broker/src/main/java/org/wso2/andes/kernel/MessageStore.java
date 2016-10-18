@@ -380,45 +380,6 @@ public interface MessageStore extends HealthAwareStore {
     void decrementMessageCountForQueue(String storageQueueName, long decrementBy) throws AndesException;
 
     /**
-     * Store retained message list in the message store.
-     *
-     * @param retainMap Retained messages map
-     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
-     */
-    void storeRetainedMessages(Map<String, AndesMessage> retainMap) throws AndesException;
-
-    /**
-     * Return all topic names with retained messages in the database
-     *
-     * @return Topic list with retained messages
-     * @throws AndesException
-     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
-     */
-    List<String> getAllRetainedTopics() throws AndesException;
-
-    /**
-     * Get all content parts for the given message ID. The message ID should belong to a
-     * existing retained message.
-     *
-     * @param messageID Message ID of the message
-     * @return List of content parts
-     * @throws AndesException
-     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
-     */
-    Map<Integer, AndesMessagePart> getRetainedContentParts(long messageID) throws AndesException;
-
-    /**
-     * Return retained message metadata for the given destination. Null is returned if
-     * no retained message is available for a destination.
-     *
-     * @param destination Destination/Topic name
-     * @return AndesMessageMetadata
-     * @throws AndesException
-     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
-     */
-    DeliverableAndesMetadata getRetainedMetadata(String destination) throws AndesException;
-
-    /**
      * close the message store
      */
     void close();

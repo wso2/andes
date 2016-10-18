@@ -27,7 +27,6 @@ import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.disruptor.BatchEventHandler;
 import org.wso2.andes.store.AndesBatchUpdateException;
-import org.wso2.andes.store.AndesStoreUnavailableException;
 import org.wso2.andes.store.AndesTransactionRollbackException;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
@@ -59,11 +58,6 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
     private final List<AndesMessage> previouslyFailedMessageList;
 
     /**
-     * Temporary storage for retain messages
-     */
-    private final Map<String, AndesMessage> retainMap;
-
-    /**
      * Indicates if messages stores become offline. Marked as volatile since this value could be set from a different
      * thread (other than those of disruptor)
      */
@@ -83,7 +77,6 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
          */
         currentMessageList = new ArrayList<>(messageBatchSize);
         previouslyFailedMessageList = new ArrayList<>(messageBatchSize); // init in the same capacity
-        retainMap = new HashMap<>();
         messageStoresUnavailable = false;
         FailureObservingStoreManager.registerStoreHealthListener(this);
     }
@@ -94,10 +87,6 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
         // For topics there may be multiple messages in one event.
         for (InboundEventContainer event : eventList) {
             currentMessageList.addAll(event.getMessageList());
-
-            if (null != event.retainMessage) {
-                retainMap.put(event.retainMessage.getMetadata().getDestination(), event.retainMessage);
-            }
         }
 
         if (messageStoresUnavailable) {
@@ -123,9 +112,6 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
             try {
                 messagingEngine.messagesReceived(currentMessageList);
 
-                if (!retainMap.isEmpty()) {
-                    messagingEngine.storeRetainedMessages(retainMap);
-                }
 
                 if (log.isDebugEnabled()) {
                     log.debug(currentMessageList.size() + " messages received from disruptor.");
@@ -148,8 +134,7 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
 
                 // clear the messages
                 currentMessageList.clear();
-                // clear retained messages map
-                retainMap.clear();
+
 
             } catch (AndesBatchUpdateException batchInsertEx) {
 

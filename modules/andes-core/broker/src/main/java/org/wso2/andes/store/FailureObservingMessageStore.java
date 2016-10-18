@@ -576,58 +576,6 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void storeRetainedMessages(Map<String, AndesMessage> retainMap) throws AndesException {
-        try {
-            wrappedInstance.storeRetainedMessages(retainMap);
-        } catch (AndesStoreUnavailableException exception) {
-            notifyFailures(exception);
-            throw exception;
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public List<String> getAllRetainedTopics() throws AndesException {
-        try {
-            return wrappedInstance.getAllRetainedTopics();
-        } catch (AndesStoreUnavailableException exception) {
-            notifyFailures(exception);
-            throw exception;
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Map<Integer, AndesMessagePart> getRetainedContentParts(long messageID) throws AndesException {
-        try {
-            return wrappedInstance.getRetainedContentParts(messageID);
-        } catch (AndesStoreUnavailableException exception) {
-            notifyFailures(exception);
-            throw exception;
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public DeliverableAndesMetadata getRetainedMetadata(String destination) throws AndesException {
-        try {
-            return wrappedInstance.getRetainedMetadata(destination);
-        } catch (AndesStoreUnavailableException exception) {
-            notifyFailures(exception);
-            throw exception;
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public void close() {
         wrappedInstance.close();
         failureObservingStoreManager.close();

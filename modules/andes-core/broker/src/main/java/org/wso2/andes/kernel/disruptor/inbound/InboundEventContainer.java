@@ -86,10 +86,6 @@ public class InboundEventContainer {
      */
     private InboundTransactionEvent transactionEvent;
 
-    /**
-     * For storing retained messages for topic
-     */
-    public AndesMessage retainMessage;
     public boolean preProcessed;
 
     /**
@@ -218,7 +214,7 @@ public class InboundEventContainer {
      */
     public void clear() {
         messageList.clear();
-        retainMessage = null;
+       // retainMessage = null;
         ackData = null;
         stateEvent = null;
         eventType = Type.IGNORE_EVENT;

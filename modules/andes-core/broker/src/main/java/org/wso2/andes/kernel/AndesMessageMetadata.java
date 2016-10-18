@@ -22,9 +22,6 @@ package org.wso2.andes.kernel;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.mqtt.MQTTMessageMetaData;
-import org.wso2.andes.mqtt.MQTTMetaDataHandler;
-import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.message.MessageMetaData;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.server.store.StorableMessageMetaData;
@@ -98,39 +95,9 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      */
     private Map<String, Object> propertyMap;
 
-    /**
-     * MQTT Retain
-     * Topic message should retained if true.
-     *
-     * By setting the retain flag, the message is held onto by the broker, so when the late arrivals
-     * connect to the broker or clients create a new subscription they get all the relevant retained
-     * messages based on subscribed topic.
-     *
-     * When MQTT message received it's header will be converted to AndesMessageMetadata header. This
-     * boolean state holds retain state of given andes message.
-     * @see org.wso2.andes.mqtt.utils.MQTTUtils#convertToAndesHeader(long, String, int, int, boolean,
-     * org.wso2.andes.mqtt.MQTTPublisherChannel, boolean)
-     *
-     * This boolean state will be checked each time andes message received in MessagePreProcessor.
-     * @see org.wso2.andes.kernel.disruptor.inbound.MessagePreProcessor#handleTopicRoutine(
-     * org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer, AndesMessage, AndesChannel)
-     *
-     */
-    private boolean retain;
 
     public AndesMessageMetadata() {
         propertyMap = new HashMap<>();
-        this.retain = false;
-    }
-
-    /**
-     * Set retain flag for current message
-     *
-     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
-     * @param retain boolean retain flag
-     */
-    public void setRetain(boolean retain) {
-        this.retain = retain;
     }
 
     public AndesMessageMetadata(long messageID, byte[] metadata, boolean parse) {
@@ -148,15 +115,6 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         return messageID;
     }
 
-    /**
-     * Return retained status of the current message.
-     *
-     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
-     * @return boolean retain flag for the current message
-     */
-    public boolean isRetain() {
-        return retain;
-    }
 
     public void setMessageID(long messageID) {
         this.messageID = messageID;
@@ -277,7 +235,6 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
     public AndesMessageMetadata shallowCopy(long messageId) {
         AndesMessageMetadata clone = new AndesMessageMetadata();
         clone.messageID = messageId;
-        clone.retain = retain;
         clone.metadata = metadata;
         clone.expirationTime = expirationTime;
         clone.isTopic = isTopic;
@@ -352,17 +309,6 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
             this.messageRouterName = ((MessageMetaData) mdt).getMessagePublishInfo().getExchange().toString();
             this.isCompressed = ((MessageMetaData) mdt).isCompressed();
         }
-        //For MQTT Specific Types
-        if (type.equals(MessageMetaDataType.META_DATA_MQTT)) {
-            this.arrivalTime = ((MQTTMessageMetaData) mdt).getMessageArrivalTime();
-            this.isTopic = ((MQTTMessageMetaData) mdt).isTopic();
-            this.messageRouterName = MQTTUtils.MQTT_EXCHANGE_NAME;
-            this.destination = ((MQTTMessageMetaData) mdt).getDestination();
-            this.isPersistent = ((MQTTMessageMetaData) mdt).isPersistent();
-            this.messageContentLength = ((MQTTMessageMetaData) mdt).getContentSize();
-            this.qosLevel = ((MQTTMessageMetaData) mdt).getQosLevel();
-            this.isCompressed = ((MQTTMessageMetaData) mdt).isCompressed();
-        }
 
     }
 
@@ -383,12 +329,8 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         StorableMessageMetaData originalMessageMetadata = type.getFactory().createMetaData(buf);
 
         byte[] underlying;
-        //TODO need to implement factory pattern here
-        if ((MessageMetaDataType.META_DATA_MQTT).equals(type)) {
-            underlying = MQTTMetaDataHandler.constructMetadata(routingKey, buf, originalMessageMetadata, exchangeName);
-        } else {
-            underlying = AMQPMetaDataHandler.constructMetadata(routingKey, buf, originalMessageMetadata, exchangeName);
-        }
+
+        underlying = AMQPMetaDataHandler.constructMetadata(routingKey, buf, originalMessageMetadata, exchangeName);
 
         return underlying;
     }
@@ -409,12 +351,9 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         StorableMessageMetaData originalMessageMetadata = type.getFactory().createMetaData(buf);
 
         byte[] underlying;
-        //TODO need to implement factory pattern here
-        if ((MessageMetaDataType.META_DATA_MQTT).equals(type)) {
-            underlying = MQTTMetaDataHandler.constructMetadata(buf, originalMessageMetadata, isCompressed);
-        } else {
-            underlying = AMQPMetaDataHandler.constructMetadata(buf, originalMessageMetadata, isCompressed);
-        }
+
+        underlying = AMQPMetaDataHandler.constructMetadata(buf, originalMessageMetadata, isCompressed);
+
 
         return underlying;
     }

@@ -34,7 +34,6 @@ import org.wso2.andes.kernel.slot.SlotDeletionExecutor;
 import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.kernel.subscription.StorageQueue;
-import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.ClusterAgent;
 import org.wso2.andes.server.cluster.ClusterManagementInformationMBean;
@@ -123,7 +122,7 @@ public class AndesKernelBoot {
         andesRecoveryTaskScheduler = Executors.newScheduledThreadPool(threadPoolCount);
         expiryMessageDeletionTaskScheduler = Executors.newScheduledThreadPool(threadPoolCount);
         startHouseKeepingThreads();
-        createDefinedProtocolArtifacts();
+        //createDefinedProtocolArtifacts();
         syncNodeWithClusterState();
         registerMBeans();
         startThriftServer();
@@ -351,18 +350,6 @@ public class AndesKernelBoot {
         }
     }
 
-    /**
-     * Create Pre-defined exchanges, queues, bindings and subscriptions and other artifacts
-     * at the startup
-     *
-     * @throws AndesException
-     */
-    private static void createDefinedProtocolArtifacts() throws AndesException {
-        //Create MQTT exchange
-        InboundExchangeEvent inboundExchangeEvent = new
-                InboundExchangeEvent(MQTTUtils.MQTT_EXCHANGE_NAME, "topic", false);
-        Andes.getInstance().createExchange(inboundExchangeEvent);
-    }
 
     /**
      * Initialize mode of cluster event synchronization depending on configurations and start listeners.

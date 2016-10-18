@@ -32,7 +32,6 @@ import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionSyncEvent;
 import org.wso2.andes.kernel.registry.StorageQueueRegistry;
 import org.wso2.andes.kernel.registry.SubscriptionRegistry;
 import org.wso2.andes.metrics.MetricsConstants;
-import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.ClusterNotificationAgent;
 import org.wso2.andes.server.cluster.coordination.CoordinationComponentFactory;
@@ -282,12 +281,6 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
                     if (!getAllSubscriptionsByQueue(ProtocolType.AMQP, storageQueue.getName()).iterator().hasNext()) {
                         AndesSubscription inactiveSubscriber = new InactiveSubscriber(storageQueue.getName(),
                                 storageQueue.getName(), storageQueue, ProtocolType.AMQP);
-                        inactiveSubscriptions.add(inactiveSubscriber);
-                    }
-                } else if (MQTTUtils.MQTT_EXCHANGE_NAME.equals(messageRouterName)) {
-                    if (!getAllSubscriptionsByQueue(ProtocolType.MQTT, storageQueue.getName()).iterator().hasNext()) {
-                        AndesSubscription inactiveSubscriber = new InactiveSubscriber(storageQueue.getName(),
-                                storageQueue.getName(), storageQueue, ProtocolType.MQTT);
                         inactiveSubscriptions.add(inactiveSubscriber);
                     }
                 }
