@@ -30,12 +30,18 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.thrift.slot.gen.SlotManagementService;
 
 import java.net.InetSocketAddress;
+import java.util.concurrent.TimeUnit;
 
 /**
- * This class is take cares of starting and stopping the thrift server which is used to do slot
- * communication.
+ * This class takes care of starting and stopping the thrift server which is used to do slot communication.
  */
 public class MBThriftServer {
+
+    /**
+     * Default thrift server request timeout. Server stop() will also wait this amount of time at max before
+     * returning. The time unit is seconds.
+     */
+    private static final int THRIFT_SERVER_REQUEST_TIMEOUT = 20;
 
     private static Log log = LogFactory.getLog(MBThriftServer.class);
 
@@ -76,8 +82,11 @@ public class MBThriftServer {
             SlotManagementService.Processor<SlotManagementServiceImpl> processor =
                     new SlotManagementService.Processor<SlotManagementServiceImpl>(slotManagementServerHandler);
             TProtocolFactory protocolFactory = new TBinaryProtocol.Factory();
-            server = new TThreadPoolServer(new TThreadPoolServer.Args(socket).
-                    processor(processor).inputProtocolFactory(protocolFactory));
+            server = new TThreadPoolServer(new TThreadPoolServer.Args(socket)
+                    .processor(processor)
+                    .inputProtocolFactory(protocolFactory)
+                    .requestTimeoutUnit(TimeUnit.SECONDS)
+                    .requestTimeout(THRIFT_SERVER_REQUEST_TIMEOUT));
 
             log.info("Starting the Message Broker Thrift server on host '" + hostName + "' on port '" + port
                     + "'...");
@@ -92,9 +101,46 @@ public class MBThriftServer {
      * Stop the server
      */
     public void stop() {
+
+        log.info("Stopping the Message Broker Thrift server...");
+
         if (server != null) {
             server.stop();
+
+            try {
+                boolean terminationSuccessful = awaitTermination(THRIFT_SERVER_REQUEST_TIMEOUT, TimeUnit.SECONDS);
+
+                if (!terminationSuccessful) {
+                    log.warn("Could not stop the Message Broker Thrift server");
+                }
+            } catch (InterruptedException e) {
+                log.warn("Thrift server shutdown was interrupted", e);
+                Thread.currentThread().interrupt();
+            }
         }
+    }
+
+    /**
+     * Blocks until server stop serving after a stop request, or the timeout occurs, or the current thread is
+     * interrupted, whichever happens first.
+     *
+     * @param timeout the maximum time to wait
+     * @param unit the time unit of the timeout argument
+     * @return {@code true} if thrift server stopped and
+     *         {@code false} if the timeout elapsed before server stops
+     * @throws InterruptedException if interrupted while waiting
+     */
+    private boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
+        final long timeoutInMillis = unit.toMillis(timeout);
+        final long shutDownStartTime = System.currentTimeMillis();
+        long timeElapsed = 0;
+
+        while (server.isServing() && timeElapsed < timeoutInMillis) {
+            TimeUnit.MILLISECONDS.sleep(100);
+            timeElapsed = System.currentTimeMillis() - shutDownStartTime;
+        }
+
+        return server.isServing();
     }
 
     /**

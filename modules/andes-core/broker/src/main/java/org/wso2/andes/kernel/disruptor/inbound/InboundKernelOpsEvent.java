@@ -220,6 +220,7 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
 
             //Stop Slot manager in coordinator
             if (AndesContext.getInstance().isClusteringEnabled() && (AndesContext.getInstance().getClusterAgent().isCoordinator())) {
+                AndesKernelBoot.stopThriftServer();
                 SlotManagerClusterMode.getInstance().shutDownSlotManager();
                 AndesContext.getInstance().getClusterAgent().stop();
             }
