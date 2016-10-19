@@ -45,6 +45,12 @@ public class ConnectionRegistry implements IConnectionRegistry, Closeable
         {
             AMQConnectionModel connection = _registry.get(0);
             closeConnection(connection, AMQConstant.INTERNAL_ERROR, "Broker is shutting down");
+
+            if (!_registry.isEmpty() && connection.equals(_registry.get(0))) {
+                _logger.error("Forcefully deregister connection since close failed."
+                        + " Connection ID: " + connection.getConnectionId());
+                deregisterConnection(connection);
+            }
         }
     }
     

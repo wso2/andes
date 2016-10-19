@@ -20,46 +20,13 @@
  */
 package org.wso2.andes.client;
 
-import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.net.ConnectException;
-import java.net.UnknownHostException;
-import java.nio.channels.UnresolvedAddressException;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.security.PrivilegedActionException;
-import java.security.PrivilegedExceptionAction;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-
-import javax.jms.ConnectionConsumer;
-import javax.jms.ConnectionMetaData;
-import javax.jms.Destination;
-import javax.jms.ExceptionListener;
-import javax.jms.IllegalStateException;
-import javax.jms.JMSException;
-import javax.jms.Queue;
-import javax.jms.QueueConnection;
-import javax.jms.QueueSession;
-import javax.jms.ServerSessionPool;
-import javax.jms.Topic;
-import javax.jms.TopicConnection;
-import javax.jms.TopicSession;
-import javax.naming.NamingException;
-import javax.naming.Reference;
-import javax.naming.Referenceable;
-import javax.naming.StringRefAddr;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.wso2.andes.AMQConnectionFailureException;
+import org.wso2.andes.AMQDisconnectedException;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQProtocolException;
 import org.wso2.andes.AMQUnresolvedAddressException;
-import org.wso2.andes.AMQDisconnectedException;
 import org.wso2.andes.client.failover.FailoverException;
 import org.wso2.andes.client.failover.FailoverProtectedOperation;
 import org.wso2.andes.client.protocol.AMQProtocolHandler;
@@ -80,8 +47,40 @@ import org.wso2.andes.jms.ConnectionURL;
 import org.wso2.andes.jms.FailoverPolicy;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.url.URLSyntaxException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.net.ConnectException;
+import java.net.UnknownHostException;
+import java.nio.channels.UnresolvedAddressException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import javax.jms.ConnectionConsumer;
+import javax.jms.ConnectionMetaData;
+import javax.jms.Destination;
+import javax.jms.ExceptionListener;
+import javax.jms.IllegalStateException;
+import javax.jms.JMSException;
+import javax.jms.Queue;
+import javax.jms.QueueConnection;
+import javax.jms.QueueSession;
+import javax.jms.ServerSessionPool;
+import javax.jms.Topic;
+import javax.jms.TopicConnection;
+import javax.jms.TopicSession;
+import javax.naming.NamingException;
+import javax.naming.Reference;
+import javax.naming.Referenceable;
+import javax.naming.StringRefAddr;
 
 public class AMQConnection extends Closeable implements Connection, QueueConnection, TopicConnection, Referenceable
 {
@@ -1337,45 +1336,34 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
             _protocolHandler.getProtocolSession().notifyError(je);
         }
 
-        // get the failover mutex before trying to close
-        synchronized (getFailoverMutex())
-        {
-            // decide if we are going to close the session
-            if (hardError(cause))
-            {
-                closer = (!_closed.getAndSet(true)) || closer;
-                {
-                    if (_logger.isDebugEnabled()) {
-                        _logger.debug("Closing AMQConnection due to :" + cause);
-                    }
-                }
-            }
-            else
+        // decide if we are going to close the session
+        if (hardError(cause)) {
+            closer = (!_closed.getAndSet(true)) || closer;
             {
                 if (_logger.isDebugEnabled()) {
-                    _logger.debug("Not a hard-error connection not closing: " + cause);
+                    _logger.debug("Closing AMQConnection due to :" + cause);
                 }
             }
-
-            // deliver the exception if there is a listener
-            if (_exceptionListener != null)
-            {
-                _exceptionListener.onException(je);
+        } else {
+            if (_logger.isDebugEnabled()) {
+                _logger.debug("Not a hard-error connection not closing: " + cause);
             }
-            else
-            {
-                _logger.error("Throwable Received but no listener set: " + cause);
-            }
+        }
 
-            // if we are closing the connection, close sessions first
-            if (closer)
-            {
-                try
-                {
+        // deliver the exception if there is a listener
+        if (_exceptionListener != null) {
+            _exceptionListener.onException(je);
+        } else {
+            _logger.error("Throwable Received but no listener set: " + cause);
+        }
+
+        // if we are closing the connection, close sessions first
+        if (closer) {
+            // get the failover mutex before trying to close
+            synchronized (getFailoverMutex()) {
+                try {
                     closeAllSessions(cause, -1, -1); // FIXME: when doing this end up with RejectedExecutionException from executor.
-                }
-                catch (JMSException e)
-                {
+                } catch (JMSException e) {
                     _logger.error("Error closing all sessions: " + e, e);
                 }
             }

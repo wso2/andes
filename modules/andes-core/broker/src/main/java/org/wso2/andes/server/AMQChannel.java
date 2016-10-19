@@ -85,7 +85,6 @@ import org.wso2.andes.server.virtualhost.AMQChannelMBean;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.store.StoredAMQPMessage;
 
-import javax.management.JMException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -100,6 +99,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import javax.management.JMException;
 
 public class AMQChannel implements SessionConfig, AMQSessionModel
 {
@@ -994,19 +994,20 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
      */
     public void acknowledgeMessage(long deliveryTag, boolean multiple) throws AMQException
     {
-        isMessagesAcksProcessing =  true;
-        Collection<QueueEntry> ackedMessages = getAckedMessages(deliveryTag, multiple);
-        _transaction.dequeue(ackedMessages, new MessageAcknowledgeAction(ackedMessages));
+        try {
+            isMessagesAcksProcessing =  true;
+            Collection<QueueEntry> ackedMessages = getAckedMessages(deliveryTag, multiple);
+            _transaction.dequeue(ackedMessages, new MessageAcknowledgeAction(ackedMessages));
 
-        for (QueueEntry entry : ackedMessages) {
-            /**
-             * When the message is acknowledged it is informed to Andes Kernel
-             */
-            QpidAndesBridge.ackReceived(this.getId(), entry.getMessage().getMessageNumber());
+            for (QueueEntry entry : ackedMessages) {
+                // When the message is acknowledged it is informed to Andes Kernel
+                QpidAndesBridge.ackReceived(this.getId(), entry.getMessage().getMessageNumber());
+            }
+
+            updateTransactionalActivity();
+        } finally {
+            isMessagesAcksProcessing = false;
         }
-
-        updateTransactionalActivity();
-        isMessagesAcksProcessing = false;
     }
 
     private Collection<QueueEntry> getAckedMessages(long deliveryTag, boolean multiple)
