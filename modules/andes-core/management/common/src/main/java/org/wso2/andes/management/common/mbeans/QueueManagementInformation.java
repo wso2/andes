@@ -23,12 +23,13 @@ package org.wso2.andes.management.common.mbeans;
 
 import org.wso2.andes.management.common.mbeans.annotations.MBeanAttribute;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
-import javax.management.MBeanException;
-import javax.management.openmbean.CompositeData;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import javax.management.MBeanException;
+import javax.management.openmbean.CompositeData;
 
 /**
  * This interface contains all operations invoked by the UI console with relation to queues. (addition, deletion, purging, etc.)
@@ -70,6 +71,15 @@ public interface QueueManagementInformation {
      */
     @MBeanAttribute(name = "AllQueueCounts", description = "Message counts of all queues")
     Map<String, Integer> getAllQueueCounts();
+    
+    /**
+     * Retrieve message counts of all queues
+     *
+     * @return Composite data object of format <queueName, queueCount>
+     */
+    @MBeanAttribute(name = "MessageCountOfQueuesAsCompositeData", description = "Message counts of all queues as " +
+            "Composite data")
+    CompositeData getMessageCountOfQueuesAsCompositeData();
 
     /**
      * Retrieve current message count of a queue. This may be only a rough estimate in a fast pub/sub scenario.

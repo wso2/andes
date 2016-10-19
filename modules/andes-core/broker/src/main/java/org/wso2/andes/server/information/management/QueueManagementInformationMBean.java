@@ -38,12 +38,12 @@ import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.AndesUtils;
-import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.kernel.disruptor.compression.LZ4CompressionHelper;
 import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.DisablePubAckImpl;
 import org.wso2.andes.kernel.FlowControlListener;
+import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolType;
+import org.wso2.andes.kernel.disruptor.compression.LZ4CompressionHelper;
 import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.management.common.mbeans.QueueManagementInformation;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
@@ -57,6 +57,14 @@ import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostImpl;
 import org.wso2.andes.transport.codec.BBDecoder;
 
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import javax.jms.JMSException;
 import javax.jms.MessageEOFException;
 import javax.jms.MessageFormatException;
@@ -71,14 +79,6 @@ import javax.management.openmbean.CompositeType;
 import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
-import java.nio.charset.CharacterCodingException;
-import java.nio.charset.Charset;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
 
 /**
  * This class contains all operations such as addition, deletion, purging, browsing, etc. that are invoked by the UI
@@ -244,6 +244,34 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
         }
 
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CompositeData getMessageCountOfQueuesAsCompositeData() {
+        CompositeDataSupport support;
+        try {
+            List<String> queuesList = AndesUtils.filterQueueDestinations(AndesContext.getInstance()
+                    .getAMQPConstructStore().getQueueNames());
+            Map<String, java.lang.Integer> messageCounts = Andes.getInstance().getMessageCountForAllQueues(queuesList);
+
+            OpenType[] messageCountAttributeTypes = new OpenType[messageCounts.size()];
+            String[] itemNames = messageCounts.keySet().toArray(new String[0]);
+            String[] itemDescriptions = messageCounts.keySet().toArray(new String[0]);
+            for (int count = 0; count < messageCounts.size(); count++) {
+                messageCountAttributeTypes[count] = SimpleType.INTEGER;
+            }
+            CompositeType messageCountCompositeType = new CompositeType("Message Count of Queues",
+                    "Message count of queues", itemNames, itemDescriptions, messageCountAttributeTypes);
+            support = new CompositeDataSupport(messageCountCompositeType, messageCounts);
+        } catch (AndesException | OpenDataException e) {
+            log.error("Error in accessing retrieving message count information", e);
+            throw new RuntimeException("Error in accessing retrieving message count information", e);
+        }
+        return support;
+    }
+
 
     /**
      * {@inheritDoc}
