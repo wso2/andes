@@ -41,15 +41,15 @@ import org.wso2.andes.transport.ProtocolVersionException;
 import org.wso2.andes.transport.SessionDetachCode;
 import org.wso2.andes.transport.TransportException;
 
-import javax.jms.ExceptionListener;
-import javax.jms.JMSException;
-import javax.jms.XASession;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import javax.jms.ExceptionListener;
+import javax.jms.JMSException;
+import javax.jms.XASession;
 
 public class AMQConnectionDelegate_0_10 implements AMQConnectionDelegate, ConnectionListener
 {
@@ -235,7 +235,9 @@ public class AMQConnectionDelegate_0_10 implements AMQConnectionDelegate, Connec
         for (AMQSession s : sessions)
         {
             s.resubscribe();
-            s.recover();
+            if (!s.getTransacted()) {
+                s.recover();
+            }
         }
     }
 
