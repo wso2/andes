@@ -18,10 +18,6 @@
 
 package org.wso2.andes.store;
 
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ScheduledFuture;
-
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
@@ -32,7 +28,12 @@ import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.kernel.slot.Slot;
+import org.wso2.andes.kernel.slot.RecoverySlotCreator;
 import org.wso2.andes.tools.utils.MessageTracer;
+
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ScheduledFuture;
 
 /**
  * Implementation of {@link MessageStore} which observes failures such is
@@ -224,11 +225,10 @@ public class FailureObservingMessageStore implements MessageStore {
     /**
      * {@inheritDoc}
      */
-    public List<Long> getNextNMessageIdsFromQueue(final String storageQueueName,
-                                                                       long firstMsgId, int count)
-            throws AndesException{
+    public int recoverSlotsForQueue(final String storageQueueName, long firstMsgId, int count,
+                                    RecoverySlotCreator.CallBack callBack) throws AndesException {
         try {
-            return wrappedInstance.getNextNMessageIdsFromQueue(storageQueueName, firstMsgId, count);
+            return wrappedInstance.recoverSlotsForQueue(storageQueueName, firstMsgId, count, callBack);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
