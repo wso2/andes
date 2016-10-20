@@ -278,8 +278,8 @@ public class AndesSubscription {
                         "rebuffering message due to subscription left");
 
                 UUID protocolChannelID = getSubscriberConnection().getProtocolChannelID();
-                unAckedMessage.markDeliveredChannelAsClosed(protocolChannelID);
                 unAckedMessage.markAsNackedByClient(subscriberConnection.getProtocolChannelID());
+                unAckedMessage.markDeliveredChannelAsClosed(protocolChannelID);
                 storageQueue.bufferMessageForDelivery(unAckedMessage);
             }
         } else {    // removed messages acked by all
