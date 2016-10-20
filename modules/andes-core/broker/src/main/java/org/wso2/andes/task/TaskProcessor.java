@@ -86,6 +86,10 @@ final class TaskProcessor implements Callable<Boolean> {
                     if (hint == Task.TaskHint.IDLE) {
                         delay = idleWaitTimeMillis;
                     }
+                } catch (InterruptedException e) {
+                    if (isActive.get()) {
+                        taskExceptionHandler.handleException(e, "null");
+                    }
                 } catch (Throwable throwable) {
                     String id;
                     if(null != taskHolder) {
