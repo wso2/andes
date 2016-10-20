@@ -710,9 +710,9 @@ public class MessagingEngine {
      */
     public void stopMessageDelivery() {
 
-        log.info("Stopping SlotDelivery Worker.");
+        log.info("Stopping SlotDelivery Workers.");
         //Stop all slotDeliveryWorkers
-        SlotDeliveryWorkerManager.getInstance().stopSlotDeliveryWorkers();
+        SlotDeliveryWorkerManager.getInstance().stopSlotDelivery();
         //Stop thrift reconnecting thread if started
         if (MBThriftClient.isReconnectingStarted()) {
             MBThriftClient.setReconnectingFlag(false);
@@ -720,18 +720,6 @@ public class MessagingEngine {
         SlotMessageCounter.getInstance().stop();
         //Stop delivery disruptor
         MessageFlusher.getInstance().getFlusherExecutor().stop();
-    }
-
-    /**
-     * Properly shutdown all messaging related operations / tasks
-     * @throws InterruptedException
-     */
-    public void close() throws InterruptedException {
-
-        stopMessageDelivery();
-        stopMessageExpirationWorker();
-
-        completePendingStoreOperations();
     }
 
     public void completePendingStoreOperations() {

@@ -31,10 +31,12 @@ import org.wso2.andes.kernel.ProtocolType;
 import java.io.File;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 
 /**
  * This class is responsible of allocating SloDeliveryWorker threads to each queue
@@ -164,9 +166,8 @@ public class SlotDeliveryWorkerManager {
      * Stop all stop delivery workers in the thread pool
      */
     public void stopSlotDeliveryWorkers() {
-        for (Map.Entry<Integer, SlotDeliveryWorker> slotDeliveryWorkerEntry :
-                getSlotDeliveryWorkerMap()
-                        .entrySet()) {
+        Set<Map.Entry<Integer, SlotDeliveryWorker>> slotDeliveryWorkerEntries = getSlotDeliveryWorkerMap().entrySet();
+        for (Map.Entry<Integer, SlotDeliveryWorker> slotDeliveryWorkerEntry : slotDeliveryWorkerEntries) {
             slotDeliveryWorkerEntry.getValue().setRunning(false);
         }
     }
@@ -179,6 +180,39 @@ public class SlotDeliveryWorkerManager {
      */
     private Map<Integer, SlotDeliveryWorker> getSlotDeliveryWorkerMap() {
         return slotDeliveryWorkerMap;
+    }
+
+
+    /**
+     * Start slot delivery worker executor.
+     */
+    public synchronized void startSlotDelivery() {
+        if (slotDeliveryWorkerExecutor.isShutdown()) {
+            this.slotDeliveryWorkerExecutor = Executors.newFixedThreadPool(numberOfThreads, namedThreadFactory);
+        }
+    }
+
+    /**
+     * Stop all slot delivery workers and shutdown the executor service
+     */
+    public synchronized void stopSlotDelivery() {
+        stopSlotDeliveryWorkers();
+
+        slotDeliveryWorkerExecutor.shutdownNow();
+        try {
+            // Maximum time waited for a SDW to terminate in minutes
+            int maxTerminationAwaitTime = 1;
+
+            boolean terminationSuccessful = slotDeliveryWorkerExecutor
+                    .awaitTermination(maxTerminationAwaitTime, TimeUnit.MINUTES);
+
+            if (!terminationSuccessful) {
+                log.error("Could not stop SlotDeliveryWorkers.");
+            }
+        } catch (InterruptedException e) {
+            log.error("Slot delivery executor shutdown process was interrupted", e);
+            Thread.currentThread().interrupt();
+        }
     }
 
     /**

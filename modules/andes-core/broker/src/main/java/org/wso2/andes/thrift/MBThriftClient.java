@@ -314,6 +314,7 @@ public class MBThriftClient {
                     "Could not connect to the Thrift Server " + thriftCoordinatorServerIP + ":" +
                             thriftCoordinatorServerPort, e);
         } catch (InterruptedException ignore) {
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -346,7 +347,7 @@ public class MBThriftClient {
                         try {
                             Thread.sleep(2000);
                         } catch (InterruptedException ignored) {
-                            //silently ignore
+                            Thread.currentThread().interrupt();
                         }
                     }
 

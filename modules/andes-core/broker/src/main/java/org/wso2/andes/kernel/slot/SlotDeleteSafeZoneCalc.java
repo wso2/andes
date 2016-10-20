@@ -76,6 +76,7 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
                         try {
                             Thread.sleep(TIME_TO_SLEEP_ON_ERROR);
                         } catch (InterruptedException ignore) {
+                            Thread.currentThread().interrupt();
                         }
                         continue;
                     }
@@ -100,6 +101,7 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
                             try {
                                 Thread.sleep(TIME_TO_SLEEP_ON_ERROR);
                             } catch (InterruptedException ignore) {
+                                Thread.currentThread().interrupt();
                             }
                             continue;
                         }
@@ -120,6 +122,7 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
                     try {
                         Thread.sleep(seekInterval);
                     } catch (InterruptedException ignore) {
+                        Thread.currentThread().interrupt();
                     }
 
                 } catch (Throwable e) {
@@ -129,6 +132,7 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
                 try {
                     Thread.sleep(TIME_TO_SLEEP_ON_ERROR);
                 } catch (InterruptedException ignore) {
+                    Thread.currentThread().interrupt();
                 }
             }
 

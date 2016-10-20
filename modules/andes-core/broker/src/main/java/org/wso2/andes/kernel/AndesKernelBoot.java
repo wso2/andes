@@ -19,7 +19,6 @@
 package org.wso2.andes.kernel;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.hazelcast.util.executor.NamedThreadPoolExecutor;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -45,7 +44,6 @@ import org.wso2.andes.thrift.MBThriftServer;
 import org.wso2.carbon.context.CarbonContext;
 import org.wso2.carbon.user.api.UserStoreException;
 
-import javax.management.JMException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -55,6 +53,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import javax.management.JMException;
 
 /**
  * Andes kernel startup/shutdown related work is done through this class.
@@ -423,19 +422,6 @@ public class AndesKernelBoot {
         // NOTE: Feature Message Expiration moved to a future release
 //        Andes.getInstance().startMessageExpirationWorker();
     }
-
-    /**
-     * Stop worker threads, close transports and stop message delivery
-     *
-     */
-    private static void stopMessaging() {
-        // NOTE: Feature Message Expiration moved to a future release
-//        Andes.getInstance().stopMessageExpirationWorker();
-
-        //this will un-assign all slots currently owned
-        Andes.getInstance().stopMessageDelivery();
-    }
-
 
     /**
      * Start the thrift server

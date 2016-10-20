@@ -144,17 +144,6 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
         messagingEngine.stopMessageExpirationWorker();
     }
 
-    /**
-     * Handle event of shutting down MessagingEngine
-     */
-    public void shutdownMessagingEngine() {
-        try {
-            messagingEngine.close();
-        } catch (InterruptedException e) {
-            log.error("Interrupted while closing messaging engine. ", e);
-        }
-    }
-
     public void completePendingMessageStoringOperations() {
         messagingEngine.completePendingStoreOperations();
     }
@@ -165,16 +154,6 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
      */
     public void prepareForStartMessageDelivery(MessagingEngine messagingEngine) {
         eventType = EventType.START_MESSAGE_DELIVERY_EVENT;
-        this.messagingEngine = messagingEngine;
-        taskStatus = SettableFuture.create();
-    }
-
-    /**
-     * Update event to stop message delivery
-     * @param messagingEngine MessagingEngine
-     */
-    public void prepareForStopMessageDelivery(MessagingEngine messagingEngine) {
-        eventType = EventType.STOP_MESSAGE_DELIVERY_EVENT;
         this.messagingEngine = messagingEngine;
         taskStatus = SettableFuture.create();
     }

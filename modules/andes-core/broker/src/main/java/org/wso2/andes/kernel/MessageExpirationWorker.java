@@ -104,7 +104,7 @@ public class MessageExpirationWorker extends Thread {
                     try {
                         Thread.sleep(faultWaitTime);
                     } catch (InterruptedException ignore) {
-                        //silently ignore
+                        Thread.currentThread().interrupt();
                     }
 
                 }
@@ -147,7 +147,7 @@ public class MessageExpirationWorker extends Thread {
         try {
             Thread.sleep(sleepInterval);
         } catch (InterruptedException ignore) {
-            //ignored
+            Thread.currentThread().interrupt();
         }
     }
 

@@ -42,7 +42,6 @@ import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.Meter;
 import org.wso2.carbon.metrics.manager.MetricManager;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -279,15 +278,6 @@ public class Andes {
     }
 
     /**
-     * Stop message delivery.
-     */
-    public void stopMessageDelivery() {
-        InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
-        kernelOpsEvent.prepareForStopMessageDelivery(messagingEngine);
-        inboundEventManager.publishStateEvent(kernelOpsEvent);
-    }
-
-    /**
      * Shut down Andes.
      * NOTE: This is package specific. We don't need access outside from kernel for this task
      */
@@ -295,26 +285,6 @@ public class Andes {
         InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
         kernelOpsEvent.gracefulShutdown(messagingEngine, inboundEventManager, flowControlManager);
         kernelOpsEvent.waitForTaskCompletion();
-    }
-
-    /**
-     * Start message expiration task. This will periodically delete any expired messages
-     * NOTE: This is package specific. We don't need access outside from kernel for this task
-     */
-    void startMessageExpirationWorker() {
-        InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
-        kernelOpsEvent.prepareForStartMessageExpirationWorker(messagingEngine);
-        inboundEventManager.publishStateEvent(kernelOpsEvent);
-    }
-
-    /**
-     * Stop message expiration task.
-     * NOTE: This is package specific. We don't need outside kernel access for this task
-     */
-    void stopMessageExpirationWorker() {
-        InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
-        kernelOpsEvent.prepareForStopMessageExpirationWorker(messagingEngine);
-        inboundEventManager.publishStateEvent(kernelOpsEvent);
     }
 
     /**

@@ -26,8 +26,8 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.DestinationType;
-import org.wso2.andes.kernel.MessageFlusher;
 import org.wso2.andes.kernel.MessageDeliveryInfo;
+import org.wso2.andes.kernel.MessageFlusher;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.server.cluster.error.detection.NetworkPartitionListener;
@@ -39,7 +39,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -177,14 +176,10 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
                                 //No available free slots
                                 idleQueueCounter++;
                                 if (idleQueueCounter == storageQueueDataMap.size()) {
-                                    try {
-                                        if (log.isDebugEnabled()) {
-                                            log.debug("Sleeping Slot Delivery Worker");
-                                        }
-                                        Thread.sleep(100);
-                                    } catch (InterruptedException ignored) {
-                                        //Silently ignore
+                                    if (log.isDebugEnabled()) {
+                                        log.debug("Sleeping Slot Delivery Worker");
                                     }
+                                    Thread.sleep(100);
                                 }
                             }
                         } else {
@@ -246,6 +241,9 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
                     //and MB node will become useless
                 } catch (AndesException e) {
                     log.error("Error running Message Store Reader " + e.getMessage(), e);
+                } catch (InterruptedException e) {
+                    log.warn("SlotDeliveryWorker (" + this.getName() + ") execution was interrupted", e);
+                    Thread.currentThread().interrupt();
                 } catch (Throwable e) {
                     log.error("Error while running Slot Delivery Worker. ", e);
                 }
@@ -318,9 +316,10 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
      * @param slot the slot which messages are retrieved.
      * @return a list of {@link AndesMessageMetadata}
      * @throws AndesException an exception if there are errors at message store level.
+     * @throws InterruptedException
      */
     private List<DeliverableAndesMetadata> getMetaDataListBySlot(String storageQueueName,
-                                                             Slot slot) throws AndesException {
+                                                             Slot slot) throws AndesException, InterruptedException {
         return getMetadataListBySlot(storageQueueName, slot, 0);
     }
 
@@ -331,10 +330,11 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
      * @param numberOfRetriesBefore retry count for the query
      * @return return a list of {@link org.wso2.andes.kernel.AndesMessageMetadata}
      * @throws AndesException
+     * @throws InterruptedException
      */
-    private List<DeliverableAndesMetadata> getMetadataListBySlot(String storageQueueName,
-                                                             Slot slot,
-                                                             int numberOfRetriesBefore) throws AndesException {
+    private List<DeliverableAndesMetadata> getMetadataListBySlot(String storageQueueName, Slot slot,
+                                                                 int numberOfRetriesBefore)
+                                            throws AndesException, InterruptedException {
 
         List<DeliverableAndesMetadata> messagesRead;
                
@@ -399,8 +399,9 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
      * @param storageQueueName the storage queue name for from which a slot should be returned.
      * @return a {@link Slot}
      * @throws ConnectionException if connectivity to coordinator is lost.
+     * @throws InterruptedException
      */
-    private Slot requestSlot(String storageQueueName) throws ConnectionException {
+    private Slot requestSlot(String storageQueueName) throws ConnectionException, InterruptedException {
     	
     	 if ( networkOutageDetected != null){
              try {
@@ -411,9 +412,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
                  networkOutageDetected = null; // we are passing the blockade (therefore clear it).
                  log.info("Network outage resolved. resuming work. thread id: " + this.getId());
                  
-             } catch (InterruptedException e) {
-                 throw new ConnectionException("Thread interrupted while waiting for message stores to come online", e);
-             } catch (ExecutionException e){
+             } catch (ExecutionException e) {
                  throw new ConnectionException("Error occurred while waiting for message stores to come online", e);
              }
          }
