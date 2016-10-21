@@ -476,7 +476,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         if (this == o) {
             return true;
         }
-        if (!(o instanceof AndesMessageMetadata)){
+        if (!(o instanceof AndesMessageMetadata)) {
             return false;
         }
         AndesMessageMetadata andesMessageMetadata = (AndesMessageMetadata) o;
