@@ -36,7 +36,7 @@ public abstract class DeliveryResponsibility {
      *
      * @param deliveryResponsibility responsibility that need to be performed in the delivery path
      */
-    public void setNextDeliveryFilter(DeliveryResponsibility deliveryResponsibility){
+    public void setNextDeliveryFilter(DeliveryResponsibility deliveryResponsibility) {
         this.nextDeliveryResponsibility = deliveryResponsibility;
     }
 
@@ -45,12 +45,13 @@ public abstract class DeliveryResponsibility {
      *
      * @param subscription subscription to which message should be delivered
      * @param message message to deliver
+     * @throws AndesException
      */
     public void handleDeliveryMessage(AndesSubscription subscription, DeliverableAndesMetadata message)
-            throws AndesException{
+            throws AndesException {
 
-        if(performResponsibility(subscription,message) && (null != nextDeliveryResponsibility)){
-            nextDeliveryResponsibility.handleDeliveryMessage(subscription,message);
+        if (performResponsibility(subscription, message) && (null != nextDeliveryResponsibility)) {
+            nextDeliveryResponsibility.handleDeliveryMessage(subscription, message);
         }
 
     }
@@ -61,6 +62,7 @@ public abstract class DeliveryResponsibility {
      * @param subscription subscription to which message should be delivered
      * @param message message to deliver
      * @return true if it is okay to hand over to the next responsibility in the chain
+     * @throws AndesException
      */
     protected abstract boolean performResponsibility (AndesSubscription subscription,
                                                       DeliverableAndesMetadata message) throws AndesException;

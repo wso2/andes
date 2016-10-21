@@ -106,7 +106,7 @@ public class MQTTMessageRouter extends AndesMessageRouter {
             Iterator<StorageQueue> queueIterator = matchingQueues.iterator();
             while (queueIterator.hasNext()) {
                 StorageQueue matchingQueue = queueIterator.next();
-                if(matchingQueue.isDurable() && matchingQueue.getBoundSubscriptions().isEmpty()) {
+                if (matchingQueue.isDurable() && matchingQueue.getBoundSubscriptions().isEmpty()) {
                     queueIterator.remove();
                 }
             }

@@ -39,7 +39,7 @@ public class MessageExpiryManager {
      * @param dlcQueueName DLC queue name
      */
     public void moveMetadataToDLC(List<AndesMessageMetadata> messages, String dlcQueueName)
-            throws AndesException{
+            throws AndesException {
         messageStore.moveMetadataToDLC(messages, dlcQueueName);
     }
 
@@ -50,7 +50,7 @@ public class MessageExpiryManager {
      * @param dlcQueueName DLC Queue name for which the message is routed to
      * @throws AndesException
      */
-    public void moveMetadataToDLC(long messageId, String dlcQueueName) throws AndesException{
+    public void moveMetadataToDLC(long messageId, String dlcQueueName) throws AndesException {
         messageStore.moveMetadataToDLC(messageId, dlcQueueName);
     }
 }

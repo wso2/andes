@@ -53,7 +53,7 @@ public class PreDeliveryExpiryMessageDeletionTask implements Runnable, StoreHeal
      */
     private volatile SettableFuture<Boolean> messageStoresUnavailable;
 
-    public PreDeliveryExpiryMessageDeletionTask(){
+    public PreDeliveryExpiryMessageDeletionTask() {
 
         this.messageStoresUnavailable = null;
         this.expiredMessageIds = new LinkedBlockingDeque<>();
@@ -62,7 +62,7 @@ public class PreDeliveryExpiryMessageDeletionTask implements Runnable, StoreHeal
 
     }
 
-    public void addMessageIdToExpiredQueue(long messageId){
+    public void addMessageIdToExpiredQueue(long messageId) {
         expiredMessageIds.add(messageId);
     }
 
