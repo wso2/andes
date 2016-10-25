@@ -56,7 +56,6 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.message.AMQMessage;
-import org.wso2.andes.server.message.ServerMessage;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.IncomingMessage;
 import org.wso2.andes.server.queue.QueueEntry;
@@ -533,6 +532,15 @@ public class QpidAndesBridge {
             if (log.isDebugEnabled()) {
                 log.debug("Ignored binding for default exchange " + exchange.getNameShortString());
             }
+            return;
+        } else if (exchange.getNameShortString().equals(ExchangeDefaults.TOPIC_EXCHANGE_NAME) && !binding.getQueue()
+                                                                                                       .isDurable()) {
+            if (log.isDebugEnabled()) {
+                log.debug("Ignored binding for non durable topic " + binding.getBindingKey());
+            }
+
+            log.error("Ignored binding for non durable topic " + binding.getBindingKey());
+
             return;
         }
 
