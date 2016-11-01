@@ -675,7 +675,7 @@ public class Andes {
      * @param listener Local flow control listener
      * @return AndesChannel
      */
-    public AndesChannel createChannel(FlowControlListener listener) throws AndesException {
+    public AndesChannel createChannel(FlowControlListener listener) {
         return flowControlManager.createChannel(listener);
     }
 

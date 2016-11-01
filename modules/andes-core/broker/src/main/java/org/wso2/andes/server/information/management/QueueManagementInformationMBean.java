@@ -185,7 +185,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      * @throws NotCompliantMBeanException
      */
     public QueueManagementInformationMBean(VirtualHostImpl.VirtualHostMBean vHostMBean)
-            throws NotCompliantMBeanException, OpenDataException, AndesException {
+            throws NotCompliantMBeanException, OpenDataException {
         super(QueueManagementInformation.class, QueueManagementInformation.TYPE);
 
         andesChannel = Andes.getInstance().createChannel(new FlowControlListener() {

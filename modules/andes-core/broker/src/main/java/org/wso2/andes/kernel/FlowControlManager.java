@@ -38,7 +38,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -175,12 +174,12 @@ public class FlowControlManager  implements StoreHealthListener, NetworkPartitio
      *         Local flow control listener
      * @return AndesChannel
      */
-    public synchronized AndesChannel createChannel(FlowControlListener listener) throws AndesException {
-        
-        if ( globalErrorBasedFlowControlEnabled ){
-            throw new AndesException("Global error based flow control is enabled. new connections are not allowed");
-        }
-        
+    public synchronized AndesChannel createChannel(FlowControlListener listener) {
+
+        /*
+        We are not checking the  whether globalErrorBasedFlowControlEnabled  since this is called only in creating
+        virtual hosts at startup.
+         */
         AndesChannel channel = new AndesChannel(this, listener, globalBufferBasedFlowControlEnabled, 
                                                       globalErrorBasedFlowControlEnabled);
         channels.add(channel);
