@@ -309,11 +309,8 @@ public class StorageQueue {
                 //return slots back to coordinator
                 messageHandler.releaseAllSlots();
                 messageHandler.clearReadButUndeliveredMessages();
-            } else {
-                AndesContextInformationManager contextInformationManager = AndesContext.getInstance()
-                                                                                       .getAndesContextInformationManager();
-                contextInformationManager.deleteQueue(this);
             }
+
             messageHandler.stopMessageDelivery(this);
         } else {
             subscription.rebufferUnackedMessages();

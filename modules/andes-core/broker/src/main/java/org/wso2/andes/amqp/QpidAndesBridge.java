@@ -513,7 +513,7 @@ public class QpidAndesBridge {
             Andes.getInstance().addBinding(binding);
         } catch (AndesException e) {
             log.error("error while creating binding", e);
-            throw new AMQInternalException("error while removing queue", e);
+            throw new AMQInternalException("error while creating binding", e);
         }
     }
 
@@ -533,13 +533,12 @@ public class QpidAndesBridge {
                 log.debug("Ignored binding for default exchange " + exchange.getNameShortString());
             }
             return;
-        } else if (exchange.getNameShortString().equals(ExchangeDefaults.TOPIC_EXCHANGE_NAME) && !binding.getQueue()
-                                                                                                       .isDurable()) {
+        } else if (!binding.getQueue().isDurable() &&
+                    exchange.getNameShortString().equals(ExchangeDefaults.TOPIC_EXCHANGE_NAME)) {
+
             if (log.isDebugEnabled()) {
                 log.debug("Ignored binding for non durable topic " + binding.getBindingKey());
             }
-
-            log.error("Ignored binding for non durable topic " + binding.getBindingKey());
 
             return;
         }
@@ -582,7 +581,7 @@ public class QpidAndesBridge {
                     String boundExchangeName = b.getExchange().getName();
                     String bindingKey = b.getBindingKey();
                     String queueName = queue.getName();
-                    boolean isDurable =  b.getQueue().isDurable();
+                    boolean isDurable = b.getQueue().isDurable();
 
                     String storageQueueToBind = AndesUtils.getStorageQueueForDestination(bindingKey,
                             boundExchangeName,queueName,isDurable);
