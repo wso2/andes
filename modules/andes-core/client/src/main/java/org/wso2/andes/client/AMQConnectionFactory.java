@@ -284,14 +284,6 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
     public Connection createConnection() throws JMSException
     {
 
-        // Requires permission java.util.PropertyPermission "qpid.amqp.version", "write"
-        AccessController.doPrivileged(new PrivilegedAction<Void>() {
-            public Void run() {
-                System.setProperty(ClientProperties.AMQP_VERSION, "0-91");
-                return null;
-            }
-        });
-
         if(removeBURL == null) {
             removeBURL = new ThreadLocal<Boolean>();
             removeBURL.set(new Boolean(false));
@@ -378,14 +370,6 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
     
     public Connection createConnection(String userName, String password, String id) throws JMSException
     {
-        // Requires permission java.util.PropertyPermission "qpid.amqp.version", "write"
-        AccessController.doPrivileged(new PrivilegedAction<Void>() {
-            public Void run() {
-                System.setProperty(ClientProperties.AMQP_VERSION, "0-91");
-                return null;
-            }
-        });
-
         if (removeBURL == null) {
             removeBURL = new ThreadLocal<Boolean>();
             removeBURL.set(new Boolean(false));
