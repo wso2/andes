@@ -148,10 +148,10 @@ public class AMQConnectionDelegate_0_10 implements AMQConnectionDelegate, Connec
         }
 
         int channelId = _conn.getNextChannelID();
-        XASessionImpl session;
+        XASession_0_10 session;
         try
         {
-            session = new XASessionImpl(_qpidConnection, _conn, channelId, prefetchHigh, prefetchLow);
+            session = new XASession_0_10(_qpidConnection, _conn, channelId, prefetchHigh, prefetchLow);
             _conn.registerSession(channelId, session);
             if (_conn._started)
             {

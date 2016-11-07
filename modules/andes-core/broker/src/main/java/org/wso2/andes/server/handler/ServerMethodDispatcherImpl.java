@@ -177,6 +177,7 @@ public class ServerMethodDispatcherImpl implements MethodDispatcher
     private static final QueuePurgeHandler _queuePurgeHandler = QueuePurgeHandler.getInstance();
     private static final ChannelFlowHandler _channelFlowHandler = ChannelFlowHandler.getInstance();
     private static final TxSelectHandler _txSelectHandler = TxSelectHandler.getInstance();
+    private static final DtxSelectHandler dtxSelectHandler = DtxSelectHandler.getInstance();
     private static final TxCommitHandler _txCommitHandler = TxCommitHandler.getInstance();
     private static final TxRollbackHandler _txRollbackHandler = TxRollbackHandler.getInstance();
     private static final BasicRejectMethodHandler _basicRejectMethodHandler = BasicRejectMethodHandler.getInstance();
@@ -533,7 +534,8 @@ public class ServerMethodDispatcherImpl implements MethodDispatcher
 
     public boolean dispatchDtxSelect(DtxSelectBody body, int channelId) throws AMQException
     {
-        return false;
+        dtxSelectHandler.methodReceived(_stateManager, body, channelId);
+        return true;
     }
 
     public boolean dispatchDtxStart(DtxStartBody body, int channelId) throws AMQException
