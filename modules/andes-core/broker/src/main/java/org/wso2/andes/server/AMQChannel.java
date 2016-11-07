@@ -40,7 +40,6 @@ import org.wso2.andes.framing.abstraction.ContentChunk;
 import org.wso2.andes.framing.abstraction.MessagePublishInfo;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesChannel;
-import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.FlowControlListener;
 import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
@@ -79,6 +78,7 @@ import org.wso2.andes.server.subscription.RecordDeliveryMethod;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionFactoryImpl;
 import org.wso2.andes.server.txn.AutoCommitTransaction;
+import org.wso2.andes.server.txn.DistributedTransaction;
 import org.wso2.andes.server.txn.LocalTransaction;
 import org.wso2.andes.server.txn.ServerTransaction;
 import org.wso2.andes.server.virtualhost.AMQChannelMBean;
@@ -299,6 +299,13 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         _transaction = new LocalTransaction(_messageStore);
         _txnStarts.incrementAndGet();
         beginPublisherTransaction = true;
+    }
+
+    /**
+     * Sets this channels to be part of a distributed transaction
+     */
+    public void setDtxTransactional() {
+        _transaction = new DistributedTransaction();
     }
 
     public boolean isTransactional()
