@@ -474,4 +474,25 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <chassis name="client" implement="MUST"/>
     </method>
   </class>
+  <class name="dtx" handler="channel" index="100">
+    <chassis name="server" implement="MAY"/>
+    <chassis name="client" implement="MAY"/>
+    <method name="select" synchronous="1" index="10">
+      <chassis name="server" implement="MUST"/>
+    </method>
+    <!--<method name="commit" synchronous="1" index="20">-->
+      <!--<chassis name="server" implement="MUST"/>-->
+      <!--<response name="commit-ok"/>-->
+    <!--</method>-->
+    <!--<method name="commit-ok" synchronous="1" index="21">-->
+      <!--<chassis name="client" implement="MUST"/>-->
+    <!--</method>-->
+    <!--<method name="rollback" synchronous="1" index="30">-->
+      <!--<chassis name="server" implement="MUST"/>-->
+      <!--<response name="rollback-ok"/>-->
+    <!--</method>-->
+    <!--<method name="rollback-ok" synchronous="1" index="31">-->
+      <!--<chassis name="client" implement="MUST"/>-->
+    <!--</method>-->
+  </class>
 </amqp>

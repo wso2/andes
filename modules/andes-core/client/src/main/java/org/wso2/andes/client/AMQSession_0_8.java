@@ -74,11 +74,11 @@ import org.wso2.andes.jms.Session;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.protocol.AMQMethodEvent;
 
+import java.util.Map;
 import javax.jms.Destination;
 import javax.jms.JMSException;
-import java.util.Map;
 
-public final class AMQSession_0_8 extends AMQSession<BasicMessageConsumer_0_8, BasicMessageProducer_0_8>
+public class AMQSession_0_8 extends AMQSession<BasicMessageConsumer_0_8, BasicMessageProducer_0_8>
 {
 
     /** Used for debugging. */
