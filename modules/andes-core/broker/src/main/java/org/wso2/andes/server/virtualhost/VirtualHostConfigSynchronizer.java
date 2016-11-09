@@ -27,10 +27,10 @@ import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesBinding;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.router.AndesMessageRouter;
 import org.wso2.andes.kernel.subscription.StorageQueue;
-import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.binding.BindingFactory;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.queue.AMQQueue;
@@ -82,8 +82,7 @@ public class VirtualHostConfigSynchronizer implements
      */
     public void clusterExchangeAdded(AndesMessageRouter messageRouter) throws AndesException {
         try {
-            if(!(MQTTUtils.MQTT_EXCHANGE_NAME.equals(messageRouter.getName())
-                    ||AMQPUtils.DLC_EXCHANGE_NAME.equals(messageRouter.getName()))) {
+            if(AMQPUtils.DLC_EXCHANGE_NAME.equals(messageRouter.getName())) {
                 exchange(messageRouter.getName(), messageRouter.getType(), messageRouter.isAutoDelete());
             }
         } catch (Exception e) {
@@ -99,8 +98,7 @@ public class VirtualHostConfigSynchronizer implements
      */
     public void clusterExchangeRemoved(String exchangeName) throws AndesException {
         try {
-            if(!(MQTTUtils.MQTT_EXCHANGE_NAME.equals(exchangeName)
-                    ||AMQPUtils.DLC_EXCHANGE_NAME.equals(exchangeName))) {
+            if(AMQPUtils.DLC_EXCHANGE_NAME.equals(exchangeName)) {
                 removeExchange(exchangeName);
             }
         } catch (Exception e) {
@@ -115,11 +113,7 @@ public class VirtualHostConfigSynchronizer implements
      */
     public void clusterQueueAdded(StorageQueue queue) throws AndesException {
         try {
-            //It is not possible to check if queue is bound to
-            // MQTT Exchange as binding sync is done later. Thus checking the name
-            if(!queue.getName().contains(AndesUtils.MQTT_TOPIC_STORAGE_QUEUE_PREFIX)) {
-                queue(queue.getName(), queue.getQueueOwner(), queue.isExclusive(), null);
-            }
+            queue(queue.getName(), queue.getQueueOwner(), queue.isExclusive(), null);
         } catch (Exception e) {
             log.error("could not add cluster queue", e);
             throw new AndesException("could not add cluster queue : " + queue.toString(), e);
@@ -135,9 +129,7 @@ public class VirtualHostConfigSynchronizer implements
     public void clusterQueueRemoved(StorageQueue queue) throws AndesException {
         try {
             log.info("Queue removal request received queue= " + queue.getName());
-            if(!queue.getName().contains(AndesUtils.MQTT_TOPIC_STORAGE_QUEUE_PREFIX)) {
-                removeQueue(queue.getName());
-            }
+            removeQueue(queue.getName());
         } catch (Exception e) {
             log.error("could not remove cluster queue", e);
             throw new AndesException("could not remove cluster queue : " + queue.toString(), e);
@@ -153,8 +145,7 @@ public class VirtualHostConfigSynchronizer implements
         try {
 
             String boundQueueName = binding.getBoundQueue().getName();
-            if(!(boundQueueName.contains(AndesUtils.MQTT_TOPIC_STORAGE_QUEUE_PREFIX)
-                    || DLCQueueUtils.isDeadLetterQueue(boundQueueName))) {
+            if(DLCQueueUtils.isDeadLetterQueue(boundQueueName)) {
                 binding(binding.getMessageRouterName(),
                         binding.getBoundQueue().getName(),
                         binding.getBindingKey(),
@@ -174,8 +165,7 @@ public class VirtualHostConfigSynchronizer implements
     public void clusterBindingRemoved(AndesBinding binding) throws AndesException {
         try {
             String boundQueueName = binding.getBoundQueue().getName();
-            if(!(boundQueueName.contains(AndesUtils.MQTT_TOPIC_STORAGE_QUEUE_PREFIX)
-                    || DLCQueueUtils.isDeadLetterQueue(boundQueueName))) {
+            if(DLCQueueUtils.isDeadLetterQueue(boundQueueName)) {
                 removeBinding(binding.getMessageRouterName(),
                         binding.getBoundQueue().getName(),
                         binding.getBindingKey(),

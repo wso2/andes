@@ -574,53 +574,6 @@ public class MessagingEngine {
         return slotCoordinator;
     }
 
-    /**
-     * Store retained messages in the message store.
-     *
-     * @param retainMap Retained message Map
-     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
-     */
-    public void storeRetainedMessages(Map<String, AndesMessage> retainMap) throws AndesException {
-        messageStore.storeRetainedMessages(retainMap);
-    }
-
-    /**
-     * Return matching retained message metadata for the given subscription topic name. An empty list is returned if no
-     * match is found.
-     *
-     * @param subscriptionTopicName Destination string provided by the subscriber
-     * @return AndesMessageMetadata
-     * @throws AndesException
-     */
-    public List<DeliverableAndesMetadata> getRetainedMessageByTopic(String subscriptionTopicName)
-            throws AndesException {
-        List<DeliverableAndesMetadata> retainMessageList = new ArrayList<>();
-        List<String> topicList = messageStore.getAllRetainedTopics();
-
-        for (String topicName : topicList) {
-            if (TopicParserUtil.isMatching(topicName, subscriptionTopicName)) {
-                retainMessageList.add(messageStore.getRetainedMetadata(topicName));
-            }
-        }
-
-        return retainMessageList;
-    }
-
-    /**
-     * Return message content for the given retained message metadata.
-     *
-     * @param metadata Message metadata
-     * @return AndesContent
-     * @throws AndesException
-     */
-    public AndesContent getRetainedMessageContent(AndesMessageMetadata metadata) throws AndesException {
-        long messageID = metadata.getMessageID();
-        int contentSize = metadata.getMessageContentLength();
-
-        Map<Integer, AndesMessagePart> retainedContentParts = messageStore.getRetainedContentParts(messageID);
-
-        return new RetainedContent(retainedContentParts, contentSize, messageID);
-    }
 
     /**
      * Return last assign message id of slot for given queue

@@ -19,7 +19,7 @@ package org.wso2.andes.kernel.subscription;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
-import org.wso2.andes.mqtt.utils.MQTTUtils;
+
 
 import java.util.UUID;
 
