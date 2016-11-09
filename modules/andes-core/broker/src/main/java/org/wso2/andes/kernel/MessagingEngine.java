@@ -46,6 +46,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -693,11 +694,13 @@ public class MessagingEngine {
 
     /**
      * Start message delivery. Start threads. If not created create.
+     * @throws AndesException
      */
-    public void startMessageDelivery() {
+    public void startMessageDelivery() throws AndesException {
         log.info("Starting SlotDelivery Workers.");
         //Start all slotDeliveryWorkers
-        SlotDeliveryWorkerManager.getInstance().startAllSlotDeliveryWorkers();
+        Set<AndesSubscription> activeLocalSubscribers = subscriptionEngine.getActiveLocalSubscribersForNode();
+        SlotDeliveryWorkerManager.getInstance().startAllSlotDeliveryWorkers(activeLocalSubscribers);
         //Start thrift reconnecting thread if started
         if (MBThriftClient.isReconnectingStarted()) {
             MBThriftClient.setReconnectingFlag(true);

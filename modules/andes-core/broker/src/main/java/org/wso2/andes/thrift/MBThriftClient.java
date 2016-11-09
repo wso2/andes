@@ -28,6 +28,9 @@ import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.slot.ConnectionException;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotCoordinationConstants;
@@ -36,6 +39,8 @@ import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.thrift.exception.ThriftClientException;
 import org.wso2.andes.thrift.slot.gen.SlotInfo;
 import org.wso2.andes.thrift.slot.gen.SlotManagementService;
+
+import java.util.Set;
 
 /**
  * A wrapper client for the native thrift client. All the public methods in this class are
@@ -342,13 +347,18 @@ public class MBThriftClient {
                          * executed
                          */
                         reconnectingStarted = false;
-                        slotDeliveryWorkerManager.startAllSlotDeliveryWorkers();
+                        Set<AndesSubscription> localSubscribers =
+                                AndesContext.getInstance().getSubscriptionEngine().getActiveLocalSubscribersForNode();
+
+                        slotDeliveryWorkerManager.startAllSlotDeliveryWorkers(localSubscribers);
                     } catch (TTransportException e) {
                         try {
                             Thread.sleep(2000);
                         } catch (InterruptedException ignored) {
                             Thread.currentThread().interrupt();
                         }
+                    } catch (AndesException e) {
+                        log.error("Error starting SlotDeliveryWorkers after reconnecting to the thrift server", e);
                     }
 
                 }

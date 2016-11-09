@@ -165,7 +165,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener {
         //start a slot delivery worker on the destination (or topicQueue) subscription refers
         SlotDeliveryWorkerManager slotDeliveryWorkerManager = SlotDeliveryWorkerManager.getInstance();
         slotDeliveryWorkerManager.startSlotDeliveryWorker(localSubscription.getStorageQueueName(),
-                subscriptionEngine.getDestination(localSubscription), localSubscription.getProtocolType(), localSubscription.getDestinationType());
+                AndesUtils.getDestination(localSubscription), localSubscription.getProtocolType(), localSubscription.getDestinationType());
 
         //notify the local subscription change to listeners. For durable topic subscriptions this will update
         // existing inactive one if it matches

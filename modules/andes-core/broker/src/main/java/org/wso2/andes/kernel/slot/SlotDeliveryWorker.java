@@ -71,9 +71,15 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
     private static Log log = LogFactory.getLog(SlotDeliveryWorker.class);
 
     /**
-     * This map contains slotId to slot hash map against queue name
+     * Represents whether a shutdown command has been issued for this worker.
      */
-    private volatile boolean running;
+    private volatile boolean shutdownTriggered = false;
+
+    /**
+     * Represents whether a shutdown command has been issued and completd for this worker.
+     */
+    private volatile boolean shutdownComplete = false;
+
     private MessageFlusher messageFlusher;
     private SlotCoordinator slotCoordinator;
 
@@ -135,8 +141,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
          * This while loop is necessary since whenever there are messages this thread should
          * deliver them
          */
-        running = true;
-        while (running) {
+        while (true) {
 
             //Iterate through all the queues registered in this thread
             int idleQueueCounter = 0;
@@ -236,7 +241,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
                     }
                 } catch (ConnectionException e) {
                     log.error("Error occurred while connecting to the thrift coordinator " + e.getMessage(), e);
-                    setRunning(false);
+                    scheduleForShutdown();
                     //Any exception should be caught here. Otherwise SDW thread will stop
                     //and MB node will become useless
                 } catch (AndesException e) {
@@ -248,9 +253,16 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
                     log.error("Error while running Slot Delivery Worker. ", e);
                 }
             }
+
+            if (shutdownTriggered) {
+                break;
+            }
         }
 
-        log.info("SlotDeliveryWorker stopped. Thread name " + Thread.currentThread().getName() + " with Thread Id : " + this.getId());
+        shutdownComplete = true;
+
+        log.info("SlotDeliveryWorker stopped. Thread name " + Thread.currentThread().getName() +
+                " with Thread Id : " + Thread.currentThread().getId());
     }
 
     /**
@@ -305,7 +317,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
             if (log.isDebugEnabled()) {
                 log.debug("Stopping SlotDeliveryWorker : " + this.getId() + " due to 0 subscribers on its queues. ");
             }
-            this.setRunning(false);
+            scheduleForShutdown();
         }
 
     }
@@ -444,19 +456,18 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
     }
 
     /**
-     * @return Whether the worker thread is in running state or not
+     * Schedule to shutdown this worker.
      */
-    public boolean isRunning() {
-        return running;
+    public void scheduleForShutdown() {
+        shutdownTriggered = true;
     }
 
-    /**
-     * Set state of the worker thread
-     *
-     * @param running new state of the worker
-     */
-    public void setRunning(boolean running) {
-        this.running = running;
+    public boolean isShutdownTriggered() {
+        return shutdownTriggered;
+    }
+
+    public boolean isShutdownComplete() {
+        return shutdownComplete;
     }
 
 

@@ -246,4 +246,19 @@ public class AndesUtils {
         return protocolType;
     }
 
+    /**
+     * Return destination based on subscription
+     * Destination would be target queue if it is durable topic, otherwise it is queue or non durable topic
+     *
+     * @param subscription subscription to get destination
+     * @return destination of subscription
+     */
+    public static String getDestination(AndesSubscription subscription) {
+        if (DestinationType.DURABLE_TOPIC == subscription.getDestinationType()) {
+            return subscription.getTargetQueue();
+        } else {
+            return subscription.getSubscribedDestination();
+        }
+    }
+
 }

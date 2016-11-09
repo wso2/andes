@@ -118,8 +118,9 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
 
     /**
      * Start message delivery threads in Andes
+     * @throws AndesException
      */
-    public void startMessageDelivery() {
+    public void startMessageDelivery() throws AndesException {
         messagingEngine.startMessageDelivery();
     }
 

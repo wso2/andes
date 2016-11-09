@@ -414,21 +414,6 @@ public class SubscriptionEngine {
     }
 
     /**
-     * Return destination based on subscription
-     * Destination would be target queue if it is durable topic, otherwise it is queue or non durable topic
-     *
-     * @param subscription subscription to get destination
-     * @return destination of subscription
-     */
-    public String getDestination(AndesSubscription subscription) {
-        if (DestinationType.DURABLE_TOPIC == subscription.getDestinationType()) {
-            return subscription.getTargetQueue();
-        } else {
-            return subscription.getSubscribedDestination();
-        }
-    }
-
-    /**
      * Marks all the durable subscriptions for a specific node with "has external" false. Meaning
      * that the subscription is marked disconnected. The "has external" refers that the subscription
      * is active or not.

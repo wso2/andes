@@ -24,11 +24,14 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesSubscription;
+import org.wso2.andes.kernel.AndesUtils;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.ProtocolType;
 
 import java.io.File;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -98,35 +101,76 @@ public class SlotDeliveryWorkerManager {
      * @param protocolType The protocol which the messages in this storage queue belongs to
      * @param destinationType The destination type which the messages in this storage queue belongs to
      */
-    public synchronized void startSlotDeliveryWorker(String storageQueueName, String destination, ProtocolType protocolType, DestinationType destinationType) throws AndesException {
+    public synchronized void startSlotDeliveryWorker(String storageQueueName, String destination,
+            ProtocolType protocolType, DestinationType destinationType) throws AndesException {
+
         int slotDeliveryWorkerId = getIdForSlotDeliveryWorker(storageQueueName);
         if (getSlotDeliveryWorkerMap().containsKey(slotDeliveryWorkerId)) {
-            //if this queue is not already in the queue
-            if (!getSlotDeliveryWorkerMap().get(slotDeliveryWorkerId).isStorageQueueAdded(storageQueueName)) {
-                SlotDeliveryWorker slotDeliveryWorker = getSlotDeliveryWorkerMap()
-                        .get(slotDeliveryWorkerId);
-                slotDeliveryWorker.startDeliveryForQueue(storageQueueName, destination, protocolType, destinationType);
-                // In case the SlotDeliveryWorker has been stopped due to 0 active subscribers, we must re-start it.
-                if (!slotDeliveryWorker.isRunning()) {
-                    if (log.isDebugEnabled()) {
-                        log.debug("SlotDeliveryWorker : " + slotDeliveryWorker.getId()
-                                + "has been stopped. Therefore restarting.");
+
+            SlotDeliveryWorker slotDeliveryWorker = getSlotDeliveryWorkerMap().get(slotDeliveryWorkerId);
+
+            if (slotDeliveryWorker.isShutdownTriggered()) {
+
+                if (log.isDebugEnabled()) {
+                    log.debug("SlotDeliveryWorker " + slotDeliveryWorkerId +
+                            " has been scheduled to shutdown. Waiting for shutdown " +
+                            "completion before starting a new instance");
+                }
+
+                int waitCount = 0;
+                while(!slotDeliveryWorker.isShutdownComplete()) {
+
+                    if (waitCount++ > 10) {
+                        throw new AndesException("Couldn't start a new SlotDeliveryWorker for Id " +
+                                slotDeliveryWorkerId + " since the previous instance is still running");
                     }
-                    slotDeliveryWorker.setRunning(true);
-                    slotDeliveryWorkerExecutor.execute(slotDeliveryWorker);
+
+                    try {
+                        Thread.sleep(100L);
+                    } catch (InterruptedException e) {
+                        throw new AndesException("Error waiting for SlotDeliveryWorker " + slotDeliveryWorkerId +
+                                " to shutdown", e);
+                    }
                 }
-                if(log.isDebugEnabled()) {
-                    log.debug("Assigned Already Running Slot Delivery Worker. Reading messages storageQ= " + storageQueueName + " MsgDest= " + destination);
+
+                if (log.isDebugEnabled()) {
+                    log.debug("SlotDeliveryWorker : " + slotDeliveryWorker.getId()
+                            + "has been scheduled for shutdown. Therefore starting a new instance.");
                 }
+
+                startNewSlotDeliveryWorkerInstance(slotDeliveryWorkerId, storageQueueName, destination, protocolType,
+                        destinationType);
+
+            } else if (!getSlotDeliveryWorkerMap().get(slotDeliveryWorkerId).isStorageQueueAdded(storageQueueName)) {
+                slotDeliveryWorker.startDeliveryForQueue(storageQueueName, destination, protocolType, destinationType);
             }
         } else {
-            SlotDeliveryWorker slotDeliveryWorker = new SlotDeliveryWorker();
-            if(log.isDebugEnabled()) {
-                log.debug("Slot Delivery Worker Started. Reading messages storageQ= " + storageQueueName + " MsgDest= " + destination);
-            }
-            slotDeliveryWorker.startDeliveryForQueue(storageQueueName, destination, protocolType, destinationType);
-            getSlotDeliveryWorkerMap().put(slotDeliveryWorkerId, slotDeliveryWorker);
-            slotDeliveryWorkerExecutor.execute(slotDeliveryWorker);
+            startNewSlotDeliveryWorkerInstance(slotDeliveryWorkerId, storageQueueName, destination,
+                    protocolType, destinationType);
+        }
+    }
+
+    /**
+     * Starts a new SlotDeliveryWorker instance and assigns the given storage to it.
+     *
+     * @param slotDeliveryWorkerId The Id of the new SlotDeliveryWorker
+     * @param storageQueueName The storage queue name to start working on
+     * @param destination The destination of the storage queue
+     * @param protocolType The protocol type of the storage queue
+     * @param destinationType The destination type of the storage queue
+     * @throws AndesException
+     */
+    private void startNewSlotDeliveryWorkerInstance(int slotDeliveryWorkerId, String storageQueueName,
+            String destination, ProtocolType protocolType, DestinationType destinationType) throws AndesException {
+
+        SlotDeliveryWorker slotDeliveryWorker = new SlotDeliveryWorker();
+        slotDeliveryWorker.startDeliveryForQueue(storageQueueName, destination, protocolType, destinationType);
+        getSlotDeliveryWorkerMap().put(slotDeliveryWorkerId, slotDeliveryWorker);
+        slotDeliveryWorkerExecutor.execute(slotDeliveryWorker);
+
+        if(log.isDebugEnabled()) {
+            log.debug("A new instance of SlotDeliveryWorker with Id " + slotDeliveryWorkerId +
+                    " started for storage queue " + storageQueueName + " with message destination " + destination);
         }
     }
 
@@ -168,7 +212,7 @@ public class SlotDeliveryWorkerManager {
     public void stopSlotDeliveryWorkers() {
         Set<Map.Entry<Integer, SlotDeliveryWorker>> slotDeliveryWorkerEntries = getSlotDeliveryWorkerMap().entrySet();
         for (Map.Entry<Integer, SlotDeliveryWorker> slotDeliveryWorkerEntry : slotDeliveryWorkerEntries) {
-            slotDeliveryWorkerEntry.getValue().setRunning(false);
+            slotDeliveryWorkerEntry.getValue().scheduleForShutdown();
         }
     }
 
@@ -217,13 +261,16 @@ public class SlotDeliveryWorkerManager {
 
     /**
      * Start all the SlotDeliveryWorkers if not already in running state.
+     *
+     * @param activeLocalSubscribers All active local subscribers to start SlotDeliveryWorker on
+     * @throws AndesException
      */
-    public void startAllSlotDeliveryWorkers() {
-        for (Map.Entry<Integer, SlotDeliveryWorker> entry : slotDeliveryWorkerMap.entrySet()) {
-            SlotDeliveryWorker slotDeliveryWorker = entry.getValue();
-            if (!slotDeliveryWorker.isRunning()) {
-                slotDeliveryWorkerExecutor.execute(slotDeliveryWorker);
-            }
+    public void startAllSlotDeliveryWorkers(Collection<AndesSubscription> activeLocalSubscribers)
+            throws AndesException {
+
+        for (AndesSubscription subscription : activeLocalSubscribers) {
+            startSlotDeliveryWorker(subscription.getStorageQueueName(), AndesUtils.getDestination(subscription),
+                    subscription.getProtocolType(), subscription.getDestinationType());
         }
     }
 
