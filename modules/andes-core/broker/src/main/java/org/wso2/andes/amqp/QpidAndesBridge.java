@@ -56,7 +56,6 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.message.AMQMessage;
-import org.wso2.andes.server.message.ServerMessage;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.IncomingMessage;
 import org.wso2.andes.server.queue.QueueEntry;
@@ -514,7 +513,7 @@ public class QpidAndesBridge {
             Andes.getInstance().addBinding(binding);
         } catch (AndesException e) {
             log.error("error while creating binding", e);
-            throw new AMQInternalException("error while removing queue", e);
+            throw new AMQInternalException("error while creating binding", e);
         }
     }
 
@@ -533,6 +532,14 @@ public class QpidAndesBridge {
             if (log.isDebugEnabled()) {
                 log.debug("Ignored binding for default exchange " + exchange.getNameShortString());
             }
+            return;
+        } else if (!binding.getQueue().isDurable() &&
+                    exchange.getNameShortString().equals(ExchangeDefaults.TOPIC_EXCHANGE_NAME)) {
+
+            if (log.isDebugEnabled()) {
+                log.debug("Ignored binding for non durable topic " + binding.getBindingKey());
+            }
+
             return;
         }
 
@@ -574,7 +581,7 @@ public class QpidAndesBridge {
                     String boundExchangeName = b.getExchange().getName();
                     String bindingKey = b.getBindingKey();
                     String queueName = queue.getName();
-                    boolean isDurable =  b.getQueue().isDurable();
+                    boolean isDurable = b.getQueue().isDurable();
 
                     String storageQueueToBind = AndesUtils.getStorageQueueForDestination(bindingKey,
                             boundExchangeName,queueName,isDurable);

@@ -174,7 +174,7 @@ public class InboundQueueEvent implements AndesInboundStateEvent {
     private void handleQueueDeleteEvent() {
         boolean isComplete = false;
         try {
-            contextInformationManager.deleteQueue(this);
+            contextInformationManager.deleteQueue(toStorageQueue());
             isComplete = true;
         } catch (AndesException e) {
             isEventComplete.setException(e);

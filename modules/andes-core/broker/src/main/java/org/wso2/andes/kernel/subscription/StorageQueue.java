@@ -22,6 +22,7 @@ import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesContextInformationManager;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.MessageHandler;
@@ -308,11 +309,8 @@ public class StorageQueue {
                 //return slots back to coordinator
                 messageHandler.releaseAllSlots();
                 messageHandler.clearReadButUndeliveredMessages();
-            } else {
-                //On binding removal call we will do this
-                //unbindQueueFromMessageRouter();
-                purgeMessages();
             }
+
             messageHandler.stopMessageDelivery(this);
         } else {
             subscription.rebufferUnackedMessages();

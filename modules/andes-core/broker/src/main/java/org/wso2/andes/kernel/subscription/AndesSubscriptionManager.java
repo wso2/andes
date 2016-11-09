@@ -21,6 +21,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesContextInformationManager;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.ClusterNotificationListener;
@@ -247,7 +248,10 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
 
         subscriptionRegistry.removeSubscription(subscription);
 
-        subscription.getStorageQueue().unbindSubscription(subscription);
+        StorageQueue storageQueue = subscription.getStorageQueue();
+
+        storageQueue.unbindSubscription(subscription);
+
         if (!storeUnavailable) {
             try {
                 andesContextStore.removeDurableSubscription(subscription);
@@ -261,6 +265,15 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
 
         clusterNotificationAgent.notifySubscriptionsChange(subscription,
                 ClusterNotificationListener.SubscriptionChange.Closed);
+
+        // If there are no subscriptions for this queue, then delete it
+        if (!storageQueue.isDurable() && storageQueue.getBoundSubscriptions().isEmpty() ) {
+
+            AndesContextInformationManager contextInformationManager = AndesContext.getInstance()
+                    .getAndesContextInformationManager();
+
+            contextInformationManager.deleteQueue(storageQueue);
+        }
 
         log.info("Remove Local Subscription " + subscription.getProtocolType() + " " + subscription.toString());
     }

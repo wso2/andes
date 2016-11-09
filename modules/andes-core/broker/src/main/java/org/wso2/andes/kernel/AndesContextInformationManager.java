@@ -281,13 +281,11 @@ public class AndesContextInformationManager {
      * Delete the queue from broker. This will remove all bounded subscriptions, notify and
      * remove bindings before removing the queue.
      *
-     * @param queueDeleteEvent name of the storage queue to delete
+     * @param storageQueue storage queue to delete
      * @throws AndesException issue on deleting queue
      */
-    public void deleteQueue(InboundQueueEvent queueDeleteEvent) throws AndesException {
-
-        StorageQueue queueWithEvent = queueDeleteEvent.toStorageQueue();
-        String storageQueueName = queueWithEvent.getName();
+    public void deleteQueue(StorageQueue storageQueue) throws AndesException {
+        String storageQueueName = storageQueue.getName();
 
         //remove all subscriptions to the queue
         subscriptionManager.closeAllSubscriptionsBoundToQueue(storageQueueName);
@@ -300,7 +298,11 @@ public class AndesContextInformationManager {
         }
 
         //purge the queue cluster-wide. Other nodes will only delete messages buffered to memory on those nodes
-        handleQueuePurge(queueDeleteEvent);
+        int purgedMessageCount = storageQueue.purgeMessages();
+
+        if (log.isDebugEnabled()) {
+            log.debug(purgedMessageCount + " messages purged while deleting queue " + storageQueueName );
+        }
 
         // Remove queue information from database
         contextStore.deleteQueueInformation(storageQueueName);
@@ -309,8 +311,7 @@ public class AndesContextInformationManager {
         messageStore.removeLocalQueueData(storageQueueName);
 
         //identify storage queue, unbind it from router and delete from queue registry
-        StorageQueue storageQueue = AndesContext.getInstance().
-                getStorageQueueRegistry().removeStorageQueue(storageQueueName);
+        AndesContext.getInstance().getStorageQueueRegistry().removeStorageQueue(storageQueueName);
 
         //Notify cluster to delete queue
         clusterNotificationAgent.notifyQueueChange(storageQueue, ClusterNotificationListener.QueueChange.Deleted);
@@ -382,7 +383,7 @@ public class AndesContextInformationManager {
         AndesMessageRouter messageRouter = AndesContext.getInstance().
                 getMessageRouterRegistry().getMessageRouter(messageRouterName);
 
-        queue.bindQueueToMessageRouter(bindingKey,messageRouter);
+        queue.bindQueueToMessageRouter(bindingKey, messageRouter);
 
         AndesBinding binding = new AndesBinding(bindingEvent.getBoundMessageRouterName(),
                 queue, bindingEvent.getBindingKey());
@@ -425,6 +426,20 @@ public class AndesContextInformationManager {
     public void removeBinding(InboundBindingEvent removeBindingEvent) throws AndesException {
         String messageRouterName = removeBindingEvent.getBoundMessageRouterName();
         String boundQueueName = removeBindingEvent.getBoundedQueue().getQueueName();
+        String bindingKey = removeBindingEvent.getBindingKey();
+
+        removeBinding(messageRouterName, boundQueueName, bindingKey);
+    }
+
+    /**
+     * Remove andes binding from andes kernel.
+     *
+     * @param messageRouterName Message router name of the binding
+     * @param boundQueueName The bound queue name of the binding
+     * @param bindingKey The binding key
+     * @throws AndesException
+     */
+    public void removeBinding(String messageRouterName, String boundQueueName, String bindingKey) throws AndesException {
 
         StorageQueue queue = AndesContext.getInstance().
                 getStorageQueueRegistry().getStorageQueue(boundQueueName);
@@ -438,20 +453,12 @@ public class AndesContextInformationManager {
          * every internal queues it create for each subscriber
          */
         if ((null != queue) && (null != messageRouter)) {
-            messageRouter.removeMapping(removeBindingEvent.getBindingKey(), queue);
+            messageRouter.removeMapping(bindingKey, queue);
 
             AndesBinding removedBinding = amqpConstructStore.removeBinding(messageRouterName, boundQueueName, true);
 
             clusterNotificationAgent.notifyBindingsChange(removedBinding,
                     ClusterNotificationListener.BindingChange.Deleted);
-
-            //if a non durable queue on binding removal delete the queue if there are no more
-            // subscribers. Delete call for non durable queues is prevented at Qpid-Andes bridge.
-            if (!queue.isDurable() && queue.getBoundSubscriptions().isEmpty()) {
-                InboundQueueEvent queueDeleteEvent = new InboundQueueEvent(queue.getName(),
-                        queue.isDurable(), queue.isShared(), queue.getQueueOwner(), queue.isExclusive());
-                deleteQueue(queueDeleteEvent);
-            }
         }
     }
 
