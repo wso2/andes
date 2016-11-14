@@ -20,14 +20,14 @@
  */
 package org.apache.qpid.gentools;
 
-import java.util.Map.Entry;
-import java.util.Collection;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
+import java.util.Map.Entry;
 
 public class SingleVersionMethod
 {
@@ -62,7 +62,9 @@ public class SingleVersionMethod
 
         for(AmqpField field : fields)
         {
-            _fieldList.add(new SingleVersionField(field, _amqpVersion, _generator));
+            if (field.getVersionSet().contains(_amqpVersion)) {
+                _fieldList.add(new SingleVersionField(field, _amqpVersion, _generator));
+            }
 
         }
 
