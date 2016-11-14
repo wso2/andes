@@ -27,6 +27,8 @@ import org.wso2.andes.framing.ChannelPongBody;
 import org.wso2.andes.framing.ChannelResumeBody;
 import org.wso2.andes.framing.DtxEndBody;
 import org.wso2.andes.framing.DtxEndOkBody;
+import org.wso2.andes.framing.DtxPrepareBody;
+import org.wso2.andes.framing.DtxPrepareOkBody;
 import org.wso2.andes.framing.DtxSelectBody;
 import org.wso2.andes.framing.DtxStartBody;
 import org.wso2.andes.framing.MessageAppendBody;
@@ -47,6 +49,7 @@ import org.wso2.andes.framing.MessageTransferBody;
 import org.wso2.andes.framing.QueueUnbindBody;
 import org.wso2.andes.framing.QueueUnbindOkBody;
 import org.wso2.andes.framing.amqp_0_91.DtxEndBodyImpl;
+import org.wso2.andes.framing.amqp_0_91.DtxPrepareBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxStartBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.MethodDispatcher_0_91;
 import org.wso2.andes.server.state.AMQStateManager;
@@ -65,6 +68,7 @@ public class ServerMethodDispatcherImpl_0_91
     private static final DtxSelectHandler dtxSelectHandler = DtxSelectHandler.getInstance();
     private static final DtxStartHandler dtxStartHandler = DtxStartHandler.getInstance();
     private static final DtxEndHandler dtxEndHandler = DtxEndHandler.getInstance();
+    private static final DtxPrepareHandler dtxPrepareHandler = DtxPrepareHandler.getInstance();
 
     private final AMQStateManager stateManager;
 
@@ -104,7 +108,17 @@ public class ServerMethodDispatcherImpl_0_91
     }
 
     @Override
+    public boolean dispatchDtxPrepare(DtxPrepareBody body, int channelId) throws AMQException {
+        dtxPrepareHandler.methodReceived(stateManager, (DtxPrepareBodyImpl) body, channelId);
+        return true;    }
+
+    @Override
     public boolean dispatchDtxEndOk(DtxEndOkBody body, int channelId) throws AMQException {
+        throw new UnexpectedMethodException(body);
+    }
+
+    @Override
+    public boolean dispatchDtxPrepareOk(DtxPrepareOkBody body, int channelId) throws AMQException {
         throw new UnexpectedMethodException(body);
     }
 

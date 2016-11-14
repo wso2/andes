@@ -510,6 +510,19 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <chassis name="client" implement="MUST"/>
       <field name="xa-result" type="short" />
     </method>
+
+    <method name="prepare" synchronous="1" index="70">
+      <chassis name="server" implement="MUST"/>
+      <response name="start-ok"/>
+      <field name="format" type="short" />
+      <field name="global-id" type="longstr" />
+      <field name="branch-id" type="longstr" />
+    </method>
+
+    <method name="prepare-ok" synchronous="1" index="71">
+      <chassis name="client" implement="MUST"/>
+      <field name="xa-result" type="short" />
+    </method>
     <!--<method name="commit" synchronous="1" index="20">-->
       <!--<chassis name="server" implement="MUST"/>-->
       <!--<response name="commit-ok"/>-->

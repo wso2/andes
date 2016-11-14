@@ -108,9 +108,32 @@ class XAResource_0_9_1 implements XAResource {
         throw new RuntimeException("Feature NotImplemented");
     }
 
+    /**
+     * Prepare for a transaction commit of the transaction specified in <code>Xid</code>.
+     *
+     * @param xid A global transaction identifier.
+     * @return A value indicating the resource manager's vote on the outcome of the transaction.
+     * The possible values are: XA_RDONLY or XA_OK.
+     * @throws XAException An error has occurred. Possible exception values are: XAER_RMERR or XAER_NOTA
+     */
     @Override
     public int prepare(Xid xid) throws XAException {
-        throw new RuntimeException("Feature NotImplemented");
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("start tx branch with xid: {}", xid);
+        }
+
+        XaStatus resultStatus;
+        try {
+            resultStatus = session.prepareDtx(xid);
+        } catch (FailoverException | AMQException e) {
+            XAException xaException = new XAException("Error while starting dtx session. " + e.getMessage());
+            xaException.initCause(e);
+            throw xaException;
+        }
+
+        checkStatus(resultStatus);
+
+        return XAResource.XA_OK;
     }
 
     @Override
