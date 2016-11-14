@@ -20,14 +20,47 @@
  */
 package org.wso2.andes.client.handler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.wso2.andes.AMQException;
+import org.wso2.andes.client.protocol.AMQProtocolHandler;
 import org.wso2.andes.client.protocol.AMQProtocolSession;
 import org.wso2.andes.client.state.AMQMethodNotImplementedException;
-import org.wso2.andes.framing.*;
+import org.wso2.andes.framing.BasicRecoverOkBody;
+import org.wso2.andes.framing.BasicRecoverSyncBody;
+import org.wso2.andes.framing.BasicRecoverSyncOkBody;
+import org.wso2.andes.framing.ChannelOkBody;
+import org.wso2.andes.framing.ChannelPingBody;
+import org.wso2.andes.framing.ChannelPongBody;
+import org.wso2.andes.framing.ChannelResumeBody;
+import org.wso2.andes.framing.DtxStartOkBody;
+import org.wso2.andes.framing.MessageAppendBody;
+import org.wso2.andes.framing.MessageCancelBody;
+import org.wso2.andes.framing.MessageCheckpointBody;
+import org.wso2.andes.framing.MessageCloseBody;
+import org.wso2.andes.framing.MessageConsumeBody;
+import org.wso2.andes.framing.MessageEmptyBody;
+import org.wso2.andes.framing.MessageGetBody;
+import org.wso2.andes.framing.MessageOffsetBody;
+import org.wso2.andes.framing.MessageOkBody;
+import org.wso2.andes.framing.MessageOpenBody;
+import org.wso2.andes.framing.MessageQosBody;
+import org.wso2.andes.framing.MessageRecoverBody;
+import org.wso2.andes.framing.MessageRejectBody;
+import org.wso2.andes.framing.MessageResumeBody;
+import org.wso2.andes.framing.MessageTransferBody;
+import org.wso2.andes.framing.QueueUnbindBody;
+import org.wso2.andes.framing.QueueUnbindOkBody;
+import org.wso2.andes.framing.amqp_0_91.DtxStartOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.MethodDispatcher_0_91;
 
 public class ClientMethodDispatcherImpl_0_91 extends ClientMethodDispatcherImpl implements MethodDispatcher_0_91
 {
+    /**
+     * Class logger
+     */
+    private static final Logger LOGGER = LoggerFactory.getLogger(AMQProtocolHandler.class);
+
     public ClientMethodDispatcherImpl_0_91(AMQProtocolSession session)
     {
         super(session);
@@ -153,4 +186,12 @@ public class ClientMethodDispatcherImpl_0_91 extends ClientMethodDispatcherImpl 
         return false;
     }
 
+    public boolean dispatchDtxStartOk(DtxStartOkBody body, int channelId) throws AMQException
+    {
+        if (LOGGER.isDebugEnabled())
+        {
+            LOGGER.debug("Received Dtx.start-Ok message, with status: " + ((DtxStartOkBodyImpl )body).getXaResult());
+        }
+        return true;
+    }
 }

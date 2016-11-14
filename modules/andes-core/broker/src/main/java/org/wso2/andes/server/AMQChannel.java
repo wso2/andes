@@ -79,6 +79,7 @@ import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionFactoryImpl;
 import org.wso2.andes.server.txn.AutoCommitTransaction;
 import org.wso2.andes.server.txn.DistributedTransaction;
+import org.wso2.andes.server.txn.DtxNotSelectedException;
 import org.wso2.andes.server.txn.LocalTransaction;
 import org.wso2.andes.server.txn.ServerTransaction;
 import org.wso2.andes.server.virtualhost.AMQChannelMBean;
@@ -100,6 +101,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.management.JMException;
+import javax.transaction.xa.Xid;
 
 public class AMQChannel implements SessionConfig, AMQSessionModel
 {
@@ -1320,6 +1322,35 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     public LogSubject getLogSubject()
     {
         return _logSubject;
+    }
+
+    /**
+     * Initiate a distributed transaction for current channel. Everything done until a endDtxTransaction will belong
+     * to the transaction.
+     * @param xid corresponding xid
+     * @param join true if xid join
+     * @param resume true if xis resume
+     * @throws DtxNotSelectedException when calling this method without sending a dtxselect
+     */
+    public void startDtxTransaction(Xid xid, boolean join, boolean resume) throws DtxNotSelectedException {
+        DistributedTransaction distributedTransaction = assertDtxTransaction();
+        distributedTransaction.start(xid,join, resume);
+    }
+
+    /**
+     * Assert if dtxselect is called
+     * @return matching DistributedTransaction object
+     * @throws DtxNotSelectedException if dtxselect is not called before
+     */
+    private DistributedTransaction assertDtxTransaction() throws DtxNotSelectedException {
+        if(_transaction instanceof DistributedTransaction)
+        {
+            return (DistributedTransaction) _transaction;
+        }
+        else
+        {
+            throw new DtxNotSelectedException();
+        }
     }
 
     private class MessageDeliveryAction implements ServerTransaction.Action
