@@ -81,4 +81,10 @@ public class DistributedTransaction implements ServerTransaction {
             LOGGER.debug("Starting distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
         }
     }
+
+    public void end(Xid xid, boolean fail, boolean suspend) {
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Ending distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
+        }
+    }
 }
