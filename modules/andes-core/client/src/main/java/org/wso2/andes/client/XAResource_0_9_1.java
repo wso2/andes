@@ -42,9 +42,55 @@ class XAResource_0_9_1 implements XAResource {
         throw new RuntimeException("Feature NotImplemented");
     }
 
+    /**
+     * Ends the work performed on behalf of a transaction branch.
+     * The resource manager disassociates the XA resource from the transaction branch specified
+     * and lets the transaction complete.
+     * <ul>
+     * <li> If TMSUSPEND is specified in the flags, the transaction branch is temporarily suspended in an incomplete state.
+     * The transaction context is in a suspended state and must be resumed via the start method with TMRESUME specified.
+     * <li> If TMFAIL is specified, the portion of work has failed. The resource manager may mark the transaction as rollback-only
+     * <li> If TMSUCCESS is specified, the portion of work has completed successfully.
+     * </ul>
+     *
+     * @param xid  a global transaction identifier that is the same as the identifier used previously in the start
+     *             method
+     * @param flag one of TMSUCCESS, TMFAIL, or TMSUSPEND.
+     * @throws XAException an error has occurred. An error has occurred. Possible XAException values are XAER_RMERR,
+     *                     XAER_RMFAILED, XAER_NOTA, XAER_INVAL, XAER_PROTO, or XA_RB*.
+     */
     @Override
-    public void end(Xid xid, int i) throws XAException {
-        throw new RuntimeException("Feature NotImplemented");
+    public void end(Xid xid, int flag) throws XAException {
+        if (LOGGER.isDebugEnabled())
+        {
+            LOGGER.debug("end tx branch with xid: {}", xid);
+        }
+        switch (flag)
+        {
+        case(XAResource.TMSUCCESS):
+            break;
+        case(XAResource.TMFAIL):
+            break;
+        case(XAResource.TMSUSPEND):
+            break;
+        default:
+            throw new XAException(XAException.XAER_INVAL);
+        }
+
+        // TODO flush acknowledgments in session
+
+        XaStatus resultStatus;
+        try {
+            resultStatus = session.endDtx(xid, flag);
+        } catch (FailoverException | AMQException e) {
+            XAException xaException = new XAException("Error while starting dtx session. " + e.getMessage());
+            xaException.initCause(e);
+            throw xaException;
+        }
+
+        checkStatus(resultStatus);
+
+        // TODO sibling handling
     }
 
     @Override
@@ -91,8 +137,8 @@ class XAResource_0_9_1 implements XAResource {
      * resource manager, the resource manager throws the XAException exception with XAER_DUPID error code.
      * </ul>
      *
-     * @param xid  A global transaction identifier to be associated with the resource
-     * @param flag One of TMNOFLAGS, TMJOIN, or TMRESUME
+     * @param xid  a global transaction identifier to be associated with the resource
+     * @param flag one of TMNOFLAGS, TMJOIN, or TMRESUME
      * @throws XAException An error has occurred. Possible exceptions
      *                     are XA_RB*, XAER_RMERR, XAER_RMFAIL, XAER_DUPID, XAER_OUTSIDE, XAER_NOTA, XAER_INVAL, or XAER_PROTO.
      */

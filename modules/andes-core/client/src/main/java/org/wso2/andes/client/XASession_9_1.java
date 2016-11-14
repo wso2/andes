@@ -21,9 +21,12 @@ import org.wso2.andes.framing.BasicQosBody;
 import org.wso2.andes.framing.BasicQosOkBody;
 import org.wso2.andes.framing.ChannelOpenBody;
 import org.wso2.andes.framing.ChannelOpenOkBody;
+import org.wso2.andes.framing.DtxEndBody;
+import org.wso2.andes.framing.DtxEndOkBody;
 import org.wso2.andes.framing.DtxSelectBody;
 import org.wso2.andes.framing.DtxStartBody;
 import org.wso2.andes.framing.DtxStartOkBody;
+import org.wso2.andes.framing.amqp_0_91.DtxEndOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxStartOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.MethodRegistry_0_91;
 import org.wso2.andes.jms.Session;
@@ -87,15 +90,47 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession {
         return xaResource;
     }
 
+    /**
+     * Send startDtx command to server
+     *
+     * @param xid  q global transaction identifier to be associated with the resource
+     * @param flag one of TMNOFLAGS, TMJOIN, or TMRESUME
+     * @return XaStatus returned by server
+     * @throws FailoverException when a connection issue is detected
+     * @throws AMQException      when an error is detected in AMQ state manager
+     */
     XaStatus startDtx(Xid xid, int flag) throws FailoverException, AMQException {
 
-        DtxStartBody dtxStartBody = methodRegistry.createDtxStartBody(xid.getFormatId(), xid.getGlobalTransactionId(),
-                xid.getBranchQualifier(), flag == XAResource.TMJOIN , flag == XAResource.TMRESUME);
+        DtxStartBody dtxStartBody = methodRegistry
+                .createDtxStartBody(xid.getFormatId(), xid.getGlobalTransactionId(), xid.getBranchQualifier(),
+                        flag == XAResource.TMJOIN, flag == XAResource.TMRESUME);
 
         AMQMethodEvent amqMethodEvent = _connection._protocolHandler
                 .syncWrite(dtxStartBody.generateFrame(_channelId), DtxStartOkBody.class);
 
         DtxStartOkBodyImpl response = (DtxStartOkBodyImpl) amqMethodEvent.getMethod();
+
+        return XaStatus.valueOf(response.getXaResult());
+    }
+
+    /**
+     * Send endDtx command to server
+     *
+     * @param xid  a global transaction identifier to be associated with the resource
+     * @param flag one of TMSUCCESS, TMFAIL, or TMSUSPEND.
+     * @return XaStatus returned by server
+     * @throws FailoverException when a connection issue is detected
+     * @throws AMQException      when an error is detected in AMQ state manager
+     */
+    public XaStatus endDtx(Xid xid, int flag) throws FailoverException, AMQException {
+        DtxEndBody dtxStartBody = methodRegistry
+                .createDtxEndBody(xid.getFormatId(), xid.getGlobalTransactionId(), xid.getBranchQualifier(),
+                        flag == XAResource.TMFAIL, flag == XAResource.TMSUSPEND);
+
+        AMQMethodEvent amqMethodEvent = _connection._protocolHandler
+                .syncWrite(dtxStartBody.generateFrame(_channelId), DtxEndOkBody.class);
+
+        DtxEndOkBodyImpl response = (DtxEndOkBodyImpl) amqMethodEvent.getMethod();
 
         return XaStatus.valueOf(response.getXaResult());
     }

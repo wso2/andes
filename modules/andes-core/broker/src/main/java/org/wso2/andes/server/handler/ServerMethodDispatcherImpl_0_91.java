@@ -17,7 +17,6 @@
  */
 package org.wso2.andes.server.handler;
 
-
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.BasicRecoverOkBody;
 import org.wso2.andes.framing.BasicRecoverSyncBody;
@@ -26,6 +25,8 @@ import org.wso2.andes.framing.ChannelOkBody;
 import org.wso2.andes.framing.ChannelPingBody;
 import org.wso2.andes.framing.ChannelPongBody;
 import org.wso2.andes.framing.ChannelResumeBody;
+import org.wso2.andes.framing.DtxEndBody;
+import org.wso2.andes.framing.DtxEndOkBody;
 import org.wso2.andes.framing.DtxSelectBody;
 import org.wso2.andes.framing.DtxStartBody;
 import org.wso2.andes.framing.MessageAppendBody;
@@ -45,6 +46,7 @@ import org.wso2.andes.framing.MessageResumeBody;
 import org.wso2.andes.framing.MessageTransferBody;
 import org.wso2.andes.framing.QueueUnbindBody;
 import org.wso2.andes.framing.QueueUnbindOkBody;
+import org.wso2.andes.framing.amqp_0_91.DtxEndBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxStartBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.MethodDispatcher_0_91;
 import org.wso2.andes.server.state.AMQStateManager;
@@ -62,6 +64,7 @@ public class ServerMethodDispatcherImpl_0_91
 
     private static final DtxSelectHandler dtxSelectHandler = DtxSelectHandler.getInstance();
     private static final DtxStartHandler dtxStartHandler = DtxStartHandler.getInstance();
+    private static final DtxEndHandler dtxEndHandler = DtxEndHandler.getInstance();
 
     private final AMQStateManager stateManager;
 
@@ -92,6 +95,17 @@ public class ServerMethodDispatcherImpl_0_91
     {
         dtxStartHandler.methodReceived(stateManager, (DtxStartBodyImpl) body, channelId);
         return true;
+    }
+
+    @Override
+    public boolean dispatchDtxEnd(DtxEndBody body, int channelId) throws AMQException {
+        dtxEndHandler.methodReceived(stateManager, (DtxEndBodyImpl) body, channelId);
+        return true;
+    }
+
+    @Override
+    public boolean dispatchDtxEndOk(DtxEndOkBody body, int channelId) throws AMQException {
+        throw new UnexpectedMethodException(body);
     }
 
     public boolean dispatchChannelOk(ChannelOkBody body, int channelId) throws AMQException
