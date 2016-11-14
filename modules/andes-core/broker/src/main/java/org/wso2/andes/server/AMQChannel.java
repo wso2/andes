@@ -1342,6 +1342,11 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         distributedTransaction.end(xid,fail, suspend);
     }
 
+    public void prepareDtxTransaction(Xid xid) throws DtxNotSelectedException {
+        DistributedTransaction distributedTransaction = assertDtxTransaction();
+        distributedTransaction.prepare(xid);
+    }
+
     /**
      * Assert if dtxselect is called
      * @return matching DistributedTransaction object
