@@ -73,18 +73,30 @@ public class DistributedTransaction implements ServerTransaction {
 
     @Override
     public void rollback() {
-        throw new IllegalStateException("Cannot call tx.rollback() on a distributed transaction");
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Rolling back the distributed transaction");
+        }
+        // TODO
     }
 
     public void start(Xid xid, boolean join, boolean resume) {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Starting distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
         }
+        // TODO
     }
 
     public void end(Xid xid, boolean fail, boolean suspend) {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Ending distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
         }
+        // TODO
+    }
+
+    public void prepare(Xid xid) {
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Preparing distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
+        }
+        // TODO
     }
 }
