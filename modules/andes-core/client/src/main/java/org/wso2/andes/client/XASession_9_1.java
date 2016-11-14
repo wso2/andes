@@ -23,10 +23,13 @@ import org.wso2.andes.framing.ChannelOpenBody;
 import org.wso2.andes.framing.ChannelOpenOkBody;
 import org.wso2.andes.framing.DtxEndBody;
 import org.wso2.andes.framing.DtxEndOkBody;
+import org.wso2.andes.framing.DtxPrepareBody;
+import org.wso2.andes.framing.DtxPrepareOkBody;
 import org.wso2.andes.framing.DtxSelectBody;
 import org.wso2.andes.framing.DtxStartBody;
 import org.wso2.andes.framing.DtxStartOkBody;
 import org.wso2.andes.framing.amqp_0_91.DtxEndOkBodyImpl;
+import org.wso2.andes.framing.amqp_0_91.DtxPrepareOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxStartOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.MethodRegistry_0_91;
 import org.wso2.andes.jms.Session;
@@ -131,6 +134,18 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession {
                 .syncWrite(dtxStartBody.generateFrame(_channelId), DtxEndOkBody.class);
 
         DtxEndOkBodyImpl response = (DtxEndOkBodyImpl) amqMethodEvent.getMethod();
+
+        return XaStatus.valueOf(response.getXaResult());
+    }
+
+    public XaStatus prepareDtx(Xid xid) throws FailoverException, AMQException {
+        DtxPrepareBody dtxPrepareBody = methodRegistry
+                .createDtxPrepareBody(xid.getFormatId(), xid.getGlobalTransactionId(), xid.getBranchQualifier());
+
+        AMQMethodEvent amqMethodEvent = _connection._protocolHandler
+                .syncWrite(dtxPrepareBody.generateFrame(_channelId), DtxPrepareOkBody.class);
+
+        DtxPrepareOkBodyImpl response = (DtxPrepareOkBodyImpl) amqMethodEvent.getMethod();
 
         return XaStatus.valueOf(response.getXaResult());
     }
