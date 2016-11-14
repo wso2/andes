@@ -481,17 +481,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <chassis name="server" implement="MUST"/>
     </method>
 
-    <!--<struct name="xid" size="2" pack="2" label="dtx branch identifier">-->
-      <!--<doc>-->
-        <!--An xid uniquely identifies a transaction branch.-->
-      <!--</doc>-->
-
-      <!--<field name="format" type="uint32" label="implementation specific format code"-->
-             <!--required="true"/>-->
-      <!--<field name="global-id" type="vbin8" label="global transaction id" required="true"/>-->
-      <!--<field name="branch-id" type="vbin8" label="branch qualifier" required="true"/>-->
-    <!--</struct>-->
-
     <method name="start" synchronous="1" index="20">
       <chassis name="server" implement="MAY"/>
       <response name="start-ok"/>
@@ -500,13 +489,24 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <field name="branch-id" type="longstr" />
       <field name="join" type="bit" />
       <field name="resume" type="bit" />
-
-      <!--<field name="dtx identifier" domain="shortstr">-->
-        <!--<assert check="notnull"/>-->
-      <!--</field>-->
     </method>
 
     <method name="start-ok" synchronous="1" index="21">
+      <chassis name="client" implement="MUST"/>
+      <field name="xa-result" type="short" />
+    </method>
+
+    <method name="end" synchronous="1" index="30">
+      <chassis name="server" implement="MAY"/>
+      <response name="start-ok"/>
+      <field name="format" type="short" />
+      <field name="global-id" type="longstr" />
+      <field name="branch-id" type="longstr" />
+      <field name="fail" type="bit" />
+      <field name="suspend" type="bit" />
+    </method>
+
+    <method name="end-ok" synchronous="1" index="31">
       <chassis name="client" implement="MUST"/>
       <field name="xa-result" type="short" />
     </method>
