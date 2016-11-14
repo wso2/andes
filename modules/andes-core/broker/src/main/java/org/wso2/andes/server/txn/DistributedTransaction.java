@@ -16,17 +16,26 @@
 package org.wso2.andes.server.txn;
 
 import org.apache.commons.lang.NotImplementedException;
+import org.apache.log4j.Logger;
+import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.message.EnqueableMessage;
 import org.wso2.andes.server.queue.BaseQueue;
 import org.wso2.andes.server.queue.QueueEntry;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import javax.transaction.xa.Xid;
 
 /**
  * Server Transaction type used to handle requests related to distributed transactions.
  */
 public class DistributedTransaction implements ServerTransaction {
+    /**
+     * Class logger
+     */
+    private static final Logger LOGGER = Logger.getLogger(AMQChannel.class);
+
     @Override
     public long getTransactionStartTime() {
         return 0;
@@ -65,5 +74,11 @@ public class DistributedTransaction implements ServerTransaction {
     @Override
     public void rollback() {
         throw new IllegalStateException("Cannot call tx.rollback() on a distributed transaction");
+    }
+
+    public void start(Xid xid, boolean join, boolean resume) {
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Starting distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
+        }
     }
 }
