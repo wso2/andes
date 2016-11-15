@@ -511,6 +511,20 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <field name="xa-result" type="short" />
     </method>
 
+    <method name="commit" synchronous="1" index="40">
+      <chassis name="server" implement="MUST"/>
+      <response name="start-ok"/>
+      <field name="format" type="short" />
+      <field name="global-id" type="longstr" />
+      <field name="branch-id" type="longstr" />
+      <field name="one-phase" type="bit" />
+    </method>
+
+    <method name="commit-ok" synchronous="1" index="41">
+      <chassis name="client" implement="MUST"/>
+      <field name="xa-result" type="short" />
+    </method>
+
     <method name="prepare" synchronous="1" index="70">
       <chassis name="server" implement="MUST"/>
       <response name="start-ok"/>
