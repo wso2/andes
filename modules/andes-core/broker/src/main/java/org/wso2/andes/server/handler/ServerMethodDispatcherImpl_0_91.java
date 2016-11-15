@@ -25,6 +25,8 @@ import org.wso2.andes.framing.ChannelOkBody;
 import org.wso2.andes.framing.ChannelPingBody;
 import org.wso2.andes.framing.ChannelPongBody;
 import org.wso2.andes.framing.ChannelResumeBody;
+import org.wso2.andes.framing.DtxCommitBody;
+import org.wso2.andes.framing.DtxCommitOkBody;
 import org.wso2.andes.framing.DtxEndBody;
 import org.wso2.andes.framing.DtxEndOkBody;
 import org.wso2.andes.framing.DtxPrepareBody;
@@ -48,6 +50,7 @@ import org.wso2.andes.framing.MessageResumeBody;
 import org.wso2.andes.framing.MessageTransferBody;
 import org.wso2.andes.framing.QueueUnbindBody;
 import org.wso2.andes.framing.QueueUnbindOkBody;
+import org.wso2.andes.framing.amqp_0_91.DtxCommitBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxEndBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxPrepareBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxStartBodyImpl;
@@ -69,6 +72,7 @@ public class ServerMethodDispatcherImpl_0_91
     private static final DtxStartHandler dtxStartHandler = DtxStartHandler.getInstance();
     private static final DtxEndHandler dtxEndHandler = DtxEndHandler.getInstance();
     private static final DtxPrepareHandler dtxPrepareHandler = DtxPrepareHandler.getInstance();
+    private static final DtxCommitHandler dtxCommitHandler = DtxCommitHandler.getInstance();
 
     private final AMQStateManager stateManager;
 
@@ -84,8 +88,19 @@ public class ServerMethodDispatcherImpl_0_91
         return true;
     }
 
+    @Override
+    public boolean dispatchDtxCommit(DtxCommitBody body, int channelId) throws AMQException {
+        dtxCommitHandler.methodReceived(stateManager, (DtxCommitBodyImpl) body, channelId);
+        return true;
+    }
+
     public boolean dispatchBasicRecoverSyncOk(BasicRecoverSyncOkBody body, int channelId) throws AMQException
     {
+        throw new UnexpectedMethodException(body);
+    }
+
+    @Override
+    public boolean dispatchDtxCommitOk(DtxCommitOkBody body, int channelId) throws AMQException {
         throw new UnexpectedMethodException(body);
     }
 
@@ -110,7 +125,8 @@ public class ServerMethodDispatcherImpl_0_91
     @Override
     public boolean dispatchDtxPrepare(DtxPrepareBody body, int channelId) throws AMQException {
         dtxPrepareHandler.methodReceived(stateManager, (DtxPrepareBodyImpl) body, channelId);
-        return true;    }
+        return true;
+    }
 
     @Override
     public boolean dispatchDtxEndOk(DtxEndOkBody body, int channelId) throws AMQException {

@@ -21,6 +21,8 @@ import org.wso2.andes.framing.BasicQosBody;
 import org.wso2.andes.framing.BasicQosOkBody;
 import org.wso2.andes.framing.ChannelOpenBody;
 import org.wso2.andes.framing.ChannelOpenOkBody;
+import org.wso2.andes.framing.DtxCommitBody;
+import org.wso2.andes.framing.DtxCommitOkBody;
 import org.wso2.andes.framing.DtxEndBody;
 import org.wso2.andes.framing.DtxEndOkBody;
 import org.wso2.andes.framing.DtxPrepareBody;
@@ -28,6 +30,7 @@ import org.wso2.andes.framing.DtxPrepareOkBody;
 import org.wso2.andes.framing.DtxSelectBody;
 import org.wso2.andes.framing.DtxStartBody;
 import org.wso2.andes.framing.DtxStartOkBody;
+import org.wso2.andes.framing.amqp_0_91.DtxCommitOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxEndOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxPrepareOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxStartOkBodyImpl;
@@ -146,6 +149,18 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession {
                 .syncWrite(dtxPrepareBody.generateFrame(_channelId), DtxPrepareOkBody.class);
 
         DtxPrepareOkBodyImpl response = (DtxPrepareOkBodyImpl) amqMethodEvent.getMethod();
+
+        return XaStatus.valueOf(response.getXaResult());
+    }
+
+    public XaStatus commitDtx(Xid xid, boolean onePhase) throws FailoverException, AMQException {
+        DtxCommitBody dtxCommitBody = methodRegistry
+                .createDtxCommitBody(xid.getFormatId(), xid.getGlobalTransactionId(), xid.getBranchQualifier(), onePhase);
+
+        AMQMethodEvent amqMethodEvent = _connection._protocolHandler
+                .syncWrite(dtxCommitBody.generateFrame(_channelId), DtxCommitOkBody.class);
+
+        DtxCommitOkBodyImpl response = (DtxCommitOkBodyImpl) amqMethodEvent.getMethod();
 
         return XaStatus.valueOf(response.getXaResult());
     }

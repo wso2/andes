@@ -99,4 +99,11 @@ public class DistributedTransaction implements ServerTransaction {
         }
         // TODO
     }
+
+    public void commit(Xid xid) {
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Committing distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
+        }
+        // TODO
+    }
 }

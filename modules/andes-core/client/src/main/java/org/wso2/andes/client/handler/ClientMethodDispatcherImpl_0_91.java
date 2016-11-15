@@ -33,6 +33,8 @@ import org.wso2.andes.framing.ChannelOkBody;
 import org.wso2.andes.framing.ChannelPingBody;
 import org.wso2.andes.framing.ChannelPongBody;
 import org.wso2.andes.framing.ChannelResumeBody;
+import org.wso2.andes.framing.DtxCommitBody;
+import org.wso2.andes.framing.DtxCommitOkBody;
 import org.wso2.andes.framing.DtxEndBody;
 import org.wso2.andes.framing.DtxEndOkBody;
 import org.wso2.andes.framing.DtxPrepareBody;
@@ -75,8 +77,22 @@ public class ClientMethodDispatcherImpl_0_91 extends ClientMethodDispatcherImpl 
         return false;
     }
 
+    @Override
+    public boolean dispatchDtxCommitOk(DtxCommitOkBody body, int channelId) throws AMQException {
+        if (LOGGER.isDebugEnabled())
+        {
+            LOGGER.debug("Received Dtx.end-Ok message, with status: " + body.getXaResult());
+        }
+        return true;
+    }
+
     public boolean dispatchBasicRecoverSync(BasicRecoverSyncBody body, int channelId) throws AMQException
     {
+        throw new AMQMethodNotImplementedException(body);
+    }
+
+    @Override
+    public boolean dispatchDtxCommit(DtxCommitBody body, int channelId) throws AMQException {
         throw new AMQMethodNotImplementedException(body);
     }
 
