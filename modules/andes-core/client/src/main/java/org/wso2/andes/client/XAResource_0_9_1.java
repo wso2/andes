@@ -38,8 +38,21 @@ class XAResource_0_9_1 implements XAResource {
     }
 
     @Override
-    public void commit(Xid xid, boolean b) throws XAException {
-        throw new RuntimeException("Feature NotImplemented");
+    public void commit(Xid xid, boolean onePhase) throws XAException {
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("start tx branch with xid: {}", xid);
+        }
+
+        XaStatus resultStatus;
+        try {
+            resultStatus = session.commitDtx(xid, onePhase);
+        } catch (FailoverException | AMQException e) {
+            XAException xaException = new XAException("Error while starting dtx session. " + e.getMessage());
+            xaException.initCause(e);
+            throw xaException;
+        }
+
+        checkStatus(resultStatus);
     }
 
     /**
