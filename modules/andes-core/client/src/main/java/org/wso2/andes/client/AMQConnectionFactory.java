@@ -26,15 +26,33 @@ import org.wso2.andes.jms.ConnectionURL;
 import org.wso2.andes.url.AMQBindingURL;
 import org.wso2.andes.url.URLSyntaxException;
 
-import javax.jms.*;
-import javax.naming.*;
-import javax.naming.spi.ObjectFactory;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Hashtable;
 import java.util.UUID;
+import javax.jms.ConnectionFactory;
+import javax.jms.JMSException;
+import javax.jms.JMSSecurityException;
+import javax.jms.QueueConnection;
+import javax.jms.QueueConnectionFactory;
+import javax.jms.TopicConnection;
+import javax.jms.TopicConnectionFactory;
+import javax.jms.XAConnection;
+import javax.jms.XAConnectionFactory;
+import javax.jms.XAQueueConnection;
+import javax.jms.XAQueueConnectionFactory;
+import javax.jms.XATopicConnection;
+import javax.jms.XATopicConnectionFactory;
+import javax.naming.Context;
+import javax.naming.Name;
+import javax.naming.NamingException;
+import javax.naming.RefAddr;
+import javax.naming.Reference;
+import javax.naming.Referenceable;
+import javax.naming.StringRefAddr;
+import javax.naming.spi.ObjectFactory;
 
 
 public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionFactory, TopicConnectionFactory,
@@ -50,8 +68,7 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
     private ConnectionURL _connectionDetails;
     private SSLConfiguration _sslConfig;
 
-    private ThreadLocal<Boolean> removeVersion91 = new ThreadLocal<Boolean>();
-    private ThreadLocal<Boolean> removeBURL = new ThreadLocal<Boolean>();
+    private ThreadLocal<Boolean> removeBURL = new ThreadLocal<>();
 
     public AMQConnectionFactory()
     {
@@ -266,28 +283,6 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
 
     public Connection createConnection() throws JMSException
     {
-        if(removeVersion91 == null) {
-            removeVersion91 = new ThreadLocal<Boolean>();
-            removeVersion91.set(new Boolean(false));
-        } else {
-
-            if (removeVersion91.get() == null) {
-                removeVersion91.set(new Boolean(false));
-            }
-
-        }
-
-        // Requires permission java.util.PropertyPermission "qpid.amqp.version", "write"
-        AccessController.doPrivileged(new PrivilegedAction<Void>() {
-            public Void run() {
-                if(!removeVersion91.get()) {
-                    System.setProperty(ClientProperties.AMQP_VERSION, "0-91");
-                } else {
-                    System.clearProperty(ClientProperties.AMQP_VERSION);
-                }
-                return null; // nothing to return
-            }
-        });
 
         if(removeBURL == null) {
             removeBURL = new ThreadLocal<Boolean>();
@@ -375,31 +370,6 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
     
     public Connection createConnection(String userName, String password, String id) throws JMSException
     {
-        if(removeVersion91 == null) {
-            removeVersion91 = new ThreadLocal<Boolean>();
-            removeVersion91.set(new Boolean(false));
-        } else {
-            try {
-               if(null== removeVersion91.get()){
-                   removeVersion91.set(new Boolean(false));
-               }
-            } catch (NullPointerException e) {
-                removeVersion91.set(new Boolean(false));
-            }
-        }
-
-        // Requires permission java.util.PropertyPermission "qpid.amqp.version", "write"
-        AccessController.doPrivileged(new PrivilegedAction<Void>() {
-            public Void run() {
-                if (!removeVersion91.get()) {
-                    System.setProperty(ClientProperties.AMQP_VERSION, "0-91");
-                } else {
-                    System.clearProperty(ClientProperties.AMQP_VERSION);
-                }
-                return null; // nothing to return
-            }
-        });
-
         if (removeBURL == null) {
             removeBURL = new ThreadLocal<Boolean>();
             removeBURL.set(new Boolean(false));

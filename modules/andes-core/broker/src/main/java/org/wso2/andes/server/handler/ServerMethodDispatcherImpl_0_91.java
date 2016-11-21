@@ -17,12 +17,45 @@
  */
 package org.wso2.andes.server.handler;
 
-
 import org.wso2.andes.AMQException;
-import org.wso2.andes.framing.*;
+import org.wso2.andes.framing.BasicRecoverOkBody;
+import org.wso2.andes.framing.BasicRecoverSyncBody;
+import org.wso2.andes.framing.BasicRecoverSyncOkBody;
+import org.wso2.andes.framing.ChannelOkBody;
+import org.wso2.andes.framing.ChannelPingBody;
+import org.wso2.andes.framing.ChannelPongBody;
+import org.wso2.andes.framing.ChannelResumeBody;
+import org.wso2.andes.framing.DtxCommitBody;
+import org.wso2.andes.framing.DtxCommitOkBody;
+import org.wso2.andes.framing.DtxEndBody;
+import org.wso2.andes.framing.DtxEndOkBody;
+import org.wso2.andes.framing.DtxPrepareBody;
+import org.wso2.andes.framing.DtxPrepareOkBody;
+import org.wso2.andes.framing.DtxSelectBody;
+import org.wso2.andes.framing.DtxStartBody;
+import org.wso2.andes.framing.MessageAppendBody;
+import org.wso2.andes.framing.MessageCancelBody;
+import org.wso2.andes.framing.MessageCheckpointBody;
+import org.wso2.andes.framing.MessageCloseBody;
+import org.wso2.andes.framing.MessageConsumeBody;
+import org.wso2.andes.framing.MessageEmptyBody;
+import org.wso2.andes.framing.MessageGetBody;
+import org.wso2.andes.framing.MessageOffsetBody;
+import org.wso2.andes.framing.MessageOkBody;
+import org.wso2.andes.framing.MessageOpenBody;
+import org.wso2.andes.framing.MessageQosBody;
+import org.wso2.andes.framing.MessageRecoverBody;
+import org.wso2.andes.framing.MessageRejectBody;
+import org.wso2.andes.framing.MessageResumeBody;
+import org.wso2.andes.framing.MessageTransferBody;
+import org.wso2.andes.framing.QueueUnbindBody;
+import org.wso2.andes.framing.QueueUnbindOkBody;
+import org.wso2.andes.framing.amqp_0_91.DtxCommitBodyImpl;
+import org.wso2.andes.framing.amqp_0_91.DtxEndBodyImpl;
+import org.wso2.andes.framing.amqp_0_91.DtxPrepareBodyImpl;
+import org.wso2.andes.framing.amqp_0_91.DtxStartBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.MethodDispatcher_0_91;
 import org.wso2.andes.server.state.AMQStateManager;
-
 
 public class ServerMethodDispatcherImpl_0_91
         extends ServerMethodDispatcherImpl
@@ -35,10 +68,18 @@ public class ServerMethodDispatcherImpl_0_91
     private static final QueueUnbindHandler _queueUnbindHandler =
             QueueUnbindHandler.getInstance();
 
+    private static final DtxSelectHandler dtxSelectHandler = DtxSelectHandler.getInstance();
+    private static final DtxStartHandler dtxStartHandler = DtxStartHandler.getInstance();
+    private static final DtxEndHandler dtxEndHandler = DtxEndHandler.getInstance();
+    private static final DtxPrepareHandler dtxPrepareHandler = DtxPrepareHandler.getInstance();
+    private static final DtxCommitHandler dtxCommitHandler = DtxCommitHandler.getInstance();
+
+    private final AMQStateManager stateManager;
 
     public ServerMethodDispatcherImpl_0_91(AMQStateManager stateManager)
     {
         super(stateManager);
+        this.stateManager = stateManager;
     }
 
     public boolean dispatchBasicRecoverSync(BasicRecoverSyncBody body, int channelId) throws AMQException
@@ -47,8 +88,53 @@ public class ServerMethodDispatcherImpl_0_91
         return true;
     }
 
+    @Override
+    public boolean dispatchDtxCommit(DtxCommitBody body, int channelId) throws AMQException {
+        dtxCommitHandler.methodReceived(stateManager, (DtxCommitBodyImpl) body, channelId);
+        return true;
+    }
+
     public boolean dispatchBasicRecoverSyncOk(BasicRecoverSyncOkBody body, int channelId) throws AMQException
     {
+        throw new UnexpectedMethodException(body);
+    }
+
+    @Override
+    public boolean dispatchDtxCommitOk(DtxCommitOkBody body, int channelId) throws AMQException {
+        throw new UnexpectedMethodException(body);
+    }
+
+    public boolean dispatchDtxSelect(DtxSelectBody body, int channelId) throws AMQException
+    {
+        dtxSelectHandler.methodReceived(stateManager, body, channelId);
+        return true;
+    }
+
+    public boolean dispatchDtxStart(DtxStartBody body, int channelId) throws AMQException
+    {
+        dtxStartHandler.methodReceived(stateManager, (DtxStartBodyImpl) body, channelId);
+        return true;
+    }
+
+    @Override
+    public boolean dispatchDtxEnd(DtxEndBody body, int channelId) throws AMQException {
+        dtxEndHandler.methodReceived(stateManager, (DtxEndBodyImpl) body, channelId);
+        return true;
+    }
+
+    @Override
+    public boolean dispatchDtxPrepare(DtxPrepareBody body, int channelId) throws AMQException {
+        dtxPrepareHandler.methodReceived(stateManager, (DtxPrepareBodyImpl) body, channelId);
+        return true;
+    }
+
+    @Override
+    public boolean dispatchDtxEndOk(DtxEndOkBody body, int channelId) throws AMQException {
+        throw new UnexpectedMethodException(body);
+    }
+
+    @Override
+    public boolean dispatchDtxPrepareOk(DtxPrepareOkBody body, int channelId) throws AMQException {
         throw new UnexpectedMethodException(body);
     }
 

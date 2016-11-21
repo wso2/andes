@@ -329,7 +329,7 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
         // Requires permission java.util.PropertyPermission "qpid.amqp.version", "write"
         String amqpVersion = AccessController.doPrivileged(new PrivilegedAction<String>() {
             public String run() {
-                return System.getProperty((ClientProperties.AMQP_VERSION), "0-10");
+                return System.getProperty((ClientProperties.AMQP_VERSION), "0-91");
             }
         });
 

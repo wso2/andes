@@ -40,7 +40,6 @@ import org.wso2.andes.framing.abstraction.ContentChunk;
 import org.wso2.andes.framing.abstraction.MessagePublishInfo;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesChannel;
-import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.FlowControlListener;
 import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
@@ -79,6 +78,8 @@ import org.wso2.andes.server.subscription.RecordDeliveryMethod;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionFactoryImpl;
 import org.wso2.andes.server.txn.AutoCommitTransaction;
+import org.wso2.andes.server.txn.QpidDistributedTransaction;
+import org.wso2.andes.server.txn.DtxNotSelectedException;
 import org.wso2.andes.server.txn.LocalTransaction;
 import org.wso2.andes.server.txn.ServerTransaction;
 import org.wso2.andes.server.virtualhost.AMQChannelMBean;
@@ -100,6 +101,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.management.JMException;
+import javax.transaction.xa.Xid;
 
 public class AMQChannel implements SessionConfig, AMQSessionModel
 {
@@ -299,6 +301,13 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         _transaction = new LocalTransaction(_messageStore);
         _txnStarts.incrementAndGet();
         beginPublisherTransaction = true;
+    }
+
+    /**
+     * Sets this channels to be part of a distributed transaction
+     */
+    public void setDtxTransactional() {
+        _transaction = new QpidDistributedTransaction();
     }
 
     public boolean isTransactional()
@@ -1313,6 +1322,50 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     public LogSubject getLogSubject()
     {
         return _logSubject;
+    }
+
+    /**
+     * Initiate a distributed transaction for current channel. Everything done until a endDtxTransaction will belong
+     * to the transaction.
+     * @param xid corresponding xid
+     * @param join true if xid join
+     * @param resume true if xis resume
+     * @throws DtxNotSelectedException when calling this method without sending a dtxselect
+     */
+    public void startDtxTransaction(Xid xid, boolean join, boolean resume) throws DtxNotSelectedException {
+        QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
+        distributedTransaction.start(xid,join, resume);
+    }
+
+    public void endDtxTransaction(Xid xid, boolean fail, boolean suspend) throws DtxNotSelectedException {
+        QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
+        distributedTransaction.end(xid,fail, suspend);
+    }
+
+    public void prepareDtxTransaction(Xid xid) throws DtxNotSelectedException {
+        QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
+        distributedTransaction.prepare(xid);
+    }
+
+    public void commitDtxTransaction(Xid xid) throws DtxNotSelectedException {
+        QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
+        distributedTransaction.commit(xid);
+    }
+
+    /**
+     * Assert if dtxselect is called
+     * @return matching DistributedTransaction object
+     * @throws DtxNotSelectedException if dtxselect is not called before
+     */
+    private QpidDistributedTransaction assertDtxTransaction() throws DtxNotSelectedException {
+        if(_transaction instanceof QpidDistributedTransaction)
+        {
+            return (QpidDistributedTransaction) _transaction;
+        }
+        else
+        {
+            throw new DtxNotSelectedException();
+        }
     }
 
     private class MessageDeliveryAction implements ServerTransaction.Action

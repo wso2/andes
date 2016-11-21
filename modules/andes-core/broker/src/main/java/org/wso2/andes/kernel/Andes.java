@@ -35,6 +35,8 @@ import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
+import org.wso2.andes.kernel.dtx.DistributedTransaction;
+import org.wso2.andes.kernel.dtx.DtxRegistry;
 import org.wso2.andes.kernel.subscription.AndesSubscription;
 import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.kernel.subscription.StorageQueue;
@@ -120,6 +122,11 @@ public class Andes {
     private final long TX_EVENT_TIMEOUT;
 
     /**
+     * Registry object used to store distributed transaction related information
+     */
+    private DtxRegistry dtxRegistry;
+
+    /**
      * Instance of AndesAPI returned.
      *
      * @return AndesAPI
@@ -172,6 +179,7 @@ public class Andes {
         this.messagingEngine = messagingEngine;
         this.subscriptionManager = subscriptionManager;
         this.inboundEventManager = inboundEventManager;
+        this.dtxRegistry = new DtxRegistry();
 
         log.info("Andes API initialised.");
     }
@@ -793,5 +801,8 @@ public class Andes {
         inboundEventManager.publishRecoveryEvent();
     }
 
+    public DistributedTransaction createDistributedTransaction() {
+        return new DistributedTransaction(dtxRegistry);
+    }
 }
 
