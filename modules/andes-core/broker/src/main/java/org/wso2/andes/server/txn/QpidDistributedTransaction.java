@@ -17,6 +17,8 @@ package org.wso2.andes.server.txn;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
+import org.wso2.andes.kernel.Andes;
+import org.wso2.andes.kernel.dtx.DistributedTransaction;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.message.EnqueableMessage;
 import org.wso2.andes.server.queue.BaseQueue;
@@ -30,11 +32,20 @@ import javax.transaction.xa.Xid;
 /**
  * Server Transaction type used to handle requests related to distributed transactions.
  */
-public class DistributedTransaction implements ServerTransaction {
+public class QpidDistributedTransaction implements ServerTransaction {
     /**
      * Class logger
      */
     private static final Logger LOGGER = Logger.getLogger(AMQChannel.class);
+
+    /**
+     * Object used to communicate with the Andes core
+     */
+    private final DistributedTransaction distributedTransaction;
+
+    public QpidDistributedTransaction() {
+        distributedTransaction = Andes.getInstance().createDistributedTransaction();
+    }
 
     @Override
     public long getTransactionStartTime() {
