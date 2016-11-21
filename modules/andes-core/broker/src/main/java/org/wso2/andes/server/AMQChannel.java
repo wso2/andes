@@ -674,8 +674,10 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             CurrentActor.get().message(_logSubject, ChannelMessages.CLOSE());
 
             unsubscribeAllConsumers();
-            _transaction.rollback();
 
+            if (_transaction instanceof LocalTransaction) {
+                _transaction.rollback();
+            }
 
             if (null != andesTransactionEvent) {
                 andesTransactionEvent.close();

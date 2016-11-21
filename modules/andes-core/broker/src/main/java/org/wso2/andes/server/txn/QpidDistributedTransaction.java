@@ -84,10 +84,7 @@ public class QpidDistributedTransaction implements ServerTransaction {
 
     @Override
     public void rollback() {
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Rolling back the distributed transaction");
-        }
-        // TODO
+        throw new IllegalStateException("Cannot call tx.rollback() on a distributed transaction");
     }
 
     public void start(Xid xid, boolean join, boolean resume) {
@@ -112,6 +109,13 @@ public class QpidDistributedTransaction implements ServerTransaction {
     }
 
     public void commit(Xid xid) {
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Committing distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
+        }
+        // TODO
+    }
+
+    public void rollback(Xid xid) {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Committing distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
         }
