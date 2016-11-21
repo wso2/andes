@@ -15,5 +15,73 @@
 
 package org.wso2.andes.kernel.dtx;
 
+import java.util.HashMap;
+import java.util.Map;
+import javax.transaction.xa.Xid;
+
 public class DtxRegistry {
+    private final Map<ComparableXid, DtxBranch> branches = new HashMap<ComparableXid, DtxBranch>();
+
+    public synchronized DtxBranch getBranch(Xid xid) {
+        return branches.get(new ComparableXid(xid));
+    }
+
+    public synchronized boolean registerBranch(DtxBranch branch)
+    {
+        ComparableXid xid = new ComparableXid(branch.getXid());
+        if(!branches.containsKey(xid))
+        {
+            branches.put(xid, branch);
+            return true;
+        }
+        return false;
+    }
+
+    private static final class ComparableXid {
+        private final Xid xid;
+
+        private ComparableXid(Xid xid) {
+            this.xid = xid;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+
+            ComparableXid that = (ComparableXid) o;
+
+            return compareBytes(xid.getBranchQualifier(), that.xid.getBranchQualifier()) && compareBytes(
+                    xid.getGlobalTransactionId(), that.xid.getGlobalTransactionId());
+        }
+
+        private static boolean compareBytes(byte[] a, byte[] b) {
+            if (a.length != b.length) {
+                return false;
+            }
+            for (int i = 0; i < a.length; i++) {
+                if (a[i] != b[i]) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = 0;
+            for (int i = 0; i < xid.getGlobalTransactionId().length; i++) {
+                result = 31 * result + (int) xid.getGlobalTransactionId()[i];
+            }
+            for (int i = 0; i < xid.getBranchQualifier().length; i++) {
+                result = 31 * result + (int) xid.getBranchQualifier()[i];
+            }
+
+            return result;
+        }
+    }
 }

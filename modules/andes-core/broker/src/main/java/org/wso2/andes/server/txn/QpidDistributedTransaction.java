@@ -18,7 +18,10 @@ package org.wso2.andes.server.txn;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
 import org.wso2.andes.kernel.Andes;
+import org.wso2.andes.kernel.dtx.AlreadyKnownDtxException;
 import org.wso2.andes.kernel.dtx.DistributedTransaction;
+import org.wso2.andes.kernel.dtx.JoinAndResumeDtxException;
+import org.wso2.andes.kernel.dtx.UnknownDtxBranchException;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.message.EnqueableMessage;
 import org.wso2.andes.server.queue.BaseQueue;
@@ -84,17 +87,15 @@ public class QpidDistributedTransaction implements ServerTransaction {
 
     @Override
     public void rollback() {
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Rolling back the distributed transaction");
-        }
-        // TODO
+        throw new IllegalStateException("Cannot call tx.rollback() on a distributed transaction");
     }
 
-    public void start(Xid xid, boolean join, boolean resume) {
+    public void start(long sessionID, Xid xid, boolean join, boolean resume)
+            throws JoinAndResumeDtxException, UnknownDtxBranchException, AlreadyKnownDtxException {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Starting distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
         }
-        // TODO
+        distributedTransaction.start(sessionID, xid, join, resume);
     }
 
     public void end(Xid xid, boolean fail, boolean suspend) {
@@ -112,6 +113,13 @@ public class QpidDistributedTransaction implements ServerTransaction {
     }
 
     public void commit(Xid xid) {
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Committing distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
+        }
+        // TODO
+    }
+
+    public void rollback(Xid xid) {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Committing distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
         }
