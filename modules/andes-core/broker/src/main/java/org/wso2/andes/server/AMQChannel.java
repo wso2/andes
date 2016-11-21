@@ -78,7 +78,7 @@ import org.wso2.andes.server.subscription.RecordDeliveryMethod;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionFactoryImpl;
 import org.wso2.andes.server.txn.AutoCommitTransaction;
-import org.wso2.andes.server.txn.DistributedTransaction;
+import org.wso2.andes.server.txn.QpidDistributedTransaction;
 import org.wso2.andes.server.txn.DtxNotSelectedException;
 import org.wso2.andes.server.txn.LocalTransaction;
 import org.wso2.andes.server.txn.ServerTransaction;
@@ -307,7 +307,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
      * Sets this channels to be part of a distributed transaction
      */
     public void setDtxTransactional() {
-        _transaction = new DistributedTransaction();
+        _transaction = new QpidDistributedTransaction();
     }
 
     public boolean isTransactional()
@@ -1333,22 +1333,22 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
      * @throws DtxNotSelectedException when calling this method without sending a dtxselect
      */
     public void startDtxTransaction(Xid xid, boolean join, boolean resume) throws DtxNotSelectedException {
-        DistributedTransaction distributedTransaction = assertDtxTransaction();
+        QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
         distributedTransaction.start(xid,join, resume);
     }
 
     public void endDtxTransaction(Xid xid, boolean fail, boolean suspend) throws DtxNotSelectedException {
-        DistributedTransaction distributedTransaction = assertDtxTransaction();
+        QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
         distributedTransaction.end(xid,fail, suspend);
     }
 
     public void prepareDtxTransaction(Xid xid) throws DtxNotSelectedException {
-        DistributedTransaction distributedTransaction = assertDtxTransaction();
+        QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
         distributedTransaction.prepare(xid);
     }
 
     public void commitDtxTransaction(Xid xid) throws DtxNotSelectedException {
-        DistributedTransaction distributedTransaction = assertDtxTransaction();
+        QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
         distributedTransaction.commit(xid);
     }
 
@@ -1357,10 +1357,10 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
      * @return matching DistributedTransaction object
      * @throws DtxNotSelectedException if dtxselect is not called before
      */
-    private DistributedTransaction assertDtxTransaction() throws DtxNotSelectedException {
-        if(_transaction instanceof DistributedTransaction)
+    private QpidDistributedTransaction assertDtxTransaction() throws DtxNotSelectedException {
+        if(_transaction instanceof QpidDistributedTransaction)
         {
-            return (DistributedTransaction) _transaction;
+            return (QpidDistributedTransaction) _transaction;
         }
         else
         {
