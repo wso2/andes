@@ -21,10 +21,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wso2.andes.AMQInvalidArgumentException;
 
-import javax.transaction.xa.Xid;
-
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.util.Arrays;
+import javax.transaction.xa.Xid;
 
 /**
  * Implements javax.transaction.dtx.Xid
@@ -255,5 +256,12 @@ public class XidImpl implements Xid
         return new org.wso2.andes.transport.Xid(xid.getFormatId(),
                                                     xid.getGlobalTransactionId(),
                                                     xid.getBranchQualifier());
+    }
+
+    @Override
+    public String toString() {
+
+        return getClass().getSimpleName() + "(" + getFormatId() + "|" + Arrays.toString(getGlobalTransactionId())
+                + "|" + Arrays.toString(getBranchQualifier()) + ")";
     }
 }

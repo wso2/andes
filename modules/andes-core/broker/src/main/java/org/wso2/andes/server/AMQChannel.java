@@ -43,6 +43,9 @@ import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.FlowControlListener;
 import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
+import org.wso2.andes.kernel.dtx.AlreadyKnownDtxException;
+import org.wso2.andes.kernel.dtx.JoinAndResumeDtxException;
+import org.wso2.andes.kernel.dtx.UnknownDtxBranchException;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.ack.UnacknowledgedMessageMap;
 import org.wso2.andes.server.ack.UnacknowledgedMessageMapImpl;
@@ -1334,9 +1337,11 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
      * @param resume true if xis resume
      * @throws DtxNotSelectedException when calling this method without sending a dtxselect
      */
-    public void startDtxTransaction(Xid xid, boolean join, boolean resume) throws DtxNotSelectedException {
+    public void startDtxTransaction(Xid xid, boolean join, boolean resume)
+            throws DtxNotSelectedException, JoinAndResumeDtxException, UnknownDtxBranchException,
+            AlreadyKnownDtxException {
         QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
-        distributedTransaction.start(xid,join, resume);
+        distributedTransaction.start(_session.getSessionID(), xid,join, resume);
     }
 
     public void endDtxTransaction(Xid xid, boolean fail, boolean suspend) throws DtxNotSelectedException {

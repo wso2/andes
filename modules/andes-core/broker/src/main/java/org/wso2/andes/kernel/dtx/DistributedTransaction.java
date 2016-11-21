@@ -15,8 +15,54 @@
 
 package org.wso2.andes.kernel.dtx;
 
+import javax.transaction.xa.Xid;
+
 public class DistributedTransaction {
+
+
+    private DtxRegistry dtxRegistry;
+    private DtxBranch branch;
+
     public DistributedTransaction(DtxRegistry dtxRegistry) {
+
+        this.dtxRegistry = dtxRegistry;
+    }
+
+    public void start(long sessionID, Xid xid, boolean join, boolean resume)
+            throws JoinAndResumeDtxException, UnknownDtxBranchException, AlreadyKnownDtxException {
+
+        if (join && resume) {
+            throw new JoinAndResumeDtxException(xid);
+        }
+
+        DtxBranch branch = dtxRegistry.getBranch(xid);
+
+        if (join) {
+            if (branch == null) {
+                throw new UnknownDtxBranchException(xid);
+            }
+
+            branch.associateSession(sessionID);
+        } else if (resume) {
+            if (branch == null) {
+                throw new UnknownDtxBranchException(xid);
+            }
+
+            branch.resumeSession(sessionID);
+        } else {
+            if (branch != null) {
+                throw new AlreadyKnownDtxException(xid);
+            }
+
+            branch = new DtxBranch(xid, dtxRegistry);
+
+            if (dtxRegistry.registerBranch(branch)) {
+                this.branch = branch;
+                 branch.associateSession(sessionID);
+            } else {
+                throw new AlreadyKnownDtxException(xid);
+            }
+        }
 
     }
 }
