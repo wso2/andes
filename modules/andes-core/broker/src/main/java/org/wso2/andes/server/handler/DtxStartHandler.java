@@ -20,6 +20,9 @@ import org.wso2.andes.dtx.XidImpl;
 import org.wso2.andes.framing.DtxStartOkBody;
 import org.wso2.andes.framing.amqp_0_91.DtxStartBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.MethodRegistry_0_91;
+import org.wso2.andes.kernel.dtx.AlreadyKnownDtxException;
+import org.wso2.andes.kernel.dtx.JoinAndResumeDtxException;
+import org.wso2.andes.kernel.dtx.UnknownDtxBranchException;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
@@ -60,6 +63,14 @@ public class DtxStartHandler implements StateAwareMethodListener<DtxStartBodyImp
             session.writeFrame(dtxStartOkBody.generateFrame(channelId));
         } catch (DtxNotSelectedException e) {
             throw new AMQException(AMQConstant.COMMAND_INVALID, "Error starting dtx ", e);
+        } catch (AlreadyKnownDtxException e) {
+            throw new AMQException(AMQConstant.COMMAND_INVALID, "Xid already started an neither join nor "
+                    + "resume set" + xid, e);
+        } catch (JoinAndResumeDtxException e) {
+            throw new AMQException(AMQConstant.COMMAND_INVALID, "Cannot start a branch with both join and resume set "
+                    , e);
+        } catch (UnknownDtxBranchException e) {
+            throw new AMQException(AMQConstant.COMMAND_INVALID, "Unknown xid " + xid, e);
         }
     }
 }
