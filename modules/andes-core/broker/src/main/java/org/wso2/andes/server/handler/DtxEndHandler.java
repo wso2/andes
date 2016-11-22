@@ -20,6 +20,9 @@ import org.wso2.andes.dtx.XidImpl;
 import org.wso2.andes.framing.DtxEndOkBody;
 import org.wso2.andes.framing.amqp_0_91.DtxEndBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.MethodRegistry_0_91;
+import org.wso2.andes.kernel.dtx.NotAssociatedDtxException;
+import org.wso2.andes.kernel.dtx.SuspendAndFailDtxException;
+import org.wso2.andes.kernel.dtx.UnknownDtxBranchException;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
@@ -59,6 +62,15 @@ public class DtxEndHandler implements StateAwareMethodListener<DtxEndBodyImpl> {
             session.writeFrame(dtxEndOkBody.generateFrame(channelId));
         } catch (DtxNotSelectedException e) {
             throw new AMQException(AMQConstant.COMMAND_INVALID, "Error ending dtx ", e);
+        } catch (NotAssociatedDtxException e) {
+            throw new AMQException(AMQConstant.COMMAND_INVALID, "Error ending dtx. Session is not associated with the" +
+                    " given xid ", e);
+        } catch (UnknownDtxBranchException e) {
+            throw new AMQException(AMQConstant.COMMAND_INVALID, "Error ending dtx. Unknown branch for the given " +
+                    "xid ", e);
+        } catch (SuspendAndFailDtxException e) {
+            throw new AMQException(AMQConstant.COMMAND_INVALID, "Error ending dtx. Both suspend and failed are " +
+                    "set ", e);
         }
     }
 }
