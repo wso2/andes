@@ -65,4 +65,32 @@ public class DistributedTransaction {
         }
 
     }
+
+    public void end(long sessionId, Xid xid, boolean fail, boolean suspend)
+            throws SuspendAndFailDtxException, UnknownDtxBranchException, NotAssociatedDtxException {
+        DtxBranch branch = dtxRegistry.getBranch(xid);
+        if(suspend && fail)
+        {
+            branch.disassociateSession(sessionId);
+            this.branch = null;
+            throw new SuspendAndFailDtxException(xid);
+        }
+
+        if (null == branch) {
+            throw new UnknownDtxBranchException(xid);
+        } else if (branch.isAssociated(sessionId)) {
+            throw new NotAssociatedDtxException(xid);
+
+            // TODO Check for transaction expiration
+        } else if (suspend) {
+            branch.suspendSession(sessionId);
+        } else {
+            if (fail) {
+                branch.markAsFailedSession(sessionId);
+            }
+            branch.disassociateSession(sessionId);
+        }
+
+        this.branch = null;
+    }
 }
