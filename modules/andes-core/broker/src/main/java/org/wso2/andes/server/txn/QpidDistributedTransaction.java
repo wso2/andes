@@ -21,6 +21,8 @@ import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.dtx.AlreadyKnownDtxException;
 import org.wso2.andes.kernel.dtx.DistributedTransaction;
 import org.wso2.andes.kernel.dtx.JoinAndResumeDtxException;
+import org.wso2.andes.kernel.dtx.NotAssociatedDtxException;
+import org.wso2.andes.kernel.dtx.SuspendAndFailDtxException;
 import org.wso2.andes.kernel.dtx.UnknownDtxBranchException;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.message.EnqueableMessage;
@@ -98,11 +100,12 @@ public class QpidDistributedTransaction implements ServerTransaction {
         distributedTransaction.start(sessionID, xid, join, resume);
     }
 
-    public void end(Xid xid, boolean fail, boolean suspend) {
+    public void end(long sessionID, Xid xid, boolean fail, boolean suspend)
+            throws UnknownDtxBranchException, SuspendAndFailDtxException, NotAssociatedDtxException {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Ending distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
         }
-        // TODO
+        distributedTransaction.end(sessionID, xid, fail, suspend);
     }
 
     public void prepare(Xid xid) {
