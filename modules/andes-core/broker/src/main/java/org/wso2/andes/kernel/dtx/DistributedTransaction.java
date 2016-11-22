@@ -42,12 +42,14 @@ public class DistributedTransaction {
                 throw new UnknownDtxBranchException(xid);
             }
 
+            this.branch = branch;
             branch.associateSession(sessionID);
         } else if (resume) {
             if (branch == null) {
                 throw new UnknownDtxBranchException(xid);
             }
 
+            this.branch = branch;
             branch.resumeSession(sessionID);
         } else {
             if (branch != null) {
