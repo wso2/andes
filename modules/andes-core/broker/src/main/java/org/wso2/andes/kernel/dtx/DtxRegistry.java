@@ -20,7 +20,7 @@ import java.util.Map;
 import javax.transaction.xa.Xid;
 
 public class DtxRegistry {
-    private final Map<ComparableXid, DtxBranch> branches = new HashMap<ComparableXid, DtxBranch>();
+    private final Map<ComparableXid, DtxBranch> branches = new HashMap<>();
 
     public synchronized DtxBranch getBranch(Xid xid) {
         return branches.get(new ComparableXid(xid));
