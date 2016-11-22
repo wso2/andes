@@ -45,6 +45,8 @@ import org.wso2.andes.kernel.FlowControlListener;
 import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.kernel.dtx.AlreadyKnownDtxException;
 import org.wso2.andes.kernel.dtx.JoinAndResumeDtxException;
+import org.wso2.andes.kernel.dtx.NotAssociatedDtxException;
+import org.wso2.andes.kernel.dtx.SuspendAndFailDtxException;
 import org.wso2.andes.kernel.dtx.UnknownDtxBranchException;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.ack.UnacknowledgedMessageMap;
@@ -1344,9 +1346,11 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         distributedTransaction.start(_session.getSessionID(), xid,join, resume);
     }
 
-    public void endDtxTransaction(Xid xid, boolean fail, boolean suspend) throws DtxNotSelectedException {
+    public void endDtxTransaction(Xid xid, boolean fail, boolean suspend)
+            throws DtxNotSelectedException, UnknownDtxBranchException, SuspendAndFailDtxException,
+                   NotAssociatedDtxException {
         QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
-        distributedTransaction.end(xid,fail, suspend);
+        distributedTransaction.end(_session.getSessionID(), xid,fail, suspend);
     }
 
     public void prepareDtxTransaction(Xid xid) throws DtxNotSelectedException {

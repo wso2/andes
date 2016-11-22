@@ -38,6 +38,10 @@ public class DtxBranch {
         return associatedSessions.put(sessionID, State.ACTIVE) != null;
     }
 
+    public boolean disassociateSession(long sessionID) {
+        return associatedSessions.remove(sessionID) != null;
+    }
+
     public boolean resumeSession(long sessionID) {
         if(associatedSessions.containsKey(sessionID) && associatedSessions.get(sessionID) == State.SUSPENDED)
         {
@@ -47,7 +51,33 @@ public class DtxBranch {
         return false;
     }
 
+    public boolean isAssociated(long sessionId) {
+        return associatedSessions.containsKey(sessionId);
+    }
+
+    public boolean suspendSession(long sessionId) {
+        State state = associatedSessions.get(sessionId);
+        if (null != state && state == State.ACTIVE) {
+            associatedSessions.put(sessionId, State.SUSPENDED);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public boolean markAsFailedSession(long sessionId) {
+        State state = associatedSessions.get(sessionId);
+        if (null != state && state == State.ACTIVE) {
+            associatedSessions.put(sessionId, State.ROLLBACK_ONLY);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     public enum State {
-        SUSPENDED, ACTIVE
+        SUSPENDED,
+        ACTIVE,
+        ROLLBACK_ONLY
     }
 }
