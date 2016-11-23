@@ -17,12 +17,14 @@
  */
 package org.wso2.andes.server.txn;
 
+import org.wso2.andes.AMQException;
 import org.wso2.andes.server.message.EnqueableMessage;
 import org.wso2.andes.server.queue.BaseQueue;
 import org.wso2.andes.server.queue.QueueEntry;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 
 
 /**
@@ -76,6 +78,12 @@ public interface ServerTransaction
      */
     void dequeue(Collection<QueueEntry> messages, Action postTransactionAction);
 
+    /**
+     * Dequeue a message(s) from queue(s) registering a post transaction action.
+     *
+     * Store operations will result only for a persistent messages on durable queues.
+     */
+    void dequeue(UUID channelID, Collection<QueueEntry> messages, Action postTransactionAction) throws AMQException;
     /** 
      * Enqueue a message to a queue registering a post transaction action.
      * 
