@@ -1000,13 +1000,14 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         try {
             isMessagesAcksProcessing =  true;
             Collection<QueueEntry> ackedMessages = getAckedMessages(deliveryTag, multiple);
-            _transaction.dequeue(ackedMessages, new MessageAcknowledgeAction(ackedMessages));
-
-            for (QueueEntry entry : ackedMessages) {
-                // When the message is acknowledged it is informed to Andes Kernel
-                QpidAndesBridge.ackReceived(this.getId(), entry.getMessage().getMessageNumber());
+            if (_transaction instanceof QpidDistributedTransaction) {
+                _transaction.dequeue(this.getId(), ackedMessages, new MessageAcknowledgeAction(ackedMessages));
+            } else {
+                for (QueueEntry entry : ackedMessages) {
+                    // When the message is acknowledged it is informed to Andes Kernel
+                    QpidAndesBridge.ackReceived(this.getId(), entry.getMessage().getMessageNumber());
+                }
             }
-
             updateTransactionalActivity();
         } finally {
             isMessagesAcksProcessing = false;

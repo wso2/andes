@@ -18,6 +18,7 @@
 
 package org.wso2.andes.server.txn;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wso2.andes.AMQException;
@@ -29,6 +30,7 @@ import org.wso2.andes.server.store.TransactionLog;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
@@ -92,8 +94,9 @@ public class LocalTransaction implements ServerTransaction
         }
     }
 
-    public void dequeue(Collection<QueueEntry> queueEntries, Action postTransactionAction)
-    {
+    @Override
+    public void dequeue(Collection<QueueEntry> queueEntries, Action postTransactionAction) {
+
         _postTransactionActions.add(postTransactionAction);
 
         try
@@ -121,6 +124,11 @@ public class LocalTransaction implements ServerTransaction
             _logger.error("Error during message dequeues", e);
             tidyUpOnError(e);
         }
+    }
+
+    public void dequeue(UUID channelID, Collection<QueueEntry> queueEntries, Action postTransactionAction)
+    {
+        throw new NotImplementedException();
     }
 
     private void tidyUpOnError(Exception e)

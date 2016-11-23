@@ -17,7 +17,11 @@ package org.wso2.andes.server.txn;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
+import org.wso2.andes.AMQException;
 import org.wso2.andes.kernel.Andes;
+import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesUtils;
 import org.wso2.andes.kernel.dtx.AlreadyKnownDtxException;
 import org.wso2.andes.kernel.dtx.DistributedTransaction;
 import org.wso2.andes.kernel.dtx.JoinAndResumeDtxException;
@@ -29,9 +33,11 @@ import org.wso2.andes.server.message.EnqueableMessage;
 import org.wso2.andes.server.queue.BaseQueue;
 import org.wso2.andes.server.queue.QueueEntry;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 import javax.transaction.xa.Xid;
 
 /**
@@ -70,6 +76,20 @@ public class QpidDistributedTransaction implements ServerTransaction {
     @Override
     public void dequeue(Collection<QueueEntry> messages, Action postTransactionAction) {
         throw new NotImplementedException();
+    }
+
+    @Override
+    public void dequeue(UUID channelID, Collection<QueueEntry> messages, Action postTransactionAction)
+            throws AMQException {
+        List<AndesAckData> ackList = new ArrayList<>(messages.size());
+        try {
+            for (QueueEntry entry : messages) {
+                ackList.add(AndesUtils.generateAndesAckMessage(channelID, entry.getMessage().getMessageNumber()));
+            }
+            distributedTransaction.dequeue(ackList);
+        } catch (AndesException e) {
+            throw new AMQException("Error occurred while creating a AndesAckData ", e);
+        }
     }
 
     @Override
