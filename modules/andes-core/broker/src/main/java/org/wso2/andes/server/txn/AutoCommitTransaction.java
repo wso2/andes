@@ -17,9 +17,7 @@
  */
 package org.wso2.andes.server.txn;
 
-import java.util.Collection;
-import java.util.List;
-
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQStoreException;
@@ -28,6 +26,10 @@ import org.wso2.andes.server.message.ServerMessage;
 import org.wso2.andes.server.queue.BaseQueue;
 import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.store.TransactionLog;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * An implementation of ServerTransaction where each enqueue/dequeue
@@ -93,8 +95,8 @@ public class AutoCommitTransaction implements ServerTransaction
 
     }
 
-    public void dequeue(Collection<QueueEntry> queueEntries, Action postTransactionAction)
-    {
+    @Override
+    public void dequeue(Collection<QueueEntry> queueEntries, Action postTransactionAction) {
         TransactionLog.Transaction txn = null;
         try
         {
@@ -136,7 +138,11 @@ public class AutoCommitTransaction implements ServerTransaction
         {
             rollbackIfNecessary(postTransactionAction, txn);
         }
+    }
 
+    public void dequeue(UUID channelID, Collection<QueueEntry> queueEntries, Action postTransactionAction)
+    {
+        throw new NotImplementedException();
     }
 
 
