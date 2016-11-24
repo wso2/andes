@@ -321,6 +321,15 @@ public interface MessageStore extends HealthAwareStore {
     long getMessageCountForQueue(String storageQueueName) throws AndesException;
 
     /**
+     * Get message count for queue. This method should only be called from UI. The count getting here is an
+     * approximate value.
+     *
+     * @param storageQueueName name of queue
+     * @return message count
+     */
+    long getQueueMessageCountForUI(String storageQueueName) throws AndesException;
+
+    /**
      * Get message count of queue in DLC
      *
      * @param storageQueueName name of queue

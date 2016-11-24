@@ -486,6 +486,16 @@ public class FailureObservingMessageStore implements MessageStore {
         }
     }
 
+    @Override
+    public long getQueueMessageCountForUI(String storageQueueName) throws AndesException {
+        try {
+            return wrappedInstance.getQueueMessageCountForUI(storageQueueName);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
     /**
      * {@inheritDoc}
      */

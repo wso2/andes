@@ -101,7 +101,8 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
 
             int index = 0;
             for (AndesSubscription subscription : subscriptionsToDisplay) {
-                Long pendingMessageCount = subscription.getStorageQueue().getMessageCount();
+                Long pendingMessageCount = MessagingEngine.getInstance().getQueueMessageCountForUI(subscription
+                        .getStorageQueue().getName());
 
                 subscriptionArray[index] = renderSubscriptionForUI(subscription.isActive(),
                         destinationType,
@@ -124,7 +125,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
      */
     public long getPendingMessageCount(String queueName) throws MBeanException {
         try {
-            return MessagingEngine.getInstance().getMessageCountOfQueue(queueName);
+            return MessagingEngine.getInstance().getQueueMessageCountForUI(queueName);
         } catch (Exception e) {
             log.error("Error while invoking MBeans to calculate the pending message count for storage queue", e);
             throw new MBeanException(e, "Error while invoking MBeans to calculate the pending message count for "
@@ -167,7 +168,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
             for (AndesSubscription subscription : searchSubscriptionList) {
                 if (startingIndex <= index) {
                     Long pendingMessageCount
-                            = MessagingEngine.getInstance().getMessageCountOfQueue(subscription.getStorageQueue()
+                            = MessagingEngine.getInstance().getQueueMessageCountForUI(subscription.getStorageQueue()
                             .getName());
                     subscriptionArray[subscriptionDetailsIndex] =
                             renderSubscriptionForUI(isActive, destinationType,subscription,
@@ -296,7 +297,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
     @Override
     public int getMessageCount(String subscribedNode, String msgPattern ,String destinationName) {
         try {
-            Long messageCount = MessagingEngine.getInstance().getMessageCountOfQueue(destinationName);
+            Long messageCount = MessagingEngine.getInstance().getQueueMessageCountForUI(destinationName);
             return messageCount.intValue();
         }catch (Exception e) {
             throw new RuntimeException("Error in retrieving pending message count", e);

@@ -359,6 +359,18 @@ public class MessagingEngine {
     }
 
     /**
+     * Get message count for queue. This method should only be called from UI. The count getting here is an
+     * approximate value.
+     *
+     * @param queueName name of the queue
+     * @return message count of the queue
+     * @throws AndesException
+     */
+    public long getQueueMessageCountForUI(String queueName) throws AndesException {
+        return messageStore.getQueueMessageCountForUI(queueName);
+    }
+
+    /**
      * Get number of messages in the queue within the message id range
      *
      * @param storageQueueName name of the queue
