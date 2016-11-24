@@ -835,6 +835,12 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
         MQTTAuthorizationSubject authSubject = authSubjects.get(clientID);
         SubAckMessage ackMessage = new SubAckMessage();
         ackMessage.setMessageID(msg.getMessageID());
+        if (authSubject == null) {
+            ackMessage.addType(AbstractMessage.QOSType.FAILURE);
+            session.write(ackMessage);
+            return;
+        }
+
         for (SubscribeMessage.Couple req : msg.subscriptions()) {
             // Authorize subscribe
             String tenant = MQTTUtils.getTenantFromTopic(req.getTopicFilter());
@@ -860,7 +866,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
                         } catch (InterruptedException e) {
                             // Restore the interrupted status
                             Thread.currentThread().interrupt();
-                            log.error("Failed to disconnect the client " + clientID);
+                            log.error("Failed to disconnect the client " + clientID, e);
                         }
                         return;
                     } else {
