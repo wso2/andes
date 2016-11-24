@@ -1760,6 +1760,37 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         return messageCount;
     }
 
+    @Override
+    public long getQueueMessageCountForUI(String storageQueueName) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet results = null;
+        long messageCount = 0;
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
+        try {
+            connection = getConnection();
+            connection.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_QUEUE_MESSAGE_COUNT);
+            preparedStatement.setInt(1, getCachedQueueID(storageQueueName));
+
+            results = preparedStatement.executeQuery();
+
+            while (results.next()) {
+                messageCount = results.getLong(RDBMSConstants.PS_ALIAS_FOR_COUNT);
+            }
+
+        } catch (SQLException e) {
+            throw rdbmsStoreUtils.convertSQLException("Error while getting message count from queue " +
+                                                      storageQueueName, e);
+        } finally {
+            contextRead.stop();
+            close(connection, preparedStatement, results,
+                    RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT + storageQueueName);
+        }
+
+        return messageCount;
+    }
+
     /**
      * {@inheritDoc}
      */
