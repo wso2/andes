@@ -89,7 +89,7 @@ public class QpidAndesBridge {
     /**
      * Ignore pub acknowledgements in AMQP. AMQP doesn't have pub acks
      */
-    private static PubAckHandler pubAckHandler;
+    public static PubAckHandler pubAckHandler;
 
     /**
      * Recover messages
@@ -168,46 +168,14 @@ public class QpidAndesBridge {
      * This should happen after all content chunks are received
      *
      * @param incomingMessage  message coming in
-     * @param channelID        id of the channel message came in
      * @param andesChannel     AndesChannel
      * @param transactionEvent not null if this is a message in a transaction, null otherwise
-     * @throws AMQException
+     * @throws AMQException when routing key is null
      */
-    public static void messageReceived(IncomingMessage incomingMessage, UUID channelID,
-                           AndesChannel andesChannel, InboundTransactionEvent transactionEvent) throws AMQException {
-
-        long receivedTime = System.currentTimeMillis();
+    public static void messageReceived(IncomingMessage incomingMessage, AndesChannel andesChannel,
+            InboundTransactionEvent transactionEvent) throws AMQException {
         try {
-            if (log.isDebugEnabled()) {
-                log.debug("Message id " + incomingMessage.getMessageNumber() + " received from channel " + channelID);
-            }
-            AMQMessage message = new AMQMessage(incomingMessage.getStoredMessage());
-            //set the time to live value for AMQ Message
-            message.setExpiration(incomingMessage.getExpiration());
-            // message arrival time set to mb node's system time without using
-            // message published time by publisher.
-            message.getMessageMetaData().setArrivalTime(receivedTime);
-
-            AndesMessageMetadata metadata = AMQPUtils.convertAMQMessageToAndesMetadata(message);
-            String queue = message.getRoutingKey();
-
-            if (queue == null) {
-                log.error("Queue cannot be null, for " + incomingMessage.getMessageNumber());
-                return;
-            }
-
-            AndesMessage andesMessage = new AMQPMessage(metadata);
-
-            // Update Andes message with all the chunk details
-            int contentChunks = incomingMessage.getBodyCount();
-            int offset = 0;
-            for (int i = 0; i < contentChunks; i++) {
-                ContentChunk chunk = incomingMessage.getContentChunk(i);
-                AndesMessagePart messagePart = messageContentChunkReceived(
-                                                        metadata.getMessageID(), offset, chunk.getData().buf());
-                offset = offset + chunk.getSize();
-                andesMessage.addMessagePart(messagePart);
-            }
+            AndesMessage andesMessage = convertToAndesMessage(incomingMessage);
 
             // Handover message to Andes
             if(null == transactionEvent) { // not a transaction
@@ -224,12 +192,71 @@ public class QpidAndesBridge {
         if(log.isDebugEnabled()) {
             Long localCount = receivedMessageCounter.incrementAndGet();
             if (localCount % 10000 == 0) {
-                long timetook = System.currentTimeMillis() - last10kMessageReceivedTimestamp;
-                log.debug("Received " + localCount + ", throughput = " + (10000 * 1000 / timetook) + " msg/sec, " + timetook);
+                long timeTook = System.currentTimeMillis() - last10kMessageReceivedTimestamp;
+                log.debug("Received " + localCount + ", throughput = " + (10000 * 1000 / timeTook) + " msg/sec, " + timeTook);
                 last10kMessageReceivedTimestamp = System.currentTimeMillis();
             }
         }
 
+    }
+
+    /**
+     * Message metadata received from AMQP transport.
+     *
+     * @param andesMessage Message coming in
+     * @param andesChannel AndesChannel
+     */
+    public static void messageReceived(AndesMessage andesMessage, AndesChannel andesChannel) {
+        Andes.getInstance().messageReceived(andesMessage, andesChannel, pubAckHandler);
+
+        //Following code is only a performance counter
+        if (log.isDebugEnabled()) {
+            Long localCount = receivedMessageCounter.incrementAndGet();
+            if (localCount % 10000 == 0) {
+                long timetook = System.currentTimeMillis() - last10kMessageReceivedTimestamp;
+                log.debug("Received " + localCount + ", throughput = " + (10000 * 1000 / timetook) + " msg/sec, "
+                        + timetook);
+                last10kMessageReceivedTimestamp = System.currentTimeMillis();
+            }
+        }
+    }
+
+    /**
+     * Convert Qpid Incoming message to an Andes message
+     * @param incomingMessage Incoming message from transport
+     * @return AndesMessage
+     * @throws AndesException when routing key is null
+     */
+    public static AndesMessage convertToAndesMessage(IncomingMessage incomingMessage)
+            throws  AndesException {
+        long receivedTime = System.currentTimeMillis();
+        AMQMessage message = new AMQMessage(incomingMessage.getStoredMessage());
+        //set the time to live value for AMQ Message
+        message.setExpiration(incomingMessage.getExpiration());
+        // message arrival time set to mb node's system time without using
+        // message published time by publisher.
+        message.getMessageMetaData().setArrivalTime(receivedTime);
+
+        AndesMessageMetadata metadata = AMQPUtils.convertAMQMessageToAndesMetadata(message);
+        String queue = message.getRoutingKey();
+
+        if (queue == null) {
+            throw new AndesException("Queue cannot be null, for " + incomingMessage.getMessageNumber());
+        }
+
+        AndesMessage andesMessage = new AMQPMessage(metadata);
+
+        // Update Andes message with all the chunk details
+        int contentChunks = incomingMessage.getBodyCount();
+        int offset = 0;
+        for (int i = 0; i < contentChunks; i++) {
+            ContentChunk chunk = incomingMessage.getContentChunk(i);
+            AndesMessagePart messagePart = messageContentChunkReceived(
+                                                    metadata.getMessageID(), offset, chunk.getData().buf());
+            offset = offset + chunk.getSize();
+            andesMessage.addMessagePart(messagePart);
+        }
+        return andesMessage;
     }
 
     /**
