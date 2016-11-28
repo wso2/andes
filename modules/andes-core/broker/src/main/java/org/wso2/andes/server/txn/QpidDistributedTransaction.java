@@ -18,9 +18,12 @@ package org.wso2.andes.server.txn;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
+import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesUtils;
 import org.wso2.andes.kernel.dtx.AlreadyKnownDtxException;
 import org.wso2.andes.kernel.dtx.DistributedTransaction;
@@ -31,6 +34,7 @@ import org.wso2.andes.kernel.dtx.UnknownDtxBranchException;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.message.EnqueableMessage;
 import org.wso2.andes.server.queue.BaseQueue;
+import org.wso2.andes.server.queue.IncomingMessage;
 import org.wso2.andes.server.queue.QueueEntry;
 
 import java.util.ArrayList;
@@ -147,5 +151,17 @@ public class QpidDistributedTransaction implements ServerTransaction {
             LOGGER.debug("Committing distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
         }
         // TODO
+    }
+
+    public void enqueueMessage(IncomingMessage incomingMessage, AndesChannel andesChannel) {
+        AndesMessage andesMessage = null;
+
+        try {
+            andesMessage = QpidAndesBridge.convertToAndesMessage(incomingMessage);
+        } catch (AndesException e) {
+            // TODO Need to propagate error in the prepare stage.
+        }
+
+        distributedTransaction.enqueueMessage(andesMessage, andesChannel);
     }
 }
