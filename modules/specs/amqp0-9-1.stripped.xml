@@ -537,13 +537,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <chassis name="client" implement="MUST"/>
       <field name="xa-result" type="short" />
     </method>
-    <!--<method name="commit" synchronous="1" index="20">-->
-      <!--<chassis name="server" implement="MUST"/>-->
-      <!--<response name="commit-ok"/>-->
-    <!--</method>-->
-    <!--<method name="commit-ok" synchronous="1" index="21">-->
-      <!--<chassis name="client" implement="MUST"/>-->
-    <!--</method>-->
+
     <!--<method name="rollback" synchronous="1" index="30">-->
       <!--<chassis name="server" implement="MUST"/>-->
       <!--<response name="rollback-ok"/>-->
