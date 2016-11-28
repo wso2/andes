@@ -15,9 +15,12 @@
 
 package org.wso2.andes.kernel.dtx;
 
+import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessage;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -111,6 +114,15 @@ public class DistributedTransaction {
             for (AndesAckData ackData: ackList) {
                 Andes.getInstance().ackReceived(ackData);
             }
+        }
+    }
+
+    public void enqueueMessage(AndesMessage andesMessage, AndesChannel andesChannel) {
+        if (branch != null) {
+            branch.enqueueMessage(andesMessage);
+        } else {
+            QpidAndesBridge
+                    .messageReceived(andesMessage, andesChannel);
         }
     }
 }

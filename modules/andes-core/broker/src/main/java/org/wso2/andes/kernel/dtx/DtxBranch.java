@@ -15,6 +15,9 @@
 
 package org.wso2.andes.kernel.dtx;
 
+import org.wso2.andes.kernel.AndesMessage;
+
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import javax.transaction.xa.Xid;
@@ -24,6 +27,7 @@ public class DtxBranch {
     private final Xid xid;
     private final DtxRegistry dtxRegistry;
     private Map<Long, State> associatedSessions = new HashMap<>();
+    private ArrayList<AndesMessage> enqueueMessages = new ArrayList<>();
 
     public DtxBranch(Xid xid, DtxRegistry dtxRegistry) {
         this.xid = xid;
@@ -73,6 +77,10 @@ public class DtxBranch {
         } else {
             return false;
         }
+    }
+
+    public void enqueueMessage(AndesMessage andesMessage) {
+        enqueueMessages.add(andesMessage);
     }
 
     public enum State {

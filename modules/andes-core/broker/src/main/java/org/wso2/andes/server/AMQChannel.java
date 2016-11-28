@@ -479,7 +479,10 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                         //need to bind this to the inner class, as _currentMessage
                         final IncomingMessage incomingMessage = _currentMessage;
 
-                        try {
+                        if (isAttachedToADistributedTransaction()) {
+                            ((QpidDistributedTransaction)_transaction).enqueueMessage(incomingMessage, andesChannel);
+                        } else {
+                            try {
                             /*
                              * All we have to do is to write content, metadata,
                              * and add the message id to the global queue
@@ -487,19 +490,25 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                              * adding metadata and message to global queue
                              * happen here
                              */
-                            if (beginPublisherTransaction) {
-                                andesTransactionEvent = Andes.getInstance().newTransaction(andesChannel);
-                                beginPublisherTransaction = false;
-                            }
-                            QpidAndesBridge.messageReceived(incomingMessage, getId(), andesChannel,
-                                    andesTransactionEvent);
+                                if (beginPublisherTransaction) {
+                                    andesTransactionEvent = Andes.getInstance().newTransaction(andesChannel);
+                                    beginPublisherTransaction = false;
+                                }
+                                if (_logger.isDebugEnabled()) {
+                                    _logger.debug("Message id " + incomingMessage.getMessageNumber() + " received from "
+                                            + "channel " + getId());
+                                }
 
-                        } catch (Throwable e) {
-                            _logger.error(
-                                    "Error processing completed messages, Close the session " + getSessionName(), e);
-                            // We mark the session as closed due to error
-                            if (_session instanceof AMQProtocolEngine) {
-                                ((AMQProtocolEngine) _session).closeProtocolSession();
+                                QpidAndesBridge
+                                        .messageReceived(incomingMessage, andesChannel, andesTransactionEvent);
+
+                            } catch (Throwable e) {
+                                _logger.error("Error processing completed messages, Close the session " + getSessionName(),
+                                        e);
+                                // We mark the session as closed due to error
+                                if (_session instanceof AMQProtocolEngine) {
+                                    ((AMQProtocolEngine) _session).closeProtocolSession();
+                                }
                             }
                         }
                     }
@@ -514,6 +523,15 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             }
         }
 
+    }
+
+    /**
+     * Check if the a dtx select was received for current session.
+     *
+     * @return True if attached to a DistributedTransaction, False otherwise
+     */
+    private boolean isAttachedToADistributedTransaction() {
+        return _transaction instanceof QpidDistributedTransaction;
     }
 
     public void publishContentBody(ContentBody contentBody) throws AMQException
@@ -1370,7 +1388,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
      * @throws DtxNotSelectedException if dtxselect is not called before
      */
     private QpidDistributedTransaction assertDtxTransaction() throws DtxNotSelectedException {
-        if(_transaction instanceof QpidDistributedTransaction)
+        if(isAttachedToADistributedTransaction())
         {
             return (QpidDistributedTransaction) _transaction;
         }
