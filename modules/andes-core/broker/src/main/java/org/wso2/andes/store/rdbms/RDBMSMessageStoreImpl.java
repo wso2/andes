@@ -1743,16 +1743,23 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         return messageCount;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public long getQueueMessageCountForUI(String storageQueueName) throws AndesException {
+    public long getApproximateQueueMessageCount(String storageQueueName) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet results = null;
         long messageCount = 0;
         Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
+        int previousTransactionIsolationValue = -1;
         try {
             connection = getConnection();
+
+            previousTransactionIsolationValue = connection.getTransactionIsolation();
             connection.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
+
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_QUEUE_MESSAGE_COUNT);
             preparedStatement.setInt(1, getCachedQueueID(storageQueueName));
 
@@ -1763,10 +1770,21 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             }
 
         } catch (SQLException e) {
-            throw rdbmsStoreUtils.convertSQLException("Error while getting message count from queue " +
-                                                      storageQueueName, e);
+            throw rdbmsStoreUtils
+                    .convertSQLException("Error while getting message count from queue " + storageQueueName, e);
         } finally {
             contextRead.stop();
+
+            // Reset transaction isolation value
+            try {
+                if (connection != null && previousTransactionIsolationValue != -1) {
+                    connection.setTransactionIsolation(previousTransactionIsolationValue);
+                }
+            } catch (SQLException e) {
+                log.error("Error while reverting transaction isolation value after reading queue count for"
+                        + storageQueueName, e);
+            }
+
             close(connection, preparedStatement, results,
                     RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT + storageQueueName);
         }

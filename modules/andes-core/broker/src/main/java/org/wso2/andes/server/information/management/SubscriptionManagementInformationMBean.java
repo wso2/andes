@@ -17,7 +17,7 @@
  */
 package org.wso2.andes.server.information.management;
 
-import org.apache.commons.lang.StringUtils;
+import com.sun.org.glassfish.external.statistics.annotations.Reset;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
@@ -31,13 +31,12 @@ import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.management.common.mbeans.SubscriptionManagementInformation;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.management.AMQManagedObject;
-import javax.management.MBeanException;
-import javax.management.NotCompliantMBeanException;
-import java.util.ArrayList;
+
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
+import javax.management.MBeanException;
+import javax.management.NotCompliantMBeanException;
 
 /**
  * Class to handle data for all subscription related UI functions.
@@ -101,7 +100,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
 
             int index = 0;
             for (AndesSubscription subscription : subscriptionsToDisplay) {
-                Long pendingMessageCount = MessagingEngine.getInstance().getQueueMessageCountForUI(subscription
+                Long pendingMessageCount = MessagingEngine.getInstance().getApproximateQueueMessageCount(subscription
                         .getStorageQueue().getName());
 
                 subscriptionArray[index] = renderSubscriptionForUI(subscription.isActive(),
@@ -125,7 +124,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
      */
     public long getPendingMessageCount(String queueName) throws MBeanException {
         try {
-            return MessagingEngine.getInstance().getQueueMessageCountForUI(queueName);
+            return MessagingEngine.getInstance().getApproximateQueueMessageCount(queueName);
         } catch (Exception e) {
             log.error("Error while invoking MBeans to calculate the pending message count for storage queue", e);
             throw new MBeanException(e, "Error while invoking MBeans to calculate the pending message count for "
@@ -168,7 +167,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
             for (AndesSubscription subscription : searchSubscriptionList) {
                 if (startingIndex <= index) {
                     Long pendingMessageCount
-                            = MessagingEngine.getInstance().getQueueMessageCountForUI(subscription.getStorageQueue()
+                            = MessagingEngine.getInstance().getApproximateQueueMessageCount(subscription.getStorageQueue()
                             .getName());
                     subscriptionArray[subscriptionDetailsIndex] =
                             renderSubscriptionForUI(isActive, destinationType,subscription,
@@ -297,7 +296,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
     @Override
     public int getMessageCount(String subscribedNode, String msgPattern ,String destinationName) {
         try {
-            Long messageCount = MessagingEngine.getInstance().getQueueMessageCountForUI(destinationName);
+            Long messageCount = MessagingEngine.getInstance().getApproximateQueueMessageCount(destinationName);
             return messageCount.intValue();
         }catch (Exception e) {
             throw new RuntimeException("Error in retrieving pending message count", e);
