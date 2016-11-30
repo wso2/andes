@@ -538,15 +538,16 @@ public class MessagingEngine {
     }
 
     /**
-     * Get message count for queue. This method should only be called from UI. The count getting here is an
-     * approximate value.
+     * Return message count for the given queue. The count returned here is an approximate value since transactions
+     * are not used. This can be used in places where we need a rough value of the message count. The advantage of
+     * this method is this imposes less overhead on the DB.
      *
      * @param queueName name of the queue
      * @return message count of the queue
-     * @throws AndesException
+     * @throws AndesException due to an error in the message store
      */
-    public long getQueueMessageCountForUI(String queueName) throws AndesException {
-        return messageStore.getQueueMessageCountForUI(queueName);
+    public long getApproximateQueueMessageCount(String queueName) throws AndesException {
+        return messageStore.getApproximateQueueMessageCount(queueName);
     }
 
     /**

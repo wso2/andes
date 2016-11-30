@@ -99,7 +99,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
             int index = 0;
             for (AndesSubscription subscription : subscriptionsToDisplay) {
                 Long pendingMessageCount
-                        = MessagingEngine.getInstance().getQueueMessageCountForUI(subscription.getStorageQueueName());
+                        = MessagingEngine.getInstance().getApproximateQueueMessageCount(subscription.getStorageQueueName());
 
                 subscriptionArray[index] = renderSubscriptionForUI(subscription, pendingMessageCount.intValue());
                 index++;
@@ -139,7 +139,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
 
             for (AndesSubscription andesSubscription : subscriptionsToDisplay) {
                 if (subscriptionId.equals(andesSubscription.getSubscriptionID())) {
-                    pendingMessageCount = MessagingEngine.getInstance().getQueueMessageCountForUI(andesSubscription
+                    pendingMessageCount = MessagingEngine.getInstance().getApproximateQueueMessageCount(andesSubscription
                             .getStorageQueueName());
                     break;
                 }
@@ -200,7 +200,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
                 if (startingIndex <= index) {
 
                     Long pendingMessageCount
-                            = MessagingEngine.getInstance().getQueueMessageCountForUI(subscription.getStorageQueueName());
+                            = MessagingEngine.getInstance().getApproximateQueueMessageCount(subscription.getStorageQueueName());
                     subscriptionArray[subscriptionDetailsIndex] =
                             renderSubscriptionForUI(subscription, pendingMessageCount.intValue());
                     subscriptionDetailsIndex++;
@@ -377,7 +377,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
     @Override
     public int getMessageCount(String subscribedNode, String msgPattern ,String destinationName) {
         try {
-            Long messageCount = MessagingEngine.getInstance().getQueueMessageCountForUI(destinationName);
+            Long messageCount = MessagingEngine.getInstance().getApproximateQueueMessageCount(destinationName);
             return messageCount.intValue();
         }catch (Exception e) {
             throw new RuntimeException("Error in retrieving pending message count", e);
