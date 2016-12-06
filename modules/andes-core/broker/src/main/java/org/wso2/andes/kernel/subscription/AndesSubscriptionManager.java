@@ -380,13 +380,13 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
                  equal(AndesSubscription.ROUTER_NAME, messageRouter),
                  equal(AndesSubscription.ROUTING_KEY, bindingKeyPattern.toLowerCase()));
 
-        if(!SELECT_ALL_NODES.equals(connectedNode)){
-            subscriptionQuery = and (subscriptionQuery, equal(AndesSubscription.NODE_ID, connectedNode));
+        if (!SELECT_ALL_NODES.equals(connectedNode)) {
+            subscriptionQuery = and(subscriptionQuery, equal(AndesSubscription.NODE_ID, connectedNode));
         }
 
         Iterable<AndesSubscription> subscriptions = subscriptionRegistry.exucuteQuery(subscriptionQuery);
 
-        for(AndesSubscription subscription : subscriptions){
+        for (AndesSubscription subscription : subscriptions) {
             filteredSubscriptions.add(subscription);
         }
         return filteredSubscriptions;
@@ -406,8 +406,8 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
         List<AndesSubscription> allInactiveSubscriptions = getInactiveSubscriberRepresentations();
 
         for (AndesSubscription inactiveSubscription : allInactiveSubscriptions) {
-            if(inactiveSubscription.getStorageQueue().getMessageRouterBindingKey().equalsIgnoreCase
-                    (bindingKeyPattern)){
+            if (inactiveSubscription.getStorageQueue().getMessageRouterBindingKey().equalsIgnoreCase
+                    (bindingKeyPattern)) {
                 filteredSubscriptions.add(inactiveSubscription);
             }
         }
@@ -438,8 +438,8 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
                  equal(AndesSubscription.ROUTER_NAME, messageRouter),
                  contains(AndesSubscription.ROUTING_KEY, bindingKeyPattern.toLowerCase()));
 
-        if(!SELECT_ALL_NODES.equals(connectedNode)){
-            subscriptionQuery = and (subscriptionQuery, equal(AndesSubscription.NODE_ID, connectedNode));
+        if (!SELECT_ALL_NODES.equals(connectedNode)) {
+            subscriptionQuery = and(subscriptionQuery, equal(AndesSubscription.NODE_ID, connectedNode));
         }
 
         Iterable<AndesSubscription> subscriptions = subscriptionRegistry.exucuteQuery(subscriptionQuery);
@@ -467,8 +467,8 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
         List<AndesSubscription> allInactiveSubscriptions = getInactiveSubscriberRepresentations();
 
         for (AndesSubscription inactiveSubscription : allInactiveSubscriptions) {
-            if(StringUtils.containsIgnoreCase(inactiveSubscription.getStorageQueue().getMessageRouterBindingKey(),
-                    bindingKeyPattern)){
+            if (StringUtils.containsIgnoreCase(inactiveSubscription.getStorageQueue().getMessageRouterBindingKey(),
+                    bindingKeyPattern)) {
                 filteredSubscriptions.add(inactiveSubscription);
             }
         }
@@ -487,25 +487,25 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
      */
     private Set<AndesSubscription> filterInactiveSubscriptionsBySubscriptionId(Set<AndesSubscription> subscriptions,
             ProtocolType protocolType, DestinationType destinationType,String subscriptionIdPattern,
-            boolean isExactMatchSubscriptionId){
+            boolean isExactMatchSubscriptionId) {
 
         Set<AndesSubscription> filteredSubscriptions = new HashSet<>();
         String messageRouter = destinationType.getAndesMessageRouter();
 
-        if(isExactMatchSubscriptionId){
+        if (isExactMatchSubscriptionId) {
             for (AndesSubscription inactiveSubscription : subscriptions) {
-                if(inactiveSubscription.getStorageQueue().getMessageRouter().getName().equals(messageRouter)
+                if (inactiveSubscription.getStorageQueue().getMessageRouter().getName().equals(messageRouter)
                         && inactiveSubscription.getProtocolType().equals(protocolType)
-                        && inactiveSubscription.getSubscriptionId().equalsIgnoreCase(subscriptionIdPattern)){
+                        && inactiveSubscription.getSubscriptionId().equalsIgnoreCase(subscriptionIdPattern)) {
                     filteredSubscriptions.add(inactiveSubscription);
                 }
             }
-        }else{
+        } else {
             for (AndesSubscription inactiveSubscription : subscriptions) {
-                if(inactiveSubscription.getStorageQueue().getMessageRouter().getName().equals(messageRouter)
+                if (inactiveSubscription.getStorageQueue().getMessageRouter().getName().equals(messageRouter)
                         && inactiveSubscription.getProtocolType().equals(protocolType)
                         && StringUtils.containsIgnoreCase(inactiveSubscription.getSubscriptionId(),
-                        subscriptionIdPattern)){
+                        subscriptionIdPattern)) {
                     filteredSubscriptions.add(inactiveSubscription);
                 }
             }
@@ -522,11 +522,11 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
      * @return Set of subscriptions filtered according to search criteria
      */
     private Set<AndesSubscription> filterActiveSubscriptionsBySubscriptionId(Set<AndesSubscription> subscriptions,String
-            subscriptionIdPattern, boolean isExactMatchSubscriptionId){
+            subscriptionIdPattern, boolean isExactMatchSubscriptionId) {
 
         Set<AndesSubscription> filteredSubscriptions = new HashSet<>();
 
-        if(isExactMatchSubscriptionId) {
+        if (isExactMatchSubscriptionId) {
             for (AndesSubscription subscription : subscriptions) {
                 if (subscriptionIdPattern.equalsIgnoreCase(subscription.getSubscriptionId())) {
                     filteredSubscriptions.add(subscription);
@@ -537,7 +537,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
                     }
                 }
             }
-        } else{
+        } else {
             for (AndesSubscription subscription : subscriptions) {
                 if (StringUtils.containsIgnoreCase(subscription.getSubscriptionId(), subscriptionIdPattern)) {
                     filteredSubscriptions.add(subscription);

@@ -46,7 +46,7 @@ public class PurgedMessageHandler extends DeliveryResponsibility {
                     + ". Therefore, it will not be sent. id= "
                     + message.getMessageID());
 
-            if(!message.isPurgedOrDeletedOrExpired()) {
+            if (!message.isPurgedOrDeletedOrExpired()) {
                 message.markAsPurgedMessage();
             }
         } else {
