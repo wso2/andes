@@ -179,7 +179,7 @@ public class Andes {
         this.messagingEngine = messagingEngine;
         this.subscriptionManager = subscriptionManager;
         this.inboundEventManager = inboundEventManager;
-        this.dtxRegistry = new DtxRegistry();
+        this.dtxRegistry = new DtxRegistry(messagingEngine);
 
         log.info("Andes API initialised.");
     }
@@ -673,7 +673,7 @@ public class Andes {
      *
      * @return id generated
      */
-    public long generateNewMessageId() {
+    public long generateUniqueId() {
         return MessagingEngine.getInstance().generateUniqueId();
     }
 

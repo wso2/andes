@@ -83,10 +83,12 @@ import org.wso2.andes.server.subscription.RecordDeliveryMethod;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionFactoryImpl;
 import org.wso2.andes.server.txn.AutoCommitTransaction;
-import org.wso2.andes.server.txn.QpidDistributedTransaction;
 import org.wso2.andes.server.txn.DtxNotSelectedException;
+import org.wso2.andes.server.txn.IncorrectDtxStateException;
 import org.wso2.andes.server.txn.LocalTransaction;
+import org.wso2.andes.server.txn.QpidDistributedTransaction;
 import org.wso2.andes.server.txn.ServerTransaction;
+import org.wso2.andes.server.txn.TimeoutDtxException;
 import org.wso2.andes.server.virtualhost.AMQChannelMBean;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.store.StoredAMQPMessage;
@@ -1372,7 +1374,9 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         distributedTransaction.end(_session.getSessionID(), xid,fail, suspend);
     }
 
-    public void prepareDtxTransaction(Xid xid) throws DtxNotSelectedException {
+    public void prepareDtxTransaction(Xid xid)
+            throws DtxNotSelectedException, TimeoutDtxException, UnknownDtxBranchException, IncorrectDtxStateException,
+            AndesException {
         QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
         distributedTransaction.prepare(xid);
     }
