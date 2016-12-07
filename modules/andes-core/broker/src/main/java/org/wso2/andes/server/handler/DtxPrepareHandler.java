@@ -17,17 +17,19 @@ package org.wso2.andes.server.handler;
 
 import org.wso2.andes.AMQException;
 import org.wso2.andes.dtx.XidImpl;
-import org.wso2.andes.framing.DtxEndOkBody;
 import org.wso2.andes.framing.DtxPrepareOkBody;
-import org.wso2.andes.framing.amqp_0_91.DtxEndBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxPrepareBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.MethodRegistry_0_91;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.dtx.UnknownDtxBranchException;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.state.AMQStateManager;
 import org.wso2.andes.server.state.StateAwareMethodListener;
 import org.wso2.andes.server.txn.DtxNotSelectedException;
+import org.wso2.andes.server.txn.IncorrectDtxStateException;
+import org.wso2.andes.server.txn.TimeoutDtxException;
 import org.wso2.andes.transport.DtxXaStatus;
 
 import javax.transaction.xa.Xid;
@@ -55,13 +57,27 @@ public class DtxPrepareHandler implements StateAwareMethodListener<DtxPrepareBod
         }
 
         try {
-            channel.prepareDtxTransaction(xid);
+            DtxPrepareOkBody dtxPrepareOkBody;
 
-            MethodRegistry_0_91 methodRegistry = (MethodRegistry_0_91) session.getMethodRegistry();
-            DtxPrepareOkBody dtxPrepareOkBody = methodRegistry.createDtxPrepareOkBody(DtxXaStatus.XA_OK.getValue());
+            try {
+                channel.prepareDtxTransaction(xid);
+
+                MethodRegistry_0_91 methodRegistry = (MethodRegistry_0_91) session.getMethodRegistry();
+                dtxPrepareOkBody = methodRegistry.createDtxPrepareOkBody(DtxXaStatus.XA_OK.getValue());
+            } catch (TimeoutDtxException e) {
+                MethodRegistry_0_91 methodRegistry = (MethodRegistry_0_91) session.getMethodRegistry();
+                dtxPrepareOkBody = methodRegistry.createDtxPrepareOkBody(DtxXaStatus.XA_RBTIMEOUT.getValue());
+            }
+
             session.writeFrame(dtxPrepareOkBody.generateFrame(channelId));
         } catch (DtxNotSelectedException e) {
             throw new AMQException(AMQConstant.COMMAND_INVALID, "Error ending dtx ", e);
+        } catch (IncorrectDtxStateException e) {
+            throw new AMQException(AMQConstant.INTERNAL_ERROR, "Cannot prepare, branch in an invalid state", e);
+        } catch (AndesException e) {
+            throw new AMQException(AMQConstant.INTERNAL_ERROR, "Internal error occurred while persisting records", e);
+        } catch (UnknownDtxBranchException e) {
+            throw new AMQException(AMQConstant.NOT_FOUND, "Could not find the specified dtx branch ", e);
         }
     }
 }

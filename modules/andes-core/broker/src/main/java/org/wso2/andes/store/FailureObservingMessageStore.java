@@ -22,6 +22,7 @@ import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
+import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
@@ -30,14 +31,15 @@ import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
-import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.RecoverySlotCreator;
+import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
+import javax.transaction.xa.Xid;
 
 /**
  * Implementation of {@link MessageStore} which observes failures such is
@@ -644,6 +646,20 @@ public class FailureObservingMessageStore implements MessageStore {
     public void close() {
         wrappedInstance.close();
         failureObservingStoreManager.close();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void storeDtxRecords(Xid xid, List<AndesMessage> enqueueRecords, List<AndesAckData> dequeueRecords)
+            throws AndesException {
+        try {
+            wrappedInstance.storeDtxRecords(xid, enqueueRecords, dequeueRecords);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
     }
 
     /**

@@ -42,6 +42,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import javax.transaction.xa.Xid;
 
 /**
  * This class will handle all message related functions of WSO2 Message Broker
@@ -647,5 +648,10 @@ public class MessagingEngine {
             lastMessageId = lastAssignedSlotMessageId - messageIdDifference;
         }
         return lastMessageId;
+    }
+
+    public void storeDtxRecords(Xid xid, List<AndesMessage> enqueueRecords, List<AndesAckData> dequeueRecords)
+            throws AndesException {
+        messageStore.storeDtxRecords(xid, enqueueRecords, dequeueRecords);
     }
 }

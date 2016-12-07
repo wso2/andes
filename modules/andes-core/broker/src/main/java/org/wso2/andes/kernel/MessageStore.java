@@ -21,12 +21,13 @@ package org.wso2.andes.kernel;
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
-import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.RecoverySlotCreator;
+import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.store.HealthAwareStore;
 
 import java.util.List;
 import java.util.Map;
+import javax.transaction.xa.Xid;
 
 /**
  * Message meta data and content storing related data base types specific logic is abstracted out
@@ -433,4 +434,17 @@ public interface MessageStore extends HealthAwareStore {
      */
     void close();
 
+    /*
+     * =============================+=== Distributed Transactions related operations =================================
+     */
+
+    /**
+     * Persist enqueue and dequeue records to the database. This is normally done at the prepare stage
+     *
+     * @param xid            xid of the Distributed transaction branch
+     * @param enqueueRecords list of enqueue records
+     * @param dequeueRecords list of dequeue records
+     */
+    void storeDtxRecords(Xid xid, List<AndesMessage> enqueueRecords, List<AndesAckData> dequeueRecords)
+            throws AndesException;
 }
