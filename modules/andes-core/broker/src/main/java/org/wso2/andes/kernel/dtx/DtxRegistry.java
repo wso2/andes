@@ -15,26 +15,82 @@
 
 package org.wso2.andes.kernel.dtx;
 
+import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessage;
+import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.server.txn.IncorrectDtxStateException;
+import org.wso2.andes.server.txn.TimeoutDtxException;
+
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import javax.transaction.xa.Xid;
 
 public class DtxRegistry {
     private final Map<ComparableXid, DtxBranch> branches = new HashMap<>();
 
+    /**
+     * Used to communicate with the message store
+     */
+    private MessagingEngine messagingEngine;
+
+    /**
+     * Default constructor
+     *
+     * @param messagingEngine messaging engine used to communicate with the message store
+     */
+    public DtxRegistry(MessagingEngine messagingEngine) {
+        this.messagingEngine = messagingEngine;
+    }
+
     public synchronized DtxBranch getBranch(Xid xid) {
         return branches.get(new ComparableXid(xid));
     }
 
-    public synchronized boolean registerBranch(DtxBranch branch)
-    {
+    public synchronized boolean registerBranch(DtxBranch branch) {
         ComparableXid xid = new ComparableXid(branch.getXid());
-        if(!branches.containsKey(xid))
-        {
+        if(!branches.containsKey(xid)) {
             branches.put(xid, branch);
             return true;
         }
         return false;
+    }
+
+    public synchronized void prepare(Xid xid)
+            throws UnknownDtxBranchException, IncorrectDtxStateException, TimeoutDtxException, AndesException {
+        DtxBranch branch = getBranch(xid);
+
+        if (branch != null) {
+            if (!branch.hasAssociatedActiveSessions()) {
+                branch.clearAssociations();
+
+                if (branch.expired()) {
+                    unregisterBranch(branch);
+                    throw new TimeoutDtxException(xid);
+                } else if (branch.getState() != DtxBranch.State.ACTIVE
+                        && branch.getState() != DtxBranch.State.ROLLBACK_ONLY) {
+                    throw new IncorrectDtxStateException("Cannot prepare a transaction in state " + branch.getState(),
+                            xid);
+                } else {
+                    branch.prepare();
+                    branch.setState(DtxBranch.State.PREPARED);
+                }
+            } else {
+                throw new IncorrectDtxStateException("Branch still has associated sessions", xid);
+            }
+        } else {
+            throw new UnknownDtxBranchException(xid);
+        }
+    }
+
+    private boolean unregisterBranch(DtxBranch branch) {
+        return (branches.remove(new ComparableXid(branch.getXid())) != null);
+    }
+
+    public void storeRecords(Xid xid, List<AndesMessage> enqueueRecords, List<AndesAckData> dequeueRecords)
+            throws AndesException {
+        messagingEngine.storeDtxRecords(xid, enqueueRecords, dequeueRecords);
     }
 
     private static final class ComparableXid {
