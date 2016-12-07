@@ -15,19 +15,42 @@
 
 package org.wso2.andes.kernel.dtx;
 
+import org.apache.log4j.Logger;
+import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import javax.transaction.xa.Xid;
 
 public class DtxBranch {
 
+    /**
+     * Class logger
+     */
+    private static final Logger LOGGER = Logger.getLogger(DtxBranch.class);
+
     private final Xid xid;
     private final DtxRegistry dtxRegistry;
     private Map<Long, State> associatedSessions = new HashMap<>();
-    private ArrayList<AndesMessage> enqueueMessages = new ArrayList<>();
+
+    /**
+     * Keep the list of messages that need to be published when the transaction commits
+     */
+    private ArrayList<AndesMessage> enqueueList = new ArrayList<>();
+
+    /**
+     * Keep the list of messages that need to be acked when the transaction commits
+     */
+    private List<AndesAckData> dequeueList = new ArrayList<>();
+
+    /**
+     * Current branch state
+     */
+    private State state;
 
     public DtxBranch(Xid xid, DtxRegistry dtxRegistry) {
         this.xid = xid;
@@ -80,12 +103,52 @@ public class DtxBranch {
     }
 
     public void enqueueMessage(AndesMessage andesMessage) {
-        enqueueMessages.add(andesMessage);
+        enqueueList.add(andesMessage);
+    }
+
+    public boolean hasAssociatedActiveSessions() {
+        if (hasAssociatedSessions()) {
+            for (State state : associatedSessions.values()) {
+                if (state != State.SUSPENDED) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean hasAssociatedSessions() {
+        return !associatedSessions.isEmpty();
+    }
+
+    public void clearAssociations() {
+        associatedSessions.clear();
+    }
+
+    public boolean expired() {
+        // TODO implement transaction timeouts
+        return false;
+    }
+
+    public State getState() {
+        return state;
+    }
+
+    public void prepare() throws AndesException {
+        LOGGER.debug("Performing prepare for DtxBranch {}" + xid);
+        dtxRegistry.storeRecords(xid, enqueueList, dequeueList);
+    }
+
+    public void setState(State state) {
+        this.state = state;
+    }
+
+    public void dequeueMessages(List<AndesAckData> ackList) {
+        dequeueList.addAll(ackList);
     }
 
     public enum State {
         SUSPENDED,
-        ACTIVE,
-        ROLLBACK_ONLY
+        ACTIVE, ROLLBACK_ONLY, PREPARED, TIMED_OUT
     }
 }

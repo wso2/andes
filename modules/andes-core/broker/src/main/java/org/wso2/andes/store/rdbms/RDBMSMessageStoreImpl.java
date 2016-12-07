@@ -26,6 +26,8 @@ import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
+import org.wso2.andes.kernel.Andes;
+import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
@@ -34,8 +36,8 @@ import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
-import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.RecoverySlotCreator;
+import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.store.AndesDataIntegrityViolationException;
@@ -56,6 +58,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import javax.transaction.xa.Xid;
 
 import static org.wso2.andes.store.rdbms.RDBMSConstants.CONTENT_TABLE;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_CONTENT;
@@ -111,11 +114,18 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     private LoadingCache<String, Integer> queueMappings;
 
     /**
+     * Instead of using auto increment IDs which is JDBS driver dependant, we can use this
+     * to generate unique IDs.
+     */
+    private Andes uniqueIdGenerator;
+
+    /**
      * {@inheritDoc}
      */
     @Override
     public DurableStoreConnection initializeMessageStore(AndesContextStore contextStore,
             ConfigurationProperties connectionProperties) throws AndesException {
+        uniqueIdGenerator = Andes.getInstance();
 
         this.rdbmsConnection = new RDBMSConnection();
         // read data source name from config and use
@@ -1321,6 +1331,86 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     @Override
     public void close() {
 
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void storeDtxRecords(Xid xid, List<AndesMessage> enqueueRecords, List<AndesAckData> dequeueRecords)
+            throws AndesException {
+        Connection connection = null;
+        PreparedStatement storeXidPS = null;
+        PreparedStatement storeMetadataPS = null;
+        PreparedStatement storeContentPS = null;
+        PreparedStatement storeDequeueRecordPS = null;
+
+        String taskDescription = "Storing dtx enqueue record";
+        ;
+        try {
+
+            connection = getConnection();
+
+            storeXidPS = connection.prepareStatement(RDBMSConstants.PS_INSERT_DTX_ENTRY);
+            long internalXid = uniqueIdGenerator.generateUniqueId();
+            storeXidPS.setLong(1, internalXid);
+            storeXidPS.setInt(2, xid.getFormatId());
+            storeXidPS.setBytes(3, xid.getGlobalTransactionId());
+            storeXidPS.setBytes(4, xid.getBranchQualifier());
+            storeXidPS.executeUpdate();
+
+            storeMetadataPS = connection.prepareStatement(RDBMSConstants.PS_INSERT_DTX_ENQUEUE_METADATA_RECORD);
+            storeContentPS = connection.prepareStatement(RDBMSConstants.PS_INSERT_MESSAGE_PART);
+
+            for (AndesMessage message : enqueueRecords) {
+
+                long temporaryMessageId = uniqueIdGenerator.generateUniqueId();
+
+                AndesMessageMetadata metadata = message.getMetadata();
+                storeMetadataPS.setLong(1, temporaryMessageId);
+                storeMetadataPS.setInt(2, getCachedQueueID(metadata.getStorageQueueName()));
+                storeMetadataPS.setBytes(3, metadata.getMetadata());
+                storeMetadataPS.addBatch();
+
+                for (AndesMessagePart messagePart : message.getContentChunkList()) {
+                    storeContentPS.setLong(1, temporaryMessageId);
+                    storeContentPS.setInt(2, messagePart.getOffset());
+                    storeContentPS.setBytes(3, messagePart.getData());
+                    storeContentPS.addBatch();
+                }
+            }
+
+            storeMetadataPS.executeBatch();
+            storeContentPS.executeBatch();
+
+            storeDequeueRecordPS = connection.prepareStatement(RDBMSConstants.PS_INSERT_DTX_DEQUEUE_RECORD);
+
+            for (AndesAckData dequeueRecord : dequeueRecords) {
+                DeliverableAndesMetadata acknowledgedMessage = dequeueRecord.getAcknowledgedMessage();
+
+                storeDequeueRecordPS.setLong(1, internalXid);
+                storeDequeueRecordPS.setLong(1, acknowledgedMessage.getMessageID());
+                storeDequeueRecordPS.setLong(1, getCachedQueueID(acknowledgedMessage.getStorageQueueName()));
+                storeDequeueRecordPS.addBatch();
+            }
+
+            storeDequeueRecordPS.executeBatch();
+
+            connection.commit();
+
+        } catch (AndesException e) {
+            rollback(connection, taskDescription);
+            throw e;
+        } catch (SQLException e) {
+            rollback(connection, taskDescription);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while inserting dtx enqueue record", e);
+        } finally {
+            close(storeXidPS, taskDescription);
+            close(storeMetadataPS, taskDescription);
+            close(storeContentPS, taskDescription);
+            close(storeDequeueRecordPS, taskDescription);
+            close(connection, taskDescription);
+        }
     }
 
     /**
