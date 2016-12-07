@@ -19,6 +19,7 @@
 package org.wso2.andes.store.rdbms;
 
 import org.wso2.andes.kernel.slot.SlotState;
+
 import java.sql.DataTruncation;
 import java.sql.SQLDataException;
 
@@ -80,6 +81,9 @@ public class RDBMSConstants {
     // Message Store tables
     protected static final String CONTENT_TABLE = "MB_CONTENT";
     protected static final String METADATA_TABLE = "MB_METADATA";
+    protected static final String DTX_ENQUEUE_RECORD_TABLE = "MB_DTX_PREPARED_ENQUEUE_RECORD";
+    protected static final String DTX_DEQUEUE_RECORD_TABLE = "MB_DTX_PREPARED_DEQUEUE_RECORD";
+    protected static final String DTX_ENTRY_TABLE = "MB_DTX_PREPARED_XID";
     protected static final String QUEUES_TABLE = "MB_QUEUE_MAPPING";
     protected static final String EXPIRATION_TABLE = "MB_EXPIRATION_DATA";
     protected static final String MSG_STORE_STATUS_TABLE = "MB_MSG_STORE_STATUS";
@@ -87,6 +91,10 @@ public class RDBMSConstants {
     protected static final String RETAINED_CONTENT_TABLE = "MB_RETAINED_CONTENT";
     // Message Store table columns
     protected static final String MESSAGE_ID = "MESSAGE_ID";
+    protected static final String INTERNAL_XID = "INTERNAL_XID";
+    protected static final String DTX_FORMAT = "FORMAT";
+    protected static final String DTX_GLOBAL_ID = "GLOBAL_ID";
+    protected static final String DTX_BRANCH_ID = "BRANCH_ID";
     protected static final String QUEUE_ID = "QUEUE_ID";
     protected static final String DLC_QUEUE_ID = "DLC_QUEUE_ID";
     protected static final String QUEUE_NAME = "QUEUE_NAME";
@@ -1038,6 +1046,34 @@ public class RDBMSConstants {
     protected static final String PS_CLEAN_MEMBERSHIP_EVENTS_FOR_NODE =
             "DELETE FROM " + MEMBERSHIP_TABLE
             + " WHERE " + NODE_ID + "=?";
+
+    /*
+     * =============== DTX related prepared statements
+     */
+
+    protected static final String PS_INSERT_DTX_ENQUEUE_METADATA_RECORD
+            = "INSERT INTO " + DTX_ENQUEUE_RECORD_TABLE + " ("
+            + INTERNAL_XID + ","
+            + MESSAGE_ID + ","
+            + QUEUE_ID + ","
+            + METADATA + ")"
+            + " VALUES ( ?,?,?,? )";
+
+    protected static final String PS_INSERT_DTX_DEQUEUE_RECORD
+            = "INSERT INTO " + DTX_DEQUEUE_RECORD_TABLE + " ("
+            + INTERNAL_XID + ","
+            + MESSAGE_ID + ","
+            + QUEUE_ID + ")"
+            + " VALUES ( ?,?,? )";
+
+    protected static final String PS_INSERT_DTX_ENTRY
+            = "INSERT INTO " + DTX_ENTRY_TABLE + " ("
+            + INTERNAL_XID + ","
+            + DTX_FORMAT + ","
+            + DTX_GLOBAL_ID + ","
+            + DTX_BRANCH_ID + ")"
+            + " VALUES ( ?,?,? )";
+
 
     // Message Store related jdbc tasks executed
     protected static final String TASK_STORING_MESSAGE_PARTS = "storing message parts.";

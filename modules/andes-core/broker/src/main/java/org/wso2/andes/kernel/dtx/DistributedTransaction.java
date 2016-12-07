@@ -21,8 +21,9 @@ import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
+import org.wso2.andes.server.txn.IncorrectDtxStateException;
+import org.wso2.andes.server.txn.TimeoutDtxException;
 
-import java.util.ArrayList;
 import java.util.List;
 import javax.transaction.xa.Xid;
 
@@ -32,11 +33,9 @@ public class DistributedTransaction {
     private DtxRegistry dtxRegistry;
     private DtxBranch branch;
 
-    private List<AndesAckData> dequeueList;
 
     public DistributedTransaction(DtxRegistry dtxRegistry) {
         this.dtxRegistry = dtxRegistry;
-        this.dequeueList = new ArrayList<>();
     }
 
     public void start(long sessionID, Xid xid, boolean join, boolean resume)
@@ -108,8 +107,8 @@ public class DistributedTransaction {
     }
 
     public void dequeue(List<AndesAckData> ackList) throws AndesException {
-        if (null != branch) {
-            dequeueList.addAll(ackList);
+        if (branch != null) {
+            branch.dequeueMessages(ackList);
         } else {
             for (AndesAckData ackData: ackList) {
                 Andes.getInstance().ackReceived(ackData);
@@ -124,5 +123,10 @@ public class DistributedTransaction {
             QpidAndesBridge
                     .messageReceived(andesMessage, andesChannel);
         }
+    }
+
+    public void prepare(Xid xid)
+            throws TimeoutDtxException, UnknownDtxBranchException, IncorrectDtxStateException, AndesException {
+        dtxRegistry.prepare(xid);
     }
 }
