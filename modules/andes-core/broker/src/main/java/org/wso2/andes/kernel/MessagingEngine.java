@@ -38,7 +38,6 @@ import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionEngine;
-import org.wso2.andes.thrift.MBThriftClient;
 import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.ArrayList;
@@ -701,10 +700,7 @@ public class MessagingEngine {
         //Start all slotDeliveryWorkers
         Set<AndesSubscription> activeLocalSubscribers = subscriptionEngine.getActiveLocalSubscribersForNode();
         SlotDeliveryWorkerManager.getInstance().startAllSlotDeliveryWorkers(activeLocalSubscribers);
-        //Start thrift reconnecting thread if started
-        if (MBThriftClient.isReconnectingStarted()) {
-            MBThriftClient.setReconnectingFlag(true);
-        }
+
         log.info("Start Disruptor writing messages to store.");
     }
 
@@ -716,10 +712,7 @@ public class MessagingEngine {
         log.info("Stopping SlotDelivery Workers.");
         //Stop all slotDeliveryWorkers
         SlotDeliveryWorkerManager.getInstance().stopSlotDelivery();
-        //Stop thrift reconnecting thread if started
-        if (MBThriftClient.isReconnectingStarted()) {
-            MBThriftClient.setReconnectingFlag(false);
-        }
+
         SlotMessageCounter.getInstance().stop();
         //Stop delivery disruptor
         MessageFlusher.getInstance().getFlusherExecutor().stop();

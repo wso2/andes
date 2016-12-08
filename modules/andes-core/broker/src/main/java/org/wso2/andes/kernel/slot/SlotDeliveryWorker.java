@@ -247,7 +247,10 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener, N
                 } catch (AndesException e) {
                     log.error("Error running Message Store Reader " + e.getMessage(), e);
                 } catch (InterruptedException e) {
-                    log.warn("SlotDeliveryWorker (" + this.getName() + ") execution was interrupted", e);
+                    // This is an error if the thread is interrupted when a shutdown is not triggered
+                    if (!shutdownTriggered) {
+                        log.error("SlotDeliveryWorker (" + this.getName() + ") execution was interrupted", e);
+                    }
                     Thread.currentThread().interrupt();
                 } catch (Throwable e) {
                     log.error("Error while running Slot Delivery Worker. ", e);

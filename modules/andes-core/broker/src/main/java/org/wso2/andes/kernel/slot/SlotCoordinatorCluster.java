@@ -28,6 +28,11 @@ import org.wso2.andes.thrift.MBThriftClient;
  */
 public class SlotCoordinatorCluster implements SlotCoordinator {
 
+    /**
+     * Thrift client that communicates with the coordinator.
+     */
+    MBThriftClient thriftClient = new MBThriftClient();
+
     private static Log log = LogFactory.getLog(SlotCoordinatorCluster.class);
     String nodeId;
 
@@ -42,7 +47,7 @@ public class SlotCoordinatorCluster implements SlotCoordinator {
      */
     @Override
     public Slot getSlot(String queueName) throws ConnectionException {
-        return MBThriftClient.getSlot(queueName, nodeId);
+        return thriftClient.getSlot(queueName, nodeId);
     }
 
     /**
@@ -51,7 +56,7 @@ public class SlotCoordinatorCluster implements SlotCoordinator {
     @Override
     public void updateMessageId(String queueName,
                                 long startMessageId, long endMessageId, long localSafeZone) throws ConnectionException {
-        MBThriftClient.updateMessageId(queueName,nodeId,startMessageId,endMessageId, localSafeZone);
+        thriftClient.updateMessageId(queueName,nodeId,startMessageId,endMessageId, localSafeZone);
     }
 
     /**
@@ -59,7 +64,7 @@ public class SlotCoordinatorCluster implements SlotCoordinator {
      */
     @Override
     public void updateSlotDeletionSafeZone(long currentSlotDeleteSafeZone) throws ConnectionException {
-        MBThriftClient.updateSlotDeletionSafeZone(currentSlotDeleteSafeZone, nodeId);
+        thriftClient.updateSlotDeletionSafeZone(currentSlotDeleteSafeZone, nodeId);
         if(log.isDebugEnabled()) {
             log.debug("Submitted safe zone from node : " + nodeId + " | safe zone : " +
                     currentSlotDeleteSafeZone);
@@ -71,7 +76,7 @@ public class SlotCoordinatorCluster implements SlotCoordinator {
      */
     @Override
     public boolean deleteSlot(String queueName, Slot slot) throws ConnectionException {
-        return MBThriftClient.deleteSlot(queueName, slot, nodeId);
+        return thriftClient.deleteSlot(queueName, slot, nodeId);
     }
 
     /**
@@ -79,7 +84,7 @@ public class SlotCoordinatorCluster implements SlotCoordinator {
      */
     @Override
     public void reAssignSlotWhenNoSubscribers(String queueName) throws ConnectionException {
-        MBThriftClient.reAssignSlotWhenNoSubscribers(nodeId, queueName);
+        thriftClient.reAssignSlotWhenNoSubscribers(nodeId, queueName);
     }
 
     /**
@@ -87,6 +92,6 @@ public class SlotCoordinatorCluster implements SlotCoordinator {
      */
     @Override
     public void clearAllActiveSlotRelationsToQueue(String queueName) throws ConnectionException {
-        MBThriftClient.clearAllActiveSlotRelationsToQueue(queueName);
+        thriftClient.clearAllActiveSlotRelationsToQueue(queueName);
     }
 }

@@ -109,11 +109,6 @@
                 <version>${commons-logging-api.version}</version>
             </dependency>
             <dependency>
-                <groupId>commons-pool</groupId>
-                <artifactId>commons-pool</artifactId>
-                <version>${commons-pool.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.apache.derby</groupId>
                 <artifactId>derby</artifactId>
                 <version>${derby.version}</version>
@@ -459,6 +454,11 @@
                 <artifactId>org.eclipse.osgi.services</artifactId>
                 <version>${org.eclipse.osgi.services.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-pool2</artifactId>
+                <version>${org.apache.commons.pool.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -563,7 +563,6 @@
         <commons-codec.version>1.3</commons-codec.version>
         <commons-logging.version>1.1.1</commons-logging.version>
         <commons-logging-api.version>1.1</commons-logging-api.version>
-        <commons-pool.version>1.5.3</commons-pool.version>
         <FastInfoset.version>1.2.12</FastInfoset.version>
         <high-scale-lib.version>1.1.2</high-scale-lib.version>
         <javacc.version>3.2</javacc.version>
@@ -621,6 +620,7 @@
         <securevault.version>1.0.0-wso2v2</securevault.version>
         <guava.version>19.0</guava.version>
         <lz4.version>1.3.0</lz4.version>
+        <org.apache.commons.pool.version>2.4.2</org.apache.commons.pool.version>
     </properties>
 
     <mailingLists>
