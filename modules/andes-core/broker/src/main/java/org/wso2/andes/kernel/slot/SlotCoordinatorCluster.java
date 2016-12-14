@@ -90,6 +90,13 @@ public class SlotCoordinatorCluster implements SlotCoordinator, NetworkPartition
         instance.clearAllActiveSlotRelationsToQueue(queueName);
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addCoordinatorConnectionListener(CoordinatorConnectionListener listener) {
+        instance.addCoordinatorConnectionListener(listener);
+    }
 
     /**
      * {@inheritDoc}
@@ -128,20 +135,25 @@ public class SlotCoordinatorCluster implements SlotCoordinator, NetworkPartition
      */
     private class ThriftSlotCoordinator implements SlotCoordinator {
 
+        /**
+         * Thrift client that communicates with the coordinator.
+         */
+        private MBThriftClient thriftClient = new MBThriftClient();
+
         @Override
         public Slot getSlot(String queueName) throws ConnectionException {
-            return MBThriftClient.getSlot(queueName, nodeId);
+            return thriftClient.getSlot(queueName, nodeId);
         }
 
         @Override
         public void updateMessageId(String queueName, long startMessageId, long endMessageId,
                                     long localSafeZone) throws ConnectionException {
-            MBThriftClient.updateMessageId(queueName,nodeId,startMessageId,endMessageId, localSafeZone); 
+            thriftClient.updateMessageId(queueName,nodeId,startMessageId,endMessageId, localSafeZone);
         }
 
         @Override
         public void updateSlotDeletionSafeZone(long currentSlotDeleteSafeZone) throws ConnectionException {
-            MBThriftClient.updateSlotDeletionSafeZone(currentSlotDeleteSafeZone, nodeId);
+            thriftClient.updateSlotDeletionSafeZone(currentSlotDeleteSafeZone, nodeId);
             if(log.isDebugEnabled()) {
                 log.debug("Submitted safe zone from node : " + nodeId + " | safe zone : " +
                         currentSlotDeleteSafeZone);
@@ -150,18 +162,23 @@ public class SlotCoordinatorCluster implements SlotCoordinator, NetworkPartition
 
         @Override
         public boolean deleteSlot(String queueName, Slot slot) throws ConnectionException {
-            return MBThriftClient.deleteSlot(queueName, slot, nodeId);
+            return thriftClient.deleteSlot(queueName, slot, nodeId);
         }
 
         @Override
         public void reAssignSlotWhenNoSubscribers(String queueName) throws ConnectionException {
-            MBThriftClient.reAssignSlotWhenNoSubscribers(nodeId, queueName);
+            thriftClient.reAssignSlotWhenNoSubscribers(nodeId, queueName);
         }
 
         @Override
         public void clearAllActiveSlotRelationsToQueue(String queueName) throws ConnectionException {
-            MBThriftClient.clearAllActiveSlotRelationsToQueue(queueName);
-        }   
+            thriftClient.clearAllActiveSlotRelationsToQueue(queueName);
+        }
+
+        @Override
+        public void addCoordinatorConnectionListener(CoordinatorConnectionListener listener) {
+            thriftClient.addConnectionListener(listener);
+        }
     }
     
 
@@ -201,7 +218,11 @@ public class SlotCoordinatorCluster implements SlotCoordinator, NetworkPartition
         public void clearAllActiveSlotRelationsToQueue(String queueName) throws ConnectionException {
             throw new ConnectionException("cluster error detected, not connectng to cooridnator");
         }
-        
+
+        @Override
+        public void addCoordinatorConnectionListener(CoordinatorConnectionListener listener) {
+            // Do nothing as this is the error based coordinator listener has no effect
+        }
     }
     
 }

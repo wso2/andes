@@ -80,4 +80,12 @@ public class SlotCoordinatorStandalone implements SlotCoordinator {
     public void clearAllActiveSlotRelationsToQueue(String queueName) {
         slotManagerStandalone.clearAllActiveSlotRelationsToQueue(queueName);
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addCoordinatorConnectionListener(CoordinatorConnectionListener listener) {
+        // Do nothing as this is the standalone mode and coordinator is also the same node
+    }
 }

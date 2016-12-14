@@ -69,4 +69,12 @@ public interface SlotCoordinator {
      * @param queueName Name of the queue
      */
     public void clearAllActiveSlotRelationsToQueue(String queueName) throws ConnectionException;
+
+    /**
+     * Add listener to coordinator connection listeners so that they can be notified when the conneciton is broken with
+     * the coordinator.
+     *
+     * @param listener The listener implementation which acts upon coordinator disconnects and reconnects
+     */
+    void addCoordinatorConnectionListener(CoordinatorConnectionListener listener);
 }
