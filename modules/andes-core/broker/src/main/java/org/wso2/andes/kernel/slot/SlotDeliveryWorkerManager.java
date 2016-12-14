@@ -33,15 +33,14 @@ import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
 import org.wso2.andes.task.TaskExecutorService;
-import org.wso2.andes.thrift.MBThriftClient;
-import org.wso2.andes.thrift.ThriftConnectionListener;
+
 import java.util.concurrent.ThreadFactory;
 
 /**
  * This class is responsible of allocating SloDeliveryWorker threads to each queue
  */
 public final class SlotDeliveryWorkerManager implements StoreHealthListener, NetworkPartitionListener,
-        ThriftConnectionListener {
+        CoordinatorConnectionListener {
 
     private static Log log = LogFactory.getLog(SlotDeliveryWorkerManager.class);
 
@@ -71,7 +70,7 @@ public final class SlotDeliveryWorkerManager implements StoreHealthListener, Net
         if (andesContext.isClusteringEnabled()) {
             // network partition detection and thrift client works only when clustered.
             andesContext.getClusterAgent().addNetworkPartitionListener(50, this);
-            MBThriftClient.addConnectionListener(this);
+            MessagingEngine.getInstance().getSlotCoordinator().addCoordinatorConnectionListener(this);
         }
 
         FailureObservingStoreManager.registerStoreHealthListener(this);
@@ -180,8 +179,8 @@ public final class SlotDeliveryWorkerManager implements StoreHealthListener, Net
      * {@inheritDoc}
      */
     @Override
-    public void onThriftClientDisconnect() {
-        log.warn("Thrift client disconnected. Waiting till reconnect");
+    public void onCoordinatorDisconnect() {
+        log.warn("Disconnected from the coordinator. Waiting till reconnect");
         taskManager.stop();
     }
 
@@ -189,8 +188,8 @@ public final class SlotDeliveryWorkerManager implements StoreHealthListener, Net
      * {@inheritDoc}
      */
     @Override
-    public void onThriftClientConnect() {
-        log.info("Thrift client connection established");
+    public void onCoordinatorReconnect() {
+        log.info("Coordinator connection re-established");
         taskManager.start();
     }
 }

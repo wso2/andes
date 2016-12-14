@@ -16,20 +16,20 @@
  * under the License.
  */
 
-package org.wso2.andes.thrift;
+package org.wso2.andes.kernel.slot;
 
 /**
- * Listener interface to listen to {@link MBThriftClient} network connection disruptions.
+ * Listener interface to listen to network connection disruptions with the coordinator.
  */
-public interface ThriftConnectionListener {
+public interface CoordinatorConnectionListener {
 
     /**
-     * Triggered when the connection to thrift server is lost
+     * Triggered when the connection to the coordinator is lost
      */
-    void onThriftClientDisconnect();
+    void onCoordinatorDisconnect();
 
     /**
-     * Triggered when the connection to thrift server is established
+     * Triggered when the connection to the coordinator is re-established
      */
-    void onThriftClientConnect();
+    void onCoordinatorReconnect();
 }

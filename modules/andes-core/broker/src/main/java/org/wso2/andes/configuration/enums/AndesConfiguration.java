@@ -408,6 +408,12 @@ public enum AndesConfiguration implements ConfigurationProperty {
             Integer.class),
 
     /**
+     * Number of maximum thrift clients connections that should be created when utilizing the thrift client
+     * connection pool.
+     */
+    PERFORMANCE_TUNING_THRIFT_CLIENT_POOL_SIZE("performanceTuning/slots/thriftClientPoolSize", "10", Integer.class),
+
+    /**
      * Published message information is sent to slot coordinator by the node when it either reaches the slot window
      * size or the window creation timeout in milliseconds. This configures the timeout for slot window creation task.
      * <p>
