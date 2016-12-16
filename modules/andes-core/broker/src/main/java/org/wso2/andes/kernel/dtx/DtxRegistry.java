@@ -88,9 +88,45 @@ public class DtxRegistry {
         return (branches.remove(new ComparableXid(branch.getXid())) != null);
     }
 
-    public void storeRecords(Xid xid, List<AndesMessage> enqueueRecords, List<AndesAckData> dequeueRecords)
+    /**
+     * Persist Enqueue and Dequeue records in message store
+     *
+     * @param xid            XID of the DTX branch
+     * @param enqueueRecords list of enqueue records
+     * @param dequeueRecords list of dequeue records
+     * @return Internal XID of the distributed transaction
+     * @throws AndesException when database error occurs
+     */
+    public long storeRecords(Xid xid, List<AndesMessage> enqueueRecords, List<AndesAckData> dequeueRecords)
             throws AndesException {
-        messagingEngine.storeDtxRecords(xid, enqueueRecords, dequeueRecords);
+        return messagingEngine.storeDtxRecords(xid, enqueueRecords, dequeueRecords);
+    }
+
+    public synchronized void rollback(Xid xid)
+            throws TimeoutDtxException, IncorrectDtxStateException, UnknownDtxBranchException, AndesException {
+        DtxBranch branch = getBranch(xid);
+
+        if (branch != null) {
+            if (branch.expired()) {
+                unregisterBranch(branch);
+                throw new TimeoutDtxException(xid);
+            }
+
+            if (!branch.hasAssociatedActiveSessions()) {
+                branch.clearAssociations();
+                branch.rollback();
+                branch.setState(DtxBranch.State.FORGOTTEN);
+                unregisterBranch(branch);
+            } else {
+                throw new IncorrectDtxStateException("Branch is still associates with a session", xid);
+            }
+        } else {
+            throw new UnknownDtxBranchException(xid);
+        }
+    }
+
+    public void removePreparedRecords(long internalXid) throws AndesException {
+        messagingEngine.removeDtxRecords(internalXid);
     }
 
     private static final class ComparableXid {

@@ -59,7 +59,7 @@ public class DtxCommitHandler implements StateAwareMethodListener<DtxCommitBodyI
             DtxCommitOkBody dtxCommitOkBody = methodRegistry.createDtxCommitOkBody(DtxXaStatus.XA_OK.getValue());
             session.writeFrame(dtxCommitOkBody.generateFrame(channelId));
         } catch (DtxNotSelectedException e) {
-            throw new AMQException(AMQConstant.COMMAND_INVALID, "Error ending dtx ", e);
+            throw new AMQException(AMQConstant.COMMAND_INVALID, "Error committing dtx ", e);
         }
 
     }

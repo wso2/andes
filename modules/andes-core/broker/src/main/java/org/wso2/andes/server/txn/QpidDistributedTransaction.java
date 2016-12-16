@@ -42,6 +42,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import javax.transaction.xa.Xid;
 
 /**
@@ -58,6 +59,12 @@ public class QpidDistributedTransaction implements ServerTransaction {
      */
     private final DistributedTransaction distributedTransaction;
 
+    /**
+     * Used to keep the list of post transaction actions which are basically error messages that need to be send back
+     * in commit and rollback stages
+     */
+    private final ConcurrentLinkedQueue<Action> postTransactionActions = new ConcurrentLinkedQueue<Action>();
+
     public QpidDistributedTransaction() {
         distributedTransaction = Andes.getInstance().createDistributedTransaction();
     }
@@ -69,7 +76,7 @@ public class QpidDistributedTransaction implements ServerTransaction {
 
     @Override
     public void addPostTransactionAction(Action postTransactionAction) {
-        throw new NotImplementedException();
+        postTransactionActions.add(postTransactionAction);
     }
 
     @Override
@@ -145,13 +152,24 @@ public class QpidDistributedTransaction implements ServerTransaction {
             LOGGER.debug("Committing distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
         }
         // TODO
+        for (Action action : postTransactionActions) {
+            action.postCommit();
+        }
     }
 
-    public void rollback(Xid xid) {
+    public void rollback(Xid xid)
+            throws UnknownDtxBranchException, AndesException, TimeoutDtxException, IncorrectDtxStateException {
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Committing distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
+            LOGGER.debug("Rolling back distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
         }
-        // TODO
+
+        try {
+            distributedTransaction.rollback(xid);
+        } finally {
+            for (Action action : postTransactionActions) {
+                action.onRollback();
+            }
+        }
     }
 
     public void enqueueMessage(IncomingMessage incomingMessage, AndesChannel andesChannel) {

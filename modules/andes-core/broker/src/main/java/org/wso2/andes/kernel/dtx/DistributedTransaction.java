@@ -90,7 +90,7 @@ public class DistributedTransaction {
 
         if (null == branch) {
             throw new UnknownDtxBranchException(xid);
-        } else if (branch.isAssociated(sessionId)) {
+        } else if (!branch.isAssociated(sessionId)) {
             throw new NotAssociatedDtxException(xid);
 
             // TODO Check for transaction expiration
@@ -128,5 +128,10 @@ public class DistributedTransaction {
     public void prepare(Xid xid)
             throws TimeoutDtxException, UnknownDtxBranchException, IncorrectDtxStateException, AndesException {
         dtxRegistry.prepare(xid);
+    }
+
+    public void rollback(Xid xid)
+            throws UnknownDtxBranchException, AndesException, TimeoutDtxException, IncorrectDtxStateException {
+        dtxRegistry.rollback(xid);
     }
 }
