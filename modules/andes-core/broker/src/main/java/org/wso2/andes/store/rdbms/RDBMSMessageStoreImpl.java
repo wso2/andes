@@ -1337,7 +1337,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void storeDtxRecords(Xid xid, List<AndesMessage> enqueueRecords, List<AndesAckData> dequeueRecords)
+    public long storeDtxRecords(Xid xid, List<AndesMessage> enqueueRecords, List<AndesAckData> dequeueRecords)
             throws AndesException {
         Connection connection = null;
         PreparedStatement storeXidPS = null;
@@ -1398,17 +1398,46 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
             connection.commit();
 
+            return internalXid;
         } catch (AndesException e) {
             rollback(connection, taskDescription);
             throw e;
         } catch (SQLException e) {
             rollback(connection, taskDescription);
-            throw rdbmsStoreUtils.convertSQLException("Error occurred while inserting dtx enqueue record", e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while inserting dtx enqueue/dequeue record", e);
         } finally {
             close(storeXidPS, taskDescription);
             close(storeMetadataPS, taskDescription);
             close(storeContentPS, taskDescription);
             close(storeDequeueRecordPS, taskDescription);
+            close(connection, taskDescription);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void removeDtxRecords(long internalXid) throws AndesException {
+        Connection connection = null;
+        PreparedStatement removeXidPS = null;
+
+        String taskDescription = "Removing dtx enqueue/dequeue record";
+        try {
+
+            connection = getConnection();
+
+            removeXidPS = connection.prepareStatement(RDBMSConstants.PS_DELETE_DTX_ENTRY);
+            removeXidPS.setLong(1, internalXid);
+            removeXidPS.executeUpdate();
+
+            connection.commit();
+
+        } catch (SQLException e) {
+            rollback(connection, taskDescription);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while removing dtx enqueue/dequeue record", e);
+        } finally {
+            close(removeXidPS, taskDescription);
             close(connection, taskDescription);
         }
     }

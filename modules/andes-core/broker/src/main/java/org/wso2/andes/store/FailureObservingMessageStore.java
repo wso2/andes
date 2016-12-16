@@ -639,10 +639,23 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void storeDtxRecords(Xid xid, List<AndesMessage> enqueueRecords, List<AndesAckData> dequeueRecords)
+    public long storeDtxRecords(Xid xid, List<AndesMessage> enqueueRecords, List<AndesAckData> dequeueRecords)
             throws AndesException {
         try {
-            wrappedInstance.storeDtxRecords(xid, enqueueRecords, dequeueRecords);
+            return wrappedInstance.storeDtxRecords(xid, enqueueRecords, dequeueRecords);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void removeDtxRecords(long internalXid) throws AndesException {
+        try {
+            wrappedInstance.removeDtxRecords(internalXid);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

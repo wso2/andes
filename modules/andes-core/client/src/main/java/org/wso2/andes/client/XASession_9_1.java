@@ -27,12 +27,15 @@ import org.wso2.andes.framing.DtxEndBody;
 import org.wso2.andes.framing.DtxEndOkBody;
 import org.wso2.andes.framing.DtxPrepareBody;
 import org.wso2.andes.framing.DtxPrepareOkBody;
+import org.wso2.andes.framing.DtxRollbackBody;
+import org.wso2.andes.framing.DtxRollbackOkBody;
 import org.wso2.andes.framing.DtxSelectBody;
 import org.wso2.andes.framing.DtxStartBody;
 import org.wso2.andes.framing.DtxStartOkBody;
 import org.wso2.andes.framing.amqp_0_91.DtxCommitOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxEndOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxPrepareOkBodyImpl;
+import org.wso2.andes.framing.amqp_0_91.DtxRollbackOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxStartOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.MethodRegistry_0_91;
 import org.wso2.andes.jms.Session;
@@ -161,6 +164,18 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession {
                 .syncWrite(dtxCommitBody.generateFrame(_channelId), DtxCommitOkBody.class);
 
         DtxCommitOkBodyImpl response = (DtxCommitOkBodyImpl) amqMethodEvent.getMethod();
+
+        return XaStatus.valueOf(response.getXaResult());
+    }
+
+    public XaStatus rollbackDtx(Xid xid) throws FailoverException, AMQException {
+        DtxRollbackBody dtxRollbackBody = methodRegistry
+                .createDtxRollbackBody(xid.getFormatId(), xid.getGlobalTransactionId(), xid.getBranchQualifier());
+
+        AMQMethodEvent amqMethodEvent = _connection._protocolHandler
+                .syncWrite(dtxRollbackBody.generateFrame(_channelId), DtxRollbackOkBody.class);
+
+        DtxRollbackOkBodyImpl response = (DtxRollbackOkBodyImpl) amqMethodEvent.getMethod();
 
         return XaStatus.valueOf(response.getXaResult());
     }

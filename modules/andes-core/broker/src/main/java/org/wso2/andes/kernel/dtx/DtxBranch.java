@@ -33,6 +33,11 @@ public class DtxBranch {
      */
     private static final Logger LOGGER = Logger.getLogger(DtxBranch.class);
 
+    /**
+     * Internal XID has this value when the branch is not in prepared state
+     */
+    public static final int NULL_XID = -1;
+
     private final Xid xid;
     private final DtxRegistry dtxRegistry;
     private Map<Long, State> associatedSessions = new HashMap<>();
@@ -50,7 +55,12 @@ public class DtxBranch {
     /**
      * Current branch state
      */
-    private State state;
+    private State state = State.ACTIVE;
+
+    /**
+     * Used to keep the internal xid value used in message store
+     */
+    private long internalXid = NULL_XID;
 
     public DtxBranch(Xid xid, DtxRegistry dtxRegistry) {
         this.xid = xid;
@@ -136,7 +146,7 @@ public class DtxBranch {
 
     public void prepare() throws AndesException {
         LOGGER.debug("Performing prepare for DtxBranch {}" + xid);
-        dtxRegistry.storeRecords(xid, enqueueList, dequeueList);
+        internalXid = dtxRegistry.storeRecords(xid, enqueueList, dequeueList);
     }
 
     public void setState(State state) {
@@ -147,8 +157,22 @@ public class DtxBranch {
         dequeueList.addAll(ackList);
     }
 
+    public void rollback() throws AndesException {
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Performing rollback for DtxBranch {}" + xid);
+        }
+
+        if (internalXid != NULL_XID) {
+            dtxRegistry.removePreparedRecords(internalXid);
+            internalXid = NULL_XID;
+        } else {
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Cannot rollback since could not find a internal XID " + "{}" + xid);
+            }
+        }
+    }
+
     public enum State {
-        SUSPENDED,
-        ACTIVE, ROLLBACK_ONLY, PREPARED, TIMED_OUT
+        SUSPENDED, ACTIVE, ROLLBACK_ONLY, PREPARED, FORGOTTEN, TIMED_OUT
     }
 }
