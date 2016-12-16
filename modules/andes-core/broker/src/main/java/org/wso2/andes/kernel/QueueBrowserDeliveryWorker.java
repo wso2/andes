@@ -39,7 +39,7 @@ import java.util.List;
  * A client uses a QueueBrowser to look at messages on a destination without removing
  * them.
  * The browse methods return a java.util.Enumeration that is used to scan the
- * destination’s messages. It may be an enumeration of the entire content of a destination or
+ * destination's messages. It may be an enumeration of the entire content of a destination or
  * it may only contain the messages matching a message selector.
  * Messages may be arriving and expiring while the scan is done. JMS does not
  * require the content of an enumeration to be a static snapshot of destination content.
