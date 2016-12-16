@@ -92,7 +92,7 @@ public class RDBMSConstants {
     // Message Store table columns
     protected static final String MESSAGE_ID = "MESSAGE_ID";
     protected static final String INTERNAL_XID = "INTERNAL_XID";
-    protected static final String DTX_FORMAT = "FORMAT";
+    protected static final String DTX_FORMAT = "FORMAT_CODE";
     protected static final String DTX_GLOBAL_ID = "GLOBAL_ID";
     protected static final String DTX_BRANCH_ID = "BRANCH_ID";
     protected static final String QUEUE_ID = "QUEUE_ID";
@@ -1071,8 +1071,11 @@ public class RDBMSConstants {
             + INTERNAL_XID + ","
             + DTX_FORMAT + ","
             + DTX_GLOBAL_ID + ","
-            + DTX_BRANCH_ID + ")"
-            + " VALUES ( ?,?,? )";
+            + DTX_BRANCH_ID + ")" + " VALUES ( ?,?,?,? )";
+
+    protected static final String PS_DELETE_DTX_ENTRY
+            = "DELETE FROM " + DTX_ENTRY_TABLE
+            + " WHERE " + INTERNAL_XID + "=?";
 
 
     // Message Store related jdbc tasks executed
