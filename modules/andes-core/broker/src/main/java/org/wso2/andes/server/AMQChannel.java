@@ -1386,6 +1386,13 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         distributedTransaction.commit(xid);
     }
 
+    public void rollbackDtxTransaction(Xid xid)
+            throws DtxNotSelectedException, UnknownDtxBranchException, AndesException, TimeoutDtxException,
+            IncorrectDtxStateException {
+        QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
+        distributedTransaction.rollback(xid);
+    }
+
     /**
      * Assert if dtxselect is called
      * @return matching DistributedTransaction object

@@ -650,8 +650,27 @@ public class MessagingEngine {
         return lastMessageId;
     }
 
-    public void storeDtxRecords(Xid xid, List<AndesMessage> enqueueRecords, List<AndesAckData> dequeueRecords)
+    /**
+     * Persist enqueue and dequeue records to the database. This is normally done at the prepare stage
+     *
+     * @param xid            xid of the Distributed transaction branch
+     * @param enqueueRecords list of enqueue records
+     * @param dequeueRecords list of dequeue records
+     * @throws AndesException due to a message store error
+     */
+    public long storeDtxRecords(Xid xid, List<AndesMessage> enqueueRecords, List<AndesAckData> dequeueRecords)
             throws AndesException {
-        messageStore.storeDtxRecords(xid, enqueueRecords, dequeueRecords);
+        return messageStore.storeDtxRecords(xid, enqueueRecords, dequeueRecords);
+    }
+
+    /**
+     * Remove stored enqueue and dequeue records for the distributed transaction. Normally done at the commit or
+     * rollback stage
+     *
+     * @param internalXid internal XID generated when persisting records
+     * @throws AndesException due to a message store error
+     */
+    public void removeDtxRecords(long internalXid) throws AndesException {
+        messageStore.removeDtxRecords(internalXid);
     }
 }

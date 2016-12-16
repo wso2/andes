@@ -498,7 +498,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
     <method name="end" synchronous="1" index="30">
       <chassis name="server" implement="MAY"/>
-      <response name="start-ok"/>
+      <response name="end-ok"/>
       <field name="format" type="short" />
       <field name="global-id" type="longstr" />
       <field name="branch-id" type="longstr" />
@@ -513,7 +513,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
     <method name="commit" synchronous="1" index="40">
       <chassis name="server" implement="MUST"/>
-      <response name="start-ok"/>
+      <response name="commit-ok"/>
       <field name="format" type="short" />
       <field name="global-id" type="longstr" />
       <field name="branch-id" type="longstr" />
@@ -527,7 +527,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
     <method name="prepare" synchronous="1" index="70">
       <chassis name="server" implement="MUST"/>
-      <response name="start-ok"/>
+      <response name="prepare-ok"/>
       <field name="format" type="short" />
       <field name="global-id" type="longstr" />
       <field name="branch-id" type="longstr" />
@@ -538,12 +538,17 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <field name="xa-result" type="short" />
     </method>
 
-    <!--<method name="rollback" synchronous="1" index="30">-->
-      <!--<chassis name="server" implement="MUST"/>-->
-      <!--<response name="rollback-ok"/>-->
-    <!--</method>-->
-    <!--<method name="rollback-ok" synchronous="1" index="31">-->
-      <!--<chassis name="client" implement="MUST"/>-->
-    <!--</method>-->
+      <method name="rollback" synchronous="1" index="90">
+          <chassis name="server" implement="MUST"/>
+          <response name="rollback-ok"/>
+          <field name="format" type="short"/>
+          <field name="global-id" type="longstr"/>
+          <field name="branch-id" type="longstr"/>
+      </method>
+
+      <method name="rollback-ok" synchronous="1" index="91">
+          <chassis name="client" implement="MUST"/>
+          <field name="xa-result" type="short"/>
+      </method>
   </class>
 </amqp>
