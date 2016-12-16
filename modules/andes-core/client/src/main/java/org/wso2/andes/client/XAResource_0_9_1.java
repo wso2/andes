@@ -47,7 +47,7 @@ class XAResource_0_9_1 implements XAResource {
         try {
             resultStatus = session.commitDtx(xid, onePhase);
         } catch (FailoverException | AMQException e) {
-            XAException xaException = new XAException("Error while starting dtx session. " + e.getMessage());
+            XAException xaException = new XAException("Error while committing dtx session. " + e.getMessage());
             xaException.initCause(e);
             throw xaException;
         }
@@ -132,14 +132,14 @@ class XAResource_0_9_1 implements XAResource {
     @Override
     public int prepare(Xid xid) throws XAException {
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("start tx branch with xid: {}", xid);
+            LOGGER.debug("start dtx branch with xid: {}", xid);
         }
 
         XaStatus resultStatus;
         try {
             resultStatus = session.prepareDtx(xid);
         } catch (FailoverException | AMQException e) {
-            XAException xaException = new XAException("Error while starting dtx session. " + e.getMessage());
+            XAException xaException = new XAException("Error while preparing dtx session.");
             xaException.initCause(e);
             throw xaException;
         }
@@ -156,7 +156,20 @@ class XAResource_0_9_1 implements XAResource {
 
     @Override
     public void rollback(Xid xid) throws XAException {
-        throw new RuntimeException("Feature NotImplemented");
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("start dtx branch with xid: {}", xid);
+        }
+
+        XaStatus resultStatus;
+        try {
+            resultStatus = session.rollbackDtx(xid);
+        } catch (FailoverException | AMQException e) {
+            XAException xaException = new XAException("Error while rolling back dtx session.");
+            xaException.initCause(e);
+            throw xaException;
+        }
+
+        checkStatus(resultStatus);
     }
 
     @Override

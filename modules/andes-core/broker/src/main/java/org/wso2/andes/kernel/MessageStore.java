@@ -434,7 +434,17 @@ public interface MessageStore extends HealthAwareStore {
      * @param xid            xid of the Distributed transaction branch
      * @param enqueueRecords list of enqueue records
      * @param dequeueRecords list of dequeue records
+     * @throws AndesException due to a message store error
      */
-    void storeDtxRecords(Xid xid, List<AndesMessage> enqueueRecords, List<AndesAckData> dequeueRecords)
+    long storeDtxRecords(Xid xid, List<AndesMessage> enqueueRecords, List<AndesAckData> dequeueRecords)
             throws AndesException;
+
+    /**
+     * Remove stored enqueue and dequeue records for the distributed transaction. Normally done at the commit or
+     * rollback stage
+     *
+     * @param internalXid internal XID generated when persisting records
+     * @throws AndesException due to a message store error
+     */
+    void removeDtxRecords(long internalXid) throws AndesException;
 }
