@@ -35,7 +35,6 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerator;
 import org.wso2.andes.server.queue.DLCQueueUtils;
-import org.wso2.andes.thrift.MBThriftClient;
 import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.ArrayList;
@@ -530,10 +529,6 @@ public class MessagingEngine {
         log.info("Starting SlotDelivery Workers.");
         //Start all slotDeliveryWorkers
         SlotDeliveryWorkerManager.getInstance().startMessageDelivery();
-        //Start thrift reconnecting thread if started
-        if (MBThriftClient.isReconnectingStarted()) {
-            MBThriftClient.setReconnectingFlag(true);
-        }
         log.info("Start Disruptor writing messages to store.");
     }
 
@@ -545,10 +540,6 @@ public class MessagingEngine {
         log.info("Stopping SlotDelivery Worker.");
         //Stop all slotDeliveryWorkers
         SlotDeliveryWorkerManager.getInstance().stopMessageDelivery();
-        //Stop thrift reconnecting thread if started
-        if (MBThriftClient.isReconnectingStarted()) {
-            MBThriftClient.setReconnectingFlag(false);
-        }
         SlotMessageCounter.getInstance().stop();
         //Stop delivery disruptor
         MessageFlusher.getInstance().stopMessageFlusher();
