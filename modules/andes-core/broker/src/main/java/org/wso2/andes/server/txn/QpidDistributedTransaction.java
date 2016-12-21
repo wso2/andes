@@ -59,15 +59,15 @@ public class QpidDistributedTransaction implements ServerTransaction {
      */
     private final DistributedTransaction distributedTransaction;
 
-    /**
-     * Used to keep the list of post transaction actions which are basically error messages that need to be send back
-     * in commit and rollback stages
-     */
-    private final ConcurrentLinkedQueue<Action> postTransactionActions = new ConcurrentLinkedQueue<Action>();
-
-    public QpidDistributedTransaction() {
-        distributedTransaction = Andes.getInstance().createDistributedTransaction();
+    public QpidDistributedTransaction(AndesChannel channel) {
+        distributedTransaction = Andes.getInstance().createDistributedTransaction(channel);
     }
+
+        /**
+         * Used to keep the list of post transaction actions which are basically error messages that need to be send back
+         * in commit and rollback stages
+         */
+        private final ConcurrentLinkedQueue<Action> postTransactionActions = new ConcurrentLinkedQueue<Action>();
 
     @Override
     public long getTransactionStartTime() {
@@ -147,11 +147,13 @@ public class QpidDistributedTransaction implements ServerTransaction {
         distributedTransaction.prepare(xid);
     }
 
-    public void commit(Xid xid) {
+    public void commit(Xid xid, Runnable callback) throws UnknownDtxBranchException,
+                                                          IncorrectDtxStateException,
+                                                          AndesException {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Committing distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
         }
-        // TODO
+        distributedTransaction.commit(xid, callback);
         for (Action action : postTransactionActions) {
             action.postCommit();
         }

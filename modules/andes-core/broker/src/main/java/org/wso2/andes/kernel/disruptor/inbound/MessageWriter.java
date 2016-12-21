@@ -19,7 +19,6 @@
 package org.wso2.andes.kernel.disruptor.inbound;
 
 import com.google.common.util.concurrent.SettableFuture;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
@@ -27,7 +26,6 @@ import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.disruptor.BatchEventHandler;
 import org.wso2.andes.store.AndesBatchUpdateException;
-import org.wso2.andes.store.AndesStoreUnavailableException;
 import org.wso2.andes.store.AndesTransactionRollbackException;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
@@ -35,7 +33,6 @@ import org.wso2.andes.store.StoreHealthListener;
 import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -47,21 +44,11 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
     private static Log log = LogFactory.getLog(MessageWriter.class);
 
     /**
-     * List of messages to write to message store.
-     */
-    private final List<AndesMessage> currentMessageList;
-
-    /**
      * If the message store became non-operational ( due to errors) when persisting bunch of messages
-     * (held in {@link MessageWriter}{@link #currentMessageList} ) those will be move to this list.
+     * those will be move to this list.
      * Once message store becomes operational we will save these messages before saving new message arrived
      */
     private final List<AndesMessage> previouslyFailedMessageList;
-
-    /**
-     * Temporary storage for retain messages
-     */
-    private final Map<String, AndesMessage> retainMap;
 
     /**
      * Indicates if messages stores become offline. Marked as volatile since this value could be set from a different
@@ -81,27 +68,16 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
          * event might contain more than one message
          * But this is valid for queues.
          */
-        currentMessageList = new ArrayList<>(messageBatchSize);
         previouslyFailedMessageList = new ArrayList<>(messageBatchSize); // init in the same capacity
-        retainMap = new HashMap<>();
         messageStoresUnavailable = false;
         FailureObservingStoreManager.registerStoreHealthListener(this);
     }
 
     @Override
-    public void onEvent(final List<InboundEventContainer> eventList) throws Exception {
-
-        // For topics there may be multiple messages in one event.
-        for (InboundEventContainer event : eventList) {
-            currentMessageList.addAll(event.getMessageList());
-
-            if (null != event.retainMessage) {
-                retainMap.put(event.retainMessage.getMetadata().getDestination(), event.retainMessage);
-            }
-        }
+    public void onEvent(final List<AndesMessage> messageList, final Map<String, AndesMessage> retainMap) throws Exception {
 
         if (messageStoresUnavailable) {
-            handleStoreFailure();
+            handleStoreFailure(messageList);
         }
         else {
             // Try inserting message batch that failed before.
@@ -121,18 +97,18 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
             }
 
             try {
-                messagingEngine.messagesReceived(currentMessageList);
+                messagingEngine.messagesReceived(messageList);
 
                 if (!retainMap.isEmpty()) {
                     messagingEngine.storeRetainedMessages(retainMap);
                 }
 
                 if (log.isDebugEnabled()) {
-                    log.debug(currentMessageList.size() + " messages received from disruptor.");
+                    log.debug(messageList.size() + " messages received from disruptor.");
                 }
 
                 if (MessageTracer.isEnabled()) {
-                    for (AndesMessage message : currentMessageList) {
+                    for (AndesMessage message : messageList) {
                         //Tracing message
                         MessageTracer.trace(message, MessageTracer.CONTENT_WRITTEN_TO_DB);
                     }
@@ -140,17 +116,11 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
 
                 if (log.isTraceEnabled()) {
                     StringBuilder messageIDsString = new StringBuilder();
-                    for (AndesMessage message : currentMessageList) {
+                    for (AndesMessage message : messageList) {
                         messageIDsString.append(message.getMetadata().getMessageID()).append(" , ");
                     }
-                    log.trace(currentMessageList.size() + " messages written : " + messageIDsString);
+                    log.trace(messageList.size() + " messages written : " + messageIDsString);
                 }
-
-                // clear the messages
-                currentMessageList.clear();
-                // clear retained messages map
-                retainMap.clear();
-
             } catch (AndesBatchUpdateException batchInsertEx) {
 
                 log.error(String.format("Unable to store messages, probably due to errors in message stores."
@@ -163,21 +133,19 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
                 // Now message writer goes and inserts same batch again -> results in failures in batch update.
                 // Therefore here we remove conflicting message parts (which are probably already in the database).
                 //currentMessageList.removeAll(batchInsertEx.getFailedInserts());
-                handleStoreFailure();
+                handleStoreFailure(messageList);
                 throw batchInsertEx;
             } catch (AndesTransactionRollbackException transRollbackEx) {
                 // Transaction failed therefore we will re-attempt this batch with next batch insertion.
-                log.warn("Unable to store messages, since transaction rollback. " +
-                         "opertation will be reattempted. messages count : " +
-                         currentMessageList.size());
-                handleStoreFailure();
+                log.warn("Unable to store messages, since transaction rollback. opertation will be reattempted. " +
+                                 "messages count : " + messageList.size());
+                handleStoreFailure(messageList);
                 throw transRollbackEx;
             }
             catch (Exception ex) {
-                log.warn("Unable to store messages, due to errors in message stores. " +
-                         "operatation will be reattempted. messages count : " +
-                         currentMessageList.size());
-                handleStoreFailure();
+                log.warn("Unable to store messages, due to errors in message stores. operatation will be " +
+                                 "reattempted. messages count : " + messageList.size());
+                handleStoreFailure(messageList);
                 throw ex;
             }
         }
@@ -186,9 +154,8 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
     /**
      * Move the messages to previouslyFailedMessageList and clear currentMessageList and retainMap
      */
-    private void handleStoreFailure() {
-        previouslyFailedMessageList.addAll(currentMessageList);
-        currentMessageList.clear();
+    private void handleStoreFailure(List<AndesMessage> messageList) {
+        previouslyFailedMessageList.addAll(messageList);
     }
 
     /**
@@ -199,7 +166,7 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
     @Override
     public void storeNonOperational(HealthAwareStore store, Exception ex) {
         log.info(String.format("Message store became nonoperational. messages to store : %d",
-                currentMessageList.size()));
+                               previouslyFailedMessageList.size()));
         messageStoresUnavailable = true;
     }
 
@@ -211,7 +178,8 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
      */
     @Override
     public void storeOperational(HealthAwareStore store) {
-        log.info(String.format("Message store became operational. messages to store : %d", currentMessageList.size()));
+        log.info(String.format("Message store became operational. messages to store : %d",
+                               previouslyFailedMessageList.size()));
         messageStoresUnavailable = false;
     }
 }
