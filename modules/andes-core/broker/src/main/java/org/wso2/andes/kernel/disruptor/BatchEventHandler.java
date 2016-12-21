@@ -18,14 +18,15 @@
 
 package org.wso2.andes.kernel.disruptor;
 
-import org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer;
+import org.wso2.andes.kernel.AndesMessage;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Batch event handler for ConcurrentBatchEventHandler
  */
 public interface BatchEventHandler {
 
-    void onEvent(final List<InboundEventContainer> eventList) throws Exception;
+    void onEvent(final List<AndesMessage> eventList, Map<String, AndesMessage> retainMap) throws Exception;
 }
