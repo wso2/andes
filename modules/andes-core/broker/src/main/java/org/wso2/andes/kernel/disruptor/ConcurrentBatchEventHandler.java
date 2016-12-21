@@ -21,10 +21,13 @@ package org.wso2.andes.kernel.disruptor;
 import com.lmax.disruptor.EventHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * This is a turn based concurrent event batching handler. This should be used with a Default Batch processor
@@ -67,7 +70,12 @@ public class ConcurrentBatchEventHandler implements EventHandler<InboundEventCon
     /**
      * Events are batched using this until the event handler is called
      */
-    private final List<InboundEventContainer> eventList;
+    private final List<AndesMessage> messageList;
+
+    /**
+     * Temporary storage for retain messages
+     */
+    private final Map<String, AndesMessage> retainMap;
 
     /**
      * Creates an event handler that can be used with a batch processor to do custom batching of inbound
@@ -92,7 +100,8 @@ public class ConcurrentBatchEventHandler implements EventHandler<InboundEventCon
         this.batchSize = batchSize;
         this.eventType = eventType;
         this.eventHandler = eventHandler;
-        eventList = new ArrayList<>(this.batchSize);
+        messageList = new ArrayList<>(this.batchSize);
+        retainMap = new HashMap<>();
 
     }
 
@@ -104,14 +113,16 @@ public class ConcurrentBatchEventHandler implements EventHandler<InboundEventCon
     @Override
     public void onEvent(InboundEventContainer event, long sequence, boolean endOfBatch) throws Exception {
         long currentTurn;
-        
-        
+
         // Batch only relevant event type. Skip the rest
         if (eventType == event.getEventType()) {
 
             currentTurn = sequence % groupCount;
             if (turn == currentTurn) {
-                eventList.add(event);
+                messageList.addAll(event.getMessageList());
+                if(null != event.retainMessage) {
+                    retainMap.put(event.retainMessage.getMetadata().getDestination(), event.retainMessage);
+                }
             }
             if (log.isDebugEnabled()) {
                 log.debug("[ " + sequence + " ] Current turn " + currentTurn + ", turn " + turn
@@ -121,12 +132,14 @@ public class ConcurrentBatchEventHandler implements EventHandler<InboundEventCon
 
         // Batch and invoke event handler. Irrespective of event type following should execute.
         // End of batch may come in an irrelevant event type slot.
-        if (((eventList.size() >= batchSize) || endOfBatch)
-                && !eventList.isEmpty()) {
+        if (((messageList.size() >= batchSize) || endOfBatch)
+                && !messageList.isEmpty()) {
             try {
-                eventHandler.onEvent(eventList);
+                eventHandler.onEvent(messageList, retainMap);
+                messageList.clear();
+                retainMap.clear();
                 if (log.isDebugEnabled()) {
-                    log.debug("Event handler called with " + eventList.size() + " events. EventType "
+                    log.debug("Event handler called with " + messageList.size() + " events. EventType "
                             + eventType);
                 }
             } finally {
@@ -134,9 +147,8 @@ public class ConcurrentBatchEventHandler implements EventHandler<InboundEventCon
                 // On an error situation of eventHandler#onEvent we need to clear the events from this batching list.
                 // Respective event handler should take care of the actual events passed. If not same events 
                 // will be passed multiple times to the handler in an erroneous situation
-                eventList.clear();
+                messageList.clear();
             }
-            
         }
     }
 }

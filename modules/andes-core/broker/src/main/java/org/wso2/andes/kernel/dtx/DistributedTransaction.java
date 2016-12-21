@@ -21,6 +21,7 @@ import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
+import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
 import org.wso2.andes.server.txn.IncorrectDtxStateException;
 import org.wso2.andes.server.txn.TimeoutDtxException;
 
@@ -29,17 +30,20 @@ import javax.transaction.xa.Xid;
 
 public class DistributedTransaction {
 
-
     private DtxRegistry dtxRegistry;
     private DtxBranch branch;
+    private InboundEventManager eventManager;
+    private AndesChannel channel;
 
-
-    public DistributedTransaction(DtxRegistry dtxRegistry) {
+    public DistributedTransaction(DtxRegistry dtxRegistry, InboundEventManager eventManager, AndesChannel channel) {
         this.dtxRegistry = dtxRegistry;
+        this.eventManager = eventManager;
+        this.channel = channel;
     }
 
-    public void start(long sessionID, Xid xid, boolean join, boolean resume)
-            throws JoinAndResumeDtxException, UnknownDtxBranchException, AlreadyKnownDtxException {
+    public void start(long sessionID, Xid xid, boolean join, boolean resume) throws JoinAndResumeDtxException,
+                                                                                    UnknownDtxBranchException,
+                                                                                    AlreadyKnownDtxException {
 
         if (join && resume) {
             throw new JoinAndResumeDtxException(xid);
@@ -66,7 +70,7 @@ public class DistributedTransaction {
                 throw new AlreadyKnownDtxException(xid);
             }
 
-            branch = new DtxBranch(xid, dtxRegistry);
+            branch = new DtxBranch(xid, dtxRegistry, eventManager);
 
             if (dtxRegistry.registerBranch(branch)) {
                 this.branch = branch;
@@ -78,11 +82,11 @@ public class DistributedTransaction {
 
     }
 
-    public void end(long sessionId, Xid xid, boolean fail, boolean suspend)
-            throws SuspendAndFailDtxException, UnknownDtxBranchException, NotAssociatedDtxException {
+    public void end(long sessionId, Xid xid, boolean fail, boolean suspend) throws SuspendAndFailDtxException,
+                                                                                   UnknownDtxBranchException,
+                                                                                   NotAssociatedDtxException {
         DtxBranch branch = dtxRegistry.getBranch(xid);
-        if(suspend && fail)
-        {
+        if (suspend && fail) {
             branch.disassociateSession(sessionId);
             this.branch = null;
             throw new SuspendAndFailDtxException(xid);
@@ -116,17 +120,22 @@ public class DistributedTransaction {
         }
     }
 
+    public void commit(Xid xid, Runnable callback) throws UnknownDtxBranchException,
+                                                          IncorrectDtxStateException,
+                                                          AndesException {
+        dtxRegistry.commit(xid, callback, channel);
+    }
+
     public void enqueueMessage(AndesMessage andesMessage, AndesChannel andesChannel) {
         if (branch != null) {
             branch.enqueueMessage(andesMessage);
         } else {
-            QpidAndesBridge
-                    .messageReceived(andesMessage, andesChannel);
+            QpidAndesBridge.messageReceived(andesMessage, andesChannel);
         }
     }
 
-    public void prepare(Xid xid)
-            throws TimeoutDtxException, UnknownDtxBranchException, IncorrectDtxStateException, AndesException {
+    public void prepare(Xid xid) throws TimeoutDtxException, UnknownDtxBranchException,
+                                        IncorrectDtxStateException, AndesException {
         dtxRegistry.prepare(xid);
     }
 

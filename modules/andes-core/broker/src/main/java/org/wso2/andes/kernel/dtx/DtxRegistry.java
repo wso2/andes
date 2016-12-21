@@ -16,8 +16,10 @@
 package org.wso2.andes.kernel.dtx;
 
 import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
+import org.wso2.andes.kernel.DtxStore;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.txn.IncorrectDtxStateException;
 import org.wso2.andes.server.txn.TimeoutDtxException;
@@ -28,19 +30,16 @@ import java.util.Map;
 import javax.transaction.xa.Xid;
 
 public class DtxRegistry {
-    private final Map<ComparableXid, DtxBranch> branches = new HashMap<>();
 
-    /**
-     * Used to communicate with the message store
-     */
-    private MessagingEngine messagingEngine;
+    private final Map<ComparableXid, DtxBranch> branches;
 
-    /**
-     * Default constructor
-     *
-     * @param messagingEngine messaging engine used to communicate with the message store
-     */
-    public DtxRegistry(MessagingEngine messagingEngine) {
+    private final DtxStore dtxStore;
+
+    private final MessagingEngine messagingEngine;
+
+    public DtxRegistry(DtxStore dtxStore, MessagingEngine messagingEngine) {
+        this.dtxStore = dtxStore;
+        branches = new HashMap<>();
         this.messagingEngine = messagingEngine;
     }
 
@@ -99,7 +98,7 @@ public class DtxRegistry {
      */
     public long storeRecords(Xid xid, List<AndesMessage> enqueueRecords, List<AndesAckData> dequeueRecords)
             throws AndesException {
-        return messagingEngine.storeDtxRecords(xid, enqueueRecords, dequeueRecords);
+        return dtxStore.storeDtxRecords(xid, enqueueRecords, dequeueRecords);
     }
 
     public synchronized void rollback(Xid xid)
@@ -126,7 +125,32 @@ public class DtxRegistry {
     }
 
     public void removePreparedRecords(long internalXid) throws AndesException {
-        messagingEngine.removeDtxRecords(internalXid);
+        dtxStore.removeDtxRecords(internalXid);
+    }
+
+    public void commit(Xid xid, Runnable callback, AndesChannel channel) throws UnknownDtxBranchException,
+                                                                                IncorrectDtxStateException,
+                                                                                AndesException {
+        DtxBranch dtxBranch = getBranch(xid);
+        if (null != dtxBranch) {
+            synchronized (dtxBranch) {
+                if (!dtxBranch.hasAssociatedActiveSessions()) {
+                    // TODO: Need to revisit. What happens if the commit DB call fail?
+                    dtxBranch.clearAssociations();
+                    dtxBranch.commit(callback, channel);
+                    branches.remove(new ComparableXid(xid));
+
+                } else {
+                    throw new IncorrectDtxStateException("Branch still has associated sessions", xid);
+                }
+            }
+        } else {
+            throw new UnknownDtxBranchException(xid);
+        }
+    }
+
+    public DtxStore getStore() {
+        return dtxStore;
     }
 
     private static final class ComparableXid {
