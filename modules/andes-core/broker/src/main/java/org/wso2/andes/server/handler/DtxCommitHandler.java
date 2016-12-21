@@ -20,12 +20,15 @@ import org.wso2.andes.dtx.XidImpl;
 import org.wso2.andes.framing.DtxCommitOkBody;
 import org.wso2.andes.framing.amqp_0_91.DtxCommitBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.MethodRegistry_0_91;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.dtx.UnknownDtxBranchException;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.state.AMQStateManager;
 import org.wso2.andes.server.state.StateAwareMethodListener;
 import org.wso2.andes.server.txn.DtxNotSelectedException;
+import org.wso2.andes.server.txn.IncorrectDtxStateException;
 import org.wso2.andes.transport.DtxXaStatus;
 
 import javax.transaction.xa.Xid;
@@ -41,26 +44,37 @@ public class DtxCommitHandler implements StateAwareMethodListener<DtxCommitBodyI
     }
 
     @Override
-    public void methodReceived(AMQStateManager stateManager, DtxCommitBodyImpl body, int channelId)
+    public void methodReceived(AMQStateManager stateManager, DtxCommitBodyImpl body, final int channelId)
             throws AMQException {
         Xid xid = new XidImpl(body.getBranchId(), body.getFormat(), body.getGlobalId());
-        AMQProtocolSession session = stateManager.getProtocolSession();
+        final AMQProtocolSession session = stateManager.getProtocolSession();
 
-        AMQChannel channel = session.getChannel(channelId);
+        final AMQChannel channel = session.getChannel(channelId);
 
         if (channel == null) {
             throw body.getChannelNotFoundException(channelId);
         }
 
         try {
-            channel.commitDtxTransaction(xid);
+            channel.commitDtxTransaction(xid, new Runnable() {
 
-            MethodRegistry_0_91 methodRegistry = (MethodRegistry_0_91) session.getMethodRegistry();
-            DtxCommitOkBody dtxCommitOkBody = methodRegistry.createDtxCommitOkBody(DtxXaStatus.XA_OK.getValue());
-            session.writeFrame(dtxCommitOkBody.generateFrame(channelId));
-        } catch (DtxNotSelectedException e) {
-            throw new AMQException(AMQConstant.COMMAND_INVALID, "Error committing dtx ", e);
+                @Override
+                public void run() {
+                    MethodRegistry_0_91 methodRegistry = (MethodRegistry_0_91) session.getMethodRegistry();
+                    DtxCommitOkBody dtxCommitOkBody = methodRegistry.createDtxCommitOkBody(DtxXaStatus.XA_OK.getValue());
+                    session.writeFrame(dtxCommitOkBody.generateFrame(channelId));
+                }
+            });
+
+
+        } catch (DtxNotSelectedException  e) {
+            throw new AMQException(AMQConstant.COMMAND_INVALID, "Dtx not selected ", e);
+        } catch (UnknownDtxBranchException e) {
+            throw new AMQException(AMQConstant.COMMAND_INVALID, "Commit failed. Unknown XID ", e);
+        } catch (IncorrectDtxStateException e) {
+            throw new AMQException(AMQConstant.INTERNAL_ERROR, "Cannot commit, branch in an invalid state", e);
+        } catch (AndesException e) {
+            throw new AMQException(AMQConstant.INTERNAL_ERROR, "Cannot commit, error occurred while committing", e);
         }
-
     }
 }

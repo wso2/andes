@@ -314,7 +314,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
      * Sets this channels to be part of a distributed transaction
      */
     public void setDtxTransactional() {
-        _transaction = new QpidDistributedTransaction();
+        _transaction = new QpidDistributedTransaction(andesChannel);
     }
 
     public boolean isTransactional()
@@ -1381,9 +1381,12 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         distributedTransaction.prepare(xid);
     }
 
-    public void commitDtxTransaction(Xid xid) throws DtxNotSelectedException {
+    public void commitDtxTransaction(Xid xid, Runnable callback) throws DtxNotSelectedException,
+                                                                        UnknownDtxBranchException,
+                                                                        IncorrectDtxStateException,
+                                                                        AndesException {
         QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
-        distributedTransaction.commit(xid);
+        distributedTransaction.commit(xid, callback);
     }
 
     public void rollbackDtxTransaction(Xid xid)

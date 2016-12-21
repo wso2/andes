@@ -173,13 +173,14 @@ public class Andes {
     void initialise(MessagingEngine messagingEngine,
                     InboundEventManager inboundEventManager,
                     AndesContextInformationManager contextInformationManager,
-                    AndesSubscriptionManager subscriptionManager) {
+                    AndesSubscriptionManager subscriptionManager,
+                    DtxRegistry dtxRegistry ) {
 
         this.contextInformationManager = contextInformationManager;
         this.messagingEngine = messagingEngine;
         this.subscriptionManager = subscriptionManager;
         this.inboundEventManager = inboundEventManager;
-        this.dtxRegistry = new DtxRegistry(messagingEngine);
+        this.dtxRegistry = dtxRegistry;
 
         log.info("Andes API initialised.");
     }
@@ -801,8 +802,8 @@ public class Andes {
         inboundEventManager.publishRecoveryEvent();
     }
 
-    public DistributedTransaction createDistributedTransaction() {
-        return new DistributedTransaction(dtxRegistry);
+    public DistributedTransaction createDistributedTransaction(AndesChannel channel) {
+        return new DistributedTransaction(dtxRegistry, inboundEventManager, channel);
     }
 }
 

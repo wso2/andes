@@ -18,7 +18,6 @@
 
 package org.wso2.andes.kernel;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -26,6 +25,7 @@ import org.wso2.andes.configuration.StoreConfiguration;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
 import org.wso2.andes.kernel.disruptor.inbound.InboundExchangeEvent;
+import org.wso2.andes.kernel.dtx.DtxRegistry;
 import org.wso2.andes.kernel.registry.MessageRouterRegistry;
 import org.wso2.andes.kernel.registry.StorageQueueRegistry;
 import org.wso2.andes.kernel.registry.SubscriptionRegistry;
@@ -61,7 +61,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import javax.management.JMException;
 
@@ -328,7 +327,7 @@ public class AndesKernelBoot {
         ClusterResourceHolder.getInstance().setSubscriptionManager(subscriptionManager);
 
         MessagingEngine messagingEngine = MessagingEngine.getInstance();
-        messagingEngine.initialise(messageStore, new MessageExpiryManager(messageStore));
+        messagingEngine.initialise(messageStore, new MessageExpiryManager(messageStore), subscriptionManager);
 
         // initialise Andes context information related manager class
         AndesContextInformationManager contextInformationManager =
@@ -342,7 +341,7 @@ public class AndesKernelBoot {
 
         //Initialize Andes API (used by all inbound transports)
         Andes.getInstance().initialise(messagingEngine, inboundEventManager, contextInformationManager,
-                subscriptionManager);
+                subscriptionManager, new DtxRegistry(messageStore.getDtxStore(), messagingEngine));
 
         //Initialize cluster notification listener (null if standalone)
         if(null != clusterNotificationListenerManager) {

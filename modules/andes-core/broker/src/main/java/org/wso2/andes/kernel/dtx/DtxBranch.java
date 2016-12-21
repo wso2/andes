@@ -17,16 +17,21 @@ package org.wso2.andes.kernel.dtx;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
+import org.wso2.andes.kernel.disruptor.inbound.AndesInboundStateEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
+import org.wso2.andes.kernel.slot.SlotMessageCounter;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.transaction.xa.Xid;
 
-public class DtxBranch {
+public class DtxBranch implements AndesInboundStateEvent {
 
     /**
      * Class logger
@@ -41,11 +46,27 @@ public class DtxBranch {
     private final Xid xid;
     private final DtxRegistry dtxRegistry;
     private Map<Long, State> associatedSessions = new HashMap<>();
+    private InboundEventManager eventManager;
+    private Runnable callback;
+
+    /**
+     * Getter for enqueueList
+     */
+    public ArrayList<AndesMessage> getEnqueueList() {
+        return enqueueList;
+    }
 
     /**
      * Keep the list of messages that need to be published when the transaction commits
      */
     private ArrayList<AndesMessage> enqueueList = new ArrayList<>();
+
+    /**
+     * Getter for dequeueList
+     */
+    public List<AndesAckData> getDequeueList() {
+        return dequeueList;
+    }
 
     /**
      * Keep the list of messages that need to be acked when the transaction commits
@@ -62,9 +83,10 @@ public class DtxBranch {
      */
     private long internalXid = NULL_XID;
 
-    public DtxBranch(Xid xid, DtxRegistry dtxRegistry) {
+    public DtxBranch(Xid xid, DtxRegistry dtxRegistry, InboundEventManager eventManager) {
         this.xid = xid;
         this.dtxRegistry = dtxRegistry;
+        this.eventManager = eventManager;
     }
 
     public Xid getXid() {
@@ -80,8 +102,7 @@ public class DtxBranch {
     }
 
     public boolean resumeSession(long sessionID) {
-        if(associatedSessions.containsKey(sessionID) && associatedSessions.get(sessionID) == State.SUSPENDED)
-        {
+        if (associatedSessions.containsKey(sessionID) && associatedSessions.get(sessionID) == State.SUSPENDED) {
             associatedSessions.put(sessionID, State.ACTIVE);
             return true;
         }
@@ -114,6 +135,10 @@ public class DtxBranch {
 
     public void enqueueMessage(AndesMessage andesMessage) {
         enqueueList.add(andesMessage);
+    }
+
+    public void enqueueMessages(Collection<AndesMessage> messagesList) {
+        enqueueList.addAll(messagesList);
     }
 
     public boolean hasAssociatedActiveSessions() {
@@ -172,7 +197,39 @@ public class DtxBranch {
         }
     }
 
+    public void commit(Runnable callback, AndesChannel channel) throws AndesException {
+        this.callback = callback;
+        eventManager.requestDtxCommitEvent(this, channel);
+    }
+
+    @Override
+    public void updateState() throws AndesException {
+        SlotMessageCounter.getInstance().recordMetadataCountInSlot(enqueueList);
+        enqueueList.clear();
+        dequeueList.clear();
+        callback.run();
+
+        LOGGER.debug("Dtx commit messages state updated. Internal Xid " + internalXid);
+        // TODO: Handle exceptions
+    }
+
+    @Override
+    public String eventInfo() {
+        return null;
+    }
+
+    public void clearEnqueueList() {
+        enqueueList.clear();
+    }
+
+    /**
+     * Getter for internalXid
+     */
+    public long getInternalXid() {
+        return internalXid;
+    }
+
     public enum State {
-        SUSPENDED, ACTIVE, ROLLBACK_ONLY, PREPARED, FORGOTTEN, TIMED_OUT
+        SUSPENDED, ACTIVE, ROLLBACK_ONLY, PREPARED, FORGOTTEN, TIMED_OUT;
     }
 }
