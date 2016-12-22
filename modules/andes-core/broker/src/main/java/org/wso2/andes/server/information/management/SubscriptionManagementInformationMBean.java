@@ -17,7 +17,6 @@
  */
 package org.wso2.andes.server.information.management;
 
-import com.sun.org.glassfish.external.statistics.annotations.Reset;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
