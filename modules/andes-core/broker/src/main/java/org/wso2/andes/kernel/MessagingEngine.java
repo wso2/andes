@@ -359,6 +359,19 @@ public class MessagingEngine {
     }
 
     /**
+     * Return message count for the given queue. The count returned here is an approximate value since transactions
+     * are not used. This can be used in places where we need a rough value of the message count. The advantage of
+     * this method is this imposes less overhead on the DB.
+     *
+     * @param queueName name of the queue
+     * @return message count of the queue
+     * @throws AndesException due to an error in the message store
+     */
+    public long getApproximateQueueMessageCount(String queueName) throws AndesException {
+        return messageStore.getApproximateQueueMessageCount(queueName);
+    }
+
+    /**
      * Get number of messages in the queue within the message id range
      *
      * @param storageQueueName name of the queue

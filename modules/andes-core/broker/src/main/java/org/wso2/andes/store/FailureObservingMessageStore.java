@@ -490,6 +490,19 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
+    public long getApproximateQueueMessageCount(String storageQueueName) throws AndesException {
+        try {
+            return wrappedInstance.getApproximateQueueMessageCount(storageQueueName);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public long getMessageCountForQueueInDLC(String storageQueueName, String dlcQueueName) throws AndesException {
         try {
             return wrappedInstance.getMessageCountForQueueInDLC(storageQueueName, dlcQueueName);
