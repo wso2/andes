@@ -19,22 +19,34 @@
 package org.wso2.andes.kernel.disruptor.inbound;
 
 import com.lmax.disruptor.EventHandler;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.dtx.DtxBranch;
 
-public class DtxDBWriter implements EventHandler<InboundEventContainer> {
+public class DtxDbWriter implements EventHandler<InboundEventContainer> {
+
+    private static Log log = LogFactory.getLog(StateEventHandler.class);
 
     private MessagingEngine messagingEngine;
 
-    public DtxDBWriter(MessagingEngine engine) {
+    DtxDbWriter(MessagingEngine engine) {
         this.messagingEngine = engine;
     }
 
     @Override
-    public void onEvent(InboundEventContainer eventContainer, long sequence, boolean endOfBatch) throws Exception {
+    public void onEvent(InboundEventContainer event, long sequence, boolean endOfBatch) throws Exception {
 
-        DtxBranch dtxBranch = eventContainer.getDtxBranch();
+        if (InboundEventContainer.Type.DTX_COMMIT_EVENT == event.getEventType()) {
+            DtxBranch dtxBranch = event.getDtxBranch();
+            messagingEngine.dtxCommit(dtxBranch.getInternalXid(),
+                                      dtxBranch.getEnqueueList(), dtxBranch.getDequeueList());
 
-        messagingEngine.dtxCommit(dtxBranch.getInternalXid(), dtxBranch.getEnqueueList(), dtxBranch.getDequeueList());
+            if (log.isDebugEnabled()) {
+                log.debug("Sequence [ " + sequence + " ] Event " + event.getEventType()
+                                  + " Internal Xid " + dtxBranch.getInternalXid());
+            }
+        }
+
     }
 }

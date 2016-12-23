@@ -260,20 +260,27 @@ public class AndesKernelBoot {
      * @return an implementation of {@link MessageStore}
      * @throws Exception if an error occurs
      */
-    private static MessageStore createMessageStoreFromConfig(AndesContextStore andesContextStore) throws Exception {
-        StoreConfiguration andesConfiguration = AndesContext.getInstance()
-                .getStoreConfiguration();
+    private static MessageStore createMessageStoreFromConfig(AndesContextStore andesContextStore,
+                                                             FailureObservingStoreManager failureObservingStoreManager)
+            throws Exception {
+
+        StoreConfiguration andesConfiguration = AndesContext.getInstance().getStoreConfiguration();
         
      // create a message store and initialise messaging engine
         String messageStoreClassName = andesConfiguration.getMessageStoreClassName();
-        Class<? extends MessageStore> messageStoreClass = Class.forName(messageStoreClassName).asSubclass(MessageStore.class);
+        Class<? extends MessageStore> messageStoreClass =
+                Class.forName(messageStoreClassName).asSubclass(MessageStore.class);
+
         MessageStore messageStoreInConfig = messageStoreClass.newInstance();
 
-        messageStoreInConfig.initializeMessageStore(andesContextStore,
-                                                    andesConfiguration.getMessageStoreProperties());
+        FailureObservingMessageStore failureObservingMessageStore = new FailureObservingMessageStore(
+                messageStoreInConfig, failureObservingStoreManager);
+
+        failureObservingMessageStore.initializeMessageStore(
+                andesContextStore, andesConfiguration.getMessageStoreProperties());
         
         log.info("Andes MessageStore initialised with " + messageStoreClassName);
-        return messageStoreInConfig;
+        return failureObservingMessageStore;
     }
 
 
@@ -292,8 +299,8 @@ public class AndesKernelBoot {
         AndesContext.getInstance().setAndesContextStore(contextStore);
 
         // directly wire the instance without wrapped instance
-        messageStore = new FailureObservingMessageStore(createMessageStoreFromConfig(contextStoreInConfig),
-                failureObservingStoreManager);
+        messageStore = createMessageStoreFromConfig(contextStoreInConfig, failureObservingStoreManager);
+
         // Setting the message store in the context store
         AndesContext.getInstance().setMessageStore(messageStore);
 

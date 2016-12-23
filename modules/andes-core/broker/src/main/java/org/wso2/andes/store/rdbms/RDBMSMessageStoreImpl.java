@@ -1136,7 +1136,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Context contextWrite = MetricManager.timer(MetricsConstants.DB_WRITE, Level.INFO).start();
 
         try {
-
+            connection = getConnection();
             prepareToDeleteMessages(connection, messagesToRemove);
             connection.commit();
 

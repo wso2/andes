@@ -109,6 +109,7 @@ public class InboundEventContainer {
 
     public void setDtxBranch(DtxBranch dtxBranch) {
         this.dtxBranch = dtxBranch;
+        stateEvent = dtxBranch;
     }
 
     /**
@@ -212,6 +213,9 @@ public class InboundEventContainer {
             case TRANSACTION_CLOSE_EVENT:
                 getTransactionEvent().updateState();
                 break;
+            case DTX_COMMIT_EVENT:
+                getDtxBranch().updateState();
+                break;
             case PUBLISHER_RECOVERY_EVENT:
                 executeRecoveryEvent();
                 break;
@@ -245,6 +249,7 @@ public class InboundEventContainer {
         transactionEvent = null;
         freshContent.set(true);
         preProcessed = false;
+        dtxBranch = null;
     }
 
     /**

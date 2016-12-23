@@ -45,13 +45,16 @@ import java.util.Map;
  */
 public class FailureObservingMessageStore extends FailureObservingStore<MessageStore> implements MessageStore {
 
-    private DtxStore failureObservingDtxStore;
+    private FailureObservingDtxStore failureObservingDtxStore;
+
+    private FailureObservingStoreManager failureObservingStoreManager;
 
     /**
      * {@inheritDoc}
      */
     public FailureObservingMessageStore(MessageStore messageStore, FailureObservingStoreManager manager) {
         super(messageStore, manager);
+        this.failureObservingStoreManager = manager;
         failureObservingDtxStore = null;
     }
 
@@ -66,7 +69,7 @@ public class FailureObservingMessageStore extends FailureObservingStore<MessageS
             DurableStoreConnection connection =
                     wrappedInstance.initializeMessageStore(contextStore, connectionProperties);
 
-            failureObservingDtxStore = wrappedInstance.getDtxStore();
+            failureObservingDtxStore = new FailureObservingDtxStore(wrappedInstance.getDtxStore(),failureObservingStoreManager);
             return connection;
 
         } catch (AndesStoreUnavailableException exception) {

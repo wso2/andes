@@ -153,9 +153,12 @@ public class QpidDistributedTransaction implements ServerTransaction {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Committing distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
         }
-        distributedTransaction.commit(xid, callback);
-        for (Action action : postTransactionActions) {
-            action.postCommit();
+        try {
+            distributedTransaction.commit(xid, callback);
+        } finally {
+            for (Action action : postTransactionActions) {
+                action.postCommit();
+            }
         }
     }
 
