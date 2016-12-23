@@ -81,18 +81,17 @@ public class RDBMSDtxStoreImpl implements DtxStore {
             storeXidPS.executeUpdate();
 
             storeMetadataPS = connection.prepareStatement(RDBMSConstants.PS_INSERT_DTX_ENQUEUE_METADATA_RECORD);
-            storeContentPS = connection.prepareStatement(RDBMSConstants.PS_INSERT_MESSAGE_PART);
+            storeContentPS = connection.prepareStatement(RDBMSConstants.PS_INSERT_DTX_MESSAGE_PART);
 
             for (AndesMessage message : enqueueRecords) {
 
                 long temporaryMessageId = uniqueIdGenerator.generateUniqueId();
 
                 AndesMessageMetadata metadata = message.getMetadata();
-                storeMetadataPS.setLong(1, temporaryMessageId);
-                storeMetadataPS.setInt(
-                        2,
-                        rdbmsMessageStore.getCachedQueueID(metadata.getStorageQueueName()));
-                storeMetadataPS.setBytes(3, metadata.getMetadata());
+                storeMetadataPS.setLong(1, internalXid);
+                storeMetadataPS.setLong(2, temporaryMessageId);
+                storeMetadataPS.setString(3, metadata.getDestination());
+                storeMetadataPS.setBytes(4, metadata.getMetadata());
                 storeMetadataPS.addBatch();
 
                 for (AndesMessagePart messagePart : message.getContentChunkList()) {
@@ -147,8 +146,14 @@ public class RDBMSDtxStoreImpl implements DtxStore {
 
         try {
             connection = rdbmsMessageStore.getConnection();
-            rdbmsMessageStore.prepareToStoreMessages(connection, enqueueRecords);
-            rdbmsMessageStore.prepareToDeleteMessages(connection, dequeueRecords);
+            if (!enqueueRecords.isEmpty()) {
+                rdbmsMessageStore.prepareToStoreMessages(connection, enqueueRecords);
+            }
+
+            if (!dequeueRecords.isEmpty()) {
+                rdbmsMessageStore.prepareToDeleteMessages(connection, dequeueRecords);
+            }
+
             removePreparedRecords(internalXid, connection);
             connection.commit();
 

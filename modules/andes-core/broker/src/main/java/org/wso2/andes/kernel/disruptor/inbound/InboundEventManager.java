@@ -160,18 +160,18 @@ public class InboundEventManager {
         // Order in which handlers run in Disruptor
         // - ContentChunkHandlers
         // - MessagePreProcessor
-        // - MessageWriters
-        // - DtxDBWriter
         // - AckHandlers
+        // - MessageWriters
+        // - DtxDbWriter
         // - StateEventHandler
         disruptor.handleEventsWith(chunkHandlers).then(preProcessor);
-        disruptor.after(preProcessor).handleEventsWith(concurrentBatchEventHandlers)
-                .then(new DtxDBWriter(messagingEngine))
-                .then(ackEventBatchHandlers);
-
-        // State event handler update the state of Andes after other handlers work is done.
-        // State event handler will execute last. This handler will clear the event container.
-        disruptor.after(ackEventBatchHandlers).handleEventsWith(stateEventHandler);
+        disruptor.after(preProcessor)
+                .handleEventsWith(ackEventBatchHandlers)
+                .then(concurrentBatchEventHandlers)
+                .then(new DtxDbWriter(messagingEngine))
+                .then(stateEventHandler);   // State event handler update the state of Andes after other handlers work
+                                            // is done. State event handler will execute last. This handler will clear
+                                            // the event container.
 
         ringBuffer = disruptor.start();
 
@@ -392,6 +392,7 @@ public class InboundEventManager {
         try {
             eventContainer.setEventType(DTX_COMMIT_EVENT);
             eventContainer.setDtxBranch(dtxBranch);
+            eventContainer.pubAckHandler = disablePubAck;
             eventContainer.setChannel(channel);
         } finally {
             ringBuffer.publish(sequence);
