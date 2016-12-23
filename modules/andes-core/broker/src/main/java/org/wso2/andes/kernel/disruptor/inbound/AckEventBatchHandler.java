@@ -60,6 +60,7 @@ public class AckEventBatchHandler implements EventHandler<InboundEventContainer>
 
         if (((ackDataList.size() >= batchSize) || endOfBatch) && !ackDataList.isEmpty()) {
             ackHandler.onEvent(ackDataList);
+            ackDataList.clear();
         }
     }
 }
