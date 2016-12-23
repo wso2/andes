@@ -21,18 +21,20 @@ package org.dna.mqtt.wso2;
 import com.lmax.disruptor.ExceptionHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.dna.mqtt.moquette.messaging.spi.impl.ValueEvent;
 
 /**
  * This class handles the exceptions cause by MQTT disruptor
  */
-public class MQTTLogExceptionHandler implements ExceptionHandler {
-    private static Log log = LogFactory.getLog(MQTTLogExceptionHandler.class);
+public class MqttLogExceptionHandler implements ExceptionHandler<ValueEvent> {
+
+    private static Log log = LogFactory.getLog(MqttLogExceptionHandler.class);
 
     /**
      * {@inheritDoc
      */
     @Override
-    public void handleEventException(Throwable throwable, long l, Object object) {
+    public void handleEventException(Throwable throwable, long l, ValueEvent event) {
         log.error("ValueEvent exception occurred on disruptor.", throwable);
     }
 

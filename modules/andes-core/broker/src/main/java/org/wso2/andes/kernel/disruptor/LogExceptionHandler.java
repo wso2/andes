@@ -28,13 +28,12 @@ import org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer;
  * This exception handler will log exceptions that were not handled by event handlers and keep disruptor
  * working.
  */
-public class LogExceptionHandler implements ExceptionHandler {
+public class LogExceptionHandler implements ExceptionHandler<InboundEventContainer> {
 
     private static Log log = LogFactory.getLog(LogExceptionHandler.class);
 
     @Override
-    public void handleEventException(Throwable throwable, long sequence, Object object) {
-        InboundEventContainer event = (InboundEventContainer) object;
+    public void handleEventException(Throwable throwable, long sequence, InboundEventContainer event) {
 
         // NOTE: Event type will be set to IGNORE event type if the exception is coming from StateEventHandler
         String eventType;

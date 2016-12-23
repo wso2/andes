@@ -57,8 +57,6 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
                     // Since this is the final handler to be executed, message list needs to be cleared on message event.
                     event.clearMessageList(event.getChannel());
                     break;
-                case DTX_COMMIT_EVENT:
-                    updateSlotsAndQueueCounts(event);
                 case ACKNOWLEDGEMENT_EVENT:
                     updateTrackerWithAck(event);
                     break;

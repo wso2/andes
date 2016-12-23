@@ -84,6 +84,7 @@ public class RDBMSConstants {
     protected static final String DTX_ENQUEUE_RECORD_TABLE = "MB_DTX_PREPARED_ENQUEUE_RECORD";
     protected static final String DTX_DEQUEUE_RECORD_TABLE = "MB_DTX_PREPARED_DEQUEUE_RECORD";
     protected static final String DTX_ENTRY_TABLE = "MB_DTX_PREPARED_XID";
+    protected static final String DTX_CONTENT_TABLE = "MB_DTX_PREPARED_CONTENT";
     protected static final String QUEUES_TABLE = "MB_QUEUE_MAPPING";
     protected static final String EXPIRATION_TABLE = "MB_EXPIRATION_DATA";
     protected static final String MSG_STORE_STATUS_TABLE = "MB_MSG_STORE_STATUS";
@@ -1055,7 +1056,7 @@ public class RDBMSConstants {
             = "INSERT INTO " + DTX_ENQUEUE_RECORD_TABLE + " ("
             + INTERNAL_XID + ","
             + MESSAGE_ID + ","
-            + QUEUE_ID + ","
+            + DESTINATION_QUEUE + ","
             + METADATA + ")"
             + " VALUES ( ?,?,?,? )";
 
@@ -1080,6 +1081,13 @@ public class RDBMSConstants {
     static final String PS_REMOVE_DTX_PREPARED_XID =
             "DELETE FROM " + DTX_ENTRY_TABLE
                     + " WHERE " + INTERNAL_XID + " =?";
+
+    // prepared statements for Message Store
+    protected static final String PS_INSERT_DTX_MESSAGE_PART =
+            "INSERT INTO " + DTX_CONTENT_TABLE + "("
+                    + MESSAGE_ID + ","
+                    + MSG_OFFSET + ","
+                    + MESSAGE_CONTENT + ") VALUES (?, ?, ?)";
 
     // Message Store related jdbc tasks executed
     protected static final String TASK_STORING_MESSAGE_PARTS = "storing message parts.";
