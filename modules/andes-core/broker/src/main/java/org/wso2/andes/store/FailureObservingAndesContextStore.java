@@ -18,7 +18,6 @@
 
 package org.wso2.andes.store;
 
-import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesBinding;
 import org.wso2.andes.kernel.AndesContextStore;
@@ -27,19 +26,17 @@ import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.router.AndesMessageRouter;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
-import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEvent;
-import org.wso2.andes.server.cluster.NodeHeartBeatData;
-import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 import org.wso2.andes.kernel.subscription.AndesSubscription;
 import org.wso2.andes.kernel.subscription.StorageQueue;
+import org.wso2.andes.server.cluster.NodeHeartBeatData;
+import org.wso2.andes.server.cluster.coordination.ClusterNotification;
+import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEvent;
 
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Implementation of {@link AndesContextStore} which observes failures such is
@@ -47,40 +44,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * broker.xml will be wrapped by this class.
  *
  */
-public class FailureObservingAndesContextStore implements AndesContextStore {
-
-    /**
-     * {@link AndesContextStore} specified in broker.xml
-     */
-    private AndesContextStore wrappedAndesContextStoreInstance;
-
-    private static final Logger log = Logger.getLogger(FailureObservingAndesContextStore.class);
-
-    /**
-     * Variable that holds the operational status of the context store. True if store is operational.
-     */
-    private AtomicBoolean isStoreAvailable;
-
-    /**
-     * Future referring to a scheduled task which check the connectivity to the
-     * store.
-     * Used to cancel the periodic task after store becomes operational.
-     */
-    private ScheduledFuture<?> storeHealthDetectingFuture;
-
-    /**
-     * {@link FailureObservingStoreManager} to notify about store's operational status.
-     */
-    private FailureObservingStoreManager failureObservingStoreManager;
+public class FailureObservingAndesContextStore extends FailureObservingStore<AndesContextStore> implements AndesContextStore {
 
     /**
      * {@inheritDoc}
      */
-    public FailureObservingAndesContextStore(AndesContextStore wrapped, FailureObservingStoreManager manager) {
-        this.wrappedAndesContextStoreInstance = wrapped;
-        isStoreAvailable = new AtomicBoolean(true);
-        storeHealthDetectingFuture = null;
-        failureObservingStoreManager = manager;
+    public FailureObservingAndesContextStore(AndesContextStore contextStore, FailureObservingStoreManager manager) {
+        super(contextStore, manager);
     }
 
     /**
@@ -90,7 +60,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     public DurableStoreConnection init(ConfigurationProperties connectionProperties) throws AndesException {
 
         try {
-            return wrappedAndesContextStoreInstance.init(connectionProperties);
+            return wrappedInstance.init(connectionProperties);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -104,7 +74,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     public Map<String, List<String>> getAllStoredDurableSubscriptions() throws AndesException {
 
         try {
-            return wrappedAndesContextStoreInstance.getAllStoredDurableSubscriptions();
+            return wrappedInstance.getAllStoredDurableSubscriptions();
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -117,7 +87,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public Map<String, String> getAllDurableSubscriptionsByID() throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.getAllDurableSubscriptionsByID();
+            return wrappedInstance.getAllDurableSubscriptionsByID();
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -130,7 +100,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public boolean isSubscriptionExist(String subscriptionId) throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.isSubscriptionExist(subscriptionId);
+            return wrappedInstance.isSubscriptionExist(subscriptionId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -143,7 +113,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void storeDurableSubscription(AndesSubscription subscription) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.storeDurableSubscription(subscription);
+            wrappedInstance.storeDurableSubscription(subscription);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -156,7 +126,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public int updateDurableSubscription(AndesSubscription subscription) throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.updateDurableSubscription(subscription);
+            return wrappedInstance.updateDurableSubscription(subscription);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -169,7 +139,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void updateOrInsertDurableSubscription(AndesSubscription subscription) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.updateOrInsertDurableSubscription(subscription);
+            wrappedInstance.updateOrInsertDurableSubscription(subscription);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -182,7 +152,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void updateDurableSubscriptions(Map<String, String> subscriptions) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.updateDurableSubscriptions(subscriptions);
+            wrappedInstance.updateDurableSubscriptions(subscriptions);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -195,7 +165,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void removeDurableSubscription(AndesSubscription subscription) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.removeDurableSubscription(subscription);
+            wrappedInstance.removeDurableSubscription(subscription);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -209,7 +179,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void storeNodeDetails(String nodeID, String data) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.storeNodeDetails(nodeID, data);
+            wrappedInstance.storeNodeDetails(nodeID, data);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -222,7 +192,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public Map<String, String> getAllStoredNodeData() throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.getAllStoredNodeData();
+            return wrappedInstance.getAllStoredNodeData();
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -235,7 +205,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void removeNodeData(String nodeID) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.removeNodeData(nodeID);
+            wrappedInstance.removeNodeData(nodeID);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -248,7 +218,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void addMessageCounterForQueue(String destinationQueueName) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.addMessageCounterForQueue(destinationQueueName);
+            wrappedInstance.addMessageCounterForQueue(destinationQueueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -261,7 +231,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public long getMessageCountForQueue(String destinationQueueName) throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.getMessageCountForQueue(destinationQueueName);
+            return wrappedInstance.getMessageCountForQueue(destinationQueueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -274,7 +244,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void resetMessageCounterForQueue(String storageQueueName) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.resetMessageCounterForQueue(storageQueueName);
+            wrappedInstance.resetMessageCounterForQueue(storageQueueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -287,7 +257,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void removeMessageCounterForQueue(String destinationQueueName) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.removeMessageCounterForQueue(destinationQueueName);
+            wrappedInstance.removeMessageCounterForQueue(destinationQueueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -300,7 +270,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void incrementMessageCountForQueue(String destinationQueueName, long incrementBy) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.incrementMessageCountForQueue(destinationQueueName, incrementBy);
+            wrappedInstance.incrementMessageCountForQueue(destinationQueueName, incrementBy);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -313,7 +283,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void decrementMessageCountForQueue(String destinationQueueName, long decrementBy) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.decrementMessageCountForQueue(destinationQueueName, decrementBy);
+            wrappedInstance.decrementMessageCountForQueue(destinationQueueName, decrementBy);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -326,7 +296,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void storeExchangeInformation(String exchangeName, String exchangeInfo) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.storeExchangeInformation(exchangeName, exchangeInfo);
+            wrappedInstance.storeExchangeInformation(exchangeName, exchangeInfo);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -339,7 +309,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public List<AndesMessageRouter> getAllMessageRoutersStored() throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.getAllMessageRoutersStored();
+            return wrappedInstance.getAllMessageRoutersStored();
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -352,7 +322,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void deleteExchangeInformation(String exchangeName) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.deleteExchangeInformation(exchangeName);
+            wrappedInstance.deleteExchangeInformation(exchangeName);
 
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
@@ -366,7 +336,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void storeQueueInformation(String queueName, String queueInfo) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.storeQueueInformation(queueName, queueInfo);
+            wrappedInstance.storeQueueInformation(queueName, queueInfo);
 
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
@@ -380,7 +350,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public List<StorageQueue> getAllQueuesStored() throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.getAllQueuesStored();
+            return wrappedInstance.getAllQueuesStored();
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -393,7 +363,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void deleteQueueInformation(String queueName) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.deleteQueueInformation(queueName);
+            wrappedInstance.deleteQueueInformation(queueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -407,7 +377,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     public void storeBindingInformation(String exchange, String boundQueueName, String bindingInfo)
             throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.storeBindingInformation(exchange, boundQueueName, bindingInfo);
+            wrappedInstance.storeBindingInformation(exchange, boundQueueName, bindingInfo);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -420,7 +390,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public List<AndesBinding> getBindingsStoredForExchange(String exchangeName) throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.getBindingsStoredForExchange(exchangeName);
+            return wrappedInstance.getBindingsStoredForExchange(exchangeName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -434,7 +404,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void deleteBindingInformation(String exchangeName, String boundQueueName) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.deleteBindingInformation(exchangeName, boundQueueName);
+            wrappedInstance.deleteBindingInformation(exchangeName, boundQueueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -446,49 +416,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
      */
     @Override
     public void close() {
-        wrappedAndesContextStoreInstance.close();
-    }
-
-    /**
-     * {@inheritDoc}.
-     * <p>
-     * Alters the behavior where
-     * <ol>
-     * <li>checks the operational status of the wrapped context store</li>
-     * <li>if context store is operational it will cancel the periodic task</li>
-     * </ol>
-     */
-    @Override
-    public boolean isOperational(String testString, long testTime) {
-        if (wrappedAndesContextStoreInstance.isOperational(testString, testTime)) {
-            isStoreAvailable.set(true);
-            if (storeHealthDetectingFuture != null) {
-                // we have detected that store is operational therefore
-                // we don't need to run the periodic task to check weather store
-                // is available.
-                storeHealthDetectingFuture.cancel(false);
-                storeHealthDetectingFuture = null;
-            }
-            failureObservingStoreManager.notifyContextStoreOperational(this);
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * A convenient method to notify all {@link StoreHealthListener}s that
-     * context store became offline
-     *
-     * @param e
-     *            the exception occurred.
-     */
-    private void notifyFailures(AndesStoreUnavailableException e) {
-
-        if (isStoreAvailable.compareAndSet(true, false)) {
-            log.warn("Context store became non-operational");
-            failureObservingStoreManager.notifyContextStoreNonOperational(e, wrappedAndesContextStoreInstance);
-            storeHealthDetectingFuture = failureObservingStoreManager.scheduleHealthCheckTask(this);
-        }
+        wrappedInstance.close();
     }
 
     /**
@@ -503,8 +431,8 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void createSlot(long startMessageId, long endMessageId, String storageQueueName, String assignedNodeId) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.createSlot(startMessageId, endMessageId, storageQueueName,
-                                                        assignedNodeId);
+            wrappedInstance.createSlot(startMessageId, endMessageId, storageQueueName,
+                                       assignedNodeId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -521,7 +449,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public boolean deleteSlot(long startMessageId, long endMessageId) throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.deleteSlot(startMessageId, endMessageId);
+            return wrappedInstance.deleteSlot(startMessageId, endMessageId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -537,7 +465,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void deleteSlotsByQueueName(String queueName) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.deleteSlotsByQueueName(queueName);
+            wrappedInstance.deleteSlotsByQueueName(queueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -553,7 +481,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void deleteMessageIdsByQueueName(String queueName) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.deleteMessageIdsByQueueName(queueName);
+            wrappedInstance.deleteMessageIdsByQueueName(queueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -570,7 +498,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void deleteSlotAssignment(long startMessageId, long endMessageId) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.deleteSlotAssignment(startMessageId, endMessageId);
+            wrappedInstance.deleteSlotAssignment(startMessageId, endMessageId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -587,7 +515,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void deleteSlotAssignmentByQueueName(String nodeId, String queueName) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.deleteSlotAssignmentByQueueName(nodeId, queueName);
+            wrappedInstance.deleteSlotAssignmentByQueueName(nodeId, queueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -606,7 +534,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void createSlotAssignment(String nodeId, String queueName, long startMsgId, long endMsgId) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.createSlotAssignment(nodeId, queueName, startMsgId, endMsgId);
+            wrappedInstance.createSlotAssignment(nodeId, queueName, startMsgId, endMsgId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -623,7 +551,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public Slot selectUnAssignedSlot(String queueName) throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.selectUnAssignedSlot(queueName);
+            return wrappedInstance.selectUnAssignedSlot(queueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -640,7 +568,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public long getQueueToLastAssignedId(String queueName) throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.getQueueToLastAssignedId(queueName);
+            return wrappedInstance.getQueueToLastAssignedId(queueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -657,7 +585,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void setQueueToLastAssignedId(String queueName, long messageId) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.setQueueToLastAssignedId(queueName, messageId);
+            wrappedInstance.setQueueToLastAssignedId(queueName, messageId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -674,7 +602,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public long getLocalSafeZoneOfNode(String nodeId) throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.getLocalSafeZoneOfNode(nodeId);
+            return wrappedInstance.getLocalSafeZoneOfNode(nodeId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -691,7 +619,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void setLocalSafeZoneOfNode(String nodeId, long messageId) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.setLocalSafeZoneOfNode(nodeId, messageId);
+            wrappedInstance.setLocalSafeZoneOfNode(nodeId, messageId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -704,7 +632,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void removePublisherNodeId(String nodeId) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.removePublisherNodeId(nodeId);
+            wrappedInstance.removePublisherNodeId(nodeId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -720,7 +648,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public TreeSet<String> getMessagePublishedNodes() throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.getMessagePublishedNodes();
+            return wrappedInstance.getMessagePublishedNodes();
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -738,7 +666,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void setSlotState(long startMessageId, long endMessageId, SlotState slotState) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.setSlotState(startMessageId, endMessageId, slotState);
+            wrappedInstance.setSlotState(startMessageId, endMessageId, slotState);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -751,7 +679,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public Slot getOverlappedSlot(String nodeId, String queueName) throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.getOverlappedSlot(nodeId, queueName);
+            return wrappedInstance.getOverlappedSlot(nodeId, queueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -768,7 +696,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void addMessageId(String queueName, long messageId) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.addMessageId(queueName, messageId);
+            wrappedInstance.addMessageId(queueName, messageId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -785,7 +713,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public TreeSet<Long> getMessageIds(String queueName) throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.getMessageIds(queueName);
+            return wrappedInstance.getMessageIds(queueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -801,7 +729,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void deleteMessageId(long messageId) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.deleteMessageId(messageId);
+            wrappedInstance.deleteMessageId(messageId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -818,7 +746,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public TreeSet<Slot> getAssignedSlotsByNodeId(String nodeId) throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.getAssignedSlotsByNodeId(nodeId);
+            return wrappedInstance.getAssignedSlotsByNodeId(nodeId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -835,7 +763,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public TreeSet<Slot> getAllSlotsByQueueName(String queueName) throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.getAllSlotsByQueueName(queueName);
+            return wrappedInstance.getAllSlotsByQueueName(queueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -848,7 +776,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public Set<String> getAllQueues() throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.getAllQueues();
+            return wrappedInstance.getAllQueues();
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -861,7 +789,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public Set<String> getAllQueuesInSubmittedSlots() throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.getAllQueuesInSubmittedSlots();
+            return wrappedInstance.getAllQueuesInSubmittedSlots();
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -877,7 +805,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void clearSlotStorage() throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.clearSlotStorage();
+            wrappedInstance.clearSlotStorage();
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -890,7 +818,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public boolean createCoordinatorEntry(String nodeId, InetSocketAddress thriftAddress) throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.createCoordinatorEntry(nodeId, thriftAddress);
+            return wrappedInstance.createCoordinatorEntry(nodeId, thriftAddress);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -903,7 +831,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public boolean checkIsCoordinator(String nodeId) throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.checkIsCoordinator(nodeId);
+            return wrappedInstance.checkIsCoordinator(nodeId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -916,7 +844,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public boolean updateCoordinatorHeartbeat(String nodeId) throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.updateCoordinatorHeartbeat(nodeId);
+            return wrappedInstance.updateCoordinatorHeartbeat(nodeId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -929,7 +857,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public boolean checkIfCoordinatorValid(int age) throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.checkIfCoordinatorValid(age);
+            return wrappedInstance.checkIfCoordinatorValid(age);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -942,7 +870,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public InetSocketAddress getCoordinatorThriftAddress() throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.getCoordinatorThriftAddress();
+            return wrappedInstance.getCoordinatorThriftAddress();
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -955,7 +883,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void removeCoordinator() throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.removeCoordinator();
+            wrappedInstance.removeCoordinator();
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -968,7 +896,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public boolean updateNodeHeartbeat(String nodeId) throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.updateNodeHeartbeat(nodeId);
+            return wrappedInstance.updateNodeHeartbeat(nodeId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -981,7 +909,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void createNodeHeartbeatEntry(String nodeId,  InetSocketAddress nodeAddress) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.createNodeHeartbeatEntry(nodeId, nodeAddress);
+            wrappedInstance.createNodeHeartbeatEntry(nodeId, nodeAddress);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -994,7 +922,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public List<NodeHeartBeatData> getAllHeartBeatData() throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.getAllHeartBeatData();
+            return wrappedInstance.getAllHeartBeatData();
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -1007,7 +935,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void removeNodeHeartbeat(String nodeId) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.removeNodeHeartbeat(nodeId);
+            wrappedInstance.removeNodeHeartbeat(nodeId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -1020,7 +948,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void markNodeAsNotNew(String nodeId) throws AndesException{
         try {
-            wrappedAndesContextStoreInstance.markNodeAsNotNew(nodeId);
+            wrappedInstance.markNodeAsNotNew(nodeId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -1033,7 +961,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public String getCoordinatorNodeId() throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.getCoordinatorNodeId();
+            return wrappedInstance.getCoordinatorNodeId();
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -1043,7 +971,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void clearHeartBeatData() throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.clearHeartBeatData();
+            wrappedInstance.clearHeartBeatData();
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -1057,7 +985,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     public void storeMembershipEvent(List<String> clusterNodes, int membershipEventType, String changedMember)
             throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.storeMembershipEvent(clusterNodes, membershipEventType, changedMember);
+            wrappedInstance.storeMembershipEvent(clusterNodes, membershipEventType, changedMember);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -1070,7 +998,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public List<MembershipEvent> readMemberShipEvents(String nodeID) throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.readMemberShipEvents(nodeID);
+            return wrappedInstance.readMemberShipEvents(nodeID);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -1083,7 +1011,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void clearMembershipEvents() throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.clearMembershipEvents();
+            wrappedInstance.clearMembershipEvents();
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -1096,7 +1024,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     @Override
     public void clearMembershipEvents(String nodeID) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.clearMembershipEvents(nodeID);
+            wrappedInstance.clearMembershipEvents(nodeID);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -1109,8 +1037,8 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     public void storeClusterNotification(List<String> clusterNodes, String originatedNode, String artifactType, String
             clusterNotificationType, String notification, String description) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.storeClusterNotification(clusterNodes, originatedNode,
-                    artifactType, clusterNotificationType, notification, description);
+            wrappedInstance.storeClusterNotification(clusterNodes, originatedNode,
+                                                     artifactType, clusterNotificationType, notification, description);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -1122,7 +1050,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
      */
     public List<ClusterNotification> readClusterNotifications(String nodeID) throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.readClusterNotifications(nodeID);
+            return wrappedInstance.readClusterNotifications(nodeID);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -1134,7 +1062,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
      */
     public void clearClusterNotifications() throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.clearClusterNotifications();
+            wrappedInstance.clearClusterNotifications();
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -1146,7 +1074,7 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
      */
     public void clearClusterNotifications(String nodeID) throws AndesException {
         try {
-            wrappedAndesContextStoreInstance.clearClusterNotifications(nodeID);
+            wrappedInstance.clearClusterNotifications(nodeID);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

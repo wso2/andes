@@ -20,66 +20,42 @@ package org.wso2.andes.store;
 
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
-import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
-import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
+import org.wso2.andes.kernel.DtxStore;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.kernel.slot.RecoverySlotCreator;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.tools.utils.MessageTracer;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
-import javax.transaction.xa.Xid;
 
 /**
- * Implementation of {@link MessageStore} which observes failures such is
+ * Implementation of {@link MessageStore} which observes failures such as
  * connection errors. Any {@link MessageStore} implementation specified in
  * broker.xml will be wrapped by this class.
  */
-public class FailureObservingMessageStore implements MessageStore {
+public class FailureObservingMessageStore extends FailureObservingStore<MessageStore> implements MessageStore {
 
-    /**
-     * {@link MessageStore} specified in broker.xml
-     */
-    private MessageStore wrappedInstance;
+    private FailureObservingDtxStore failureObservingDtxStore;
 
-    /**
-     * Future referring to a scheduled task which check the connectivity to the
-     * store.
-     * Used to cancel the periodic task after store becomes operational.
-     */
-    private ScheduledFuture<?> storeHealthDetectingFuture;
-
-    /**
-     * Variable that holds the operational status of the context store. True if store is operational.
-     */
-    private AtomicBoolean isStoreAvailable;
-
-    /**
-     * {@link FailureObservingStoreManager} to notify about store's operational status.
-     */
     private FailureObservingStoreManager failureObservingStoreManager;
-
-    private static final Logger log = Logger.getLogger(FailureObservingMessageStore.class);
 
     /**
      * {@inheritDoc}
      */
     public FailureObservingMessageStore(MessageStore messageStore, FailureObservingStoreManager manager) {
-        this.wrappedInstance = messageStore;
-        this.storeHealthDetectingFuture = null;
-        isStoreAvailable = new AtomicBoolean(true);
-        failureObservingStoreManager = manager;
+        super(messageStore, manager);
+        this.failureObservingStoreManager = manager;
+        failureObservingDtxStore = null;
     }
 
     /**
@@ -89,7 +65,13 @@ public class FailureObservingMessageStore implements MessageStore {
     public DurableStoreConnection initializeMessageStore(AndesContextStore contextStore,
             ConfigurationProperties connectionProperties) throws AndesException {
         try {
-            return wrappedInstance.initializeMessageStore(contextStore, connectionProperties);
+
+            DurableStoreConnection connection =
+                    wrappedInstance.initializeMessageStore(contextStore, connectionProperties);
+
+            failureObservingDtxStore = new FailureObservingDtxStore(wrappedInstance.getDtxStore(),failureObservingStoreManager);
+            return connection;
+
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -315,15 +297,16 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void deleteMessages(final String storageQueueName, List<AndesMessageMetadata> messagesToRemove)
+    public void deleteMessages(Collection<? extends AndesMessageMetadata> messagesToRemove)
             throws AndesException {
         try {
-            wrappedInstance.deleteMessages(storageQueueName, messagesToRemove);
+            wrappedInstance.deleteMessages(messagesToRemove);
 
             //Tracing message activity
             if (MessageTracer.isEnabled()) {
                 for (AndesMessageMetadata message : messagesToRemove) {
-                    MessageTracer.trace(message.getMessageID(), storageQueueName, MessageTracer.MESSAGE_DELETED);
+                    MessageTracer.trace(message.getMessageID(),
+                                        message.getStorageQueueName(), MessageTracer.MESSAGE_DELETED);
                 }
             }
 
@@ -639,69 +622,8 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public long storeDtxRecords(Xid xid, List<AndesMessage> enqueueRecords, List<AndesAckData> dequeueRecords)
-            throws AndesException {
-        try {
-            return wrappedInstance.storeDtxRecords(xid, enqueueRecords, dequeueRecords);
-        } catch (AndesStoreUnavailableException exception) {
-            notifyFailures(exception);
-            throw exception;
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void removeDtxRecords(long internalXid) throws AndesException {
-        try {
-            wrappedInstance.removeDtxRecords(internalXid);
-        } catch (AndesStoreUnavailableException exception) {
-            notifyFailures(exception);
-            throw exception;
-        }
-    }
-
-    /**
-     * {@inheritDoc}.
-     * <p>
-     * Alters the behavior where
-     * <ol>
-     * <li>checks the operational status of the wrapped context store</li>
-     * <li>if context store is operational it will cancel the periodic task</li>
-     * </ol>
-     */
-    @Override
-    public boolean isOperational(String testString, long testTime) {
-
-        if (wrappedInstance.isOperational(testString, testTime)) {
-            isStoreAvailable.set(true);
-            if (storeHealthDetectingFuture != null) {
-                // we have detected that store is operational therefore
-                // we don't need to run the periodic task to check weather store
-                // is available.
-                storeHealthDetectingFuture.cancel(false);
-                storeHealthDetectingFuture = null;
-            }
-            failureObservingStoreManager.notifyMessageStoreOperational(this);
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * A convenient method to notify all {@link StoreHealthListener}s that
-     * context store became offline
-     *
-     * @param e the exception occurred.
-     */
-    private void notifyFailures(AndesStoreUnavailableException e) {
-
-        if (isStoreAvailable.compareAndSet(true,false)){
-            log.warn("Message store became non-operational");
-            failureObservingStoreManager.notifyMessageStoreNonOperational(e, wrappedInstance);
-            storeHealthDetectingFuture = failureObservingStoreManager.scheduleHealthCheckTask(this);
-        }
+    public DtxStore getDtxStore() {
+        return failureObservingDtxStore;
     }
 
 }

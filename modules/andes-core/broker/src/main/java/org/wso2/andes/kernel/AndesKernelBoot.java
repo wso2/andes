@@ -18,7 +18,6 @@
 
 package org.wso2.andes.kernel;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -26,6 +25,7 @@ import org.wso2.andes.configuration.StoreConfiguration;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
 import org.wso2.andes.kernel.disruptor.inbound.InboundExchangeEvent;
+import org.wso2.andes.kernel.dtx.DtxRegistry;
 import org.wso2.andes.kernel.registry.MessageRouterRegistry;
 import org.wso2.andes.kernel.registry.StorageQueueRegistry;
 import org.wso2.andes.kernel.registry.SubscriptionRegistry;
@@ -61,7 +61,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import javax.management.JMException;
 
@@ -261,20 +260,27 @@ public class AndesKernelBoot {
      * @return an implementation of {@link MessageStore}
      * @throws Exception if an error occurs
      */
-    private static MessageStore createMessageStoreFromConfig(AndesContextStore andesContextStore) throws Exception {
-        StoreConfiguration andesConfiguration = AndesContext.getInstance()
-                .getStoreConfiguration();
+    private static MessageStore createMessageStoreFromConfig(AndesContextStore andesContextStore,
+                                                             FailureObservingStoreManager failureObservingStoreManager)
+            throws Exception {
+
+        StoreConfiguration andesConfiguration = AndesContext.getInstance().getStoreConfiguration();
         
      // create a message store and initialise messaging engine
         String messageStoreClassName = andesConfiguration.getMessageStoreClassName();
-        Class<? extends MessageStore> messageStoreClass = Class.forName(messageStoreClassName).asSubclass(MessageStore.class);
+        Class<? extends MessageStore> messageStoreClass =
+                Class.forName(messageStoreClassName).asSubclass(MessageStore.class);
+
         MessageStore messageStoreInConfig = messageStoreClass.newInstance();
 
-        messageStoreInConfig.initializeMessageStore(andesContextStore,
-                                                    andesConfiguration.getMessageStoreProperties());
+        FailureObservingMessageStore failureObservingMessageStore = new FailureObservingMessageStore(
+                messageStoreInConfig, failureObservingStoreManager);
+
+        failureObservingMessageStore.initializeMessageStore(
+                andesContextStore, andesConfiguration.getMessageStoreProperties());
         
         log.info("Andes MessageStore initialised with " + messageStoreClassName);
-        return messageStoreInConfig;
+        return failureObservingMessageStore;
     }
 
 
@@ -293,8 +299,8 @@ public class AndesKernelBoot {
         AndesContext.getInstance().setAndesContextStore(contextStore);
 
         // directly wire the instance without wrapped instance
-        messageStore = new FailureObservingMessageStore(createMessageStoreFromConfig(contextStoreInConfig),
-                failureObservingStoreManager);
+        messageStore = createMessageStoreFromConfig(contextStoreInConfig, failureObservingStoreManager);
+
         // Setting the message store in the context store
         AndesContext.getInstance().setMessageStore(messageStore);
 
@@ -328,7 +334,7 @@ public class AndesKernelBoot {
         ClusterResourceHolder.getInstance().setSubscriptionManager(subscriptionManager);
 
         MessagingEngine messagingEngine = MessagingEngine.getInstance();
-        messagingEngine.initialise(messageStore, new MessageExpiryManager(messageStore));
+        messagingEngine.initialise(messageStore, new MessageExpiryManager(messageStore), subscriptionManager);
 
         // initialise Andes context information related manager class
         AndesContextInformationManager contextInformationManager =
@@ -342,7 +348,7 @@ public class AndesKernelBoot {
 
         //Initialize Andes API (used by all inbound transports)
         Andes.getInstance().initialise(messagingEngine, inboundEventManager, contextInformationManager,
-                subscriptionManager);
+                subscriptionManager, new DtxRegistry(messageStore.getDtxStore(), messagingEngine));
 
         //Initialize cluster notification listener (null if standalone)
         if(null != clusterNotificationListenerManager) {

@@ -25,9 +25,9 @@ import org.wso2.andes.kernel.slot.RecoverySlotCreator;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.store.HealthAwareStore;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import javax.transaction.xa.Xid;
 
 /**
  * Message meta data and content storing related data base types specific logic is abstracted out
@@ -213,21 +213,16 @@ public interface MessageStore extends HealthAwareStore {
             throws AndesException;
 
     /**
-     * Method to delete a set of messages from the database
-     * If deleteAllMetaData is set to true, the storageQueue in the metadata table could be cleared at once
-     * and the messages destined to that queue, given by the messagesToRemove list could be deleted from the content
-     * table
-     * Else, the messages in the list 'messagesToRemove' will be deleted
+     * Method to delete a set of messages from the database.
      *
-     * @param storageQueueName name of the queue
-     * @param messagesToRemove the list of messages to remove
+     * @param messagesToRemove the list of {@link AndesMessageMetadata} related to messages to be removed
      * @throws AndesException
      */
-    void deleteMessages(final String storageQueueName, List<AndesMessageMetadata> messagesToRemove)
-            throws AndesException;
+    void deleteMessages(Collection<? extends AndesMessageMetadata> messagesToRemove) throws AndesException;
 
     /**
      *  Delete a set of messages based on their message ids
+     *
      * @param messagesToRemove list of message ids of messages that need to be removed
      * @throws AndesException
      */
@@ -424,27 +419,6 @@ public interface MessageStore extends HealthAwareStore {
      */
     void close();
 
-    /*
-     * =============================+=== Distributed Transactions related operations =================================
-     */
+    DtxStore getDtxStore();
 
-    /**
-     * Persist enqueue and dequeue records to the database. This is normally done at the prepare stage
-     *
-     * @param xid            xid of the Distributed transaction branch
-     * @param enqueueRecords list of enqueue records
-     * @param dequeueRecords list of dequeue records
-     * @throws AndesException due to a message store error
-     */
-    long storeDtxRecords(Xid xid, List<AndesMessage> enqueueRecords, List<AndesAckData> dequeueRecords)
-            throws AndesException;
-
-    /**
-     * Remove stored enqueue and dequeue records for the distributed transaction. Normally done at the commit or
-     * rollback stage
-     *
-     * @param internalXid internal XID generated when persisting records
-     * @throws AndesException due to a message store error
-     */
-    void removeDtxRecords(long internalXid) throws AndesException;
 }

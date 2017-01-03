@@ -31,6 +31,8 @@ import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.kernel.slot.SlotManagerStandalone;
 import org.wso2.andes.kernel.slot.SlotMessageCounter;
+import org.wso2.andes.kernel.subscription.AndesSubscription;
+import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerator;
@@ -43,7 +45,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.transaction.xa.Xid;
 
 /**
  * This class will handle all message related functions of WSO2 Message Broker
@@ -81,6 +82,8 @@ public class MessagingEngine {
      */
     private MessageExpiryManager messageExpiryManager;
 
+    private AndesSubscriptionManager subscriptionManager;
+
     /**
      * private constructor for singleton pattern
      */
@@ -108,15 +111,18 @@ public class MessagingEngine {
      * storing strategy will be set according to the configurations by calling this.
      *
      * @param messageStore MessageStore
+     * @param subscriptionManager
      * @throws AndesException
      */
-    public void initialise(MessageStore messageStore, MessageExpiryManager messageExpiryManager)
+    public void initialise(MessageStore messageStore, MessageExpiryManager messageExpiryManager,
+                           AndesSubscriptionManager subscriptionManager)
             throws AndesException {
 
         configureMessageIDGenerator();
 
         this.messageStore = messageStore;
         this.messageExpiryManager = messageExpiryManager;
+        this.subscriptionManager = subscriptionManager;
 
 
         /*
@@ -186,7 +192,6 @@ public class MessagingEngine {
     public void moveMessageToDeadLetterChannel(DeliverableAndesMetadata messageToRemove, String destinationQueueName)
             throws AndesException {
         String deadLetterQueueName = DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(destinationQueueName);
-
         messageExpiryManager.moveMetadataToDLC(messageToRemove.getMessageID(), deadLetterQueueName);
 
         // Increment count by 1 in DLC and decrement by 1 in original queue
@@ -205,24 +210,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public void deleteMessages(Collection<AndesMessageMetadata> messagesToRemove) throws AndesException {
-        Map<String, List<AndesMessageMetadata>> storageSeparatedMessages = new HashMap<>();
-
-        for (AndesMessageMetadata message : messagesToRemove) {
-            List<AndesMessageMetadata> messagesOfStorageQueue = storageSeparatedMessages
-                    .get(message.getStorageQueueName());
-            if (null == messagesOfStorageQueue) {
-                messagesOfStorageQueue = new ArrayList<>();
-            }
-            messagesOfStorageQueue.add(message);
-            storageSeparatedMessages.put(message.getStorageQueueName(), messagesOfStorageQueue);
-        }
-
-        //delete message content along with metadata
-        for (Map.Entry<String, List<AndesMessageMetadata>> entry : storageSeparatedMessages.entrySet()) {
-            messageStore.deleteMessages(entry.getKey(), entry.getValue());
-        }
-
-        //TODO:message can be in delivery path. If so we need to decrement slot message count
+        messageStore.deleteMessages(messagesToRemove);
     }
 
     /**
@@ -245,6 +233,22 @@ public class MessagingEngine {
      */
     public void deleteMessages(List<DeliverableAndesMetadata> messagesToRemove) throws AndesException {
 
+        //delete message content along with metadata
+        messageStore.deleteMessages(messagesToRemove);
+        markAsDeleted(messagesToRemove);
+
+    }
+
+    private void markAsDeleted(List<DeliverableAndesMetadata> messagesToRemove) {
+        for (DeliverableAndesMetadata message : messagesToRemove) {
+            //mark messages as deleted
+            message.markAsDeletedMessage();
+        }
+    }
+
+    private Map<String, List<AndesMessageMetadata>> groupByStorageQueue(
+            List<DeliverableAndesMetadata> messagesToRemove) {
+
         Map<String, List<AndesMessageMetadata>> storageSeparatedMessages = new HashMap<>();
 
         for (DeliverableAndesMetadata message : messagesToRemove) {
@@ -256,15 +260,34 @@ public class MessagingEngine {
             messagesOfStorageQueue.add(message);
             storageSeparatedMessages.put(message.getStorageQueueName(), messagesOfStorageQueue);
         }
+        return storageSeparatedMessages;
+    }
 
-        //delete message content along with metadata
-        for (Map.Entry<String, List<AndesMessageMetadata>> entry : storageSeparatedMessages.entrySet()) {
-            messageStore.deleteMessages(entry.getKey(), entry.getValue());
+    public void dtxCommit(long internalXid, List<AndesMessage> enqueueList, List<AndesAckData> ackDataList)
+            throws AndesException {
+
+        List<DeliverableAndesMetadata> messagesToRemove = new ArrayList<>(ackDataList.size());
+        for (AndesAckData ack : ackDataList) {
+
+            // For topics message is shared. If all acknowledgements are received only we should remove message
+            boolean deleteMessage = ack.getAcknowledgedMessage().markAsAcknowledgedByChannel(ack.getChannelID());
+
+            AndesSubscription subscription = subscriptionManager.getSubscriptionByProtocolChannel(ack.getChannelID());
+
+            subscription.onMessageAck(ack.getAcknowledgedMessage().getMessageID());
+
+            if (deleteMessage) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Ok to delete message id " + ack.getAcknowledgedMessage().getMessageID());
+                }
+                //it is a must to set this to event container. Otherwise, multiple event handlers will see the status
+                ack.setBaringMessageRemovable();
+                messagesToRemove.add(ack.getAcknowledgedMessage());
+            }
+
         }
-        for (DeliverableAndesMetadata message : messagesToRemove) {
-            //mark messages as deleted
-            message.markAsDeletedMessage();
-        }
+        messageStore.getDtxStore().updateOnCommit(internalXid, enqueueList, messagesToRemove);
+        markAsDeleted(messagesToRemove);
 
     }
 
@@ -282,16 +305,8 @@ public class MessagingEngine {
 
 
     public void moveMessageToDeadLetterChannel(List<DeliverableAndesMetadata> messagesToMove) throws AndesException {
-        Map<String, List<AndesMessageMetadata>> storageSeparatedMessages = new HashMap<>();
-        for (DeliverableAndesMetadata message : messagesToMove) {
-            List<AndesMessageMetadata> messagesOfStorageQueue = storageSeparatedMessages
-                    .get(message.getStorageQueueName());
-            if (null == messagesOfStorageQueue) {
-                messagesOfStorageQueue = new ArrayList<>();
-            }
-            messagesOfStorageQueue.add(message);
-            storageSeparatedMessages.put(message.getStorageQueueName(), messagesOfStorageQueue);
-        }
+        Map<String, List<AndesMessageMetadata>> storageSeparatedMessages = groupByStorageQueue(
+                messagesToMove);
 
         for (Map.Entry<String, List<AndesMessageMetadata>> entry : storageSeparatedMessages.entrySet()) {
             //move messages to dead letter channel
@@ -644,29 +659,5 @@ public class MessagingEngine {
             lastMessageId = lastAssignedSlotMessageId - messageIdDifference;
         }
         return lastMessageId;
-    }
-
-    /**
-     * Persist enqueue and dequeue records to the database. This is normally done at the prepare stage
-     *
-     * @param xid            xid of the Distributed transaction branch
-     * @param enqueueRecords list of enqueue records
-     * @param dequeueRecords list of dequeue records
-     * @throws AndesException due to a message store error
-     */
-    public long storeDtxRecords(Xid xid, List<AndesMessage> enqueueRecords, List<AndesAckData> dequeueRecords)
-            throws AndesException {
-        return messageStore.storeDtxRecords(xid, enqueueRecords, dequeueRecords);
-    }
-
-    /**
-     * Remove stored enqueue and dequeue records for the distributed transaction. Normally done at the commit or
-     * rollback stage
-     *
-     * @param internalXid internal XID generated when persisting records
-     * @throws AndesException due to a message store error
-     */
-    public void removeDtxRecords(long internalXid) throws AndesException {
-        messageStore.removeDtxRecords(internalXid);
     }
 }
