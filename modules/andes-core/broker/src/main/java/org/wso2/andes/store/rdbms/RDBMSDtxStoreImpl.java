@@ -111,9 +111,9 @@ public class RDBMSDtxStoreImpl implements DtxStore {
                 DeliverableAndesMetadata acknowledgedMessage = dequeueRecord.getAcknowledgedMessage();
 
                 storeDequeueRecordPS.setLong(1, internalXid);
-                storeDequeueRecordPS.setLong(1, acknowledgedMessage.getMessageID());
+                storeDequeueRecordPS.setLong(2, acknowledgedMessage.getMessageID());
                 storeDequeueRecordPS.setLong(
-                        1,
+                        3,
                         rdbmsMessageStore.getCachedQueueID(acknowledgedMessage.getStorageQueueName()));
                 storeDequeueRecordPS.addBatch();
             }
