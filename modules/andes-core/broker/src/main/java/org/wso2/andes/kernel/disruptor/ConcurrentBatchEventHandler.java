@@ -132,8 +132,7 @@ public class ConcurrentBatchEventHandler implements EventHandler<InboundEventCon
 
         // Batch and invoke event handler. Irrespective of event type following should execute.
         // End of batch may come in an irrelevant event type slot.
-        if (((messageList.size() >= batchSize) || endOfBatch)
-                && !messageList.isEmpty()) {
+        if (((messageList.size() >= batchSize) || endOfBatch)) {
             try {
                 eventHandler.onEvent(messageList, retainMap);
                 messageList.clear();
