@@ -97,7 +97,9 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
             }
 
             try {
-                messagingEngine.messagesReceived(messageList);
+                if (!messageList.isEmpty()) {
+                    messagingEngine.messagesReceived(messageList);
+                }
 
                 if (!retainMap.isEmpty()) {
                     messagingEngine.storeRetainedMessages(retainMap);
