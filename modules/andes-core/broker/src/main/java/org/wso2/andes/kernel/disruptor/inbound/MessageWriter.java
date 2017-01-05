@@ -24,7 +24,6 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.kernel.disruptor.BatchEventHandler;
 import org.wso2.andes.store.AndesBatchUpdateException;
 import org.wso2.andes.store.AndesTransactionRollbackException;
 import org.wso2.andes.store.FailureObservingStoreManager;
@@ -39,7 +38,7 @@ import java.util.Map;
 /**
  * Writes messages in Disruptor ring buffer to message store in batches.
  */
-public class MessageWriter implements BatchEventHandler, StoreHealthListener {
+public class MessageWriter implements StoreHealthListener {
 
     private static Log log = LogFactory.getLog(MessageWriter.class);
 
@@ -73,7 +72,6 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
         FailureObservingStoreManager.registerStoreHealthListener(this);
     }
 
-    @Override
     public void onEvent(final List<AndesMessage> messageList, final Map<String, AndesMessage> retainMap) throws Exception {
 
         if (messageStoresUnavailable) {
