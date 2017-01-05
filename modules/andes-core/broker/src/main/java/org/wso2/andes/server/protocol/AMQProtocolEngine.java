@@ -76,9 +76,6 @@ import org.wso2.andes.server.virtualhost.VirtualHostRegistry;
 import org.wso2.andes.transport.Sender;
 import org.wso2.andes.transport.network.NetworkConnection;
 
-import javax.management.JMException;
-import javax.security.auth.Subject;
-import javax.security.sasl.SaslServer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -94,6 +91,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import javax.management.JMException;
+import javax.security.auth.Subject;
+import javax.security.sasl.SaslServer;
 
 public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocolSession, ConnectionConfig
 {
@@ -1225,7 +1225,7 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
         MethodRegistry methodRegistry = getMethodRegistry();
         ChannelCloseBody responseBody =
                 methodRegistry.createChannelCloseBody(
-                        AMQConstant.REPLY_SUCCESS.getCode(),
+                        AMQConstant.CHANNEL_CLOSED.getCode(),
                         new AMQShortString("The channel was closed using the broker's management interface."),
                         0,0);
 

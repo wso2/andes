@@ -20,6 +20,8 @@
  */
 package org.wso2.andes.client.handler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.wso2.andes.AMQChannelClosedException;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQInvalidRoutingKeyException;
@@ -32,8 +34,6 @@ import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.ChannelCloseBody;
 import org.wso2.andes.framing.ChannelCloseOkBody;
 import org.wso2.andes.protocol.AMQConstant;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ChannelCloseMethodHandler implements StateAwareMethodListener<ChannelCloseBody>
 {
@@ -89,6 +89,10 @@ public class ChannelCloseMethodHandler implements StateAwareMethodListener<Chann
                     _logger.debug("Broker responded with Invalid Routing Key.");
 
                     throw new AMQInvalidRoutingKeyException(String.valueOf(reason), null);
+                }
+                else if(errorCode == AMQConstant.CHANNEL_CLOSED) {
+                    _logger.error("Broker closed the channel." + reason);
+                    throw new AMQChannelClosedException(errorCode, String.valueOf(reason), null);
                 }
                 else
                 {

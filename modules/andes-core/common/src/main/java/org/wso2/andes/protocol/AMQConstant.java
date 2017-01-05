@@ -20,10 +20,10 @@
  */
 package org.wso2.andes.protocol;
 
+import org.wso2.andes.framing.AMQShortString;
+
 import java.util.HashMap;
 import java.util.Map;
-
-import org.wso2.andes.framing.AMQShortString;
 
 /**
  * Defines constants for AMQP codes and also acts as a factory for creating such constants from the raw codes. Each
@@ -123,6 +123,9 @@ public final class AMQConstant
     public static final AMQConstant REQUEST_TIMEOUT = new AMQConstant(408, "Request Timeout", true);
 
     public static final AMQConstant INVALID_ARGUMENT = new AMQConstant(409, "argument invalid", true);
+
+    /** Broker closed channel. */
+    public static final AMQConstant CHANNEL_CLOSED = new AMQConstant(410, "broker closed the channel", true);
 
     /**
      * The client sent a malformed frame that the server could not decode. This strongly implies a programming error
