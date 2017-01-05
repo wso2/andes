@@ -18,11 +18,11 @@
 
 package org.wso2.andes.kernel.disruptor;
 
-import com.lmax.disruptor.EventHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer;
+import org.wso2.andes.kernel.disruptor.inbound.MessageWriter;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -37,14 +37,14 @@ import java.util.Map;
  * NOTE: Writing a custom batch processor is avoided since it related to implementing disruptor internals related
  * logic which might lead to difficulty in upgrading disruptor versions and getting bug fixes on batch processors 
  */
-public class ConcurrentBatchEventHandler implements EventHandler<InboundEventContainer> {
+public class ConcurrentBatchEventHandler extends InboundEventHandler {
 
     private static Log log = LogFactory.getLog(ConcurrentBatchEventHandler.class);
 
     /**
      * Batch event handler for handling batched events
      */
-    private final BatchEventHandler eventHandler;
+    private final MessageWriter messageWriter;
 
     /**
      * Turn is the value of, sequence % groupCount this batch processor process events. Turn must be
@@ -86,10 +86,10 @@ public class ConcurrentBatchEventHandler implements EventHandler<InboundEventCon
      * @param groupCount   total number of concurrent batch processors for the event type
      * @param batchSize    maximum size of the batch
      * @param eventType    type of event to batch
-     * @param eventHandler event handler that does the actual per event, event handling
+     * @param messageWriter event handler that does the actual per event, event handling
      */
     public ConcurrentBatchEventHandler(long turn, int groupCount, int batchSize,
-                                       InboundEventContainer.Type eventType, BatchEventHandler eventHandler) {
+                                       InboundEventContainer.Type eventType, MessageWriter messageWriter) {
         
         if (turn >= groupCount) {
             throw new IllegalArgumentException("Turn should be less than groupCount");
@@ -99,7 +99,7 @@ public class ConcurrentBatchEventHandler implements EventHandler<InboundEventCon
         this.groupCount = groupCount;
         this.batchSize = batchSize;
         this.eventType = eventType;
-        this.eventHandler = eventHandler;
+        this.messageWriter = messageWriter;
         messageList = new ArrayList<>(this.batchSize);
         retainMap = new HashMap<>();
 
@@ -134,7 +134,7 @@ public class ConcurrentBatchEventHandler implements EventHandler<InboundEventCon
         // End of batch may come in an irrelevant event type slot.
         if (((messageList.size() >= batchSize) || endOfBatch)) {
             try {
-                eventHandler.onEvent(messageList, retainMap);
+                messageWriter.onEvent(messageList, retainMap);
                 messageList.clear();
                 retainMap.clear();
                 if (log.isDebugEnabled()) {
@@ -142,8 +142,8 @@ public class ConcurrentBatchEventHandler implements EventHandler<InboundEventCon
                             + eventType);
                 }
             } finally {
-                // Clear the list irrespective of the output of eventHandler#onEvent
-                // On an error situation of eventHandler#onEvent we need to clear the events from this batching list.
+                // Clear the list irrespective of the output of messageWriter#onEvent
+                // On an error situation of messageWriter#onEvent we need to clear the events from this batching list.
                 // Respective event handler should take care of the actual events passed. If not same events 
                 // will be passed multiple times to the handler in an erroneous situation
                 messageList.clear();

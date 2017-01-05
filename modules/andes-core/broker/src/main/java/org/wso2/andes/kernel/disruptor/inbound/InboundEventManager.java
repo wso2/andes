@@ -32,6 +32,7 @@ import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.DisablePubAckImpl;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.disruptor.ConcurrentBatchEventHandler;
+import org.wso2.andes.kernel.disruptor.InboundEventHandler;
 import org.wso2.andes.kernel.disruptor.LogExceptionHandler;
 import org.wso2.andes.kernel.disruptor.compression.LZ4CompressionHelper;
 import org.wso2.andes.kernel.dtx.DtxBranch;
@@ -99,6 +100,8 @@ public class InboundEventManager {
         Integer transactionBatchSize = AndesConfigurationManager.readValue(
                 MAX_TRANSACTION_BATCH_SIZE);
 
+        Integer dtxDbWriterCount = 1; // need to merge local and distributed transaction writing logic to the same
+
         disablePubAck = new DisablePubAckImpl();
         int maxContentChunkSize = AndesConfigurationManager.readValue(
                 PERFORMANCE_TUNING_MAX_CONTENT_CHUNK_SIZE);
@@ -109,7 +112,6 @@ public class InboundEventManager {
                 .setNameFormat("DisruptorInboundEventThread-%d").build();
         ExecutorService executorPool = Executors.newCachedThreadPool(namedThreadFactory);
 
-
         disruptor = new Disruptor<>(InboundEventContainer.getFactory(),
                 bufferSize,
                 executorPool,
@@ -118,8 +120,8 @@ public class InboundEventManager {
 
         disruptor.handleExceptionsWith(new LogExceptionHandler());
 
-        ConcurrentBatchEventHandler[] concurrentBatchEventHandlers =
-                new ConcurrentBatchEventHandler[writeHandlerCount + transactionHandlerCount];
+        InboundEventHandler[] batchEventHandlers = new InboundEventHandler[
+                writeHandlerCount + transactionHandlerCount + ackHandlerCount + dtxDbWriterCount];
 
         lz4CompressionHelper = new LZ4CompressionHelper();
 
@@ -134,24 +136,28 @@ public class InboundEventManager {
         }
 
         for (int turn = 0; turn < writeHandlerCount; turn++) {
-            concurrentBatchEventHandlers[turn] =
+            batchEventHandlers[turn] =
                     new ConcurrentBatchEventHandler(turn, writeHandlerCount, writerBatchSize, MESSAGE_EVENT,
                                                     new MessageWriter(messagingEngine, writerBatchSize));
         }
 
         for (int turn = 0; turn < transactionHandlerCount; turn++) {
-            concurrentBatchEventHandlers[writeHandlerCount + turn] =
+            batchEventHandlers[writeHandlerCount + turn] =
                     new ConcurrentBatchEventHandler(turn, transactionHandlerCount,
                             transactionBatchSize,
                             TRANSACTION_COMMIT_EVENT,
                             new MessageWriter(messagingEngine, transactionBatchSize));
         }
 
-        AckEventBatchHandler[] ackEventBatchHandlers = new AckEventBatchHandler[ackHandlerCount];
         for (int turn = 0; turn < ackHandlerCount; turn++) {
-            ackEventBatchHandlers[turn] = new AckEventBatchHandler(turn, ackHandlerCount,
-                                                          ackHandlerBatchSize,
-                                                          new AckHandler(messagingEngine));
+            batchEventHandlers[writeHandlerCount+ transactionHandlerCount + turn] =
+                    new AckEventBatchHandler(turn, ackHandlerCount, ackHandlerBatchSize,
+                                             new AckHandler(messagingEngine));
+        }
+
+        for (int turn = 0; turn < dtxDbWriterCount; turn++) {
+            batchEventHandlers[writeHandlerCount+ transactionHandlerCount + ackHandlerCount + turn] =
+                    new DtxDbWriter(messagingEngine, turn, dtxDbWriterCount);
         }
 
         MessagePreProcessor preProcessor = new MessagePreProcessor();
@@ -160,15 +166,11 @@ public class InboundEventManager {
         // Order in which handlers run in Disruptor
         // - ContentChunkHandlers
         // - MessagePreProcessor
-        // - AckHandlers
-        // - MessageWriters
-        // - DtxDbWriter
+        // - AckHandlers, MessageWriters, DtxDbWriter
         // - StateEventHandler
         disruptor.handleEventsWith(chunkHandlers).then(preProcessor);
         disruptor.after(preProcessor)
-                .handleEventsWith(ackEventBatchHandlers)
-                .then(concurrentBatchEventHandlers)
-                .then(new DtxDbWriter(messagingEngine))
+                .handleEventsWith(batchEventHandlers)
                 .then(stateEventHandler);   // State event handler update the state of Andes after other handlers work
                                             // is done. State event handler will execute last. This handler will clear
                                             // the event container.
