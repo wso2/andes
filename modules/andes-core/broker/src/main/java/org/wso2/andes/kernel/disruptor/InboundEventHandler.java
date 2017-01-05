@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -18,15 +18,14 @@
 
 package org.wso2.andes.kernel.disruptor;
 
-import org.wso2.andes.kernel.AndesMessage;
-
-import java.util.List;
-import java.util.Map;
+import com.lmax.disruptor.EventHandler;
+import org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer;
 
 /**
- * Batch event handler for ConcurrentBatchEventHandler
+ * Abstract class handling inbound events. This is to make each inbound event handler stem from the same event
+ * handler class without using generics. Avoid generic array type error when creating an array consisting of different
+ * types of inbound event handlers in {@link org.wso2.andes.kernel.disruptor.inbound.InboundEventManager}
  */
-public interface BatchEventHandler {
+public abstract class InboundEventHandler implements EventHandler<InboundEventContainer> {
 
-    void onEvent(final List<AndesMessage> eventList, Map<String, AndesMessage> retainMap) throws Exception;
 }

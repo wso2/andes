@@ -18,15 +18,15 @@
 
 package org.wso2.andes.kernel.disruptor.inbound;
 
-import com.lmax.disruptor.EventHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.kernel.disruptor.InboundEventHandler;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class AckEventBatchHandler implements EventHandler<InboundEventContainer> {
+public class AckEventBatchHandler extends InboundEventHandler {
 
     private static Log log = LogFactory.getLog(AckHandler.class);
     private final List<AndesAckData> ackDataList;
