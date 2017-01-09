@@ -172,6 +172,7 @@ public class RDBMSDtxStoreImpl implements DtxStore {
         try {
             connection = rdbmsMessageStore.getConnection();
             removePreparedRecords(internalXid, connection);
+            connection.commit();
         } catch (SQLException e) {
             rdbmsMessageStore.rollback(connection, task);
             throw rdbmsStoreUtils.convertSQLException("Error occurred while executing dtx commit event", e);

@@ -138,8 +138,8 @@ public class DtxRegistry {
                     // TODO: Need to revisit. What happens if the commit DB call fail?
                     dtxBranch.clearAssociations();
                     dtxBranch.commit(callback, channel);
-                    branches.remove(new ComparableXid(xid));
-
+                    dtxBranch.setState(DtxBranch.State.FORGOTTEN);
+                    unregisterBranch(dtxBranch);
                 } else {
                     throw new IncorrectDtxStateException("Branch still has associated sessions", xid);
                 }
