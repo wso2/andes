@@ -404,16 +404,19 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
             {
                 if (getChannel(channelId) != null)
                 {
-                    if (_logger.isInfoEnabled())
+                    if (_logger.isDebugEnabled())
                     {
-                        _logger.info("Closing channel due to: " + e.getMessage());
+                        _logger.debug("Closing channel (" + channelId + ")", e);
                     }
 
-//                    writeFrame(e.getCloseFrame(channelId));
-//                    closeChannel(channelId);
-                    AMQConnectionException ce = evt.getMethod().getConnectionException(e.getErrorCode(), e.getMessage());
-                    _logger.info(e.getMessage() + " whilst processing:" + methodBody);
-                    closeConnection(channelId, ce, false);
+                    if (_logger.isInfoEnabled())
+                    {
+                        _logger.info("Closing channel (" + channelId + ") due to: " + e.getMessage());
+                    }
+
+
+                    writeFrame(e.getCloseFrame(channelId));
+                    closeChannel(channelId);
                 }
                 else
                 {
@@ -457,7 +460,6 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
 
             _logger.error("Unexpected exception while processing frame.  Closing connection.", e);
 
-            e.printStackTrace();
             closeProtocolSession();
         }
     }

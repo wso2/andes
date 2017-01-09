@@ -210,7 +210,7 @@ class XAResource_0_9_1 implements XAResource {
         try {
             resultStatus = session.startDtx(xid, flag);
         } catch (FailoverException | AMQException e) {
-            XAException xaException = new XAException("Error while starting dtx session. " + e.getMessage());
+            XAException xaException = new XAException("Error while starting dtx session.");
             xaException.initCause(e);
             throw xaException;
         }

@@ -70,7 +70,7 @@ public class DtxStartHandler implements StateAwareMethodListener<DtxStartBodyImp
             throw new AMQException(AMQConstant.COMMAND_INVALID, "Cannot start a branch with both join and resume set "
                     , e);
         } catch (UnknownDtxBranchException e) {
-            throw new AMQException(AMQConstant.COMMAND_INVALID, "Unknown xid " + xid, e);
+            throw body.getChannelException(AMQConstant.NOT_ALLOWED, "Unknown XID " + xid, e);
         }
     }
 }
