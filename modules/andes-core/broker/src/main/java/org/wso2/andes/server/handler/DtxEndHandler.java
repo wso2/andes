@@ -61,16 +61,16 @@ public class DtxEndHandler implements StateAwareMethodListener<DtxEndBodyImpl> {
             DtxEndOkBody dtxEndOkBody = methodRegistry.createDtxEndOkBody(DtxXaStatus.XA_OK.getValue());
             session.writeFrame(dtxEndOkBody.generateFrame(channelId));
         } catch (DtxNotSelectedException e) {
-            throw new AMQException(AMQConstant.COMMAND_INVALID, "Error ending dtx ", e);
+            throw body.getChannelException(AMQConstant.NOT_ALLOWED, "Not a distributed transacted session", e);
         } catch (NotAssociatedDtxException e) {
-            throw new AMQException(AMQConstant.COMMAND_INVALID, "Error ending dtx. Session is not associated with the" +
-                    " given xid ", e);
+            throw body.getChannelException(AMQConstant.NOT_ALLOWED,
+                    "Error ending dtx. Session is not associated with the given xid " + xid, e);
         } catch (UnknownDtxBranchException e) {
-            throw new AMQException(AMQConstant.COMMAND_INVALID, "Error ending dtx. Unknown branch for the given " +
-                    "xid ", e);
+            throw body.getChannelException(AMQConstant.NOT_ALLOWED,
+                    "Error ending dtx. Unknown branch for the given " + "xid ", e);
         } catch (SuspendAndFailDtxException e) {
-            throw new AMQException(AMQConstant.COMMAND_INVALID, "Error ending dtx. Both suspend and failed are " +
-                    "set ", e);
+            throw body.getChannelException(AMQConstant.NOT_ALLOWED,
+                    "Error ending dtx. Both suspend and failed are set ", e);
         }
     }
 }
