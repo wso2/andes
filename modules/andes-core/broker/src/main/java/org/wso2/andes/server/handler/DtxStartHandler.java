@@ -62,12 +62,12 @@ public class DtxStartHandler implements StateAwareMethodListener<DtxStartBodyImp
             DtxStartOkBody dtxStartOkBody = methodRegistry.createDtxStartOkBody(DtxXaStatus.XA_OK.getValue());
             session.writeFrame(dtxStartOkBody.generateFrame(channelId));
         } catch (DtxNotSelectedException e) {
-            throw new AMQException(AMQConstant.COMMAND_INVALID, "Error starting dtx ", e);
+            throw body.getChannelException(AMQConstant.NOT_ALLOWED, "Not distributed transacted session", e);
         } catch (AlreadyKnownDtxException e) {
-            throw new AMQException(AMQConstant.COMMAND_INVALID, "Xid already started an neither join nor "
+            throw body.getChannelException(AMQConstant.NOT_ALLOWED, "XID already started an neither join nor "
                     + "resume set" + xid, e);
         } catch (JoinAndResumeDtxException e) {
-            throw new AMQException(AMQConstant.COMMAND_INVALID, "Cannot start a branch with both join and resume set "
+            throw body.getChannelException(AMQConstant.NOT_ALLOWED, "Cannot start a branch with both join and resume set "
                     , e);
         } catch (UnknownDtxBranchException e) {
             throw body.getChannelException(AMQConstant.NOT_ALLOWED, "Unknown XID " + xid, e);
