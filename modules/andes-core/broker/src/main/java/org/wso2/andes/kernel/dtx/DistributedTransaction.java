@@ -23,6 +23,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
 import org.wso2.andes.server.txn.IncorrectDtxStateException;
+import org.wso2.andes.server.txn.RollbackOnlyDtxException;
 import org.wso2.andes.server.txn.TimeoutDtxException;
 
 import java.util.List;
@@ -102,7 +103,7 @@ public class DistributedTransaction {
             branch.suspendSession(sessionId);
         } else {
             if (fail) {
-                branch.markAsFailedSession(sessionId);
+                branch.setState(DtxBranch.State.ROLLBACK_ONLY);
             }
             branch.disassociateSession(sessionId);
         }
@@ -135,7 +136,7 @@ public class DistributedTransaction {
     }
 
     public void prepare(Xid xid) throws TimeoutDtxException, UnknownDtxBranchException,
-                                        IncorrectDtxStateException, AndesException {
+            IncorrectDtxStateException, AndesException, RollbackOnlyDtxException {
         dtxRegistry.prepare(xid);
     }
 

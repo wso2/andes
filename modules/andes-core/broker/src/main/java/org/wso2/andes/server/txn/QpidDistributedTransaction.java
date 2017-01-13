@@ -140,7 +140,8 @@ public class QpidDistributedTransaction implements ServerTransaction {
     }
 
     public void prepare(Xid xid)
-            throws TimeoutDtxException, UnknownDtxBranchException, IncorrectDtxStateException, AndesException {
+            throws TimeoutDtxException, UnknownDtxBranchException, IncorrectDtxStateException, AndesException,
+            RollbackOnlyDtxException {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Preparing distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
         }

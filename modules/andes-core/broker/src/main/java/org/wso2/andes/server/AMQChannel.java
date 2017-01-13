@@ -87,6 +87,7 @@ import org.wso2.andes.server.txn.DtxNotSelectedException;
 import org.wso2.andes.server.txn.IncorrectDtxStateException;
 import org.wso2.andes.server.txn.LocalTransaction;
 import org.wso2.andes.server.txn.QpidDistributedTransaction;
+import org.wso2.andes.server.txn.RollbackOnlyDtxException;
 import org.wso2.andes.server.txn.ServerTransaction;
 import org.wso2.andes.server.txn.TimeoutDtxException;
 import org.wso2.andes.server.virtualhost.AMQChannelMBean;
@@ -1376,7 +1377,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
     public void prepareDtxTransaction(Xid xid)
             throws DtxNotSelectedException, TimeoutDtxException, UnknownDtxBranchException, IncorrectDtxStateException,
-            AndesException {
+            AndesException, RollbackOnlyDtxException {
         QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
         distributedTransaction.prepare(xid);
     }

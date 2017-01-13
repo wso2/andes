@@ -22,6 +22,7 @@ import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.DtxStore;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.txn.IncorrectDtxStateException;
+import org.wso2.andes.server.txn.RollbackOnlyDtxException;
 import org.wso2.andes.server.txn.TimeoutDtxException;
 
 import java.util.HashMap;
@@ -57,7 +58,8 @@ public class DtxRegistry {
     }
 
     public synchronized void prepare(Xid xid)
-            throws UnknownDtxBranchException, IncorrectDtxStateException, TimeoutDtxException, AndesException {
+            throws UnknownDtxBranchException, IncorrectDtxStateException, TimeoutDtxException, AndesException,
+            RollbackOnlyDtxException {
         DtxBranch branch = getBranch(xid);
 
         if (branch != null) {
@@ -67,10 +69,11 @@ public class DtxRegistry {
                 if (branch.expired()) {
                     unregisterBranch(branch);
                     throw new TimeoutDtxException(xid);
-                } else if (branch.getState() != DtxBranch.State.ACTIVE
-                        && branch.getState() != DtxBranch.State.ROLLBACK_ONLY) {
+                } else if (branch.getState() == DtxBranch.State.ROLLBACK_ONLY) {
+                    throw new RollbackOnlyDtxException(xid);
+                } else if (branch.getState() != DtxBranch.State.ACTIVE) {
                     throw new IncorrectDtxStateException("Cannot prepare a transaction in state " + branch.getState(),
-                            xid);
+                    xid);
                 } else {
                     branch.prepare();
                     branch.setState(DtxBranch.State.PREPARED);
