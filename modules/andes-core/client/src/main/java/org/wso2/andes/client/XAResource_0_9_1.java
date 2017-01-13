@@ -175,7 +175,7 @@ class XAResource_0_9_1 implements XAResource {
     @Override
     public int prepare(Xid xid) throws XAException {
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("start dtx branch with xid: {}", xid);
+            LOGGER.debug("prepare dtx branch with xid: {}", xid);
         }
 
         XaStatus resultStatus;
