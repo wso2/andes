@@ -15,6 +15,8 @@
 
 package org.wso2.andes.server.handler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.dtx.XidImpl;
 import org.wso2.andes.framing.DtxPrepareOkBody;
@@ -29,12 +31,17 @@ import org.wso2.andes.server.state.AMQStateManager;
 import org.wso2.andes.server.state.StateAwareMethodListener;
 import org.wso2.andes.server.txn.DtxNotSelectedException;
 import org.wso2.andes.server.txn.IncorrectDtxStateException;
+import org.wso2.andes.server.txn.RollbackOnlyDtxException;
 import org.wso2.andes.server.txn.TimeoutDtxException;
 import org.wso2.andes.transport.DtxXaStatus;
 
 import javax.transaction.xa.Xid;
 
 public class DtxPrepareHandler implements StateAwareMethodListener<DtxPrepareBodyImpl> {
+    /**
+     * Class logger
+     */
+    private static final Logger LOGGER = LoggerFactory.getLogger(DtxPrepareHandler.class);
     private static DtxPrepareHandler _instance = new DtxPrepareHandler();
 
     public static DtxPrepareHandler getInstance() {
@@ -65,19 +72,34 @@ public class DtxPrepareHandler implements StateAwareMethodListener<DtxPrepareBod
                 MethodRegistry_0_91 methodRegistry = (MethodRegistry_0_91) session.getMethodRegistry();
                 dtxPrepareOkBody = methodRegistry.createDtxPrepareOkBody(DtxXaStatus.XA_OK.getValue());
             } catch (TimeoutDtxException e) {
+                LOGGER.info("Error while preparing dtx: " + e.getMessage());
+
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Error while preparing dtx", e);
+                }
+
                 MethodRegistry_0_91 methodRegistry = (MethodRegistry_0_91) session.getMethodRegistry();
                 dtxPrepareOkBody = methodRegistry.createDtxPrepareOkBody(DtxXaStatus.XA_RBTIMEOUT.getValue());
+            } catch (RollbackOnlyDtxException e) {
+                LOGGER.info("Error while preparing dtx: " + e.getMessage());
+
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Error while preparing dtx", e);
+                }
+
+                MethodRegistry_0_91 methodRegistry = (MethodRegistry_0_91) session.getMethodRegistry();
+                dtxPrepareOkBody = methodRegistry.createDtxPrepareOkBody(DtxXaStatus.XA_RBROLLBACK.getValue());
             }
 
             session.writeFrame(dtxPrepareOkBody.generateFrame(channelId));
         } catch (DtxNotSelectedException e) {
-            throw new AMQException(AMQConstant.COMMAND_INVALID, "Error ending dtx ", e);
+            throw body.getChannelException(AMQConstant.COMMAND_INVALID, "Not a distributed transacted session", e);
         } catch (IncorrectDtxStateException e) {
-            throw new AMQException(AMQConstant.INTERNAL_ERROR, "Cannot prepare, branch in an invalid state", e);
+            throw body.getChannelException(AMQConstant.COMMAND_INVALID, e.getMessage(), e);
         } catch (AndesException e) {
-            throw new AMQException(AMQConstant.INTERNAL_ERROR, "Internal error occurred while persisting records", e);
+            throw body.getChannelException(AMQConstant.INTERNAL_ERROR, "Internal error occurred while persisting records", e);
         } catch (UnknownDtxBranchException e) {
-            throw new AMQException(AMQConstant.NOT_FOUND, "Could not find the specified dtx branch ", e);
+            throw body.getChannelException(AMQConstant.COMMAND_INVALID, "Could not find the specified dtx branch ", e);
         }
     }
 }

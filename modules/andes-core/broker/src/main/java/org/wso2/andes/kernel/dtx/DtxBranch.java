@@ -123,16 +123,6 @@ public class DtxBranch implements AndesInboundStateEvent {
         }
     }
 
-    public boolean markAsFailedSession(long sessionId) {
-        State state = associatedSessions.get(sessionId);
-        if (null != state && state == State.ACTIVE) {
-            associatedSessions.put(sessionId, State.ROLLBACK_ONLY);
-            return true;
-        } else {
-            return false;
-        }
-    }
-
     public void enqueueMessage(AndesMessage andesMessage) {
         enqueueList.add(andesMessage);
     }

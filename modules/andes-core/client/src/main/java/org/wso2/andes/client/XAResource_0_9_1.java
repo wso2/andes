@@ -21,6 +21,9 @@ import org.wso2.andes.AMQException;
 import org.wso2.andes.client.failover.FailoverException;
 import org.wso2.andes.transport.XaStatus;
 
+import java.net.SocketAddress;
+import java.util.ArrayList;
+import java.util.List;
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
@@ -32,6 +35,11 @@ class XAResource_0_9_1 implements XAResource {
     private static final Logger LOGGER = LoggerFactory.getLogger(XAResource_0_9_1.class);
 
     private final XASession_9_1 session;
+
+    /**
+     * Hold similar XAResources belonging to the same resource manager
+     */
+    private List<XAResource> siblings = new ArrayList<>();
 
     XAResource_0_9_1(XASession_9_1 xaSession_9_1) {
         session = xaSession_9_1;
@@ -90,20 +98,29 @@ class XAResource_0_9_1 implements XAResource {
             throw new XAException(XAException.XAER_INVAL);
         }
 
-        // TODO flush acknowledgments in session
-
         XaStatus resultStatus;
         try {
             resultStatus = session.endDtx(xid, flag);
         } catch (FailoverException | AMQException e) {
-            XAException xaException = new XAException("Error while starting dtx session. " + e.getMessage());
+            XAException xaException = new XAException("Error while ending dtx session.");
             xaException.initCause(e);
             throw xaException;
         }
 
         checkStatus(resultStatus);
 
-        // TODO sibling handling
+        if(LOGGER.isDebugEnabled())
+        {
+            LOGGER.debug("Calling end for " + siblings.size() + " XAResource siblings");
+        }
+
+        for(XAResource sibling: siblings)
+        {
+
+            sibling.end(xid, flag);
+        }
+
+        siblings.clear();
     }
 
     @Override
@@ -118,7 +135,33 @@ class XAResource_0_9_1 implements XAResource {
 
     @Override
     public boolean isSameRM(XAResource xaResource) throws XAException {
-        throw new RuntimeException("Feature NotImplemented");
+        if (this == xaResource) {
+            return true;
+        }
+
+        if (!(xaResource instanceof XAResource_0_9_1)) {
+            return false;
+        }
+
+        SocketAddress myRemoteAddress = session.getAMQConnection().getProtocolHandler().getRemoteAddress();
+        SocketAddress otherRemoteAddress = ((XAResource_0_9_1) xaResource).session.getAMQConnection()
+                                                                                  .getProtocolHandler()
+                                                                                  .getRemoteAddress();
+
+        boolean isSameRm = (myRemoteAddress != null && otherRemoteAddress != null
+                && myRemoteAddress.equals(otherRemoteAddress));
+
+        if(isSameRm)
+        {
+            if(LOGGER.isDebugEnabled())
+            {
+                LOGGER.debug("XAResource " + xaResource + " is from the same ResourceManager. Adding XAResource as "
+                        + "sibling for AMQP protocol support. ");
+            }
+            siblings.add(xaResource);
+        }
+
+        return isSameRm;
     }
 
     /**
@@ -132,7 +175,7 @@ class XAResource_0_9_1 implements XAResource {
     @Override
     public int prepare(Xid xid) throws XAException {
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("start dtx branch with xid: {}", xid);
+            LOGGER.debug("prepare dtx branch with xid: {}", xid);
         }
 
         XaStatus resultStatus;
@@ -142,6 +185,10 @@ class XAResource_0_9_1 implements XAResource {
             XAException xaException = new XAException("Error while preparing dtx session.");
             xaException.initCause(e);
             throw xaException;
+        }
+
+        if (resultStatus == XaStatus.XA_RDONLY) {
+            return XA_RDONLY;
         }
 
         checkStatus(resultStatus);
@@ -216,6 +263,10 @@ class XAResource_0_9_1 implements XAResource {
         }
 
         checkStatus(resultStatus);
+
+        for(XAResource sibling: siblings) {
+            sibling.start(xid, flag);
+        }
     }
 
     private void checkStatus(XaStatus status) throws XAException {
