@@ -149,7 +149,9 @@ public class AndesKernelBoot {
         List<Future> futureSlotRecoveryExecutorList = new ArrayList<Future>();
         Integer concurrentReads = AndesConfigurationManager.readValue
                 (AndesConfiguration.RECOVERY_MESSAGES_CONCURRENT_STORAGE_QUEUE_READS);
-        ExecutorService executorService = Executors.newFixedThreadPool(concurrentReads);
+        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat
+                ("SlotRecoveryThread-%d").build();
+        ExecutorService executorService = Executors.newFixedThreadPool(concurrentReads,namedThreadFactory);
         for (final AndesQueue queue : queueList) {
             final String queueName = queue.queueName;
             // Skip slot creation for Dead letter Channel
@@ -169,6 +171,7 @@ public class AndesKernelBoot {
                 log.error("Error occurred in slot recovery.", e);
             }
         }
+        executorService.shutdown();
     }
 
     /**
