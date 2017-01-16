@@ -69,13 +69,13 @@ public class DtxRollbackHandler implements StateAwareMethodListener<DtxRollbackB
             }
             session.writeFrame(dtxRollbackOkBody.generateFrame(channelId));
         } catch (DtxNotSelectedException e) {
-            throw new AMQException(AMQConstant.COMMAND_INVALID, "Error rolling back dtx ", e);
+            throw body.getChannelException(AMQConstant.COMMAND_INVALID, "Error rolling back dtx ", e);
         } catch (IncorrectDtxStateException e) {
-            throw new AMQException(AMQConstant.INTERNAL_ERROR, "Cannot rollback, branch in an invalid state", e);
+            throw body.getChannelException(AMQConstant.COMMAND_INVALID, "Cannot rollback, branch in an invalid state", e);
         } catch (AndesException e) {
-            throw new AMQException(AMQConstant.INTERNAL_ERROR, "Internal error occurred while rolling back records", e);
+            throw body.getChannelException(AMQConstant.INTERNAL_ERROR, "Internal error occurred while rolling back records", e);
         } catch (UnknownDtxBranchException e) {
-            throw new AMQException(AMQConstant.NOT_FOUND, "Could not find the specified dtx branch", e);
+            throw body.getChannelException(AMQConstant.NOT_FOUND, "Could not find the specified dtx branch", e);
         }
     }
 }
