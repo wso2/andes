@@ -145,33 +145,43 @@ public class AndesKernelBoot {
      * @throws AndesException
      */
     private static void recoverMapsForEachQueue() throws AndesException {
+
         List<AndesQueue> queueList = contextStore.getAllQueuesStored();
         List<Future> futureSlotRecoveryExecutorList = new ArrayList<Future>();
         Integer concurrentReads = AndesConfigurationManager.readValue
                 (AndesConfiguration.RECOVERY_MESSAGES_CONCURRENT_STORAGE_QUEUE_READS);
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat
                 ("SlotRecoveryThread-%d").build();
-        ExecutorService executorService = Executors.newFixedThreadPool(concurrentReads,namedThreadFactory);
-        for (final AndesQueue queue : queueList) {
-            final String queueName = queue.queueName;
-            // Skip slot creation for Dead letter Channel
-            if (DLCQueueUtils.isDeadLetterQueue(queueName)) {
-                continue;
+
+        ExecutorService executorService = null;
+
+        try {
+            executorService = Executors.newFixedThreadPool(concurrentReads, namedThreadFactory);
+            for (final AndesQueue queue : queueList) {
+                final String queueName = queue.queueName;
+                // Skip slot creation for Dead letter Channel
+                if (DLCQueueUtils.isDeadLetterQueue(queueName)) {
+                    continue;
+                }
+                Future submit = executorService.submit(new SlotCreator(messageStore, queueName));
+                futureSlotRecoveryExecutorList.add(submit);
             }
-            Future submit = executorService.submit(new SlotCreator(messageStore, queueName));
-            futureSlotRecoveryExecutorList.add(submit);
-        }
-        for (Future slotRecoveryExecutor : futureSlotRecoveryExecutorList) {
-            try {
-                slotRecoveryExecutor.get();
-            } catch (InterruptedException e) {
-                log.error("Error occurred in slot recovery.", e);
-                Thread.currentThread().interrupt();
-            } catch (ExecutionException e) {
-                log.error("Error occurred in slot recovery.", e);
+            for (Future slotRecoveryExecutor : futureSlotRecoveryExecutorList) {
+                try {
+                    slotRecoveryExecutor.get();
+                } catch (InterruptedException e) {
+                    log.error("Error occurred in slot recovery.", e);
+                    Thread.currentThread().interrupt();
+                } catch (ExecutionException e) {
+                    log.error("Error occurred in slot recovery.", e);
+                }
+            }
+        } finally {
+            if (null != executorService) {
+                executorService.shutdown();
             }
         }
-        executorService.shutdown();
+
     }
 
     /**
