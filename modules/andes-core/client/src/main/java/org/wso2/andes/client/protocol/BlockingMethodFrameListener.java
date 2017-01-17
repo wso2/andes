@@ -21,7 +21,6 @@
 package org.wso2.andes.client.protocol;
 
 import org.wso2.andes.AMQException;
-import org.wso2.andes.AMQTimeoutException;
 import org.wso2.andes.client.failover.FailoverException;
 import org.wso2.andes.client.util.BlockingWaiter;
 import org.wso2.andes.framing.AMQMethodBody;
@@ -121,6 +120,31 @@ public abstract class BlockingMethodFrameListener extends BlockingWaiter<AMQMeth
         try
         {
             return (AMQMethodEvent) block(timeout);
+        }
+        finally
+        {
+            //Prevent any more errors being notified to this waiter.
+            close();
+        }
+    }
+
+    /**
+     * Write the frame the wire and blocks until a method is received that is handled by the delegated to method
+     * listener, or the specified timeout has passed.
+     *
+     * @param runnable Runnable with the write frame logic
+     * @param timeout The timeout in milliseconds.
+     *
+     * @return The AMQP method that was received.
+     *
+     * @throws AMQException
+     * @throws FailoverException
+     */
+    public AMQMethodEvent writeAndBlockForFrame(Runnable runnable, long timeout) throws AMQException, FailoverException
+    {
+        try
+        {
+            return (AMQMethodEvent) writeAndWait(runnable, timeout);
         }
         finally
         {

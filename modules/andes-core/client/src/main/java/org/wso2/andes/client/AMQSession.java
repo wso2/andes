@@ -123,6 +123,7 @@ import javax.jms.TransactionRolledBackException;
  */
 public abstract class AMQSession<C extends BasicMessageConsumer, P extends BasicMessageProducer> extends Closeable implements Session, QueueSession, TopicSession
 {
+
     public static final class IdToConsumerMap<C extends BasicMessageConsumer>
     {
         private final BasicMessageConsumer[] _fastAccessConsumers = new BasicMessageConsumer[16];
@@ -2175,7 +2176,8 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
      */
     void deregisterConsumer(C consumer)
     {
-        if (_consumers.remove(consumer.getConsumerTag()) != null)
+        C consumerToRemove = _consumers.remove(consumer.getConsumerTag());
+        if (consumerToRemove != null && consumerToRemove.isReady())
         {
             _subscriberAccess.lock();
             try
@@ -2677,6 +2679,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
         try
         {
             sendConsume(consumer, queueName, protocolHandler, nowait, messageSelector, tagId);
+            consumer.readyToConsume();
         }
         catch (AMQException e)
         {
