@@ -399,6 +399,7 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
             }
         } else {
             if (!getVirtualHost().getSecurityManager().authoriseConsume(this)) {
+                System.out.println("Not authorised to consume....!!!!");
                 throw new AMQSecurityException("Permission denied");
             }
         }

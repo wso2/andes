@@ -196,7 +196,8 @@ public class SecurityManager
 			
 			if (host == Result.DENIED)
 			{
-				// Something vetoed the access, we're done
+                System.out.println("Plugin: " + hostEntry.getValue());
+                // Something vetoed the access, we're done
 				return false;
 			}
             
@@ -211,6 +212,7 @@ public class SecurityManager
                     }
                     if (host == Result.DENIED)
                     {
+                        System.out.println("Global plugin is null");
                         return false;
                     }
 				}
@@ -227,6 +229,7 @@ public class SecurityManager
 					}
 					if (global == Result.DENIED)
                     {
+                        System.out.println("global plugin returned null!!!!");
                         return false;
                     }
 				}
@@ -242,6 +245,7 @@ public class SecurityManager
             }
 			if (remaining == Result.DENIED)
             {
+                System.out.println("Remaining plugin: " + plugin + " returned null ");
                 return false;
             }
         }
