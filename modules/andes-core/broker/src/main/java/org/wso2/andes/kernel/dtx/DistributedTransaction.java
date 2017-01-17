@@ -121,10 +121,10 @@ public class DistributedTransaction {
         }
     }
 
-    public void commit(Xid xid, Runnable callback) throws UnknownDtxBranchException,
-                                                          IncorrectDtxStateException,
-                                                          AndesException {
-        dtxRegistry.commit(xid, callback, channel);
+    public void commit(Xid xid, boolean onePhase, Runnable callback) throws UnknownDtxBranchException,
+            IncorrectDtxStateException,
+            AndesException, RollbackOnlyDtxException, TimeoutDtxException {
+        dtxRegistry.commit(xid, onePhase, callback, channel);
     }
 
     public void enqueueMessage(AndesMessage andesMessage, AndesChannel andesChannel) {

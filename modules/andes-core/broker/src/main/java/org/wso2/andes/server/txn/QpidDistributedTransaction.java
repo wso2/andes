@@ -148,14 +148,14 @@ public class QpidDistributedTransaction implements ServerTransaction {
         distributedTransaction.prepare(xid);
     }
 
-    public void commit(Xid xid, Runnable callback) throws UnknownDtxBranchException,
-                                                          IncorrectDtxStateException,
-                                                          AndesException {
+    public void commit(Xid xid, boolean onePhase, Runnable callback) throws UnknownDtxBranchException,
+            IncorrectDtxStateException, AndesException, TimeoutDtxException, RollbackOnlyDtxException {
+
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Committing distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
         }
         try {
-            distributedTransaction.commit(xid, callback);
+            distributedTransaction.commit(xid, onePhase, callback);
         } finally {
             for (Action action : postTransactionActions) {
                 action.postCommit();
