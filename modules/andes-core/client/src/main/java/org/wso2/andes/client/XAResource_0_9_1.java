@@ -55,7 +55,7 @@ class XAResource_0_9_1 implements XAResource {
         try {
             resultStatus = session.commitDtx(xid, onePhase);
         } catch (FailoverException | AMQException e) {
-            XAException xaException = new XAException("Error while committing dtx session. " + e.getMessage());
+            XAException xaException = new XAException("Error while committing dtx session.");
             xaException.initCause(e);
             throw xaException;
         }
@@ -84,7 +84,7 @@ class XAResource_0_9_1 implements XAResource {
     public void end(Xid xid, int flag) throws XAException {
         if (LOGGER.isDebugEnabled())
         {
-            LOGGER.debug("end tx branch with xid: {}", xid);
+            LOGGER.debug("end tx branch with xid: ", xid);
         }
         switch (flag)
         {
@@ -175,7 +175,7 @@ class XAResource_0_9_1 implements XAResource {
     @Override
     public int prepare(Xid xid) throws XAException {
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("prepare dtx branch with xid: {}", xid);
+            LOGGER.debug("prepare dtx branch with xid: ", xid);
         }
 
         XaStatus resultStatus;
@@ -204,7 +204,7 @@ class XAResource_0_9_1 implements XAResource {
     @Override
     public void rollback(Xid xid) throws XAException {
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("start dtx branch with xid: {}", xid);
+            LOGGER.debug("start dtx branch with xid: ", xid);
         }
 
         XaStatus resultStatus;
@@ -241,7 +241,7 @@ class XAResource_0_9_1 implements XAResource {
     @Override
     public void start(Xid xid, int flag) throws XAException {
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("start tx branch with xid: {}", xid);
+            LOGGER.debug("start tx branch with xid: ", xid);
         }
 
         switch (flag) {
