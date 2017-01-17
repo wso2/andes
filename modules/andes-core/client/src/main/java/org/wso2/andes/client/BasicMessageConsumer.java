@@ -189,6 +189,11 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
      */
     private final Lock messageRedeliveryDeliveryLock = new ReentrantLock(true);
 
+    /**
+     * Denotes whether the consumer is ready to consume messages or not.
+     */
+    private AtomicBoolean ready;
+
     protected BasicMessageConsumer(int channelId, AMQConnection connection, AMQDestination destination,
                                    String messageSelector, boolean noLocal, MessageFactoryRegistry messageFactory,
                                    AMQSession session, AMQProtocolHandler protocolHandler,
@@ -207,7 +212,7 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
         _prefetchHigh = prefetchHigh;
         _prefetchLow = prefetchLow;
         _exclusive = exclusive;
-        
+        ready = new AtomicBoolean(false);
         _synchronousQueue = new DelayQueue<>();
         _autoClose = autoClose;
         _noConsume = noConsume;
@@ -243,6 +248,13 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
         checkPreConditions();
 
         return _messageSelector;
+    }
+
+    /**
+     * Set the internal state of the consumer to be ready to consume messages
+     */
+    public void readyToConsume() {
+        this.ready.set(true);
     }
 
     public MessageListener getMessageListener() throws JMSException
@@ -1169,6 +1181,16 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
      */
     public void setLastRollbackedMessageTimestamp() {
         this.lastRollbackedMessageTimestamp = lastDispatchedMessageTimestamp;
+    }
+
+    /**
+     * Returns whether the consumer is ready to consume messages or not. For instance, if the consumer is in the process
+     * of connecting to a broker this will return false
+
+     * @return true if ready to consume and false otherwise
+     */
+    public boolean isReady() {
+        return ready.get();
     }
 
     /**

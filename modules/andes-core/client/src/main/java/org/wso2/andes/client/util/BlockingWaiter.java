@@ -20,17 +20,16 @@
  */
 package org.wso2.andes.client.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.wso2.andes.AMQException;
+import org.wso2.andes.AMQTimeoutException;
+import org.wso2.andes.client.failover.FailoverException;
+
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
-
-import org.wso2.andes.AMQException;
-import org.wso2.andes.AMQTimeoutException;
-import org.wso2.andes.client.failover.FailoverException;
-import org.wso2.andes.framing.AMQMethodBody;
-import org.wso2.andes.protocol.AMQMethodEvent;
-import org.wso2.andes.protocol.AMQMethodListener;
 
 /**
  * BlockingWaiter is a 'rendezvous' which delegates handling of
@@ -64,6 +63,10 @@ import org.wso2.andes.protocol.AMQMethodListener;
  */
 public abstract class BlockingWaiter<T>
 {
+
+    /** Used for debugging. */
+    private static final Logger logger = LoggerFactory.getLogger(BlockingWaiter.class);
+
     /** This flag is used to indicate that the blocked for method has been received. */
     private volatile boolean _ready = false;
 
@@ -117,7 +120,7 @@ public abstract class BlockingWaiter<T>
             try
             {
                 _doneObject = object;
-                _ready = ready;
+                _ready = true;
                 _receivedCondition.signal();
             }
             finally
@@ -144,16 +147,43 @@ public abstract class BlockingWaiter<T>
      */
     public Object block(long timeout) throws AMQException, FailoverException
     {
-        long nanoTimeout = TimeUnit.MILLISECONDS.toNanos(timeout);
-
         _lock.lock();
 
         try
         {
-            if (_closed)
+            waitForFrame(timeout);
+        }
+        finally
+        {
+            _waiting.set(false);
+
+            //Release Error handling thread
+            if (_error != null)
             {
-                throw throwClosedException();
+                _errorAck = true;
+                _errorConditionAck.signal();
+
+                _error = null;
             }
+            _lock.unlock();
+        }
+
+        return _doneObject;
+    }
+
+    /**
+     * Blocking call to wait for a specified frame or until the timeout is elapsed
+     *
+     * @param timeout tie to wait till a specified frame is returned in milliseconds
+     * @throws AMQException
+     * @throws FailoverException
+     */
+    private void waitForFrame(long timeout) throws AMQException, FailoverException {
+
+        long nanoTimeout = TimeUnit.MILLISECONDS.toNanos(timeout);
+        if (_closed) {
+            throw throwClosedException();
+        }
 
             if (_error == null)
             {
@@ -180,7 +210,7 @@ public abstract class BlockingWaiter<T>
                     }
                     catch (InterruptedException e)
                     {
-                        System.err.println(e.getMessage());
+                        logger.error("Waiting for AMQP frame interrupted", e);
                         // IGNORE    -- //fixme this isn't ideal as being interrupted isn't equivellant to sucess
                         // if (!_ready && timeout != -1)
                         // {
@@ -208,23 +238,6 @@ public abstract class BlockingWaiter<T>
                 }
             }
 
-        }
-        finally
-        {
-            _waiting.set(false);
-
-            //Release Error handling thread
-            if (_error != null)
-            {
-                _errorAck = true;
-                _errorConditionAck.signal();
-
-                _error = null;
-            }
-            _lock.unlock();
-        }
-
-        return _doneObject;
     }
 
     /**
@@ -255,7 +268,10 @@ public abstract class BlockingWaiter<T>
             }
             else
             {
-                System.err.println("WARNING: new error '" + e == null ? "null" : e.getMessage() + "' arrived while old one not yet processed:" + _error.getMessage());
+                if (e != null) {
+                    logger.warn("new error [ " + e.getMessage() +  " ] arrived while old one [ " + _error.getMessage()
+                                        + " ] not yet processed:", e);
+                }
             }
 
             if (_waiting.get())
@@ -272,7 +288,7 @@ public abstract class BlockingWaiter<T>
                     }
                     catch (InterruptedException e1)
                     {
-                        System.err.println(e.getMessage());
+                        logger.error("Interrupted ", e);
                     }
                 }
                 _errorAck = false;
@@ -345,4 +361,39 @@ public abstract class BlockingWaiter<T>
         return new AMQException(null, "Waiter was closed.", null);
     }
 
+    /**
+     * Write the frame and wait for the expected frame or the specified timeout.
+     *
+     * @param action {@link Runnable} with the write frame
+     * @param timeout time to wait for the specified expected frame
+     * @return The object that resolved the blocking.
+     * @throws FailoverException
+     * @throws AMQException
+     */
+    protected Object writeAndWait(Runnable action, long timeout) throws FailoverException, AMQException {
+
+        _lock.lock();
+
+        try
+        {
+            action.run();
+            waitForFrame(timeout);
+        }
+        finally
+        {
+            _waiting.set(false);
+
+            //Release Error handling thread
+            if (_error != null)
+            {
+                _errorAck = true;
+                _errorConditionAck.signal();
+
+                _error = null;
+            }
+            _lock.unlock();
+        }
+
+        return _doneObject;
+    }
 }
