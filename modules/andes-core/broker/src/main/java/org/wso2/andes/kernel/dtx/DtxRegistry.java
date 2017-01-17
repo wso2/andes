@@ -131,21 +131,32 @@ public class DtxRegistry {
         dtxStore.removeDtxRecords(internalXid);
     }
 
-    public void commit(Xid xid, Runnable callback, AndesChannel channel) throws UnknownDtxBranchException,
-                                                                                IncorrectDtxStateException,
-                                                                                AndesException {
+    public void commit(Xid xid, boolean onePhase, Runnable callback, AndesChannel channel)
+            throws UnknownDtxBranchException, IncorrectDtxStateException, AndesException, TimeoutDtxException,
+            RollbackOnlyDtxException {
+
         DtxBranch dtxBranch = getBranch(xid);
         if (null != dtxBranch) {
-            synchronized (dtxBranch) {
-                if (!dtxBranch.hasAssociatedActiveSessions()) {
-                    // TODO: Need to revisit. What happens if the commit DB call fail?
-                    dtxBranch.clearAssociations();
-                    dtxBranch.commit(callback, channel);
-                    dtxBranch.setState(DtxBranch.State.FORGOTTEN);
+            if (!dtxBranch.hasAssociatedActiveSessions()) {
+                // TODO: Need to revisit. What happens if the commit DB call fail?
+                dtxBranch.clearAssociations();
+
+                if (dtxBranch.expired()) {
                     unregisterBranch(dtxBranch);
-                } else {
-                    throw new IncorrectDtxStateException("Branch still has associated sessions", xid);
+                    throw new TimeoutDtxException(xid);
+                } else if (dtxBranch.getState() == DtxBranch.State.ROLLBACK_ONLY) {
+                    throw new RollbackOnlyDtxException(xid);
+                } else if (onePhase && dtxBranch.getState() == DtxBranch.State.PREPARED) {
+                    throw new IncorrectDtxStateException("Cannot call one-phase commit on a prepared branch", xid);
+                } else if (!onePhase && dtxBranch.getState() != DtxBranch.State.PREPARED) {
+                    throw new IncorrectDtxStateException("Cannot call two-phase commit on a non-prepared branch", xid);
                 }
+
+                dtxBranch.commit(callback, channel);
+                dtxBranch.setState(DtxBranch.State.FORGOTTEN);
+                unregisterBranch(dtxBranch);
+            } else {
+                throw new IncorrectDtxStateException("Branch still has associated sessions", xid);
             }
         } else {
             throw new UnknownDtxBranchException(xid);
