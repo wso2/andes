@@ -41,6 +41,11 @@ class XAResource_0_9_1 implements XAResource {
      */
     private List<XAResource> siblings = new ArrayList<>();
 
+    /**
+     * Indicate if the operating on a joined transaction.
+     */
+    private boolean joined = false;
+
     XAResource_0_9_1(XASession_9_1 xaSession_9_1) {
         session = xaSession_9_1;
     }
@@ -114,12 +119,13 @@ class XAResource_0_9_1 implements XAResource {
             LOGGER.debug("Calling end for " + siblings.size() + " XAResource siblings");
         }
 
-        for(XAResource sibling: siblings)
-        {
-
-            sibling.end(xid, flag);
+        if (!joined) {
+            for(XAResource sibling: siblings) {
+                sibling.end(xid, flag);
+            }
         }
 
+        joined = false;
         siblings.clear();
     }
 
@@ -158,7 +164,10 @@ class XAResource_0_9_1 implements XAResource {
                 LOGGER.debug("XAResource " + xaResource + " is from the same ResourceManager. Adding XAResource as "
                         + "sibling for AMQP protocol support. ");
             }
+
+            // Adding to both since we don't know which will join which
             siblings.add(xaResource);
+            ((XAResource_0_9_1) xaResource).siblings.add(this);
         }
 
         return isSameRm;
@@ -264,8 +273,8 @@ class XAResource_0_9_1 implements XAResource {
 
         checkStatus(resultStatus);
 
-        for(XAResource sibling: siblings) {
-            sibling.start(xid, flag);
+        if (flag == XAResource.TMJOIN) {
+            joined = true;
         }
     }
 
