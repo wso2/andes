@@ -145,7 +145,13 @@ public class QpidDistributedTransaction implements ServerTransaction {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Preparing distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
         }
-        distributedTransaction.prepare(xid);
+        try {
+            distributedTransaction.prepare(xid);
+        } finally {
+            for (Action action : postTransactionActions) {
+                action.postCommit();
+            }
+        }
     }
 
     public void commit(Xid xid, boolean onePhase, Runnable callback) throws UnknownDtxBranchException,
@@ -154,13 +160,7 @@ public class QpidDistributedTransaction implements ServerTransaction {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Committing distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
         }
-        try {
-            distributedTransaction.commit(xid, onePhase, callback);
-        } finally {
-            for (Action action : postTransactionActions) {
-                action.postCommit();
-            }
-        }
+        distributedTransaction.commit(xid, onePhase, callback);
     }
 
     public void rollback(Xid xid)
