@@ -444,6 +444,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                 if(!checkMessageUserId(_currentMessage.getContentHeader()))
                 {
                     _transaction.addPostTransactionAction(new WriteReturnAction(AMQConstant.ACCESS_REFUSED, "Access Refused", _currentMessage));
+                    failIfDistributedTransaction("Access Refused for message - " + createAMQMessage(_currentMessage));
                 }
                 else
                 {
@@ -458,6 +459,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                         if (_currentMessage.isMandatory() || _currentMessage.isImmediate()) {
                             _transaction.addPostTransactionAction(new WriteReturnAction(AMQConstant.NO_ROUTE,
                                     "No Route for message", _currentMessage));
+                            failIfDistributedTransaction("No routes for message - " + createAMQMessage(_currentMessage));
                             _logger.warn(
                                     "MESSAGE DISCARDED: No routes for message - " + createAMQMessage(_currentMessage));
                         } else {
@@ -526,6 +528,17 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             }
         }
 
+    }
+
+    /**
+     * Check if current channel is inside a distributed transaction and indicate transaction failure.
+     *
+     * @param reason reason for failure
+     */
+    private void failIfDistributedTransaction(String reason) {
+        if (isAttachedToADistributedTransaction()) {
+            ((QpidDistributedTransaction) _transaction).failTransaction(reason);
+        }
     }
 
     /**
