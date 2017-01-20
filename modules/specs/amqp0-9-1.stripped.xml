@@ -538,17 +538,30 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <field name="xa-result" type="short" />
     </method>
 
-      <method name="rollback" synchronous="1" index="90">
-          <chassis name="server" implement="MUST"/>
-          <response name="rollback-ok"/>
-          <field name="format" type="short"/>
-          <field name="global-id" type="longstr"/>
-          <field name="branch-id" type="longstr"/>
-      </method>
+    <method name="rollback" synchronous="1" index="90">
+      <chassis name="server" implement="MUST"/>
+      <response name="rollback-ok"/>
+      <field name="format" type="short"/>
+      <field name="global-id" type="longstr"/>
+      <field name="branch-id" type="longstr"/>
+    </method>
 
-      <method name="rollback-ok" synchronous="1" index="91">
-          <chassis name="client" implement="MUST"/>
-          <field name="xa-result" type="short"/>
-      </method>
+    <method name="rollback-ok" synchronous="1" index="91">
+      <chassis name="client" implement="MUST"/>
+      <field name="xa-result" type="short"/>
+    </method>
+
+    <method name="forget" synchronous="1" index="50">
+      <chassis name="server" implement="MUST"/>
+      <response name="forget-ok"/>
+      <field name="format" type="short"/>
+      <field name="global-id" type="longstr"/>
+      <field name="branch-id" type="longstr"/>
+    </method>
+
+    <method name="forget-ok" synchronous="1" index="51">
+      <chassis name="client" implement="MUST"/>
+      <field name="xa-result" type="short"/>
+    </method>
   </class>
 </amqp>

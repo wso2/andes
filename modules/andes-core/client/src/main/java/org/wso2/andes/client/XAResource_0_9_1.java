@@ -129,9 +129,29 @@ class XAResource_0_9_1 implements XAResource {
         siblings.clear();
     }
 
+    /**
+     * Tells the resource manager to forget about a heuristically completed transaction branch.
+     *
+     * @param xid transaction identifier
+     * @throws XAException An error has occurred. Possible exception values are XAER_RMERR, XAER_RMFAIL,
+     *                     XAER_NOTA, XAER_INVAL, or XAER_PROTO.
+     */
     @Override
     public void forget(Xid xid) throws XAException {
-        throw new RuntimeException("Feature NotImplemented");
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("forget tx branch with xid: ", xid);
+        }
+
+        XaStatus resultStatus;
+        try {
+            resultStatus = session.forget(xid);
+        } catch (FailoverException | AMQException e) {
+            XAException xaException = new XAException("Error while forgetting dtx session.");
+            xaException.initCause(e);
+            throw xaException;
+        }
+
+        checkStatus(resultStatus);
     }
 
     @Override
