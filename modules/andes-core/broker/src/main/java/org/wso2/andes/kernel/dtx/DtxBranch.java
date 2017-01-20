@@ -220,6 +220,6 @@ public class DtxBranch implements AndesInboundStateEvent {
     }
 
     public enum State {
-        SUSPENDED, ACTIVE, ROLLBACK_ONLY, PREPARED, FORGOTTEN, TIMED_OUT;
+        SUSPENDED, ACTIVE, ROLLBACK_ONLY, PREPARED, FORGOTTEN, TIMED_OUT, HEUR_COM, HEUR_RB
     }
 }

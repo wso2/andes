@@ -198,4 +198,20 @@ public class QpidDistributedTransaction implements ServerTransaction {
     public void failTransaction(String reason) {
         distributedTransaction.failTransaction(reason);
     }
+
+    /**
+     * Forget about a heuristically completed transaction branch.
+     *
+     * @param xid XID of the branch
+     * @throws UnknownDtxBranchException  if the XID is unknown to dtx registry
+     * @throws IncorrectDtxStateException If the branch is in a invalid state, forgetting is not possible with
+     *                                    current state
+     */
+    public void forget(Xid xid) throws UnknownDtxBranchException, IncorrectDtxStateException {
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Forgetting the distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
+        }
+
+        distributedTransaction.forget(xid);
+    }
 }
