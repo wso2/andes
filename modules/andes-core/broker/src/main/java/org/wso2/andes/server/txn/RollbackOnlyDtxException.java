@@ -23,4 +23,8 @@ public class RollbackOnlyDtxException extends DtxException
     {
         super("Transaction " + id + " may only be rolled back");
     }
+
+    public RollbackOnlyDtxException(String reason) {
+        super(reason);
+    }
 }

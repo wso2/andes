@@ -189,4 +189,13 @@ public class QpidDistributedTransaction implements ServerTransaction {
 
         distributedTransaction.enqueueMessage(andesMessage, andesChannel);
     }
+
+    /**
+     * Mark transaction as failed. We will fail the transaction at prepare stage if this was called
+     *
+     * @param reason reason for failure
+     */
+    public void failTransaction(String reason) {
+        distributedTransaction.failTransaction(reason);
+    }
 }

@@ -15,6 +15,7 @@
 
 package org.wso2.andes.kernel.dtx;
 
+import org.apache.commons.lang.StringUtils;
 import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesAckData;
@@ -26,6 +27,7 @@ import org.wso2.andes.server.txn.IncorrectDtxStateException;
 import org.wso2.andes.server.txn.RollbackOnlyDtxException;
 import org.wso2.andes.server.txn.TimeoutDtxException;
 
+import java.util.ArrayList;
 import java.util.List;
 import javax.transaction.xa.Xid;
 
@@ -35,6 +37,16 @@ public class DistributedTransaction {
     private DtxBranch branch;
     private InboundEventManager eventManager;
     private AndesChannel channel;
+
+    /**
+     * Indicate if we should fail the transaction due to an error in enqueue dequeue stages
+     */
+    private volatile boolean transactionFailed = false;
+
+    /**
+     * Reasons for failing the transaction
+     */
+    private ArrayList<String> failedReasons = new ArrayList<>();
 
     public DistributedTransaction(DtxRegistry dtxRegistry, InboundEventManager eventManager, AndesChannel channel) {
         this.dtxRegistry = dtxRegistry;
@@ -112,7 +124,7 @@ public class DistributedTransaction {
     }
 
     public void dequeue(List<AndesAckData> ackList) throws AndesException {
-        if (branch != null) {
+        if (isInsideStartEnd()) {
             branch.dequeueMessages(ackList);
         } else {
             for (AndesAckData ackData: ackList) {
@@ -128,7 +140,7 @@ public class DistributedTransaction {
     }
 
     public void enqueueMessage(AndesMessage andesMessage, AndesChannel andesChannel) {
-        if (branch != null) {
+        if (isInsideStartEnd()) {
             branch.enqueueMessage(andesMessage);
         } else {
             QpidAndesBridge.messageReceived(andesMessage, andesChannel);
@@ -137,11 +149,48 @@ public class DistributedTransaction {
 
     public void prepare(Xid xid) throws TimeoutDtxException, UnknownDtxBranchException,
             IncorrectDtxStateException, AndesException, RollbackOnlyDtxException {
-        dtxRegistry.prepare(xid);
+        if (!transactionFailed) {
+            dtxRegistry.prepare(xid);
+        } else {
+            DtxBranch branch = dtxRegistry.getBranch(xid);
+            if (branch != null) {
+                branch.setState(DtxBranch.State.ROLLBACK_ONLY);
+                String reason = "Transaction " + xid + " may only be rolled back due to: ";
+                reason = reason + StringUtils.join(failedReasons, ",");
+
+                throw new RollbackOnlyDtxException(reason);
+            } else {
+                throw new UnknownDtxBranchException(xid);
+            }
+        }
     }
 
     public void rollback(Xid xid)
             throws UnknownDtxBranchException, AndesException, TimeoutDtxException, IncorrectDtxStateException {
+        transactionFailed = false;
+        failedReasons.clear();
         dtxRegistry.rollback(xid);
+    }
+
+    /**
+     * Mark transaction as failed. We will fail the transaction at prepare stage if this was called
+     *
+     * @param reason reason for failure
+     */
+    public void failTransaction(String reason) {
+        // We don't need to keep track of errors happening the transaction is not active
+        if (isInsideStartEnd()) {
+            transactionFailed = true;
+            failedReasons.add(reason);
+        }
+    }
+
+    /**
+     * Indicate if we have received a dtx.start but not a dtx.end for this transaction
+     *
+     * @return true if inside a dtx.start and dtx.end call
+     */
+    private boolean isInsideStartEnd() {
+        return branch != null;
     }
 }
