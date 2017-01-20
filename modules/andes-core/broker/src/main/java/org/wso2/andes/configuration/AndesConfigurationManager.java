@@ -23,6 +23,7 @@ import java.io.FileNotFoundException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.MessageFormat;
 import java.text.ParseException;
@@ -110,8 +111,10 @@ public class AndesConfigurationManager {
      * Main file path of configuration files into which all other andes-specific config files (if any)
      * should be linked.
      */
-    private static final String ROOT_CONFIG_FILE_PATH = System.getProperty(ServerConstants.CARBON_HOME) +
-            "/repository/conf/";
+    public static final String CARBON_CONFIG_DIR_PATH = "carbon.config.dir.path";
+    public static final String CARBON_HOME = "carbon.home";
+    private static  String ROOT_CONFIG_FILE_PATH;
+    private static String componentsPath = System.getProperty(CARBON_CONFIG_DIR_PATH);
 
     /**
      * File name of the main configuration file.
@@ -145,7 +148,16 @@ public class AndesConfigurationManager {
      */
     public static void initialize(int portOffset) throws AndesException {
 
-        String brokerConfigFilePath = ROOT_CONFIG_FILE_PATH + ROOT_CONFIG_FILE_NAME;
+       // If system property is available set conf path to that value
+        if(componentsPath != null){
+            ROOT_CONFIG_FILE_PATH = Paths.get(componentsPath).toString();
+        }
+        else{
+            ROOT_CONFIG_FILE_PATH = Paths.get(System.getProperty(CARBON_HOME), "repository", "conf").toString();
+        }
+
+        String brokerConfigFilePath = ROOT_CONFIG_FILE_PATH + File.separator + ROOT_CONFIG_FILE_NAME;
+
         log.info("Main andes configuration located at : " + brokerConfigFilePath);
 
         try {
