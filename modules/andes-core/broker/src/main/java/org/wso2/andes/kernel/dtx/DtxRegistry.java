@@ -167,6 +167,35 @@ public class DtxRegistry {
         return dtxStore;
     }
 
+    /**
+     * Forget about a heuristically completed transaction branch.
+     *
+     * @param xid XID of the branch
+     * @throws UnknownDtxBranchException  if the XID is unknown to dtx registry
+     * @throws IncorrectDtxStateException If the branch is in a invalid state, forgetting is not possible with
+     *                                    current state
+     */
+    public void forget(Xid xid) throws UnknownDtxBranchException, IncorrectDtxStateException {
+        DtxBranch branch = getBranch(xid);
+        if (branch != null) {
+            synchronized (branch) {
+                if (!branch.hasAssociatedActiveSessions()) {
+                    if(branch.getState() != DtxBranch.State.HEUR_COM && branch.getState() != DtxBranch.State.HEUR_RB)
+                    {
+                        throw new IncorrectDtxStateException("Branch should not be forgotten - "
+                                                                     + "it is not heuristically complete", xid);
+                    }
+                    branch.setState(DtxBranch.State.FORGOTTEN);
+                    unregisterBranch(branch);
+                } else {
+                    throw new IncorrectDtxStateException("Branch was still associated with a session", xid);
+                }
+            }
+        } else {
+            throw new UnknownDtxBranchException(xid);
+        }
+    }
+
     private static final class ComparableXid {
         private final Xid xid;
 

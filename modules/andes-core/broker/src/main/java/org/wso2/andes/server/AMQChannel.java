@@ -1410,6 +1410,21 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     }
 
     /**
+     * Forget about a heuristically completed transaction branch.
+     *
+     * @param xid XID of the branch
+     * @throws DtxNotSelectedException    if not in a distributed transacted session
+     * @throws UnknownDtxBranchException  if the XID is unknown to dtx registry
+     * @throws IncorrectDtxStateException If the branch is in a invalid state, forgetting is not possible with
+     *                                    current state
+     */
+    public void forgetDtxTransaction(Xid xid)
+            throws DtxNotSelectedException, UnknownDtxBranchException, IncorrectDtxStateException {
+        QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
+        distributedTransaction.forget(xid);
+    }
+
+    /**
      * Assert if dtxselect is called
      * @return matching DistributedTransaction object
      * @throws DtxNotSelectedException if dtxselect is not called before
