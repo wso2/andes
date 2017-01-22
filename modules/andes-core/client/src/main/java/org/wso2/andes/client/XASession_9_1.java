@@ -25,6 +25,8 @@ import org.wso2.andes.framing.DtxCommitBody;
 import org.wso2.andes.framing.DtxCommitOkBody;
 import org.wso2.andes.framing.DtxEndBody;
 import org.wso2.andes.framing.DtxEndOkBody;
+import org.wso2.andes.framing.DtxForgetBody;
+import org.wso2.andes.framing.DtxForgetOkBody;
 import org.wso2.andes.framing.DtxPrepareBody;
 import org.wso2.andes.framing.DtxPrepareOkBody;
 import org.wso2.andes.framing.DtxRollbackBody;
@@ -34,6 +36,7 @@ import org.wso2.andes.framing.DtxStartBody;
 import org.wso2.andes.framing.DtxStartOkBody;
 import org.wso2.andes.framing.amqp_0_91.DtxCommitOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxEndOkBodyImpl;
+import org.wso2.andes.framing.amqp_0_91.DtxForgetOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxPrepareOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxRollbackOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxStartOkBodyImpl;
@@ -176,6 +179,26 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession {
                 .syncWrite(dtxRollbackBody.generateFrame(_channelId), DtxRollbackOkBody.class);
 
         DtxRollbackOkBodyImpl response = (DtxRollbackOkBodyImpl) amqMethodEvent.getMethod();
+
+        return XaStatus.valueOf(response.getXaResult());
+    }
+
+    /**
+     * Sends a dtx.forget frame to broker node and wait for dtx.forget-ok response
+     *
+     * @param xid distributed transaction ID
+     * @return response status
+     * @throws FailoverException if failover process started during communication with server
+     * @throws AMQException      if server sends back a error response
+     */
+    public XaStatus forget(Xid xid) throws FailoverException, AMQException {
+        DtxForgetBody dtxforgetBody = methodRegistry
+                .createDtxForgetBody(xid.getFormatId(), xid.getGlobalTransactionId(), xid.getBranchQualifier());
+
+        AMQMethodEvent amqMethodEvent = _connection._protocolHandler
+                .syncWrite(dtxforgetBody.generateFrame(_channelId), DtxForgetOkBody.class);
+
+        DtxForgetOkBodyImpl response = (DtxForgetOkBodyImpl) amqMethodEvent.getMethod();
 
         return XaStatus.valueOf(response.getXaResult());
     }

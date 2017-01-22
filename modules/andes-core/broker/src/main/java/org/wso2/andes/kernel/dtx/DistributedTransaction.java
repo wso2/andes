@@ -193,4 +193,16 @@ public class DistributedTransaction {
     private boolean isInsideStartEnd() {
         return branch != null;
     }
+
+    /**
+     * Forget about a heuristically completed transaction branch.
+     *
+     * @param xid XID of the branch
+     * @throws UnknownDtxBranchException  if the XID is unknown to dtx registry
+     * @throws IncorrectDtxStateException If the branch is in a invalid state, forgetting is not possible with
+     *                                    current state
+     */
+    public void forget(Xid xid) throws UnknownDtxBranchException, IncorrectDtxStateException {
+        dtxRegistry.forget(xid);
+    }
 }
