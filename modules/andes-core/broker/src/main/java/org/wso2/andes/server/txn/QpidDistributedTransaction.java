@@ -49,6 +49,7 @@ import javax.transaction.xa.Xid;
  * Server Transaction type used to handle requests related to distributed transactions.
  */
 public class QpidDistributedTransaction implements ServerTransaction {
+
     /**
      * Class logger
      */
@@ -118,6 +119,9 @@ public class QpidDistributedTransaction implements ServerTransaction {
         throw new IllegalStateException("Cannot call tx.commit() on a distributed transaction");
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void rollback() {
         throw new IllegalStateException("Cannot call tx.rollback() on a distributed transaction");
@@ -163,14 +167,14 @@ public class QpidDistributedTransaction implements ServerTransaction {
         distributedTransaction.commit(xid, onePhase, callback);
     }
 
-    public void rollback(Xid xid)
+    public void rollback(Xid xid, UUID channelId)
             throws UnknownDtxBranchException, AndesException, TimeoutDtxException, IncorrectDtxStateException {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Rolling back distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
         }
 
         try {
-            distributedTransaction.rollback(xid);
+            distributedTransaction.rollback(xid, channelId);
         } finally {
             for (Action action : postTransactionActions) {
                 action.onRollback();
@@ -188,6 +192,10 @@ public class QpidDistributedTransaction implements ServerTransaction {
         }
 
         distributedTransaction.enqueueMessage(andesMessage, andesChannel);
+    }
+
+    public void close(long sessionId) {
+        distributedTransaction.close(sessionId);
     }
 
     /**

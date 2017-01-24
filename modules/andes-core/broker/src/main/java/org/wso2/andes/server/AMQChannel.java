@@ -542,6 +542,15 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     }
 
     /**
+     * Check if the a tx select was received for current session.
+     *
+     * @return True if attached to a {@link LocalTransaction}, False otherwise
+     */
+    private boolean isAttachedToALocalTransaction() {
+        return _transaction instanceof LocalTransaction;
+    }
+
+    /**
      * Check if the a dtx select was received for current session.
      *
      * @return True if attached to a DistributedTransaction, False otherwise
@@ -714,8 +723,12 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
             unsubscribeAllConsumers();
 
-            if (_transaction instanceof LocalTransaction) {
+            if (isAttachedToALocalTransaction()) {
                 _transaction.rollback();
+            }
+
+            if (isAttachedToADistributedTransaction()) {
+                ((QpidDistributedTransaction) _transaction).close(_session.getSessionID());
             }
 
             if (null != andesTransactionEvent) {
@@ -1406,7 +1419,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             throws DtxNotSelectedException, UnknownDtxBranchException, AndesException, TimeoutDtxException,
             IncorrectDtxStateException {
         QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
-        distributedTransaction.rollback(xid);
+        distributedTransaction.rollback(xid, getId());
     }
 
     /**

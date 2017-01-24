@@ -66,7 +66,6 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
             case TRANSACTION_COMMIT_EVENT:
                 preProcessTransaction(inboundEvent, sequence);
                 break;
-
             case DTX_COMMIT_EVENT:
                 preProcessDtxTransaction(inboundEvent, sequence);
                 break;
