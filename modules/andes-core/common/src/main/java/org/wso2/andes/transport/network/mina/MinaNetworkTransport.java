@@ -25,24 +25,32 @@ import org.apache.mina.common.ExecutorThreadModel;
 import org.apache.mina.common.IoConnector;
 import org.apache.mina.common.IoSession;
 import org.apache.mina.filter.SSLFilter;
-import org.apache.mina.transport.socket.nio.*;
+import org.apache.mina.transport.socket.nio.SocketAcceptor;
+import org.apache.mina.transport.socket.nio.SocketAcceptorConfig;
+import org.apache.mina.transport.socket.nio.SocketConnector;
+import org.apache.mina.transport.socket.nio.SocketConnectorConfig;
+import org.apache.mina.transport.socket.nio.SocketSessionConfig;
 import org.apache.mina.util.NewThreadExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wso2.andes.protocol.ProtocolEngineFactory;
 import org.wso2.andes.ssl.SSLContextFactory;
 import org.wso2.andes.thread.QpidThreadExecutor;
-import org.wso2.andes.transport.*;
+import org.wso2.andes.transport.ConnectionSettings;
+import org.wso2.andes.transport.NetworkTransportConfiguration;
+import org.wso2.andes.transport.Receiver;
+import org.wso2.andes.transport.SocketConnectorFactory;
+import org.wso2.andes.transport.TransportException;
 import org.wso2.andes.transport.network.IncomingNetworkTransport;
 import org.wso2.andes.transport.network.NetworkConnection;
 import org.wso2.andes.transport.network.OutgoingNetworkTransport;
 import org.wso2.andes.transport.network.Transport;
 import org.wso2.andes.transport.network.security.ssl.SSLUtil;
 
-import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import javax.net.ssl.SSLContext;
 
 import static org.wso2.andes.transport.ConnectionSettings.WILDCARD_ADDRESS;
 
@@ -215,7 +223,6 @@ public class MinaNetworkTransport implements OutgoingNetworkTransport, IncomingN
             {
                 throw new TransportException("Could not open connection");
             }
-
             IoSession session = future.getSession();
             session.setAttachment(receiver);
 
