@@ -29,8 +29,12 @@ import org.wso2.andes.server.txn.TimeoutDtxException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import javax.transaction.xa.Xid;
 
+/**
+ * Acts as a distributed transaction related interface for the transport layer.
+ */
 public class DistributedTransaction {
 
     private DtxRegistry dtxRegistry;
@@ -83,7 +87,7 @@ public class DistributedTransaction {
                 throw new AlreadyKnownDtxException(xid);
             }
 
-            branch = new DtxBranch(xid, dtxRegistry, eventManager);
+            branch = new DtxBranch(sessionID, xid, dtxRegistry, eventManager);
 
             if (dtxRegistry.registerBranch(branch)) {
                 this.branch = branch;
@@ -165,11 +169,30 @@ public class DistributedTransaction {
         }
     }
 
-    public void rollback(Xid xid)
+    /**
+     * Rollback the transaction session for the provided {@link Xid}
+     *
+     * @param xid {@link Xid} to be rollbacked
+     * @param channelId unique channel Id of the transacted session
+     * @throws UnknownDtxBranchException thrown when an unknown xid is provided
+     * @throws AndesException thrown on internal Andes core error
+     * @throws TimeoutDtxException thrown when the branch is expired
+     * @throws IncorrectDtxStateException if the state of the branch is invalid. For instance the branch is not prepared
+     */
+    public void rollback(Xid xid, UUID channelId)
             throws UnknownDtxBranchException, AndesException, TimeoutDtxException, IncorrectDtxStateException {
         transactionFailed = false;
         failedReasons.clear();
-        dtxRegistry.rollback(xid);
+        dtxRegistry.rollback(xid, channelId);
+    }
+
+    /**
+     * Remove the current distributed transaction related details from server. (if the transaction is not prepared)
+     *
+     * @param sessionId server session Id for the connected channel
+     */
+    public void close(long sessionId) {
+        dtxRegistry.close(sessionId);
     }
 
     /**

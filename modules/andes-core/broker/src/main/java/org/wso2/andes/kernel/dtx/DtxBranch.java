@@ -16,6 +16,7 @@
 package org.wso2.andes.kernel.dtx;
 
 import org.apache.log4j.Logger;
+import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
@@ -29,6 +30,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import javax.transaction.xa.Xid;
 
 public class DtxBranch implements AndesInboundStateEvent {
@@ -83,10 +85,22 @@ public class DtxBranch implements AndesInboundStateEvent {
      */
     private long internalXid = NULL_XID;
 
-    public DtxBranch(Xid xid, DtxRegistry dtxRegistry, InboundEventManager eventManager) {
+    /**
+     * Session id of the session which created the branch
+     */
+    private long createdSessionId;
+
+    /**
+     * Reference to the {@link Andes}
+     */
+    private Andes andesApi;
+
+    public DtxBranch(long sessionID, Xid xid, DtxRegistry dtxRegistry, InboundEventManager eventManager) {
         this.xid = xid;
         this.dtxRegistry = dtxRegistry;
         this.eventManager = eventManager;
+        this.createdSessionId = sessionID;
+        andesApi = Andes.getInstance();
     }
 
     public Xid getXid() {
@@ -111,6 +125,14 @@ public class DtxBranch implements AndesInboundStateEvent {
 
     public boolean isAssociated(long sessionId) {
         return associatedSessions.containsKey(sessionId);
+    }
+
+    /**
+     * Id of the session which created the branch
+     * @return session id
+     */
+    public long getCreatedSessionId() {
+        return createdSessionId;
     }
 
     public boolean suspendSession(long sessionId) {
@@ -142,7 +164,12 @@ public class DtxBranch implements AndesInboundStateEvent {
         return false;
     }
 
-    private boolean hasAssociatedSessions() {
+    /**
+     * Check if there are any associated sessions
+     *
+     * @return True if there are any associated sessions, false otherwise
+     */
+    public boolean hasAssociatedSessions() {
         return !associatedSessions.isEmpty();
     }
 
@@ -172,12 +199,15 @@ public class DtxBranch implements AndesInboundStateEvent {
         dequeueList.addAll(ackList);
     }
 
-    public void rollback() throws AndesException {
+    public void rollback(UUID channelId) throws AndesException {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Performing rollback for DtxBranch {}" + xid);
         }
 
         if (internalXid != NULL_XID) {
+            for (AndesAckData ackData: dequeueList) {
+                andesApi.messageRejected(ackData.getAcknowledgedMessage(), channelId);
+            }
             dtxRegistry.removePreparedRecords(internalXid);
             internalXid = NULL_XID;
         } else {
@@ -219,6 +249,9 @@ public class DtxBranch implements AndesInboundStateEvent {
         return internalXid;
     }
 
+    /**
+     * States of a {@link DtxBranch}
+     */
     public enum State {
         SUSPENDED, ACTIVE, ROLLBACK_ONLY, PREPARED, FORGOTTEN, TIMED_OUT, HEUR_COM, HEUR_RB
     }
