@@ -25,9 +25,11 @@ import org.wso2.andes.server.txn.IncorrectDtxStateException;
 import org.wso2.andes.server.txn.RollbackOnlyDtxException;
 import org.wso2.andes.server.txn.TimeoutDtxException;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import javax.transaction.xa.Xid;
 
 public class DtxRegistry {
@@ -104,7 +106,7 @@ public class DtxRegistry {
         return dtxStore.storeDtxRecords(xid, enqueueRecords, dequeueRecords);
     }
 
-    public synchronized void rollback(Xid xid)
+    public synchronized void rollback(Xid xid, UUID channelId)
             throws TimeoutDtxException, IncorrectDtxStateException, UnknownDtxBranchException, AndesException {
         DtxBranch branch = getBranch(xid);
 
@@ -116,7 +118,7 @@ public class DtxRegistry {
 
             if (!branch.hasAssociatedActiveSessions()) {
                 branch.clearAssociations();
-                branch.rollback();
+                branch.rollback(channelId);
                 branch.setState(DtxBranch.State.FORGOTTEN);
                 unregisterBranch(branch);
             } else {
@@ -193,6 +195,30 @@ public class DtxRegistry {
             }
         } else {
             throw new UnknownDtxBranchException(xid);
+        }
+    }
+
+    /**
+     * Remove all the branches from the dtx session
+     * @param sessionId
+     */
+    public void close(long sessionId) {
+        Collection<DtxBranch> dtxBranches = branches.values();
+
+        for (DtxBranch branch : dtxBranches) {
+            if (branch.getCreatedSessionId() == sessionId &&
+                    (branch.getState() == DtxBranch.State.ACTIVE || branch.getState() == DtxBranch.State.SUSPENDED)) {
+
+                // If there are no associations delete the entry. If there are associations that is due to a join.
+                // Hence only disassociating the session
+                if (branch.isAssociated(sessionId)) {
+                    branch.disassociateSession(sessionId);
+                }
+                if (!branch.hasAssociatedSessions()) {
+                    branch.setState(DtxBranch.State.FORGOTTEN);
+                    unregisterBranch(branch);
+                }
+            }
         }
     }
 
