@@ -354,7 +354,7 @@ public class Andes {
      */
     public void shutDown() throws AndesException {
         InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
-        kernelOpsEvent.gracefulShutdown(messagingEngine, inboundEventManager, flowControlManager);
+        kernelOpsEvent.gracefulShutdown(messagingEngine, inboundEventManager, flowControlManager, dtxRegistry);
         kernelOpsEvent.waitForTaskCompletion();
     }
 

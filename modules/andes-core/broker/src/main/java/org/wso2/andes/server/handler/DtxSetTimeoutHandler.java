@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, WSO2 Inc. (http://wso2.com) All Rights Reserved.
+ * Copyright (c) 2017, WSO2 Inc. (http://wso2.com) All Rights Reserved.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,11 +17,9 @@ package org.wso2.andes.server.handler;
 
 import org.wso2.andes.AMQException;
 import org.wso2.andes.dtx.XidImpl;
-import org.wso2.andes.framing.DtxEndOkBody;
-import org.wso2.andes.framing.amqp_0_91.DtxEndBodyImpl;
+import org.wso2.andes.framing.DtxSetTimeoutOkBody;
+import org.wso2.andes.framing.amqp_0_91.DtxSetTimeoutBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.MethodRegistry_0_91;
-import org.wso2.andes.kernel.dtx.NotAssociatedDtxException;
-import org.wso2.andes.kernel.dtx.SuspendAndFailDtxException;
 import org.wso2.andes.kernel.dtx.UnknownDtxBranchException;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
@@ -33,18 +31,19 @@ import org.wso2.andes.transport.DtxXaStatus;
 
 import javax.transaction.xa.Xid;
 
-public class DtxEndHandler implements StateAwareMethodListener<DtxEndBodyImpl> {
-    private static DtxEndHandler _instance = new DtxEndHandler();
+public class DtxSetTimeoutHandler implements StateAwareMethodListener<DtxSetTimeoutBodyImpl> {
+    private static DtxSetTimeoutHandler _instance = new DtxSetTimeoutHandler();
 
-    public static DtxEndHandler getInstance() {
+    public static DtxSetTimeoutHandler getInstance() {
         return _instance;
     }
 
-    private DtxEndHandler() {
+    private DtxSetTimeoutHandler() {
     }
 
     @Override
-    public void methodReceived(AMQStateManager stateManager, DtxEndBodyImpl body, int channelId) throws AMQException {
+    public void methodReceived(AMQStateManager stateManager, DtxSetTimeoutBodyImpl body, int channelId)
+            throws AMQException {
         Xid xid = new XidImpl(body.getBranchId(), body.getFormat(), body.getGlobalId());
         AMQProtocolSession session = stateManager.getProtocolSession();
 
@@ -55,22 +54,17 @@ public class DtxEndHandler implements StateAwareMethodListener<DtxEndBodyImpl> {
         }
 
         try {
-            channel.endDtxTransaction(xid, body.getFail(), body.getSuspend());
+            channel.setDtxTransactionTimeout(xid, body.getTimeout());
 
             MethodRegistry_0_91 methodRegistry = (MethodRegistry_0_91) session.getMethodRegistry();
-            DtxEndOkBody dtxEndOkBody = methodRegistry.createDtxEndOkBody(DtxXaStatus.XA_OK.getValue());
-            session.writeFrame(dtxEndOkBody.generateFrame(channelId));
-        } catch (DtxNotSelectedException e) {
-            throw body.getChannelException(AMQConstant.NOT_ALLOWED, "Not a distributed transacted session", e);
-        } catch (NotAssociatedDtxException e) {
-            throw body.getChannelException(AMQConstant.NOT_ALLOWED,
-                    "Error ending dtx. Session is not associated with the given xid " + xid, e);
+            DtxSetTimeoutOkBody dtxSetTimeoutOkBody = methodRegistry.createDtxSetTimeoutOkBody(DtxXaStatus.XA_OK
+                                                                                                       .getValue());
+            session.writeFrame(dtxSetTimeoutOkBody.generateFrame(channelId));
         } catch (UnknownDtxBranchException e) {
             throw body.getChannelException(AMQConstant.NOT_ALLOWED,
-                                           "Error ending dtx. Unknown branch for the given " + xid, e);
-        } catch (SuspendAndFailDtxException e) {
-            throw body.getChannelException(AMQConstant.NOT_ALLOWED,
-                    "Error ending dtx. Both suspend and failed are set ", e);
+                                           "Error ending dtx. Unknown branch for the given " + xid , e);
+        } catch (DtxNotSelectedException e) {
+            throw body.getChannelException(AMQConstant.NOT_ALLOWED, "Not a distributed transacted session", e);
         }
     }
 }

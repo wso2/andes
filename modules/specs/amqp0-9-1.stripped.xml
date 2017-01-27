@@ -563,5 +563,19 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <chassis name="client" implement="MUST"/>
       <field name="xa-result" type="short"/>
     </method>
+
+    <method name="set-timeout" synchronous="1" index="100">
+      <chassis name="server" implement="MUST"/>
+      <response name="set-timeout-ok"/>
+      <field name="format" type="short"/>
+      <field name="global-id" type="longstr"/>
+      <field name="branch-id" type="longstr"/>
+      <field name="timeout" type="long"/>
+    </method>
+
+    <method name="set-timeout-ok" synchronous="1" index="101">
+      <chassis name="client" implement="MUST"/>
+      <field name="xa-result" type="short"/>
+    </method>
   </class>
 </amqp>
