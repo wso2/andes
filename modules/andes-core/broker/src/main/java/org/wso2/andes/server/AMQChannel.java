@@ -1438,6 +1438,18 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     }
 
     /**
+     * Set transaction timeout for current distributed transaction
+     *
+     * @param xid     XID of the dtx branch
+     * @param timeout timeout value that should be set
+     */
+    public void setDtxTransactionTimeout(Xid xid, long timeout)
+            throws DtxNotSelectedException, UnknownDtxBranchException {
+        QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
+        distributedTransaction.setTimeout(xid, timeout);
+    }
+
+    /**
      * Assert if dtxselect is called
      * @return matching DistributedTransaction object
      * @throws DtxNotSelectedException if dtxselect is not called before

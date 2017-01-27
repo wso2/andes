@@ -46,6 +46,16 @@ class XAResource_0_9_1 implements XAResource {
      */
     private boolean joined = false;
 
+    /**
+     * The time for this resource
+     */
+    private int timeout;
+
+    /**
+     * The XID of this resource
+     */
+    private Xid xid;
+
     XAResource_0_9_1(XASession_9_1 xaSession_9_1) {
         session = xaSession_9_1;
     }
@@ -63,6 +73,8 @@ class XAResource_0_9_1 implements XAResource {
             XAException xaException = new XAException("Error while committing dtx session.");
             xaException.initCause(e);
             throw xaException;
+        } finally {
+            this.xid = null;
         }
 
         checkStatus(resultStatus);
@@ -149,6 +161,8 @@ class XAResource_0_9_1 implements XAResource {
             XAException xaException = new XAException("Error while forgetting dtx session.");
             xaException.initCause(e);
             throw xaException;
+        } finally {
+            this.xid = null;
         }
 
         checkStatus(resultStatus);
@@ -243,14 +257,41 @@ class XAResource_0_9_1 implements XAResource {
             XAException xaException = new XAException("Error while rolling back dtx session.");
             xaException.initCause(e);
             throw xaException;
+        } finally {
+            this.xid = null;
         }
 
         checkStatus(resultStatus);
     }
 
     @Override
-    public boolean setTransactionTimeout(int i) throws XAException {
-        throw new RuntimeException("Feature NotImplemented");
+    public boolean setTransactionTimeout(int timeout) throws XAException {
+        this.timeout = timeout;
+
+        if (xid != null) {
+            setDtxTimeoutInServer(timeout);
+        }
+
+        return true;
+    }
+
+    /**
+     * Set the transaction delay for current branch in the server
+     *
+     * @param timeout transaction timeout value
+     * @throws XAException if server responded with an error
+     */
+    private void setDtxTimeoutInServer(int timeout) throws XAException {
+        XaStatus resultStatus;
+        try {
+            resultStatus = session.setDtxTimeout(xid, timeout);
+        } catch (FailoverException | AMQException e) {
+            XAException xaException = new XAException("Error while setting transaction timeout back dtx session.");
+            xaException.initCause(e);
+            throw xaException;
+        }
+
+        checkStatus(resultStatus);
     }
 
     /**
@@ -292,6 +333,12 @@ class XAResource_0_9_1 implements XAResource {
         }
 
         checkStatus(resultStatus);
+
+        this.xid = xid;
+
+        if (timeout > 0) {
+            setTransactionTimeout(timeout);
+        }
 
         if (flag == XAResource.TMJOIN) {
             joined = true;

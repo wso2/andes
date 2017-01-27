@@ -351,9 +351,11 @@ public class AndesKernelBoot {
         InboundEventManager inboundEventManager =  new InboundEventManager(subscriptionManager, messagingEngine);
         AndesContext.getInstance().setInboundEventManager(inboundEventManager);
 
+        DtxRegistry dtxRegistry = new DtxRegistry(messageStore.getDtxStore(), messagingEngine);
+
         //Initialize Andes API (used by all inbound transports)
         Andes.getInstance().initialise(messagingEngine, inboundEventManager, contextInformationManager,
-                subscriptionManager, new DtxRegistry(messageStore.getDtxStore(), messagingEngine));
+                                       subscriptionManager, dtxRegistry);
 
         //Initialize cluster notification listener (null if standalone)
         if(null != clusterNotificationListenerManager) {

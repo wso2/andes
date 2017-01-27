@@ -36,6 +36,8 @@ import org.wso2.andes.framing.DtxPrepareOkBody;
 import org.wso2.andes.framing.DtxRollbackBody;
 import org.wso2.andes.framing.DtxRollbackOkBody;
 import org.wso2.andes.framing.DtxSelectBody;
+import org.wso2.andes.framing.DtxSetTimeoutBody;
+import org.wso2.andes.framing.DtxSetTimeoutOkBody;
 import org.wso2.andes.framing.DtxStartBody;
 import org.wso2.andes.framing.MessageAppendBody;
 import org.wso2.andes.framing.MessageCancelBody;
@@ -59,6 +61,7 @@ import org.wso2.andes.framing.amqp_0_91.DtxEndBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxForgetBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxPrepareBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxRollbackBodyImpl;
+import org.wso2.andes.framing.amqp_0_91.DtxSetTimeoutBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxStartBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.MethodDispatcher_0_91;
 import org.wso2.andes.server.state.AMQStateManager;
@@ -81,6 +84,7 @@ public class ServerMethodDispatcherImpl_0_91
     private static final DtxCommitHandler dtxCommitHandler = DtxCommitHandler.getInstance();
     private static final DtxRollbackHandler dtxRollbackHandler = DtxRollbackHandler.getInstance();
     private static final DtxForgetHandler dtxForgetHandler = DtxForgetHandler.getInstance();
+    private static final DtxSetTimeoutHandler dtxSetTimeoutHandler = DtxSetTimeoutHandler.getInstance();
 
     private final AMQStateManager stateManager;
 
@@ -115,6 +119,12 @@ public class ServerMethodDispatcherImpl_0_91
     public boolean dispatchDtxSelect(DtxSelectBody body, int channelId) throws AMQException
     {
         dtxSelectHandler.methodReceived(stateManager, body, channelId);
+        return true;
+    }
+
+    @Override
+    public boolean dispatchDtxSetTimeout(DtxSetTimeoutBody body, int channelId) throws AMQException {
+        dtxSetTimeoutHandler.methodReceived(stateManager, (DtxSetTimeoutBodyImpl) body, channelId);
         return true;
     }
 
@@ -165,6 +175,11 @@ public class ServerMethodDispatcherImpl_0_91
 
     @Override
     public boolean dispatchDtxRollbackOk(DtxRollbackOkBody body, int channelId) throws AMQException {
+        throw new UnexpectedMethodException(body);
+    }
+
+    @Override
+    public boolean dispatchDtxSetTimeoutOk(DtxSetTimeoutOkBody body, int channelId) throws AMQException {
         throw new UnexpectedMethodException(body);
     }
 

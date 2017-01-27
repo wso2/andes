@@ -32,6 +32,7 @@ import org.wso2.andes.framing.DtxPrepareOkBody;
 import org.wso2.andes.framing.DtxRollbackBody;
 import org.wso2.andes.framing.DtxRollbackOkBody;
 import org.wso2.andes.framing.DtxSelectBody;
+import org.wso2.andes.framing.DtxSetTimeoutBody;
 import org.wso2.andes.framing.DtxStartBody;
 import org.wso2.andes.framing.DtxStartOkBody;
 import org.wso2.andes.framing.amqp_0_91.DtxCommitOkBodyImpl;
@@ -39,6 +40,7 @@ import org.wso2.andes.framing.amqp_0_91.DtxEndOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxForgetOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxPrepareOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxRollbackOkBodyImpl;
+import org.wso2.andes.framing.amqp_0_91.DtxSetTimeoutOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxStartOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.MethodRegistry_0_91;
 import org.wso2.andes.jms.Session;
@@ -192,13 +194,35 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession {
      * @throws AMQException      if server sends back a error response
      */
     public XaStatus forget(Xid xid) throws FailoverException, AMQException {
-        DtxForgetBody dtxforgetBody = methodRegistry
+        DtxForgetBody dtxForgetBody = methodRegistry
                 .createDtxForgetBody(xid.getFormatId(), xid.getGlobalTransactionId(), xid.getBranchQualifier());
 
         AMQMethodEvent amqMethodEvent = _connection._protocolHandler
-                .syncWrite(dtxforgetBody.generateFrame(_channelId), DtxForgetOkBody.class);
+                .syncWrite(dtxForgetBody.generateFrame(_channelId), DtxForgetOkBody.class);
 
         DtxForgetOkBodyImpl response = (DtxForgetOkBodyImpl) amqMethodEvent.getMethod();
+
+        return XaStatus.valueOf(response.getXaResult());
+    }
+
+    /**
+     * Sends a dtx.set-timeout frame to broker node and wait for dtx.set-timeout-ok response
+     *
+     * @param xid     distribute transction ID
+     * @param timeout transaction timeout value to set
+     * @return response status
+     * @throws FailoverException if failover process started during communication with server
+     * @throws AMQException      if server sends back a error response
+     */
+    public XaStatus setDtxTimeout(Xid xid, int timeout) throws FailoverException, AMQException {
+        DtxSetTimeoutBody dtxSetTimeoutBody = methodRegistry
+                .createDtxSetTimeoutBody(xid.getFormatId(), xid.getGlobalTransactionId(), xid.getBranchQualifier(),
+                                         timeout);
+
+        AMQMethodEvent amqMethodEvent = _connection._protocolHandler
+                .syncWrite(dtxSetTimeoutBody.generateFrame(_channelId), DtxSetTimeoutBody.class);
+
+        DtxSetTimeoutOkBodyImpl response = (DtxSetTimeoutOkBodyImpl) amqMethodEvent.getMethod();
 
         return XaStatus.valueOf(response.getXaResult());
     }

@@ -30,6 +30,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ScheduledFuture;
 import javax.transaction.xa.Xid;
 
 public class DtxBranch implements AndesInboundStateEvent {
@@ -49,6 +50,21 @@ public class DtxBranch implements AndesInboundStateEvent {
     private Map<Long, State> associatedSessions = new HashMap<>();
     private InboundEventManager eventManager;
     private Runnable callback;
+
+    /**
+     * Branch's transaction timeout value
+     */
+    private long timeout;
+
+    /**
+     * Future of the scheduled timeout task. Null if no scheduled timeout tasks
+     */
+    private ScheduledFuture<?> timeoutFuture;
+
+    /**
+     * Expiration time calculated from the timeout value.
+     */
+    private long _expiration;
 
     /**
      * Getter for enqueueList
@@ -177,8 +193,7 @@ public class DtxBranch implements AndesInboundStateEvent {
     }
 
     public boolean expired() {
-        // TODO implement transaction timeouts
-        return false;
+        return timeout != 0 && _expiration < System.currentTimeMillis();
     }
 
     public State getState() {
@@ -198,10 +213,12 @@ public class DtxBranch implements AndesInboundStateEvent {
         dequeueList.addAll(ackList);
     }
 
-    public void rollback() throws AndesException {
+    public synchronized void rollback() throws AndesException {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Performing rollback for DtxBranch {}" + xid);
         }
+
+        cancelTimeoutTaskIfExists();
 
         if (internalXid != NULL_XID) {
             for (AndesAckData ackData: dequeueList) {
@@ -216,7 +233,39 @@ public class DtxBranch implements AndesInboundStateEvent {
         }
     }
 
+    /**
+     * Cancel the timeout tasks if one is already set for the current branch
+     */
+    private void cancelTimeoutTaskIfExists() {
+        if (timeoutFuture != null) {
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Attempting to cancel previous timeout task future for DtxBranch " + xid);
+            }
+
+            boolean succeeded = timeoutFuture.cancel(false);
+            timeoutFuture = null;
+
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Cancelling previous timeout task {} for DtxBranch " + (succeeded ? "succeeded" : "failed")
+                                     + xid);
+            }
+        }
+    }
+
+    /**
+     * Commit the changes (enqueue and dequeue actions) to andes core
+     *
+     * @param callback callback that called after completing the commit task
+     * @param channel  corresponding channel object
+     * @throws AndesException
+     */
     public void commit(Runnable callback, AndesChannel channel) throws AndesException {
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Performing commit for DtxBranch " + xid);
+        }
+
+        cancelTimeoutTaskIfExists();
+
         this.callback = callback;
         eventManager.requestDtxCommitEvent(this, channel);
     }
@@ -249,9 +298,46 @@ public class DtxBranch implements AndesInboundStateEvent {
     }
 
     /**
+     * Set the transaction timeout of the current branch and schedule a timeout task.
+     *
+     * @param timeout transaction timeout value in seconds
+     */
+    public void setTimeout(long timeout) {
+        cancelTimeoutTaskIfExists();
+
+        this.timeout = timeout;
+        _expiration = timeout == 0 ? 0 : System.currentTimeMillis() + (1000 * timeout);
+
+        if (timeout == 0) {
+            timeoutFuture = null;
+        } else {
+            long delay = 1000 * timeout;
+
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Scheduling timeout and rollback after " + timeout + "s for DtxBranch " + xid);
+            }
+
+            timeoutFuture = dtxRegistry.scheduleTask(delay, new Runnable() {
+                public void run() {
+                    if (LOGGER.isDebugEnabled()) {
+                        LOGGER.debug("Timing out DtxBranch " + xid);
+                    }
+
+                    setState(State.TIMEDOUT);
+                    try {
+                        rollback();
+                    } catch (AndesException e) {
+                        LOGGER.error("Error while rolling back dtx due to store exception");
+                    }
+                }
+            });
+        }
+    }
+
+    /**
      * States of a {@link DtxBranch}
      */
     public enum State {
-        SUSPENDED, ACTIVE, ROLLBACK_ONLY, PREPARED, FORGOTTEN, TIMED_OUT, HEUR_COM, HEUR_RB
+        SUSPENDED, ACTIVE, ROLLBACK_ONLY, PREPARED, FORGOTTEN, TIMED_OUT, HEUR_COM, TIMEDOUT, HEUR_RB
     }
 }
