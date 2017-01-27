@@ -29,7 +29,6 @@ import org.wso2.andes.server.txn.TimeoutDtxException;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import javax.transaction.xa.Xid;
 
 /**
@@ -173,17 +172,16 @@ public class DistributedTransaction {
      * Rollback the transaction session for the provided {@link Xid}
      *
      * @param xid {@link Xid} to be rollbacked
-     * @param channelId unique channel Id of the transacted session
      * @throws UnknownDtxBranchException thrown when an unknown xid is provided
      * @throws AndesException thrown on internal Andes core error
      * @throws TimeoutDtxException thrown when the branch is expired
      * @throws IncorrectDtxStateException if the state of the branch is invalid. For instance the branch is not prepared
      */
-    public void rollback(Xid xid, UUID channelId)
+    public void rollback(Xid xid)
             throws UnknownDtxBranchException, AndesException, TimeoutDtxException, IncorrectDtxStateException {
         transactionFailed = false;
         failedReasons.clear();
-        dtxRegistry.rollback(xid, channelId);
+        dtxRegistry.rollback(xid);
     }
 
     /**
