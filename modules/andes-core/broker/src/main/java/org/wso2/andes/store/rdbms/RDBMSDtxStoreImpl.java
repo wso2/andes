@@ -26,6 +26,7 @@ import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.DtxStore;
+import org.wso2.andes.server.ClusterResourceHolder;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -71,13 +72,14 @@ public class RDBMSDtxStoreImpl implements DtxStore {
         try {
 
             connection = rdbmsMessageStore.getConnection();
-
+            String nodeId = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
             storeXidPS = connection.prepareStatement(RDBMSConstants.PS_INSERT_DTX_ENTRY);
             long internalXid = uniqueIdGenerator.generateUniqueId();
             storeXidPS.setLong(1, internalXid);
-            storeXidPS.setInt(2, xid.getFormatId());
-            storeXidPS.setBytes(3, xid.getGlobalTransactionId());
-            storeXidPS.setBytes(4, xid.getBranchQualifier());
+            storeXidPS.setString(2, nodeId);
+            storeXidPS.setInt(3, xid.getFormatId());
+            storeXidPS.setBytes(4, xid.getGlobalTransactionId());
+            storeXidPS.setBytes(5, xid.getBranchQualifier());
             storeXidPS.executeUpdate();
 
             storeMetadataPS = connection.prepareStatement(RDBMSConstants.PS_INSERT_DTX_ENQUEUE_METADATA_RECORD);
@@ -186,9 +188,10 @@ public class RDBMSDtxStoreImpl implements DtxStore {
 
         PreparedStatement statement = null;
         try {
+            String nodeId = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
             statement = connection.prepareStatement(RDBMSConstants.PS_REMOVE_DTX_PREPARED_XID);
             statement.setLong(1, internalXid);
-
+            statement.setString(2, nodeId);
             statement.execute();
         } finally {
             rdbmsMessageStore.close(statement, RDBMSConstants.TASK_DELETING_DTX_PREPARED_XID);

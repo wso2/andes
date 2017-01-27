@@ -1070,9 +1070,10 @@ public class RDBMSConstants {
     protected static final String PS_INSERT_DTX_ENTRY
             = "INSERT INTO " + DTX_ENTRY_TABLE + " ("
             + INTERNAL_XID + ","
+            + NODE_ID + ","
             + DTX_FORMAT + ","
             + DTX_GLOBAL_ID + ","
-            + DTX_BRANCH_ID + ")" + " VALUES ( ?,?,?,? )";
+            + DTX_BRANCH_ID + ")" + " VALUES ( ?,?,?,?,? )";
 
     protected static final String PS_DELETE_DTX_ENTRY
             = "DELETE FROM " + DTX_ENTRY_TABLE
@@ -1080,7 +1081,8 @@ public class RDBMSConstants {
 
     static final String PS_REMOVE_DTX_PREPARED_XID =
             "DELETE FROM " + DTX_ENTRY_TABLE
-                    + " WHERE " + INTERNAL_XID + " =?";
+                    + " WHERE " + INTERNAL_XID + " =?"
+                    + " AND " + NODE_ID + " =?";
 
     // prepared statements for Message Store
     protected static final String PS_INSERT_DTX_MESSAGE_PART =
