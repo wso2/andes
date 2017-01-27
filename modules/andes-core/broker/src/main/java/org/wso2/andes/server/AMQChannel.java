@@ -1419,7 +1419,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             throws DtxNotSelectedException, UnknownDtxBranchException, AndesException, TimeoutDtxException,
             IncorrectDtxStateException {
         QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
-        distributedTransaction.rollback(xid, getId());
+        distributedTransaction.rollback(xid);
     }
 
     /**

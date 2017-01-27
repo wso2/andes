@@ -30,7 +30,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import javax.transaction.xa.Xid;
 
 public class DtxBranch implements AndesInboundStateEvent {
@@ -199,14 +198,14 @@ public class DtxBranch implements AndesInboundStateEvent {
         dequeueList.addAll(ackList);
     }
 
-    public void rollback(UUID channelId) throws AndesException {
+    public void rollback() throws AndesException {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Performing rollback for DtxBranch {}" + xid);
         }
 
         if (internalXid != NULL_XID) {
             for (AndesAckData ackData: dequeueList) {
-                andesApi.messageRejected(ackData.getAcknowledgedMessage(), channelId);
+                andesApi.messageRejected(ackData.getAcknowledgedMessage(), ackData.getChannelID());
             }
             dtxRegistry.removePreparedRecords(internalXid);
             internalXid = NULL_XID;

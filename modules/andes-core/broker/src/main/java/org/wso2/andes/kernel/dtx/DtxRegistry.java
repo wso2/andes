@@ -29,7 +29,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import javax.transaction.xa.Xid;
 
 public class DtxRegistry {
@@ -88,7 +87,7 @@ public class DtxRegistry {
         }
     }
 
-    private boolean unregisterBranch(DtxBranch branch) {
+    private synchronized boolean unregisterBranch(DtxBranch branch) {
         return (branches.remove(new ComparableXid(branch.getXid())) != null);
     }
 
@@ -106,7 +105,7 @@ public class DtxRegistry {
         return dtxStore.storeDtxRecords(xid, enqueueRecords, dequeueRecords);
     }
 
-    public synchronized void rollback(Xid xid, UUID channelId)
+    public synchronized void rollback(Xid xid)
             throws TimeoutDtxException, IncorrectDtxStateException, UnknownDtxBranchException, AndesException {
         DtxBranch branch = getBranch(xid);
 
@@ -118,7 +117,7 @@ public class DtxRegistry {
 
             if (!branch.hasAssociatedActiveSessions()) {
                 branch.clearAssociations();
-                branch.rollback(channelId);
+                branch.rollback();
                 branch.setState(DtxBranch.State.FORGOTTEN);
                 unregisterBranch(branch);
             } else {
