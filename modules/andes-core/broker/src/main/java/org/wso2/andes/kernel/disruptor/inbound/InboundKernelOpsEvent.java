@@ -26,6 +26,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesKernelBoot;
 import org.wso2.andes.kernel.FlowControlManager;
 import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.dtx.DtxRegistry;
 import org.wso2.andes.kernel.slot.SlotDeletionExecutor;
 import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.server.ClusterResourceHolder;
@@ -181,10 +182,11 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
      * Sequentially shutting down all andes dependency task when graceful shutdown hook triggered.
      *
      * @param messagingEngine MessageEngine
-     * @throws AndesException
+     * @param dtxRegistry DtxRegistry used to store dtx information
+     * @throws AndesException if internal error occured while shutting down
      */
     public void gracefulShutdown(MessagingEngine messagingEngine, InboundEventManager inboundEventManager,
-                                 FlowControlManager flowControlManager) throws AndesException {
+            FlowControlManager flowControlManager, DtxRegistry dtxRegistry) throws AndesException {
 
         Boolean taskComplete = false;
         this.messagingEngine = messagingEngine;
@@ -193,6 +195,8 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
         try {
             // Block publisher sending messages
             flowControlManager.prepareChannelsForShutdown();
+
+            dtxRegistry.stop();
 
             // Stop SlotDeliveryWorkers
             // Stop SlotMessageCounter

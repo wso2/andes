@@ -15,6 +15,7 @@
 
 package org.wso2.andes.kernel.dtx;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
@@ -29,6 +30,11 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 import javax.transaction.xa.Xid;
 
 public class DtxRegistry {
@@ -39,10 +45,23 @@ public class DtxRegistry {
 
     private final MessagingEngine messagingEngine;
 
+    /**
+     * Executor service used to schedule transaction timeout tasks
+     */
+    private ScheduledExecutorService timeoutTaskExecutor;
+
+    /**
+     * Default constructor
+     *
+     * @param dtxStore        store used to persist data
+     * @param messagingEngine messaging engine used to use for message publishing and acking
+     */
     public DtxRegistry(DtxStore dtxStore, MessagingEngine messagingEngine) {
         this.dtxStore = dtxStore;
         branches = new HashMap<>();
         this.messagingEngine = messagingEngine;
+        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("DtxTimeoutExecutor-%d").build();
+        timeoutTaskExecutor = Executors.newSingleThreadScheduledExecutor(namedThreadFactory);
     }
 
     public synchronized DtxBranch getBranch(Xid xid) {
@@ -181,8 +200,7 @@ public class DtxRegistry {
         if (branch != null) {
             synchronized (branch) {
                 if (!branch.hasAssociatedActiveSessions()) {
-                    if(branch.getState() != DtxBranch.State.HEUR_COM && branch.getState() != DtxBranch.State.HEUR_RB)
-                    {
+                    if(branch.getState() != DtxBranch.State.HEUR_COM && branch.getState() != DtxBranch.State.HEUR_RB) {
                         throw new IncorrectDtxStateException("Branch should not be forgotten - "
                                                                      + "it is not heuristically complete", xid);
                     }
@@ -223,6 +241,40 @@ public class DtxRegistry {
                 }
             }
         }
+    }
+     
+    /*
+     * Set the transaction timeout of the matching dtx branch
+     *
+     * @param xid     XID of the dtx branch
+     * @param timeout transaction timeout value in seconds
+     * @throws UnknownDtxBranchException
+     */
+    public void setTimeout(Xid xid, long timeout) throws UnknownDtxBranchException {
+        DtxBranch branch = getBranch(xid);
+        if (branch != null) {
+            branch.setTimeout(timeout);
+        } else {
+            throw new UnknownDtxBranchException(xid);
+        }
+    }
+
+    /**
+     * Schedule a timeout tasks
+     *
+     * @param delay    task delay in milliseconds
+     * @param runnable tasks to run after the delay
+     * @return ScheduledFuture object matching the scheduled task
+     */
+    public ScheduledFuture<?> scheduleTask(long delay, Runnable runnable) {
+        return timeoutTaskExecutor.schedule(runnable, delay, TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * Stop Executors started by the {@link DtxRegistry}
+     */
+    public void stop() {
+        timeoutTaskExecutor.shutdown();
     }
 
     private static final class ComparableXid {

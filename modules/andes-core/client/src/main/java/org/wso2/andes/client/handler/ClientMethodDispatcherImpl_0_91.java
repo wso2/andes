@@ -43,6 +43,8 @@ import org.wso2.andes.framing.DtxPrepareBody;
 import org.wso2.andes.framing.DtxPrepareOkBody;
 import org.wso2.andes.framing.DtxRollbackBody;
 import org.wso2.andes.framing.DtxRollbackOkBody;
+import org.wso2.andes.framing.DtxSetTimeoutBody;
+import org.wso2.andes.framing.DtxSetTimeoutOkBody;
 import org.wso2.andes.framing.DtxStartOkBody;
 import org.wso2.andes.framing.MessageAppendBody;
 import org.wso2.andes.framing.MessageCancelBody;
@@ -255,6 +257,14 @@ public class ClientMethodDispatcherImpl_0_91 extends ClientMethodDispatcherImpl 
     }
 
     @Override
+    public boolean dispatchDtxSetTimeoutOk(DtxSetTimeoutOkBody body, int channelId) throws AMQException {
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Received dtx.set-timeout-ok message, with status: " + body.getXaResult());
+        }
+        return true;
+    }
+
+    @Override
     public boolean dispatchDtxEnd(DtxEndBody body, int channelId) throws AMQException {
         throw new AMQMethodNotImplementedException(body);
     }
@@ -272,6 +282,11 @@ public class ClientMethodDispatcherImpl_0_91 extends ClientMethodDispatcherImpl 
     @Override
     public boolean dispatchDtxRollback(DtxRollbackBody body, int channelId) throws AMQException {
         throw new AMQMethodNotImplementedException(body);
+    }
+
+    @Override
+    public boolean dispatchDtxSetTimeout(DtxSetTimeoutBody body, int channelId) throws AMQException {
+        return false;
     }
 
 }

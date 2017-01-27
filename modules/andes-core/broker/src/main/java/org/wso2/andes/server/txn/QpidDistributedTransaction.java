@@ -222,4 +222,19 @@ public class QpidDistributedTransaction implements ServerTransaction {
 
         distributedTransaction.forget(xid);
     }
+
+    /**
+     * Set transaction timeout for current distributed transaction
+     *
+     * @param xid     XID of the dtx branch
+     * @param timeout timeout value that should be set
+     */
+    public void setTimeout(Xid xid, long timeout) throws UnknownDtxBranchException {
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Setting timeout" + timeout + "for the distributed transaction " + Arrays.toString(xid
+                                                                                                                    .getGlobalTransactionId()));
+        }
+
+        distributedTransaction.setTimeout(xid, timeout);
+    }
 }

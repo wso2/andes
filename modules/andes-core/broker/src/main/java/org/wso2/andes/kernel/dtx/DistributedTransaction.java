@@ -226,4 +226,14 @@ public class DistributedTransaction {
     public void forget(Xid xid) throws UnknownDtxBranchException, IncorrectDtxStateException {
         dtxRegistry.forget(xid);
     }
+
+    /**
+     * Set transaction timeout for current distributed transaction
+     *
+     * @param xid     XID of the dtx branch
+     * @param timeout timeout value that should be set
+     */
+    public void setTimeout(Xid xid, long timeout) throws UnknownDtxBranchException {
+        dtxRegistry.setTimeout(xid, timeout);
+    }
 }
