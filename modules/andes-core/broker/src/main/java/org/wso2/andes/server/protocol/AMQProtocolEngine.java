@@ -404,25 +404,25 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
             {
                 if (getChannel(channelId) != null)
                 {
-                    if (_logger.isDebugEnabled())
-                    {
-                        _logger.debug("Closing channel (" + channelId + ")", e);
+                    if (_logger.isDebugEnabled() ) {
+                        _logger.debug("Closing channel (" + channelId + ") Error Code " + e.getErrorCode(), e);
+                    } else if (e.getErrorCode() == AMQConstant.INTERNAL_ERROR ) {
+                        _logger.error("Closing channel (" + channelId + ") due to internal Error", e);
                     }
 
-                    if (_logger.isInfoEnabled())
-                    {
+                    if (_logger.isInfoEnabled()) {
                         _logger.info("Closing channel (" + channelId + ") due to: " + e.getMessage());
                     }
-
 
                     writeFrame(e.getCloseFrame(channelId));
                     closeChannel(channelId);
                 }
                 else
                 {
-                    if (_logger.isDebugEnabled())
-                    {
-                        _logger.debug("ChannelException occured on non-existent channel:" + e.getMessage());
+                    if (_logger.isDebugEnabled()) {
+                        _logger.debug("ChannelException occured on non-existent channel:", e);
+                    } else if (e.getErrorCode() == AMQConstant.INTERNAL_ERROR) {
+                        _logger.error("Closing channel (" + channelId + ") due to internal Error", e);
                     }
 
                     if (_logger.isInfoEnabled())
