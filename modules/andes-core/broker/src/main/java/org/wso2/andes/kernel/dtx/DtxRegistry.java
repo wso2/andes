@@ -25,8 +25,8 @@ import org.wso2.andes.server.txn.IncorrectDtxStateException;
 import org.wso2.andes.server.txn.RollbackOnlyDtxException;
 import org.wso2.andes.server.txn.TimeoutDtxException;
 
-import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import javax.transaction.xa.Xid;
@@ -202,9 +202,13 @@ public class DtxRegistry {
      * @param sessionId
      */
     public void close(long sessionId) {
-        Collection<DtxBranch> dtxBranches = branches.values();
 
-        for (DtxBranch branch : dtxBranches) {
+        for (Iterator<Map.Entry<ComparableXid, DtxBranch>> iterator = branches.entrySet().iterator();
+             iterator.hasNext(); ) {
+
+            Map.Entry<ComparableXid, DtxBranch> entry = iterator.next();
+            DtxBranch branch = entry.getValue();
+
             if (branch.getCreatedSessionId() == sessionId &&
                     (branch.getState() == DtxBranch.State.ACTIVE || branch.getState() == DtxBranch.State.SUSPENDED)) {
 
@@ -215,7 +219,7 @@ public class DtxRegistry {
                 }
                 if (!branch.hasAssociatedSessions()) {
                     branch.setState(DtxBranch.State.FORGOTTEN);
-                    unregisterBranch(branch);
+                    iterator.remove();
                 }
             }
         }
