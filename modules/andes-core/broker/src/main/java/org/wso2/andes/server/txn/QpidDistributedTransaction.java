@@ -167,14 +167,14 @@ public class QpidDistributedTransaction implements ServerTransaction {
         distributedTransaction.commit(xid, onePhase, callback);
     }
 
-    public void rollback(Xid xid, UUID channelId)
+    public void rollback(Xid xid)
             throws UnknownDtxBranchException, AndesException, TimeoutDtxException, IncorrectDtxStateException {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Rolling back distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
         }
 
         try {
-            distributedTransaction.rollback(xid, channelId);
+            distributedTransaction.rollback(xid);
         } finally {
             for (Action action : postTransactionActions) {
                 action.onRollback();
