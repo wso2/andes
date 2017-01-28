@@ -24,7 +24,7 @@
     <dirname property="project.root" file="${ant.file.common}"/>
 
     <property name="project.name"          value="qpid"/>
-    <property name="andes.version"         value="3.1.12-SNAPSHOT"/>
+    <property name="andes.version"         value="3.1.12"/>
     <property name="project.url"           value="http://qpid.apache.org"/>
     <property name="project.groupid"       value="org.apache.qpid"/>
     <property name="project.namever"       value="${project.name}-${andes.version}"/>
