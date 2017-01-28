@@ -383,13 +383,15 @@ public class AndesContextInformationManager {
         AndesMessageRouter messageRouter = AndesContext.getInstance().
                 getMessageRouterRegistry().getMessageRouter(messageRouterName);
 
-        queue.bindQueueToMessageRouter(bindingKey, messageRouter);
+        boolean queueAlreadyBound = queue.bindQueueToMessageRouter(bindingKey, messageRouter);
 
-        AndesBinding binding = new AndesBinding(bindingEvent.getBoundMessageRouterName(),
-                queue, bindingEvent.getBindingKey());
+        if (!queueAlreadyBound) {
+            AndesBinding binding = new AndesBinding(bindingEvent.getBoundMessageRouterName(),
+                    queue, bindingEvent.getBindingKey());
 
-        amqpConstructStore.addBinding(binding, true);
-        clusterNotificationAgent.notifyBindingsChange(binding, ClusterNotificationListener.BindingChange.Added);
+            amqpConstructStore.addBinding(binding, true);
+            clusterNotificationAgent.notifyBindingsChange(binding, ClusterNotificationListener.BindingChange.Added);
+        }
     }
 
     /**
@@ -407,14 +409,17 @@ public class AndesContextInformationManager {
         String messageRouterToBind = binding.getMessageRouterName();
         AndesMessageRouter messageRouter = AndesContext.getInstance().
                 getMessageRouterRegistry().getMessageRouter(messageRouterToBind);
-        queueToBind.bindQueueToMessageRouter(binding.getBindingKey(),messageRouter);
-        messageRouter.addMapping(binding.getBindingKey(), queueToBind);
 
-        amqpConstructStore.addBinding(binding, false);
-        //add binding inside qpid
-        ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterBindingAdded(binding);
+        boolean queueAlreadyBound = queueToBind.bindQueueToMessageRouter(binding.getBindingKey(), messageRouter);
+        if (!queueAlreadyBound) {
+            messageRouter.addMapping(binding.getBindingKey(), queueToBind);
 
-        log.info("Binding Sync [create]: " + binding.toString());
+            amqpConstructStore.addBinding(binding, false);
+            //add binding inside qpid
+            ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterBindingAdded(binding);
+
+            log.info("Binding Sync [create]: " + binding.toString());
+        }
     }
 
     /**
@@ -476,15 +481,17 @@ public class AndesContextInformationManager {
         AndesBinding removedBinding = amqpConstructStore.removeBinding(binding.getMessageRouterName(), binding
                 .getBoundQueue().getName(), true);
 
-        //unbind queue from messageRouter
-        StorageQueue boundQueue = removedBinding.getBoundQueue();
+        if (null != removedBinding) {
+            //unbind queue from messageRouter
+            StorageQueue boundQueue = removedBinding.getBoundQueue();
 
-        boundQueue.unbindQueueFromMessageRouter();
+            boundQueue.unbindQueueFromMessageRouter();
 
-        //remove binding inside Qpid
-        ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterBindingRemoved(removedBinding);
+            //remove binding inside Qpid
+            ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterBindingRemoved(removedBinding);
 
-        log.info("Binding Sync [delete]: " + binding.toString());
+            log.info("Binding Sync [delete]: " + binding.toString());
+        }
     }
 
 }

@@ -22,7 +22,6 @@ import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
-import org.wso2.andes.kernel.AndesContextInformationManager;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.MessageHandler;
@@ -218,12 +217,29 @@ public class StorageQueue {
      *
      * @param bindingKey binding key
      * @param router     message router to bind the queue
-     * @throws AndesException
+     * @return if queue was already bound
+     * @throws AndesException on an issue adding binding
      */
-    public void bindQueueToMessageRouter(String bindingKey, AndesMessageRouter router) throws AndesException {
-        this.messageRouterBindingKey = bindingKey;
-        this.messageRouter = router;
-        router.addMapping(bindingKey, this);
+    public boolean bindQueueToMessageRouter(String bindingKey, AndesMessageRouter router) throws AndesException {
+        if (!checkIfBound(bindingKey, router)) {
+            this.messageRouterBindingKey = bindingKey;
+            this.messageRouter = router;
+            router.addMapping(bindingKey, this);
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    /**
+     * Check if queue is bound to given message router by the given binding key
+     * @param bindingKey key to bind
+     * @param router message router to bind
+     * @return true if queue is already bound
+     */
+    public boolean checkIfBound(String bindingKey, AndesMessageRouter router) {
+        return (null != messageRouterBindingKey) && (messageRouterBindingKey.equals(bindingKey))
+                && (null != messageRouter) && (messageRouter.equals(router));
     }
 
     /**
