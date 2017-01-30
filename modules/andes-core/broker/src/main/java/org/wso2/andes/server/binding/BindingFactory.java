@@ -172,11 +172,11 @@ public class BindingFactory {
 
         BindingImpl binding = new BindingImpl(bindingKey, queue, exchange, arguments);
         BindingImpl existingMapping = _bindings.putIfAbsent(binding, binding);
+        /**
+         * For the durable topic, subscribers subscribe with the same subId but different topic, we do not replace
+         * binding rather keep the old and not allow to changed the binding.
+         */
         if (existingMapping == null || force) {
-            if (existingMapping != null) {
-                //TODO - we should not remove the existing binding
-                removeBinding(existingMapping);
-            }
 
             if (_logger.isDebugEnabled()) {
                 _logger.debug("bindingKey: " + bindingKey + ", queue: " + queue + ", exchange: " + exchange);
