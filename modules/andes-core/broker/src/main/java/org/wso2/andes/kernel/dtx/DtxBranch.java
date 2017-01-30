@@ -193,7 +193,7 @@ public class DtxBranch implements AndesInboundStateEvent {
     }
 
     public boolean expired() {
-        return timeout != 0 && _expiration < System.currentTimeMillis();
+        return (timeout != 0 && _expiration < System.currentTimeMillis()) || state == State.TIMED_OUT;
     }
 
     public State getState() {

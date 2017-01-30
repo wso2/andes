@@ -136,7 +136,8 @@ public class QpidDistributedTransaction implements ServerTransaction {
     }
 
     public void end(long sessionID, Xid xid, boolean fail, boolean suspend)
-            throws UnknownDtxBranchException, SuspendAndFailDtxException, NotAssociatedDtxException {
+            throws UnknownDtxBranchException, SuspendAndFailDtxException, NotAssociatedDtxException,
+            TimeoutDtxException {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Ending distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
         }

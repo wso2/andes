@@ -29,6 +29,7 @@ import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.state.AMQStateManager;
 import org.wso2.andes.server.state.StateAwareMethodListener;
 import org.wso2.andes.server.txn.DtxNotSelectedException;
+import org.wso2.andes.server.txn.TimeoutDtxException;
 import org.wso2.andes.transport.DtxXaStatus;
 
 import javax.transaction.xa.Xid;
@@ -55,10 +56,16 @@ public class DtxEndHandler implements StateAwareMethodListener<DtxEndBodyImpl> {
         }
 
         try {
-            channel.endDtxTransaction(xid, body.getFail(), body.getSuspend());
+            DtxEndOkBody dtxEndOkBody;
+            try {
+                channel.endDtxTransaction(xid, body.getFail(), body.getSuspend());
+                MethodRegistry_0_91 methodRegistry = (MethodRegistry_0_91) session.getMethodRegistry();
+                dtxEndOkBody = methodRegistry.createDtxEndOkBody(DtxXaStatus.XA_OK.getValue());
+            } catch (TimeoutDtxException e) {
+                MethodRegistry_0_91 methodRegistry = (MethodRegistry_0_91) session.getMethodRegistry();
+                dtxEndOkBody = methodRegistry.createDtxEndOkBody(DtxXaStatus.XA_RBTIMEOUT.getValue());
+            }
 
-            MethodRegistry_0_91 methodRegistry = (MethodRegistry_0_91) session.getMethodRegistry();
-            DtxEndOkBody dtxEndOkBody = methodRegistry.createDtxEndOkBody(DtxXaStatus.XA_OK.getValue());
             session.writeFrame(dtxEndOkBody.generateFrame(channelId));
         } catch (DtxNotSelectedException e) {
             throw body.getChannelException(AMQConstant.NOT_ALLOWED, "Not a distributed transacted session", e);
