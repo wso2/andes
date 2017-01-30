@@ -140,12 +140,12 @@ public class ClusterManager implements StoreHealthListener{
                     Andes.getInstance().triggerRecoveryEvent();
                 }
             }, SlotMessageCounter.getInstance().SLOT_SUBMIT_TIMEOUT, TimeUnit.MILLISECONDS);
-        }
 
-        // Deactivate durable subscriptions belonging to the node
-        if(clusterAgent.isCoordinator()) {
-            ClusterResourceHolder.getInstance().getSubscriptionManager().
-                    closeAllActiveSubscriptionsOfNode(deletedNodeId);
+            ClusterResourceHolder.getInstance().getSubscriptionManager()
+                    .removeAllSubscriptionsOfNodeFromMemoryAndStore(deletedNodeId);
+        } else {
+            ClusterResourceHolder.getInstance().getSubscriptionManager()
+                    .removeAllSubscriptionsOfNodeFromMemory(deletedNodeId);
         }
     }
 
@@ -172,7 +172,7 @@ public class ClusterManager implements StoreHealthListener{
      */
     public void prepareLocalNodeForShutDown() throws AndesException {
         //clear stored node IDS and mark subscriptions of node as closed
-        clearAllPersistedStatesOfDisappearedNode(nodeId);
+        clearAllPersistedStatesOfLocalNode();
     }
 
     /**
@@ -253,8 +253,20 @@ public class ClusterManager implements StoreHealthListener{
         andesContextStore.removeNodeData(nodeID);
 
         ClusterResourceHolder.getInstance().
-                getSubscriptionManager().closeAllActiveSubscriptionsOfNode(nodeID);
+                getSubscriptionManager().removeAllSubscriptionsOfNodeFromMemory(nodeID);
 
+    }
+
+    /**
+     * Clears all persisted states of the local node.
+     *
+     * @throws AndesException if an error is occured when closing the connection or removing the subscription.
+     */
+    private void clearAllPersistedStatesOfLocalNode() throws AndesException {
+
+        log.info("Clearing the Persisted State of Node with ID " + this.nodeId);
+        andesContextStore.removeNodeData(nodeId);
+        ClusterResourceHolder.getInstance().getSubscriptionManager().closeAllActiveLocalSubscriptions();
     }
 
 
