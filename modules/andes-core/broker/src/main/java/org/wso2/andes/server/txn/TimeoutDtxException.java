@@ -21,6 +21,6 @@ public class TimeoutDtxException extends DtxException
 {
     public TimeoutDtxException(Xid xid)
     {
-        super("Transaction " + xid + " has timed-out and may only be rolled back");
+        super("Transaction " + xid + " has timed-out.");
     }
 }

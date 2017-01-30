@@ -99,8 +99,7 @@ public class DistributedTransaction {
     }
 
     public void end(long sessionId, Xid xid, boolean fail, boolean suspend) throws SuspendAndFailDtxException,
-                                                                                   UnknownDtxBranchException,
-                                                                                   NotAssociatedDtxException {
+            UnknownDtxBranchException, NotAssociatedDtxException, TimeoutDtxException {
         DtxBranch branch = dtxRegistry.getBranch(xid);
         if (suspend && fail) {
             branch.disassociateSession(sessionId);
@@ -112,8 +111,9 @@ public class DistributedTransaction {
             throw new UnknownDtxBranchException(xid);
         } else if (!branch.isAssociated(sessionId)) {
             throw new NotAssociatedDtxException(xid);
-
-            // TODO Check for transaction expiration
+        } else if (branch.expired()) {
+            branch.disassociateSession(sessionId);
+            throw new TimeoutDtxException(xid);
         } else if (suspend) {
             branch.suspendSession(sessionId);
         } else {

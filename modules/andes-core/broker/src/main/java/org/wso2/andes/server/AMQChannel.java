@@ -1396,7 +1396,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
     public void endDtxTransaction(Xid xid, boolean fail, boolean suspend)
             throws DtxNotSelectedException, UnknownDtxBranchException, SuspendAndFailDtxException,
-                   NotAssociatedDtxException {
+            NotAssociatedDtxException, TimeoutDtxException {
         QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
         distributedTransaction.end(_session.getSessionID(), xid,fail, suspend);
     }
