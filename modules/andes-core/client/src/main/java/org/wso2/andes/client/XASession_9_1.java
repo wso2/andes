@@ -33,6 +33,7 @@ import org.wso2.andes.framing.DtxRollbackBody;
 import org.wso2.andes.framing.DtxRollbackOkBody;
 import org.wso2.andes.framing.DtxSelectBody;
 import org.wso2.andes.framing.DtxSetTimeoutBody;
+import org.wso2.andes.framing.DtxSetTimeoutOkBody;
 import org.wso2.andes.framing.DtxStartBody;
 import org.wso2.andes.framing.DtxStartOkBody;
 import org.wso2.andes.framing.amqp_0_91.DtxCommitOkBodyImpl;
@@ -48,11 +49,15 @@ import org.wso2.andes.protocol.AMQMethodEvent;
 import org.wso2.andes.transport.XaStatus;
 
 import javax.jms.JMSException;
+import javax.jms.QueueSession;
+import javax.jms.TopicSession;
+import javax.jms.XAQueueSession;
 import javax.jms.XASession;
+import javax.jms.XATopicSession;
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
 
-class XASession_9_1 extends AMQSession_0_8 implements XASession {
+class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession, XATopicSession {
 
     /**
      * Method registry used create AMQ Method frames
@@ -220,10 +225,32 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession {
                                          timeout);
 
         AMQMethodEvent amqMethodEvent = _connection._protocolHandler
-                .syncWrite(dtxSetTimeoutBody.generateFrame(_channelId), DtxSetTimeoutBody.class);
+                .syncWrite(dtxSetTimeoutBody.generateFrame(_channelId), DtxSetTimeoutOkBody.class);
 
         DtxSetTimeoutOkBodyImpl response = (DtxSetTimeoutOkBodyImpl) amqMethodEvent.getMethod();
 
         return XaStatus.valueOf(response.getXaResult());
+    }
+
+    /**
+     * Get the queue session associated with this <CODE>XASession</CODE>.
+     *
+     * @return the queue session object
+     * @throws JMSException If an internal error occurs.
+     */
+    @Override
+    public QueueSession getQueueSession() throws JMSException {
+        return (QueueSession) getSession();
+    }
+
+    /**
+     * Gets the topic session associated with this <CODE>XASession</CODE>.
+     *
+     * @return the topic session object
+     * @throws JMSException If an internal error occurs.
+     */
+    @Override
+    public TopicSession getTopicSession() throws JMSException {
+        return (TopicSession) getSession();
     }
 }
