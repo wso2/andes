@@ -21,6 +21,7 @@ import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
+import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
 import org.wso2.andes.kernel.disruptor.inbound.AndesInboundStateEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
 import org.wso2.andes.kernel.slot.SlotMessageCounter;
@@ -68,7 +69,7 @@ public class DtxBranch implements AndesInboundStateEvent {
     /**
      * Keep callback to be called after committing
      */
-    private Runnable callback;
+    private DisruptorEventCallback callback;
 
     /**
      * Branch's transaction timeout value
@@ -362,7 +363,7 @@ public class DtxBranch implements AndesInboundStateEvent {
      * @param channel  corresponding channel object
      * @throws AndesException if an internal error occured
      */
-    public void commit(Runnable callback, AndesChannel channel) throws AndesException {
+    public void commit(DisruptorEventCallback callback, AndesChannel channel) throws AndesException {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Performing commit for DtxBranch " + xid);
         }
@@ -378,13 +379,18 @@ public class DtxBranch implements AndesInboundStateEvent {
      */
     @Override
     public void updateState() throws AndesException {
-        SlotMessageCounter.getInstance().recordMetadataCountInSlot(enqueueList);
-        enqueueList.clear();
-        dequeueList.clear();
-        callback.run();
+        try {
+            SlotMessageCounter.getInstance().recordMetadataCountInSlot(enqueueList);
+            enqueueList.clear();
+            dequeueList.clear();
+            callback.execute();
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Dtx commit messages state updated. Internal Xid " + internalXid);
+            }
 
-        LOGGER.debug("Dtx commit messages state updated. Internal Xid " + internalXid);
-        // TODO: Handle exceptions
+        } catch (Exception exception) {
+            callback.onException(exception);
+        }
     }
 
     /**

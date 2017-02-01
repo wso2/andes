@@ -22,6 +22,7 @@ import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
+import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
 import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
 import org.wso2.andes.server.txn.IncorrectDtxStateException;
 import org.wso2.andes.server.txn.RollbackOnlyDtxException;
@@ -136,9 +137,9 @@ public class DistributedTransaction {
         }
     }
 
-    public void commit(Xid xid, boolean onePhase, Runnable callback) throws UnknownDtxBranchException,
-            IncorrectDtxStateException,
-            AndesException, RollbackOnlyDtxException, TimeoutDtxException {
+    public void commit(Xid xid, boolean onePhase, DisruptorEventCallback callback) throws UnknownDtxBranchException,
+                                                                                          IncorrectDtxStateException,
+                                                                                          AndesException, RollbackOnlyDtxException, TimeoutDtxException {
         dtxRegistry.commit(xid, onePhase, callback, channel);
     }
 

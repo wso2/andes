@@ -42,6 +42,7 @@ import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.FlowControlListener;
+import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
 import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.kernel.dtx.AlreadyKnownDtxException;
 import org.wso2.andes.kernel.dtx.JoinAndResumeDtxException;
@@ -1408,9 +1409,9 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         distributedTransaction.prepare(xid);
     }
 
-    public void commitDtxTransaction(Xid xid, boolean onePhase, Runnable callback) throws DtxNotSelectedException,
-            UnknownDtxBranchException, IncorrectDtxStateException, AndesException, RollbackOnlyDtxException,
-            TimeoutDtxException {
+    public void commitDtxTransaction(Xid xid, boolean onePhase, DisruptorEventCallback callback) throws DtxNotSelectedException,
+                                                                                                        UnknownDtxBranchException, IncorrectDtxStateException, AndesException, RollbackOnlyDtxException,
+                                                                                                        TimeoutDtxException {
         QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
         distributedTransaction.commit(xid, onePhase, callback);
     }

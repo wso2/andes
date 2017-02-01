@@ -17,12 +17,14 @@ package org.wso2.andes.server.handler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.wso2.andes.AMQChannelException;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.dtx.XidImpl;
 import org.wso2.andes.framing.DtxCommitOkBody;
 import org.wso2.andes.framing.amqp_0_91.DtxCommitBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.MethodRegistry_0_91;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
 import org.wso2.andes.kernel.dtx.UnknownDtxBranchException;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
@@ -52,7 +54,7 @@ public class DtxCommitHandler implements StateAwareMethodListener<DtxCommitBodyI
     }
 
     @Override
-    public void methodReceived(AMQStateManager stateManager, DtxCommitBodyImpl body, final int channelId)
+    public void methodReceived(final AMQStateManager stateManager, final DtxCommitBodyImpl body, final int channelId)
             throws AMQException {
         Xid xid = new XidImpl(body.getBranchId(), body.getFormat(), body.getGlobalId());
         final AMQProtocolSession session = stateManager.getProtocolSession();
@@ -64,14 +66,28 @@ public class DtxCommitHandler implements StateAwareMethodListener<DtxCommitBodyI
         }
 
         try {
-            channel.commitDtxTransaction(xid, body.getOnePhase(), new Runnable() {
+            channel.commitDtxTransaction(xid, body.getOnePhase(), new DisruptorEventCallback() {
 
                 @Override
-                public void run() {
+                public void execute() {
                     MethodRegistry_0_91 methodRegistry = (MethodRegistry_0_91) session.getMethodRegistry();
                     DtxCommitOkBody dtxCommitOkBody = methodRegistry.createDtxCommitOkBody(
                             DtxXaStatus.XA_OK.getValue());
                     session.writeFrame(dtxCommitOkBody.generateFrame(channelId));
+                }
+
+                @Override
+                public void onException(Exception exception) {
+                    LOGGER.error("Exception occurred when committing ", exception);
+                    AMQChannelException channelException = body.getChannelException(AMQConstant.INTERNAL_ERROR,
+                                                                                    exception.getMessage());
+                    session.writeFrame(channelException.getCloseFrame(channelId));
+                    try {
+                        session.closeChannel(channelId);
+                    } catch (AMQException e) {
+                        LOGGER.error("Couldn't close channel (channel id ) " + channelId, e);
+                    }
+
                 }
             });
 

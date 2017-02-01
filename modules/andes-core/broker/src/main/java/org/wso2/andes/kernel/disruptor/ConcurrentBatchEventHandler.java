@@ -134,7 +134,7 @@ public class ConcurrentBatchEventHandler extends InboundEventHandler {
         // End of batch may come in an irrelevant event type slot.
         if (((messageList.size() >= batchSize) || endOfBatch)) {
             try {
-                messageWriter.onEvent(messageList, retainMap);
+                messageWriter.writeMessages(messageList, retainMap);
                 messageList.clear();
                 retainMap.clear();
                 if (log.isDebugEnabled()) {
@@ -142,8 +142,8 @@ public class ConcurrentBatchEventHandler extends InboundEventHandler {
                             + eventType);
                 }
             } finally {
-                // Clear the list irrespective of the output of messageWriter#onEvent
-                // On an error situation of messageWriter#onEvent we need to clear the events from this batching list.
+                // Clear the list irrespective of the output of messageWriter#writeMessages
+                // On an error situation of messageWriter#writeMessages we need to clear the events from this batching list.
                 // Respective event handler should take care of the actual events passed. If not same events 
                 // will be passed multiple times to the handler in an erroneous situation
                 messageList.clear();

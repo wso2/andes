@@ -25,6 +25,7 @@ import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesUtils;
+import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
 import org.wso2.andes.kernel.dtx.AlreadyKnownDtxException;
 import org.wso2.andes.kernel.dtx.DistributedTransaction;
 import org.wso2.andes.kernel.dtx.JoinAndResumeDtxException;
@@ -159,8 +160,8 @@ public class QpidDistributedTransaction implements ServerTransaction {
         }
     }
 
-    public void commit(Xid xid, boolean onePhase, Runnable callback) throws UnknownDtxBranchException,
-            IncorrectDtxStateException, AndesException, TimeoutDtxException, RollbackOnlyDtxException {
+    public void commit(Xid xid, boolean onePhase, DisruptorEventCallback callback) throws UnknownDtxBranchException,
+                                                                                          IncorrectDtxStateException, AndesException, TimeoutDtxException, RollbackOnlyDtxException {
 
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Committing distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
@@ -168,6 +169,15 @@ public class QpidDistributedTransaction implements ServerTransaction {
         distributedTransaction.commit(xid, onePhase, callback);
     }
 
+    /**
+     * Rewind the transaction state to the point where transaction was started.
+     *
+     * @param xid
+     * @throws UnknownDtxBranchException
+     * @throws AndesException
+     * @throws TimeoutDtxException
+     * @throws IncorrectDtxStateException
+     */
     public void rollback(Xid xid)
             throws UnknownDtxBranchException, AndesException, TimeoutDtxException, IncorrectDtxStateException {
         if (LOGGER.isDebugEnabled()) {
@@ -183,6 +193,12 @@ public class QpidDistributedTransaction implements ServerTransaction {
         }
     }
 
+    /**
+     * Store messages published within a transaction in memory until the {@link #prepare(Xid)} is invoked
+     *
+     * @param incomingMessage {@link IncomingMessage} to be enqueued
+     * @param andesChannel {@link AndesChannel} object related to the incoming message
+     */
     public void enqueueMessage(IncomingMessage incomingMessage, AndesChannel andesChannel) {
         AndesMessage andesMessage = null;
 

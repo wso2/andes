@@ -22,6 +22,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.DtxStore;
 import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
 import org.wso2.andes.server.txn.IncorrectDtxStateException;
 import org.wso2.andes.server.txn.RollbackOnlyDtxException;
 import org.wso2.andes.server.txn.TimeoutDtxException;
@@ -151,7 +152,7 @@ public class DtxRegistry {
         dtxStore.removeDtxRecords(internalXid);
     }
 
-    public void commit(Xid xid, boolean onePhase, Runnable callback, AndesChannel channel)
+    public void commit(Xid xid, boolean onePhase, DisruptorEventCallback callback, AndesChannel channel)
             throws UnknownDtxBranchException, IncorrectDtxStateException, AndesException, TimeoutDtxException,
             RollbackOnlyDtxException {
 
