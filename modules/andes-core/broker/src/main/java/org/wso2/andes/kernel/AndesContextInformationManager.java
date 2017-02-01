@@ -391,6 +391,7 @@ public class AndesContextInformationManager {
 
             amqpConstructStore.addBinding(binding, true);
             clusterNotificationAgent.notifyBindingsChange(binding, ClusterNotificationListener.BindingChange.Added);
+            log.info("Binding Created: " + binding.toString());
         }
     }
 
@@ -464,6 +465,8 @@ public class AndesContextInformationManager {
 
             clusterNotificationAgent.notifyBindingsChange(removedBinding,
                     ClusterNotificationListener.BindingChange.Deleted);
+
+            log.info("Binding Deleted: " + removedBinding.toString());
         }
     }
 

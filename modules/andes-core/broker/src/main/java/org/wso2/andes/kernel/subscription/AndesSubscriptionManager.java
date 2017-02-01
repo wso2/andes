@@ -96,11 +96,6 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
     private volatile boolean isNetworkPartitioned;
 
     /**
-     * Listeners who are interested in local subscription changes
-     */
-    private List<SubscriptionListener> subscriptionListeners = new ArrayList<>();
-
-    /**
      * Agent for notifying local subscription changes to cluster
      */
     private ClusterNotificationAgent clusterNotificationAgent;
@@ -150,17 +145,6 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
         FailureObservingStoreManager.registerStoreHealthListener(this);
     }
 
-    /**
-     * Register a subscription lister.
-     * It will be notified when a subscription change happened.
-     *
-     * @param listener subscription listener
-     */
-    public void addSubscriptionListener(SubscriptionListener listener) {
-        subscriptionListeners.add(listener);
-    }
-
-
     public void registerSubscription(AndesSubscription subscriptionToAdd) {
         subscriptionRegistry.registerSubscription(subscriptionToAdd);
     }
@@ -188,8 +172,6 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
             log.warn("Could not add subscription to the store since the store became unavailable", exception);
         }
         log.info("Add Local subscription " + subscription.getProtocolType() + " " + subscription.toString());
-
-        notifySubscriptionListeners(subscription, ClusterNotificationListener.SubscriptionChange.Added);
 
         clusterNotificationAgent.notifySubscriptionsChange(subscription,
                 ClusterNotificationListener.SubscriptionChange.Added);
@@ -261,7 +243,6 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
         } else {
             log.warn("Cannot not remove subscription from store since the store is non-operational");
         }
-        notifySubscriptionListeners(subscription, ClusterNotificationListener.SubscriptionChange.Closed);
 
         clusterNotificationAgent.notifySubscriptionsChange(subscription,
                 ClusterNotificationListener.SubscriptionChange.Closed);
@@ -276,6 +257,51 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
         }
 
         log.info("Remove Local Subscription " + subscription.getProtocolType() + " " + subscription.toString());
+    }
+
+    /**
+     * Remove non-local subscription from registry, unbind subscription from queue and remove from database.
+     *
+     * @param subscription AndesSubscription to close
+     * @throws AndesException if any error is occurred when unbinding subscription or deleting the queue
+     */
+    private void removeRemoteSubscriptionFromMemoryAndStore(AndesSubscription subscription) throws AndesException {
+
+        subscriptionRegistry.removeSubscription(subscription);
+
+        if (!storeUnavailable) {
+            try {
+                andesContextStore.removeDurableSubscription(subscription);
+            } catch (AndesStoreUnavailableException exception) {
+                log.warn("Could not remove subscription from store since the store is unavailable", exception);
+            }
+        } else {
+            log.warn("Cannot not remove subscription from store since the store is non-operational");
+        }
+
+        StorageQueue storageQueue = subscription.getStorageQueue();
+        // If there are no subscriptions for this queue, then delete it
+        if (!storageQueue.isDurable() && storageQueue.getBoundSubscriptions().isEmpty()) {
+
+            AndesContextInformationManager contextInformationManager = AndesContext.getInstance()
+                    .getAndesContextInformationManager();
+
+            contextInformationManager.deleteQueue(storageQueue);
+        }
+
+        log.info("Remove Remote Subscription " + subscription.getProtocolType() + " " + subscription.toString());
+    }
+
+    /**
+     * Remove non-local subscription from registry and unbind subscription from queue.
+     *
+     * @param subscription AndesSubscription to close
+     * @throws AndesException if any error is occurred when unbinding subscription or deleting the queue
+     */
+    private void removeRemoteSubscriptionFromMemory(AndesSubscription subscription) throws AndesException {
+
+        subscriptionRegistry.removeSubscription(subscription);
+        log.info("Remove Remote Subscription " + subscription.getProtocolType() + " " + subscription.toString());
     }
 
     /**
@@ -571,17 +597,6 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
         }
     }
 
-
-    private void notifySubscriptionListeners(AndesSubscription subscription,
-                                             ClusterNotificationListener.SubscriptionChange changeType) throws
-            AndesException {
-
-        for (SubscriptionListener subscriptionListener : subscriptionListeners) {
-            subscriptionListener.handleSubscriptionsChange(subscription, changeType);
-        }
-    }
-
-
     public AndesSubscription getSubscriptionByProtocolChannel(UUID channelID, ProtocolType
             protocolType) {
         Query<AndesSubscription> subscriptionQuery = and
@@ -729,22 +744,30 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
     }
 
     /**
-     * Close all subscriptions belonging to a particular node. This is called
-     * when a node of cluster dis-joint from a cluster or get killed. This call
-     * closes subscriptions from local registry, update the DB, and notify other active
-     * nodes. If subscriptions are local it will forcefully disconnect subscriber from server side.
+     * Close all subscriptions belonging to a particular node that is not the current node. This is called when a node
+     * of cluster dis-joint from a cluster or get killed. This call closes subscriptions from local registry.
      *
      * @param nodeId ID of the node
      * @throws AndesException on an issue removing subscription and notifying
      */
-    public void closeAllActiveSubscriptionsOfNode(String nodeId) throws AndesException {
+    public void removeAllSubscriptionsOfNodeFromMemory(String nodeId) throws AndesException {
         Iterable<AndesSubscription> subscriptionsOfNode = getSubscriptionsByNode(nodeId);
         for (AndesSubscription sub : subscriptionsOfNode) {
-            SubscriberConnection connectionInfo = sub.getSubscriberConnection();
-            UUID channelID = connectionInfo.getProtocolChannelID();
-            sub.closeConnection(channelID, nodeId);
-            //simulate a local subscription remove. Notify the cluster
-            removeLocalSubscriptionAndNotify(sub);
+            removeRemoteSubscriptionFromMemory(sub);
+        }
+    }
+
+    /**
+     * Close all subscriptions belonging to a particular node. This is called when a node of cluster dis-joint from a
+     * cluster or get killed. This call closes subscriptions from local registry, update the DB.
+     *
+     * @param nodeId ID of the node
+     * @throws AndesException on an issue removing subscription and notifying
+     */
+    public void removeAllSubscriptionsOfNodeFromMemoryAndStore(String nodeId) throws AndesException {
+        Iterable<AndesSubscription> subscriptionsOfNode = getSubscriptionsByNode(nodeId);
+        for (AndesSubscription sub : subscriptionsOfNode) {
+            removeRemoteSubscriptionFromMemoryAndStore(sub);
         }
     }
 
@@ -825,7 +848,13 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
     }
 
     public void closeAllActiveLocalSubscriptions() throws AndesException {
-        closeAllActiveSubscriptionsOfNode(localNodeId);
+        Iterable<AndesSubscription> subscriptionsOfNode = getSubscriptionsByNode(localNodeId);
+        for (AndesSubscription sub : subscriptionsOfNode) {
+            SubscriberConnection connectionInfo = sub.getSubscriberConnection();
+            UUID channelID = connectionInfo.getProtocolChannelID();
+            sub.closeConnection(channelID, localNodeId);
+            removeLocalSubscriptionAndNotify(sub);
+        }
     }
 
     /**
