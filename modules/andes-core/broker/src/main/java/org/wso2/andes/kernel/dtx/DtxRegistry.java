@@ -21,7 +21,6 @@ import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.DtxStore;
-import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
 import org.wso2.andes.server.txn.IncorrectDtxStateException;
 import org.wso2.andes.server.txn.RollbackOnlyDtxException;
@@ -38,13 +37,20 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import javax.transaction.xa.Xid;
 
+/**
+ * In memory registry for distributed transaction related operations
+ */
 public class DtxRegistry {
 
+    /**
+     * {@link Xid} to {@link DtxBranch} mapping
+     */
     private final Map<ComparableXid, DtxBranch> branches;
 
+    /**
+     * Persistence storage used by the {@link DtxRegistry}
+     */
     private final DtxStore dtxStore;
-
-    private final MessagingEngine messagingEngine;
 
     /**
      * Executor service used to schedule transaction timeout tasks
@@ -54,22 +60,32 @@ public class DtxRegistry {
     /**
      * Default constructor
      *
-     * @param dtxStore        store used to persist data
-     * @param messagingEngine messaging engine used to use for message publishing and acking
+     * @param dtxStore        Store used to persist data
      */
-    public DtxRegistry(DtxStore dtxStore, MessagingEngine messagingEngine) {
+    public DtxRegistry(DtxStore dtxStore) {
         this.dtxStore = dtxStore;
         branches = new HashMap<>();
-        this.messagingEngine = messagingEngine;
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("DtxTimeoutExecutor-%d").build();
         timeoutTaskExecutor = Executors.newSingleThreadScheduledExecutor(namedThreadFactory);
     }
 
-    public synchronized DtxBranch getBranch(Xid xid) {
+    /**
+     * Get the {@link DtxBranch} relating to the given {@link Xid}
+     *
+     * @param xid {@link Xid} of the {@link DtxBranch} to be retrieved
+     * @return DtxBranch
+     */
+    synchronized DtxBranch getBranch(Xid xid) {
         return branches.get(new ComparableXid(xid));
     }
 
-    public synchronized boolean registerBranch(DtxBranch branch) {
+    /**
+     * Register a new transaction branch
+     *
+     * @param branch {@link DtxBranch} to be registered
+     * @return True if the registration was successful and wise versa
+     */
+    synchronized boolean registerBranch(DtxBranch branch) {
         ComparableXid xid = new ComparableXid(branch.getXid());
         if(!branches.containsKey(xid)) {
             branches.put(xid, branch);
@@ -78,6 +94,18 @@ public class DtxRegistry {
         return false;
     }
 
+    /**
+     * Prepare the {@link DtxBranch} for a commit or rollback. This will persist all the transaction related
+     * acknowledgements and published messages to a temporary database location
+     *
+     * @param xid {@link Xid} related to the transaction
+     * @throws TimeoutDtxException Thrown when the {@link DtxBranch} has expired
+     * @throws UnknownDtxBranchException Thrown when the provided {@link Xid} is not known to the broker
+     * @throws IncorrectDtxStateException Thrown when invoking prepare for the {@link DtxBranch} is invalid from
+     *                                    current state of the {@link DtxBranch}
+     * @throws AndesException   Thrown when an internal error occur
+     * @throws RollbackOnlyDtxException Thrown when the branch is set to ROLLBACK_ONLY
+     */
     public synchronized void prepare(Xid xid)
             throws UnknownDtxBranchException, IncorrectDtxStateException, TimeoutDtxException, AndesException,
             RollbackOnlyDtxException {
@@ -107,6 +135,12 @@ public class DtxRegistry {
         }
     }
 
+    /**
+     * Un-register a branch from registry
+     *
+     * @param branch {@link DtxBranch} to be removed
+     * @return True if successfully removed and false otherwise
+     */
     private synchronized boolean unregisterBranch(DtxBranch branch) {
         return (branches.remove(new ComparableXid(branch.getXid())) != null);
     }
@@ -120,11 +154,20 @@ public class DtxRegistry {
      * @return Internal XID of the distributed transaction
      * @throws AndesException when database error occurs
      */
-    public long storeRecords(Xid xid, List<AndesMessage> enqueueRecords, List<AndesAckData> dequeueRecords)
+    long storeRecords(Xid xid, List<AndesMessage> enqueueRecords, List<AndesAckData> dequeueRecords)
             throws AndesException {
         return dtxStore.storeDtxRecords(xid, enqueueRecords, dequeueRecords);
     }
 
+    /**
+     * Rollback the transaction session for the provided {@link Xid}
+     *
+     * @param xid {@link Xid} of the branch to be rollbacked
+     * @throws UnknownDtxBranchException thrown when an unknown xid is provided
+     * @throws AndesException thrown on internal Andes core error
+     * @throws TimeoutDtxException thrown when the branch is expired
+     * @throws IncorrectDtxStateException if the state of the branch is invalid. For instance the branch is not prepared
+     */
     public synchronized void rollback(Xid xid)
             throws TimeoutDtxException, IncorrectDtxStateException, UnknownDtxBranchException, AndesException {
         DtxBranch branch = getBranch(xid);
@@ -148,10 +191,28 @@ public class DtxRegistry {
         }
     }
 
-    public void removePreparedRecords(long internalXid) throws AndesException {
+    /**
+     * Remove the records for given {@link Xid} from the {@link DtxStore}
+     * @param internalXid internal {@link Xid}
+     * @throws AndesException Throws when there is a storage related exception
+     */
+    void removePreparedRecords(long internalXid) throws AndesException {
         dtxStore.removeDtxRecords(internalXid);
     }
 
+    /**
+     * Commit the transaction for the provided {@link Xid}
+     *
+     * @param xid {@link Xid} of the transaction
+     * @param onePhase True if this a one phase commit.
+     * @param callback {@link DisruptorEventCallback} to be called when the commit is done from the Disruptor end
+     * @throws UnknownDtxBranchException Thrown when the {@link Xid} is unknown
+     * @throws IncorrectDtxStateException Thrown when the state transistion of the {@link DtxBranch} is invalid
+     *                                    For instance invoking commit without invoking prepare for a two phase commit
+     * @throws AndesException Thrown when and internal exception occur
+     * @throws RollbackOnlyDtxException Thrown when commit is invoked on a ROLLBACK_ONLY {@link DtxBranch}
+     * @throws TimeoutDtxException Thrown when the respective {@link DtxBranch} relating to the {@link Xid} has expired
+     */
     public void commit(Xid xid, boolean onePhase, DisruptorEventCallback callback, AndesChannel channel)
             throws UnknownDtxBranchException, IncorrectDtxStateException, AndesException, TimeoutDtxException,
             RollbackOnlyDtxException {
@@ -184,6 +245,10 @@ public class DtxRegistry {
         }
     }
 
+    /**
+     * Retrieve the underlying persistence store for dtx information
+     * @return DtxStore
+     */
     public DtxStore getStore() {
         return dtxStore;
     }
@@ -217,8 +282,9 @@ public class DtxRegistry {
     }
 
     /**
-     * Remove all the branches from the dtx session
-     * @param sessionId
+     * Remove all the branches associated with the dtx session that not persisted
+     *
+     * @param sessionId sessionId of the closing transactional session
      */
     public void close(long sessionId) {
 
@@ -267,7 +333,7 @@ public class DtxRegistry {
      * @param runnable tasks to run after the delay
      * @return ScheduledFuture object matching the scheduled task
      */
-    public ScheduledFuture<?> scheduleTask(long delay, Runnable runnable) {
+    ScheduledFuture<?> scheduleTask(long delay, Runnable runnable) {
         return timeoutTaskExecutor.schedule(runnable, delay, TimeUnit.MILLISECONDS);
     }
 

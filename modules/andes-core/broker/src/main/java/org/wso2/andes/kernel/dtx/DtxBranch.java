@@ -34,6 +34,9 @@ import java.util.Map;
 import java.util.concurrent.ScheduledFuture;
 import javax.transaction.xa.Xid;
 
+/**
+ * Class which holds information relates to a specific {@link Xid} within the broker
+ */
 public class DtxBranch implements AndesInboundStateEvent {
 
     /**

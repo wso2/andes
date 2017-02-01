@@ -73,7 +73,12 @@ public class AckHandler implements StoreHealthListener {
         FailureObservingStoreManager.registerStoreHealthListener(this);
     }
 
-    public void onEvent(final List<AndesAckData> ackDataList) throws Exception {
+    /**
+     * Process the acknowledgment events and delete messages from database
+     * @param ackDataList {@link List} of {@link AndesAckData}
+     * @throws Exception
+     */
+    public void processAcknowledgements(final List<AndesAckData> ackDataList) throws Exception {
         if (log.isTraceEnabled()) {
             StringBuilder messageIDsString = new StringBuilder();
             for (AndesAckData andesAckData : ackDataList) {

@@ -37,9 +37,25 @@ import javax.transaction.xa.Xid;
  */
 public class DistributedTransaction {
 
+    /**
+     * Reference to the {@link DtxRegistry} which stores details related to all the active distributed transactions in
+     * the broker
+     */
     private DtxRegistry dtxRegistry;
+
+    /**
+     * Reference to distributed transaction related branch for this specific transaction
+     */
     private DtxBranch branch;
+
+    /**
+     * Reference to event manager to push event to Disruptor
+     */
     private InboundEventManager eventManager;
+
+    /**
+     * Reference to the {@link AndesChannel} related to the transaction
+     */
     private AndesChannel channel;
 
     /**
@@ -58,6 +74,17 @@ public class DistributedTransaction {
         this.channel = channel;
     }
 
+    /**
+     * Begin a distributed transaction for the given {@link Xid} from the provided session
+     *
+     * @param sessionID Session id related to the transaction.
+     * @param xid {@link Xid} of the {@link DtxBranch}
+     * @param join True if join this transaction to a already existing {@link DtxBranch} with the same  {@link Xid}
+     * @param resume Resume a suspended transaction with the given {@link Xid}
+     * @throws JoinAndResumeDtxException Thrown when both join and resume flags are set
+     * @throws UnknownDtxBranchException Thrown when the provided {@link Xid} is not known when the join flag is set
+     * @throws AlreadyKnownDtxException Thrown when the provided {@link Xid} already exist and the join flag is not set
+     */
     public void start(long sessionID, Xid xid, boolean join, boolean resume) throws JoinAndResumeDtxException,
                                                                                     UnknownDtxBranchException,
                                                                                     AlreadyKnownDtxException {
@@ -99,6 +126,20 @@ public class DistributedTransaction {
 
     }
 
+    /**
+     * End a transaction to prepare/commit/rollback the transaction
+     *
+     * @param sessionId session related to the transaction
+     * @param xid {@link Xid} of the {@link DtxBranch}
+     * @param fail whether the ended transaction to be marked as failed. If set the transaction will be marked as
+     *             ROLLBACK_ONLY
+     * @param suspend if set the transaction will be suspended
+     * @throws SuspendAndFailDtxException Thrown when both suspend and fail flags are set
+     * @throws UnknownDtxBranchException Thrown when the provided {@link Xid} is not known by the broker.
+     * @throws NotAssociatedDtxException Thrown when the provided {@link Xid} is not associated to the provided
+     *                                   sessionId
+     * @throws TimeoutDtxException Thrown when the {@link DtxBranch} has timed out
+     */
     public void end(long sessionId, Xid xid, boolean fail, boolean suspend) throws SuspendAndFailDtxException,
             UnknownDtxBranchException, NotAssociatedDtxException, TimeoutDtxException {
         DtxBranch branch = dtxRegistry.getBranch(xid);
@@ -127,6 +168,13 @@ public class DistributedTransaction {
         this.branch = null;
     }
 
+    /**
+     * Acknowledge message within a transaction. Acknowledged messages will be kept in memory until commit/rollback
+     * is done
+     *
+     * @param ackList {@link List} of {@link AndesAckData}
+     * @throws AndesException
+     */
     public void dequeue(List<AndesAckData> ackList) throws AndesException {
         if (isInsideStartEnd()) {
             branch.dequeueMessages(ackList);
@@ -137,12 +185,33 @@ public class DistributedTransaction {
         }
     }
 
+    /**
+     * Commit the transaction for the provided {@link Xid}
+     *
+     * @param xid {@link Xid} of the transaction
+     * @param onePhase True if this a one phase commit.
+     * @param callback {@link DisruptorEventCallback} to be called when the commit is done from the Disruptor end
+     * @throws UnknownDtxBranchException Thrown when the {@link Xid} is unknown
+     * @throws IncorrectDtxStateException Thrown when the state transistion of the {@link DtxBranch} is invalid
+     *                                    For instance invoking commit without invoking prepare for a two phase commit
+     * @throws AndesException Thrown when and internal exception occur
+     * @throws RollbackOnlyDtxException Thrown when commit is invoked on a ROLLBACK_ONLY {@link DtxBranch}
+     * @throws TimeoutDtxException Thrown when the respective {@link DtxBranch} relating to the {@link Xid} has expired
+     */
     public void commit(Xid xid, boolean onePhase, DisruptorEventCallback callback) throws UnknownDtxBranchException,
                                                                                           IncorrectDtxStateException,
-                                                                                          AndesException, RollbackOnlyDtxException, TimeoutDtxException {
+                                                                                          AndesException,
+                                                                                          RollbackOnlyDtxException, TimeoutDtxException {
         dtxRegistry.commit(xid, onePhase, callback, channel);
     }
 
+    /**
+     * Add {@link AndesMessage} to the transaction. Messages will be kept in memory until the transaction is committed
+     * or rollback
+     *
+     * @param andesMessage {@link AndesMessage} published
+     * @param andesChannel {@link AndesChannel} related to the transaction
+     */
     public void enqueueMessage(AndesMessage andesMessage, AndesChannel andesChannel) {
         if (isInsideStartEnd()) {
             branch.enqueueMessage(andesMessage);
@@ -151,6 +220,18 @@ public class DistributedTransaction {
         }
     }
 
+    /**
+     * Prepare the {@link DtxBranch} for a commit or rollback. This will persist all the transaction related
+     * acknowledgements and published messages to a temporary database location
+     *
+     * @param xid {@link Xid} related to the transaction
+     * @throws TimeoutDtxException Thrown when the {@link DtxBranch} has expired
+     * @throws UnknownDtxBranchException Thrown when the provided {@link Xid} is not known to the broker
+     * @throws IncorrectDtxStateException Thrown when invoking prepare for the {@link DtxBranch} is invalid from
+     *                                    current state of the {@link DtxBranch}
+     * @throws AndesException   Thrown when an internal error occur
+     * @throws RollbackOnlyDtxException Thrown when the branch is set to ROLLBACK_ONLY
+     */
     public void prepare(Xid xid) throws TimeoutDtxException, UnknownDtxBranchException,
             IncorrectDtxStateException, AndesException, RollbackOnlyDtxException {
         if (!transactionFailed) {
