@@ -15,6 +15,10 @@
 
 package org.wso2.andes.kernel.subscription;
 
+import com.googlecode.cqengine.attribute.Attribute;
+import com.googlecode.cqengine.attribute.SimpleAttribute;
+import com.googlecode.cqengine.attribute.SimpleNullableAttribute;
+import com.googlecode.cqengine.query.option.QueryOptions;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.logging.Log;
@@ -26,9 +30,6 @@ import org.wso2.andes.kernel.MessageFlusher;
 import org.wso2.andes.kernel.MessageStatus;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolType;
-import com.googlecode.cqengine.attribute.Attribute;
-import com.googlecode.cqengine.attribute.SimpleAttribute;
-import com.googlecode.cqengine.query.option.QueryOptions;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.tools.utils.MessageTracer;
@@ -425,20 +426,27 @@ public class AndesSubscription {
         }
     };
 
-    public static final Attribute<AndesSubscription, String> ROUTER_NAME = new SimpleAttribute<AndesSubscription,
-            String>("routerName") {
+    public static final Attribute<AndesSubscription, String> ROUTER_NAME =
+            new SimpleNullableAttribute<AndesSubscription, String>("routerName") {
         @Override
         public String getValue(AndesSubscription sub, QueryOptions queryOptions) {
-            return sub.storageQueue.getMessageRouter().getName();
+            String routerName = null;
+            if (sub.storageQueue.getMessageRouter() != null) {
+                routerName = sub.storageQueue.getMessageRouter().getName();
+            }
+            return routerName;
         }
     };
 
-    public static final Attribute<AndesSubscription, String> ROUTING_KEY = new SimpleAttribute<AndesSubscription,
-            String>
-            ("routingKey") {
+    public static final Attribute<AndesSubscription, String> ROUTING_KEY =
+            new SimpleNullableAttribute<AndesSubscription, String>("routingKey") {
         @Override
         public String getValue(AndesSubscription sub, QueryOptions queryOptions) {
-            return sub.getStorageQueue().getMessageRouterBindingKey().toLowerCase();
+            String routingKey = null;
+            if (sub.getStorageQueue().getMessageRouter() != null) {
+                routingKey = sub.getStorageQueue().getMessageRouterBindingKey().toLowerCase();
+            }
+            return routingKey;
         }
     };
 
