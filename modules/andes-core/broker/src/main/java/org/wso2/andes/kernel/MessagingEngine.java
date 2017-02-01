@@ -262,6 +262,14 @@ public class MessagingEngine {
         return storageSeparatedMessages;
     }
 
+    /**
+     * Persist changes done in the distributed transaction to DTX store
+     *
+     * @param internalXid internal XID used to identify the transaction
+     * @param enqueueList list of enqueue records
+     * @param ackDataList list of dequeue records
+     * @throws AndesException if an internal error
+     */
     public void dtxCommit(long internalXid, List<AndesMessage> enqueueList, List<AndesAckData> ackDataList)
             throws AndesException {
 

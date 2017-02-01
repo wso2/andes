@@ -43,12 +43,31 @@ public class DtxBranch implements AndesInboundStateEvent {
     /**
      * Internal XID has this value when the branch is not in prepared state
      */
-    public static final int NULL_XID = -1;
+    private static final int NULL_XID = -1;
 
+    /**
+     * XID used to identify the dtx branch by external parties
+     */
     private final Xid xid;
+
+    /**
+     * Registry used to keep dtx branch related information
+     */
     private final DtxRegistry dtxRegistry;
+
+    /**
+     * List of associated sessions to this branch
+     */
     private Map<Long, State> associatedSessions = new HashMap<>();
+
+    /**
+     * Event manager used to publish commit event
+     */
     private InboundEventManager eventManager;
+
+    /**
+     * Keep callback to be called after committing
+     */
     private Runnable callback;
 
     /**
@@ -110,7 +129,15 @@ public class DtxBranch implements AndesInboundStateEvent {
      */
     private Andes andesApi;
 
-    public DtxBranch(long sessionID, Xid xid, DtxRegistry dtxRegistry, InboundEventManager eventManager) {
+    /**
+     * Default constructor
+     *
+     * @param sessionID    session ID of originating session
+     * @param xid          XID used to identify the dtx branch by external parties
+     * @param dtxRegistry  registry used to keep dtx branch related information
+     * @param eventManager event manager used to publish commit event
+     */
+    DtxBranch(long sessionID, Xid xid, DtxRegistry dtxRegistry, InboundEventManager eventManager) {
         this.xid = xid;
         this.dtxRegistry = dtxRegistry;
         this.eventManager = eventManager;
@@ -118,19 +145,42 @@ public class DtxBranch implements AndesInboundStateEvent {
         andesApi = Andes.getInstance();
     }
 
+    /**
+     * Getter for XID
+     *
+     * @return XID of the branch
+     */
     public Xid getXid() {
         return xid;
     }
 
-    public boolean associateSession(long sessionID) {
+    /**
+     * Associate a session to current branch.
+     *
+     * @param sessionID session identifier of the session
+     * @return True if a new entry, False otherwise
+     */
+    boolean associateSession(long sessionID) {
         return associatedSessions.put(sessionID, State.ACTIVE) != null;
     }
 
-    public boolean disassociateSession(long sessionID) {
+    /**
+     * Disassociate the given session from the branch
+     *
+     * @param sessionID session identifier of the session
+     * @return True if there is a matching entry, False otherwise
+     */
+    boolean disassociateSession(long sessionID) {
         return associatedSessions.remove(sessionID) != null;
     }
 
-    public boolean resumeSession(long sessionID) {
+    /**
+     * Resume a session if it is suspended
+     *
+     * @param sessionID session identifier of the session
+     * @return True if there is a matching suspended entry
+     */
+    boolean resumeSession(long sessionID) {
         if (associatedSessions.containsKey(sessionID) && associatedSessions.get(sessionID) == State.SUSPENDED) {
             associatedSessions.put(sessionID, State.ACTIVE);
             return true;
@@ -138,7 +188,13 @@ public class DtxBranch implements AndesInboundStateEvent {
         return false;
     }
 
-    public boolean isAssociated(long sessionId) {
+    /**
+     * Check if a session is associated with the branch
+     *
+     * @param sessionId session identifier of the session
+     * @return True is the session is associated with the branch
+     */
+    boolean isAssociated(long sessionId) {
         return associatedSessions.containsKey(sessionId);
     }
 
@@ -146,11 +202,17 @@ public class DtxBranch implements AndesInboundStateEvent {
      * Id of the session which created the branch
      * @return session id
      */
-    public long getCreatedSessionId() {
+    long getCreatedSessionId() {
         return createdSessionId;
     }
 
-    public boolean suspendSession(long sessionId) {
+    /**
+     * Suspend a associated active session
+     *
+     * @param sessionId session identifier of the session
+     * @return True if a matching active sessions if found, False otherwise
+     */
+    boolean suspendSession(long sessionId) {
         State state = associatedSessions.get(sessionId);
         if (null != state && state == State.ACTIVE) {
             associatedSessions.put(sessionId, State.SUSPENDED);
@@ -160,15 +222,28 @@ public class DtxBranch implements AndesInboundStateEvent {
         }
     }
 
+    /**
+     * Enqueue a single message to the branch
+     * @param andesMessage enqueue record
+     */
     public void enqueueMessage(AndesMessage andesMessage) {
         enqueueList.add(andesMessage);
     }
 
+    /**
+     * Enqueue a list of messages to the branch
+     * @param messagesList list of enqueue records
+     */
     public void enqueueMessages(Collection<AndesMessage> messagesList) {
         enqueueList.addAll(messagesList);
     }
 
-    public boolean hasAssociatedActiveSessions() {
+    /**
+     * Check if the branch has active associated sessions
+     *
+     * @return True if there are active associated sessions
+     */
+    boolean hasAssociatedActiveSessions() {
         if (hasAssociatedSessions()) {
             for (State state : associatedSessions.values()) {
                 if (state != State.SUSPENDED) {
@@ -184,35 +259,63 @@ public class DtxBranch implements AndesInboundStateEvent {
      *
      * @return True if there are any associated sessions, false otherwise
      */
-    public boolean hasAssociatedSessions() {
+    boolean hasAssociatedSessions() {
         return !associatedSessions.isEmpty();
     }
 
-    public void clearAssociations() {
+    /**
+     * Clear all association from branch
+     */
+    void clearAssociations() {
         associatedSessions.clear();
     }
 
+    /**
+     * Check if the branch is expired
+     * @return True if the branch is expired, False otherwise
+     */
     public boolean expired() {
         return (timeout != 0 && _expiration < System.currentTimeMillis()) || state == State.TIMED_OUT;
     }
 
+    /**
+     * Get current state of the branch
+     * @return state of the branch
+     */
     public State getState() {
         return state;
     }
 
+    /**
+     * Persist enqueue and dequeue records
+     * @throws AndesException if an internal error occured
+     */
     public void prepare() throws AndesException {
         LOGGER.debug("Performing prepare for DtxBranch {}" + xid);
         internalXid = dtxRegistry.storeRecords(xid, enqueueList, dequeueList);
     }
 
+    /**
+     * Set the state of the branch
+     * @param state new state to be set
+     */
     public void setState(State state) {
         this.state = state;
     }
 
-    public void dequeueMessages(List<AndesAckData> ackList) {
+    /**
+     * Add a list of dequeue records to the branch
+     *
+     * @param ackList list of dequeue records
+     */
+    void dequeueMessages(List<AndesAckData> ackList) {
         dequeueList.addAll(ackList);
     }
 
+    /***
+     * Cancel timeout task and remove corresponding enqueue and dequeue records from the dtx registry.
+     * @throws AndesException if an internal error occured
+     */
     public synchronized void rollback() throws AndesException {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Performing rollback for DtxBranch {}" + xid);
@@ -257,7 +360,7 @@ public class DtxBranch implements AndesInboundStateEvent {
      *
      * @param callback callback that called after completing the commit task
      * @param channel  corresponding channel object
-     * @throws AndesException
+     * @throws AndesException if an internal error occured
      */
     public void commit(Runnable callback, AndesChannel channel) throws AndesException {
         if (LOGGER.isDebugEnabled()) {
@@ -270,6 +373,9 @@ public class DtxBranch implements AndesInboundStateEvent {
         eventManager.requestDtxCommitEvent(this, channel);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void updateState() throws AndesException {
         SlotMessageCounter.getInstance().recordMetadataCountInSlot(enqueueList);
@@ -281,11 +387,17 @@ public class DtxBranch implements AndesInboundStateEvent {
         // TODO: Handle exceptions
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String eventInfo() {
         return null;
     }
 
+    /**
+     * Clear the list of enqueu records
+     */
     public void clearEnqueueList() {
         enqueueList.clear();
     }
