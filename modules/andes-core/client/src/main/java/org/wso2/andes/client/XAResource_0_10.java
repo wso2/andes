@@ -29,17 +29,17 @@ import javax.transaction.xa.Xid;
 /**
  * This is an implementation of javax.njms.XAResource.
  */
-public class XAResourceImpl implements XAResource
+public class XAResource_0_10 implements XAResource
 {
     /**
      * this XAResourceImpl's logger
      */
-    private static final Logger _logger = LoggerFactory.getLogger(XAResourceImpl.class);
+    private static final Logger _logger = LoggerFactory.getLogger(XAResource_0_10.class);
 
     /**
      * Reference to the associated XASession
      */
-    private XASessionImpl _xaSession = null;
+    private XASession_0_10 _xaSession = null;
 
     /**
      * The XID of this resource
@@ -58,7 +58,7 @@ public class XAResourceImpl implements XAResource
      *
      * @param xaSession The session XAresource
      */
-    protected XAResourceImpl(XASessionImpl xaSession)
+    protected XAResource_0_10(XASession_0_10 xaSession)
     {
         _xaSession = xaSession;
     }

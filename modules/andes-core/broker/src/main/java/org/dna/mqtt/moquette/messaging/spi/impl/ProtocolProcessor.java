@@ -26,21 +26,21 @@ import org.dna.mqtt.moquette.proto.messages.PublishMessage;
 import org.dna.mqtt.moquette.proto.messages.SubAckMessage;
 import org.dna.mqtt.moquette.proto.messages.SubscribeMessage;
 import org.dna.mqtt.moquette.proto.messages.UnsubAckMessage;
+import org.dna.mqtt.moquette.server.AuthenticationInfo;
 import org.dna.mqtt.moquette.server.ConnectionDescriptor;
 import org.dna.mqtt.moquette.server.Constants;
 import org.dna.mqtt.moquette.server.IAuthenticator;
-import org.dna.mqtt.moquette.server.AuthenticationInfo;
 import org.dna.mqtt.moquette.server.IAuthorizer;
 import org.dna.mqtt.moquette.server.ServerChannel;
 import org.dna.mqtt.moquette.server.netty.exception.MQTTInitializationException;
 import org.dna.mqtt.wso2.AndesMQTTBridge;
+import org.dna.mqtt.wso2.MqttLogExceptionHandler;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.configuration.enums.MQTTAuthoriztionPermissionLevel;
 import org.wso2.andes.configuration.enums.MQTTUserAuthenticationScheme;
 import org.wso2.andes.configuration.enums.MQTTUserAuthorizationScheme;
 import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.disruptor.LogExceptionHandler;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.MQTTAuthorizationSubject;
 import org.wso2.andes.mqtt.MQTTException;
@@ -143,12 +143,12 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
                 executor);
 
         //Added by WSO2, we do not want to ignore the exception here
-        disruptor.handleExceptionsWith(new LogExceptionHandler());
+        disruptor.handleExceptionsWith(new MqttLogExceptionHandler());
         SequenceBarrier barrier = disruptor.getRingBuffer().newBarrier();
         BatchEventProcessor<ValueEvent> m_eventProcessor = new BatchEventProcessor<ValueEvent>(
                 disruptor.getRingBuffer(), barrier, this);
         //Added by WSO2, we do not want to ignore the exception here
-        m_eventProcessor.setExceptionHandler(new LogExceptionHandler());
+        m_eventProcessor.setExceptionHandler(new MqttLogExceptionHandler());
         disruptor.handleEventsWith(m_eventProcessor);
 
         m_ringBuffer = disruptor.start();

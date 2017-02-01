@@ -31,7 +31,7 @@ import org.dna.mqtt.moquette.proto.messages.UnsubscribeMessage;
 import org.dna.mqtt.moquette.server.Constants;
 import org.dna.mqtt.moquette.server.IAuthenticator;
 import org.dna.mqtt.moquette.server.ServerChannel;
-import org.dna.mqtt.wso2.MQTTLogExceptionHandler;
+import org.dna.mqtt.wso2.MqttLogExceptionHandler;
 import org.dna.mqtt.wso2.MQTTPingRequest;
 import org.dna.mqtt.wso2.MQTTSubscriptionStore;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -88,12 +88,12 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 
         disruptor = new Disruptor<ValueEvent>( ValueEvent.EVENT_FACTORY, ringBufferSize, executor);
         //Added by WSO2, we do not want to ignore the exception here
-        disruptor.handleExceptionsWith(new MQTTLogExceptionHandler());
+        disruptor.handleExceptionsWith(new MqttLogExceptionHandler());
         SequenceBarrier barrier = disruptor.getRingBuffer().newBarrier();
         BatchEventProcessor<ValueEvent> eventProcessor = new BatchEventProcessor<ValueEvent>(
                 disruptor.getRingBuffer(), barrier, this);
         //Added by WSO2, we need to make sure the exceptions aren't ignored
-        eventProcessor.setExceptionHandler(new MQTTLogExceptionHandler());
+        eventProcessor.setExceptionHandler(new MqttLogExceptionHandler());
         disruptor.handleEventsWith(eventProcessor);
         m_ringBuffer = disruptor.start();
         

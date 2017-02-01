@@ -32,12 +32,23 @@ import org.wso2.andes.client.AMQSession;
 import org.wso2.andes.client.failover.FailoverException;
 import org.wso2.andes.client.failover.FailoverHandler;
 import org.wso2.andes.client.failover.FailoverState;
+import org.wso2.andes.client.pool.ReferenceCountingClientExecutorService;
 import org.wso2.andes.client.state.AMQState;
 import org.wso2.andes.client.state.AMQStateManager;
 import org.wso2.andes.client.state.StateWaiter;
 import org.wso2.andes.client.state.listener.SpecificMethodFrameListener;
 import org.wso2.andes.codec.AMQCodecFactory;
-import org.wso2.andes.framing.*;
+import org.wso2.andes.framing.AMQBody;
+import org.wso2.andes.framing.AMQDataBlock;
+import org.wso2.andes.framing.AMQFrame;
+import org.wso2.andes.framing.AMQMethodBody;
+import org.wso2.andes.framing.AMQShortString;
+import org.wso2.andes.framing.ConnectionCloseBody;
+import org.wso2.andes.framing.ConnectionCloseOkBody;
+import org.wso2.andes.framing.HeartbeatBody;
+import org.wso2.andes.framing.MethodRegistry;
+import org.wso2.andes.framing.ProtocolInitiation;
+import org.wso2.andes.framing.ProtocolVersion;
 import org.wso2.andes.pool.Job;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.protocol.AMQMethodEvent;
@@ -47,7 +58,6 @@ import org.wso2.andes.thread.Threading;
 import org.wso2.andes.transport.Sender;
 import org.wso2.andes.transport.network.NetworkConnection;
 import org.wso2.andes.transport.network.NetworkTransport;
-import org.wso2.andes.client.pool.ReferenceCountingClientExecutorService;
 
 import java.io.IOException;
 import java.net.SocketAddress;
@@ -538,7 +548,6 @@ public class AMQProtocolHandler implements ProtocolEngine
         catch (AMQException e)
         {
             propagateExceptionToFrameListeners(e);
-
             exception(e);
         }
 
@@ -566,13 +575,9 @@ public class AMQProtocolHandler implements ProtocolEngine
     {
         final ByteBuffer buf = frame.toNioByteBuffer();
         _writtenBytes += buf.remaining();
-        Job.fireAsynchEvent(_poolReference.getPool(), _writeJob, new Runnable()
-        {
-            public void run()
-            {
-                _sender.send(buf);
-            }
-        });
+
+        _sender.send(buf);
+
         if (PROTOCOL_DEBUG)
         {
             _protocolLogger.info(String.format("SEND: [%s] %s", this, frame));
@@ -615,7 +620,7 @@ public class AMQProtocolHandler implements ProtocolEngine
      * @param frame
      * @param listener the blocking listener. Note the calling thread will block.
      */
-    public AMQMethodEvent writeCommandFrameAndWaitForReply(AMQFrame frame, BlockingMethodFrameListener listener,
+    public AMQMethodEvent writeCommandFrameAndWaitForReply(final AMQFrame frame, BlockingMethodFrameListener listener,
                                                            long timeout) throws AMQException, FailoverException
     {
         try
@@ -647,12 +652,19 @@ public class AMQProtocolHandler implements ProtocolEngine
                 }
 
                 _frameListeners.add(listener);
+
                 //FIXME: At this point here we should check or before add we should check _stateManager is in an open
                 // state so as we don't check we are likely just to time out here as I believe is being seen in QPID-1255
             }
-            writeFrame(frame);
 
-            return listener.blockForFrame(timeout);
+            // Write and wait for frame atomically
+            return listener.writeAndBlockForFrame(new Runnable() {
+                @Override
+                public void run() {
+                    writeFrame(frame);
+                }
+            }, timeout);
+
             // When control resumes before this line, a reply will have been received
             // that matches the criteria defined in the blocking listener
         }

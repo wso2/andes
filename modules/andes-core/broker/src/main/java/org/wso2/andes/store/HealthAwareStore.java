@@ -34,5 +34,5 @@ public interface HealthAwareStore {
      *            a time value ( ideally the current time)
      * @return true of message store is operational.
      */
-    public boolean isOperational(String testString, long testTime);
+    boolean isOperational(String testString, long testTime);
 }

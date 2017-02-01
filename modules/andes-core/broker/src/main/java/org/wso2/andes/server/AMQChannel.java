@@ -40,10 +40,15 @@ import org.wso2.andes.framing.abstraction.ContentChunk;
 import org.wso2.andes.framing.abstraction.MessagePublishInfo;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesChannel;
-import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.FlowControlListener;
+import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
 import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
+import org.wso2.andes.kernel.dtx.AlreadyKnownDtxException;
+import org.wso2.andes.kernel.dtx.JoinAndResumeDtxException;
+import org.wso2.andes.kernel.dtx.NotAssociatedDtxException;
+import org.wso2.andes.kernel.dtx.SuspendAndFailDtxException;
+import org.wso2.andes.kernel.dtx.UnknownDtxBranchException;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.ack.UnacknowledgedMessageMap;
 import org.wso2.andes.server.ack.UnacknowledgedMessageMapImpl;
@@ -79,8 +84,13 @@ import org.wso2.andes.server.subscription.RecordDeliveryMethod;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionFactoryImpl;
 import org.wso2.andes.server.txn.AutoCommitTransaction;
+import org.wso2.andes.server.txn.DtxNotSelectedException;
+import org.wso2.andes.server.txn.IncorrectDtxStateException;
 import org.wso2.andes.server.txn.LocalTransaction;
+import org.wso2.andes.server.txn.QpidDistributedTransaction;
+import org.wso2.andes.server.txn.RollbackOnlyDtxException;
 import org.wso2.andes.server.txn.ServerTransaction;
+import org.wso2.andes.server.txn.TimeoutDtxException;
 import org.wso2.andes.server.virtualhost.AMQChannelMBean;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.store.StoredAMQPMessage;
@@ -100,6 +110,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.management.JMException;
+import javax.transaction.xa.Xid;
 
 public class AMQChannel implements SessionConfig, AMQSessionModel
 {
@@ -301,6 +312,13 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         beginPublisherTransaction = true;
     }
 
+    /**
+     * Sets this channels to be part of a distributed transaction
+     */
+    public void setDtxTransactional() {
+        _transaction = new QpidDistributedTransaction(andesChannel);
+    }
+
     public boolean isTransactional()
     {
         // this does not look great but there should only be one "non-transactional"
@@ -427,6 +445,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                 if(!checkMessageUserId(_currentMessage.getContentHeader()))
                 {
                     _transaction.addPostTransactionAction(new WriteReturnAction(AMQConstant.ACCESS_REFUSED, "Access Refused", _currentMessage));
+                    failIfDistributedTransaction("Access Refused for message - " + createAMQMessage(_currentMessage));
                 }
                 else
                 {
@@ -441,6 +460,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                         if (_currentMessage.isMandatory() || _currentMessage.isImmediate()) {
                             _transaction.addPostTransactionAction(new WriteReturnAction(AMQConstant.NO_ROUTE,
                                     "No Route for message", _currentMessage));
+                            failIfDistributedTransaction("No routes for message - " + createAMQMessage(_currentMessage));
                             _logger.warn(
                                     "MESSAGE DISCARDED: No routes for message - " + createAMQMessage(_currentMessage));
                         } else {
@@ -465,7 +485,10 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                         //need to bind this to the inner class, as _currentMessage
                         final IncomingMessage incomingMessage = _currentMessage;
 
-                        try {
+                        if (isAttachedToADistributedTransaction()) {
+                            ((QpidDistributedTransaction)_transaction).enqueueMessage(incomingMessage, andesChannel);
+                        } else {
+                            try {
                             /*
                              * All we have to do is to write content, metadata,
                              * and add the message id to the global queue
@@ -473,19 +496,25 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                              * adding metadata and message to global queue
                              * happen here
                              */
-                            if (beginPublisherTransaction) {
-                                andesTransactionEvent = Andes.getInstance().newTransaction(andesChannel);
-                                beginPublisherTransaction = false;
-                            }
-                            QpidAndesBridge.messageReceived(incomingMessage, getId(), andesChannel,
-                                    andesTransactionEvent);
+                                if (beginPublisherTransaction) {
+                                    andesTransactionEvent = Andes.getInstance().newTransaction(andesChannel);
+                                    beginPublisherTransaction = false;
+                                }
+                                if (_logger.isDebugEnabled()) {
+                                    _logger.debug("Message id " + incomingMessage.getMessageNumber() + " received from "
+                                            + "channel " + getId());
+                                }
 
-                        } catch (Throwable e) {
-                            _logger.error(
-                                    "Error processing completed messages, Close the session " + getSessionName(), e);
-                            // We mark the session as closed due to error
-                            if (_session instanceof AMQProtocolEngine) {
-                                ((AMQProtocolEngine) _session).closeProtocolSession();
+                                QpidAndesBridge
+                                        .messageReceived(incomingMessage, andesChannel, andesTransactionEvent);
+
+                            } catch (Throwable e) {
+                                _logger.error("Error processing completed messages, Close the session " + getSessionName(),
+                                        e);
+                                // We mark the session as closed due to error
+                                if (_session instanceof AMQProtocolEngine) {
+                                    ((AMQProtocolEngine) _session).closeProtocolSession();
+                                }
                             }
                         }
                     }
@@ -500,6 +529,35 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             }
         }
 
+    }
+
+    /**
+     * Check if current channel is inside a distributed transaction and indicate transaction failure.
+     *
+     * @param reason reason for failure
+     */
+    private void failIfDistributedTransaction(String reason) {
+        if (isAttachedToADistributedTransaction()) {
+            ((QpidDistributedTransaction) _transaction).failTransaction(reason);
+        }
+    }
+
+    /**
+     * Check if the a tx select was received for current session.
+     *
+     * @return True if attached to a {@link LocalTransaction}, False otherwise
+     */
+    private boolean isAttachedToALocalTransaction() {
+        return _transaction instanceof LocalTransaction;
+    }
+
+    /**
+     * Check if the a dtx select was received for current session.
+     *
+     * @return True if attached to a DistributedTransaction, False otherwise
+     */
+    private boolean isAttachedToADistributedTransaction() {
+        return _transaction instanceof QpidDistributedTransaction;
     }
 
     public void publishContentBody(ContentBody contentBody) throws AMQException
@@ -665,8 +723,14 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             CurrentActor.get().message(_logSubject, ChannelMessages.CLOSE());
 
             unsubscribeAllConsumers();
-            _transaction.rollback();
 
+            if (isAttachedToALocalTransaction()) {
+                _transaction.rollback();
+            }
+
+            if (isAttachedToADistributedTransaction()) {
+                ((QpidDistributedTransaction) _transaction).close(_session.getSessionID());
+            }
 
             if (null != andesTransactionEvent) {
                 andesTransactionEvent.close();
@@ -984,13 +1048,14 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         try {
             isMessagesAcksProcessing =  true;
             Collection<QueueEntry> ackedMessages = getAckedMessages(deliveryTag, multiple);
-            _transaction.dequeue(ackedMessages, new MessageAcknowledgeAction(ackedMessages));
-
-            for (QueueEntry entry : ackedMessages) {
-                // When the message is acknowledged it is informed to Andes Kernel
-                QpidAndesBridge.ackReceived(this.getId(), entry.getMessage().getMessageNumber());
+            if (_transaction instanceof QpidDistributedTransaction) {
+                _transaction.dequeue(this.getId(), ackedMessages, new MessageAcknowledgeAction(ackedMessages));
+            } else {
+                for (QueueEntry entry : ackedMessages) {
+                    // When the message is acknowledged it is informed to Andes Kernel
+                    QpidAndesBridge.ackReceived(this.getId(), entry.getMessage().getMessageNumber());
+                }
             }
-
             updateTransactionalActivity();
         } finally {
             isMessagesAcksProcessing = false;
@@ -1313,6 +1378,92 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     public LogSubject getLogSubject()
     {
         return _logSubject;
+    }
+
+    /**
+     * Initiate a distributed transaction for current channel. Everything done until a endDtxTransaction will belong
+     * to the transaction.
+     * @param xid corresponding xid
+     * @param join true if xid join
+     * @param resume true if xis resume
+     * @throws DtxNotSelectedException when calling this method without sending a dtxselect
+     */
+    public void startDtxTransaction(Xid xid, boolean join, boolean resume)
+            throws DtxNotSelectedException, JoinAndResumeDtxException, UnknownDtxBranchException,
+            AlreadyKnownDtxException {
+        QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
+        distributedTransaction.start(_session.getSessionID(), xid,join, resume);
+    }
+
+    public void endDtxTransaction(Xid xid, boolean fail, boolean suspend)
+            throws DtxNotSelectedException, UnknownDtxBranchException, SuspendAndFailDtxException,
+            NotAssociatedDtxException, TimeoutDtxException {
+        QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
+        distributedTransaction.end(_session.getSessionID(), xid,fail, suspend);
+    }
+
+    public void prepareDtxTransaction(Xid xid)
+            throws DtxNotSelectedException, TimeoutDtxException, UnknownDtxBranchException, IncorrectDtxStateException,
+            AndesException, RollbackOnlyDtxException {
+        QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
+        distributedTransaction.prepare(xid);
+    }
+
+    public void commitDtxTransaction(Xid xid, boolean onePhase, DisruptorEventCallback callback) throws DtxNotSelectedException,
+                                                                                                        UnknownDtxBranchException, IncorrectDtxStateException, AndesException, RollbackOnlyDtxException,
+                                                                                                        TimeoutDtxException {
+        QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
+        distributedTransaction.commit(xid, onePhase, callback);
+    }
+
+    public void rollbackDtxTransaction(Xid xid)
+            throws DtxNotSelectedException, UnknownDtxBranchException, AndesException, TimeoutDtxException,
+            IncorrectDtxStateException {
+        QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
+        distributedTransaction.rollback(xid);
+    }
+
+    /**
+     * Forget about a heuristically completed transaction branch.
+     *
+     * @param xid XID of the branch
+     * @throws DtxNotSelectedException    if not in a distributed transacted session
+     * @throws UnknownDtxBranchException  if the XID is unknown to dtx registry
+     * @throws IncorrectDtxStateException If the branch is in a invalid state, forgetting is not possible with
+     *                                    current state
+     */
+    public void forgetDtxTransaction(Xid xid)
+            throws DtxNotSelectedException, UnknownDtxBranchException, IncorrectDtxStateException {
+        QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
+        distributedTransaction.forget(xid);
+    }
+
+    /**
+     * Set transaction timeout for current distributed transaction
+     *
+     * @param xid     XID of the dtx branch
+     * @param timeout timeout value that should be set
+     */
+    public void setDtxTransactionTimeout(Xid xid, long timeout)
+            throws DtxNotSelectedException, UnknownDtxBranchException {
+        QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
+        distributedTransaction.setTimeout(xid, timeout);
+    }
+
+    /**
+     * Assert if dtxselect is called
+     * @return matching DistributedTransaction object
+     * @throws DtxNotSelectedException if dtxselect is not called before
+     */
+    private QpidDistributedTransaction assertDtxTransaction() throws DtxNotSelectedException {
+        if(isAttachedToADistributedTransaction())
+        {
+            return (QpidDistributedTransaction) _transaction;
+        }
+        else
+        {
+            throw new DtxNotSelectedException();
+        }
     }
 
     private class MessageDeliveryAction implements ServerTransaction.Action

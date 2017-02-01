@@ -404,22 +404,25 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
             {
                 if (getChannel(channelId) != null)
                 {
-                    if (_logger.isInfoEnabled())
-                    {
-                        _logger.info("Closing channel due to: " + e.getMessage());
+                    if (_logger.isDebugEnabled() ) {
+                        _logger.debug("Closing channel (" + channelId + ") Error Code " + e.getErrorCode(), e);
+                    } else if (e.getErrorCode() == AMQConstant.INTERNAL_ERROR ) {
+                        _logger.error("Closing channel (" + channelId + ") due to internal Error", e);
                     }
 
-//                    writeFrame(e.getCloseFrame(channelId));
-//                    closeChannel(channelId);
-                    AMQConnectionException ce = evt.getMethod().getConnectionException(e.getErrorCode(), e.getMessage());
-                    _logger.info(e.getMessage() + " whilst processing:" + methodBody);
-                    closeConnection(channelId, ce, false);
+                    if (_logger.isInfoEnabled()) {
+                        _logger.info("Closing channel (" + channelId + ") due to: " + e.getMessage());
+                    }
+
+                    writeFrame(e.getCloseFrame(channelId));
+                    closeChannel(channelId);
                 }
                 else
                 {
-                    if (_logger.isDebugEnabled())
-                    {
-                        _logger.debug("ChannelException occured on non-existent channel:" + e.getMessage());
+                    if (_logger.isDebugEnabled()) {
+                        _logger.debug("ChannelException occured on non-existent channel:", e);
+                    } else if (e.getErrorCode() == AMQConstant.INTERNAL_ERROR) {
+                        _logger.error("Closing channel (" + channelId + ") due to internal Error", e);
                     }
 
                     if (_logger.isInfoEnabled())
@@ -457,7 +460,6 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
 
             _logger.error("Unexpected exception while processing frame.  Closing connection.", e);
 
-            e.printStackTrace();
             closeProtocolSession();
         }
     }

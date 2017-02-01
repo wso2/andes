@@ -245,12 +245,12 @@ public class IncomingMessage implements Filterable, InboundMessage, EnqueableMes
     }
 
 
-    public int getBodyCount() throws AMQException
+    public int getBodyCount()
     {
         return _contentChunks.size();
     }
 
-    public ContentChunk getContentChunk(int index) throws IllegalArgumentException, AMQException
+    public ContentChunk getContentChunk(int index)
     {
         return _contentChunks.get(index);
     }

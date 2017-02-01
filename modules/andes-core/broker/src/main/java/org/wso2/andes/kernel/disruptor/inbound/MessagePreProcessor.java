@@ -66,6 +66,9 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
             case TRANSACTION_COMMIT_EVENT:
                 preProcessTransaction(inboundEvent, sequence);
                 break;
+            case DTX_COMMIT_EVENT:
+                preProcessDtxTransaction(inboundEvent, sequence);
+                break;
             case SAFE_ZONE_DECLARE_EVENT:
                 setSafeZoneLimit(inboundEvent, sequence);
                 break;
@@ -79,6 +82,20 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                 break;
         }
         inboundEvent.preProcessed = true;
+    }
+
+    private void preProcessDtxTransaction(InboundEventContainer eventContainer, long sequence) {
+        // Routing information of all the messages of current transaction is updated.
+        // Messages duplicated as needed.
+        Collection<AndesMessage> messageList = eventContainer.getDtxBranch().getEnqueueList();
+        for (AndesMessage message : messageList) {
+            updateRoutingInformation(eventContainer, message, sequence);
+        }
+
+        // Internal message list of transaction object is updated to reflect the messages
+        // actually written to DB
+        eventContainer.getDtxBranch().clearEnqueueList();
+        eventContainer.getDtxBranch().enqueueMessages(eventContainer.getMessageList());
     }
 
     /**
@@ -98,9 +115,11 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
 
         // Internal message list of transaction object is updated to reflect the messages
         // actually written to DB
-        eventContainer.getTransactionEvent().clearMessages();
+        eventContainer.getTransactionEvent().clearQueuedMessages();;
         eventContainer.getTransactionEvent().addMessages(eventContainer.getMessageList());
     }
+
+
 
     /**
      * Calculate the current safe zone for this node (using the last generated message ID)

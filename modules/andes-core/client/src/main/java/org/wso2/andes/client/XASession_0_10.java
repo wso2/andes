@@ -26,12 +26,12 @@ import javax.transaction.xa.XAResource;
 /**
  * This is an implementation of the javax.njms.XASEssion interface.
  */
-public class XASessionImpl extends AMQSession_0_10 implements XASession, XATopicSession, XAQueueSession
+public class XASession_0_10 extends AMQSession_0_10 implements XASession, XATopicSession, XAQueueSession
 {
     /**
      * XAResource associated with this XASession
      */
-    private final XAResourceImpl _xaResource;
+    private final XAResource_0_10 _xaResource;
 
     /**
      * This XASession Qpid DtxSession
@@ -48,14 +48,14 @@ public class XASessionImpl extends AMQSession_0_10 implements XASession, XATopic
     /**
      * Create a JMS XASession
      */
-    public XASessionImpl(org.wso2.andes.transport.Connection qpidConnection, AMQConnection con, int channelId,
+    public XASession_0_10(org.wso2.andes.transport.Connection qpidConnection, AMQConnection con, int channelId,
                          int defaultPrefetchHigh, int defaultPrefetchLow)
     {
         super(qpidConnection, con, channelId, false,  // this is not a transacted session
               Session.AUTO_ACKNOWLEDGE, // the ack mode is transacted
               MessageFactoryRegistry.newDefaultRegistry(), defaultPrefetchHigh, defaultPrefetchLow,null);
         createSession();
-        _xaResource = new XAResourceImpl(this);
+        _xaResource = new XAResource_0_10(this);
     }
 
     //-- public methods

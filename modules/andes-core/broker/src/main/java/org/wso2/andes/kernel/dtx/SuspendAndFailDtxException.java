@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -16,16 +16,15 @@
  * under the License.
  */
 
-package org.wso2.andes.kernel.disruptor;
+package org.wso2.andes.kernel.dtx;
 
-import org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer;
+import org.wso2.andes.server.txn.DtxException;
 
-import java.util.List;
+import javax.transaction.xa.Xid;
 
-/**
- * Batch event handler for ConcurrentBatchEventHandler
- */
-public interface BatchEventHandler {
+public class SuspendAndFailDtxException extends DtxException {
 
-    void onEvent(final List<InboundEventContainer> eventList) throws Exception;
+    public SuspendAndFailDtxException(Xid id) {
+        super("Cannot end a branch with both suspend and fail set " + id);
+    }
 }

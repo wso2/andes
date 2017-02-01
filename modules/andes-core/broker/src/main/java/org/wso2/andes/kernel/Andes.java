@@ -35,6 +35,8 @@ import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
+import org.wso2.andes.kernel.dtx.DistributedTransaction;
+import org.wso2.andes.kernel.dtx.DtxRegistry;
 import org.wso2.andes.kernel.subscription.AndesSubscription;
 import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.kernel.subscription.StorageQueue;
@@ -120,6 +122,11 @@ public class Andes {
     private final long TX_EVENT_TIMEOUT;
 
     /**
+     * Registry object used to store distributed transaction related information
+     */
+    private DtxRegistry dtxRegistry;
+
+    /**
      * Instance of AndesAPI returned.
      *
      * @return AndesAPI
@@ -166,12 +173,14 @@ public class Andes {
     void initialise(MessagingEngine messagingEngine,
                     InboundEventManager inboundEventManager,
                     AndesContextInformationManager contextInformationManager,
-                    AndesSubscriptionManager subscriptionManager) {
+                    AndesSubscriptionManager subscriptionManager,
+                    DtxRegistry dtxRegistry ) {
 
         this.contextInformationManager = contextInformationManager;
         this.messagingEngine = messagingEngine;
         this.subscriptionManager = subscriptionManager;
         this.inboundEventManager = inboundEventManager;
+        this.dtxRegistry = dtxRegistry;
 
         log.info("Andes API initialised.");
     }
@@ -345,7 +354,7 @@ public class Andes {
      */
     public void shutDown() throws AndesException {
         InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
-        kernelOpsEvent.gracefulShutdown(messagingEngine, inboundEventManager, flowControlManager);
+        kernelOpsEvent.gracefulShutdown(messagingEngine, inboundEventManager, flowControlManager, dtxRegistry);
         kernelOpsEvent.waitForTaskCompletion();
     }
 
@@ -665,7 +674,7 @@ public class Andes {
      *
      * @return id generated
      */
-    public long generateNewMessageId() {
+    public long generateUniqueId() {
         return MessagingEngine.getInstance().generateUniqueId();
     }
 
@@ -793,5 +802,8 @@ public class Andes {
         inboundEventManager.publishRecoveryEvent();
     }
 
+    public DistributedTransaction createDistributedTransaction(AndesChannel channel) {
+        return new DistributedTransaction(dtxRegistry, inboundEventManager, channel);
+    }
 }
 

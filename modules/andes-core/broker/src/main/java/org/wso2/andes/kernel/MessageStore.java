@@ -21,10 +21,11 @@ package org.wso2.andes.kernel;
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
-import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.RecoverySlotCreator;
+import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.store.HealthAwareStore;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -212,21 +213,16 @@ public interface MessageStore extends HealthAwareStore {
             throws AndesException;
 
     /**
-     * Method to delete a set of messages from the database
-     * If deleteAllMetaData is set to true, the storageQueue in the metadata table could be cleared at once
-     * and the messages destined to that queue, given by the messagesToRemove list could be deleted from the content
-     * table
-     * Else, the messages in the list 'messagesToRemove' will be deleted
+     * Method to delete a set of messages from the database.
      *
-     * @param storageQueueName name of the queue
-     * @param messagesToRemove the list of messages to remove
+     * @param messagesToRemove the list of {@link AndesMessageMetadata} related to messages to be removed
      * @throws AndesException
      */
-    void deleteMessages(final String storageQueueName, List<AndesMessageMetadata> messagesToRemove)
-            throws AndesException;
+    void deleteMessages(Collection<? extends AndesMessageMetadata> messagesToRemove) throws AndesException;
 
     /**
      *  Delete a set of messages based on their message ids
+     *
      * @param messagesToRemove list of message ids of messages that need to be removed
      * @throws AndesException
      */
@@ -432,5 +428,7 @@ public interface MessageStore extends HealthAwareStore {
      * close the message store
      */
     void close();
+
+    DtxStore getDtxStore();
 
 }

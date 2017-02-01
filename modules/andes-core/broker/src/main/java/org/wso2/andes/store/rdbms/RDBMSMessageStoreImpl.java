@@ -32,10 +32,11 @@ import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
+import org.wso2.andes.kernel.DtxStore;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
-import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.RecoverySlotCreator;
+import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.store.AndesDataIntegrityViolationException;
@@ -52,6 +53,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +66,7 @@ import static org.wso2.andes.store.rdbms.RDBMSConstants.MSG_OFFSET;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_EXPIRY_DATA;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_MESSAGE_PART;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_METADATA;
+import static org.wso2.andes.store.rdbms.RDBMSConstants.TASK_DELETING_METADATA;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.TASK_RETRIEVING_CONTENT_FOR_MESSAGES;
 
 /**
@@ -75,9 +78,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     private static final Logger log = Logger.getLogger(RDBMSMessageStoreImpl.class);
 
     /**
-     * Cache queue name to queue_id mapping to avoid extra sql queries
+     * RDBMS connection source object
      */
-
     private RDBMSConnection rdbmsConnection;
 
     /**
@@ -111,6 +113,11 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     private LoadingCache<String, Integer> queueMappings;
 
     /**
+     * Store implementation to handle distributed transactions' store operations
+     */
+    private DtxStore dtxStore;
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -124,7 +131,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         this.messageCache = (new MessageCacheFactory()).create();
         initializeQueueMappingCache();
-
+        dtxStore = new RDBMSDtxStoreImpl(this, rdbmsStoreUtils);
         log.info("Message Store initialised");
         return rdbmsConnection;
     }
@@ -376,14 +383,43 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     @Override
     public void storeMessages(List<AndesMessage> messageList) throws AndesException {
         Connection connection = null;
+
+        try {
+
+            connection = getConnection();
+            prepareToStoreMessages(connection, messageList);
+            connection.commit();
+
+            // Add messages to cache after adding them to the database
+            // Messages are added afterwards since we need to add messages to the cache only if they are added to the
+            // database.
+            addToCache(messageList);
+        } catch (BatchUpdateException bue) {
+            log.warn("Error occurred while inserting message list. Messages will be stored individually.", bue);
+            rollback(connection, RDBMSConstants.TASK_ADDING_METADATA);
+            // If adding some of the messages failed, add them individually
+            for (AndesMessage message : messageList) {
+                storeMessage(message);
+            }
+        } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_ADDING_METADATA);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while inserting messages to queue ", e);
+        } catch (AndesException e) {
+            rollback(connection, RDBMSConstants.TASK_ADDING_METADATA);
+            throw e;
+        } finally {
+            close(connection, RDBMSConstants.TASK_ADDING_MESSAGES);
+        }
+    }
+
+    void prepareToStoreMessages(Connection connection, List<AndesMessage> messageList)
+            throws AndesException, SQLException {
         PreparedStatement storeMetadataPS = null;
         PreparedStatement storeContentPS = null;
         PreparedStatement storeExpiryMetadataPS = null;
         boolean messageWithExpirationDetected = false;
 
         try {
-
-            connection = getConnection();
             storeMetadataPS = connection.prepareStatement(PS_INSERT_METADATA);
             storeContentPS = connection.prepareStatement(PS_INSERT_MESSAGE_PART);
             storeExpiryMetadataPS = connection.prepareStatement(PS_INSERT_EXPIRY_DATA);
@@ -407,30 +443,11 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             if (messageWithExpirationDetected) {
                 storeExpiryMetadataPS.executeBatch();
             }
-            connection.commit();
 
-            // Add messages to cache after adding them to the database
-            // Messages are added afterwards since we need to add messages to the cache only if they are added to the
-            // database.
-            addToCache(messageList);
-        } catch (BatchUpdateException bue) {
-            log.warn("Error occurred while inserting message list. Messages will be stored individually.", bue);
-            rollback(connection, RDBMSConstants.TASK_ADDING_METADATA);
-            // If adding some of the messages failed, add them individually
-            for (AndesMessage message : messageList) {
-                storeMessage(message);
-            }
-        } catch (AndesException e) {
-            rollback(connection, RDBMSConstants.TASK_ADDING_METADATA);
-            throw e;
-        } catch (SQLException e) {
-            rollback(connection, RDBMSConstants.TASK_ADDING_METADATA);
-            throw rdbmsStoreUtils.convertSQLException("Error occurred while inserting messages to queue ", e);
         } finally {
             close(storeExpiryMetadataPS, RDBMSConstants.TASK_ADDING_MESSAGES);
             close(storeMetadataPS, RDBMSConstants.TASK_ADDING_MESSAGES);
             close(storeContentPS, RDBMSConstants.TASK_ADDING_MESSAGES);
-            close(connection, RDBMSConstants.TASK_ADDING_MESSAGES);
         }
     }
 
@@ -1097,12 +1114,12 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                         " metadata from destination " + storageQueueName);
             }
         } catch (SQLException e) {
-            rollback(connection, RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName);
+            rollback(connection, RDBMSConstants.TASK_DELETING_METADATA + storageQueueName);
             throw rdbmsStoreUtils.convertSQLException("error occurred while deleting message metadata from queue ", e);
         } finally {
             metaDeletionContext.stop();
             contextWrite.stop();
-            close(connection, preparedStatement, RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName);
+            close(connection, preparedStatement, RDBMSConstants.TASK_DELETING_METADATA + storageQueueName);
         }
     }
 
@@ -1110,8 +1127,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void deleteMessages(final String storageQueueName, List<AndesMessageMetadata> messagesToRemove)
-            throws AndesException {
+    public void deleteMessages(Collection<? extends AndesMessageMetadata> messagesToRemove) throws AndesException {
         Connection connection = null;
         PreparedStatement metadataRemovalPreparedStatement = null;
 
@@ -1120,9 +1136,30 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Context contextWrite = MetricManager.timer(MetricsConstants.DB_WRITE, Level.INFO).start();
 
         try {
-
-            LongArrayList messageIDsToRemoveFromCache = new LongArrayList();
             connection = getConnection();
+            prepareToDeleteMessages(connection, messagesToRemove);
+            connection.commit();
+
+            if (log.isDebugEnabled()) {
+                log.debug("Metadata and content removed for " + messagesToRemove.size() + " messages.");
+            }
+        } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_DELETING_METADATA);
+            throw rdbmsStoreUtils.convertSQLException("error occurred while deleting message metadata and content ", e);
+        } finally {
+            messageDeletionContext.stop();
+            contextWrite.stop();
+            close(connection, metadataRemovalPreparedStatement, RDBMSConstants.TASK_DELETING_METADATA);
+        }
+    }
+
+    void prepareToDeleteMessages(Connection connection, Collection<? extends AndesMessageMetadata> messagesToRemove)
+            throws AndesException, SQLException {
+
+        PreparedStatement metadataRemovalPreparedStatement = null;
+
+        try {
+            LongArrayList messageIDsToRemoveFromCache = new LongArrayList();
 
             //Since referential integrity is imposed on the two tables: message content and metadata,
             //deleting message metadata will cause message content to be automatically deleted
@@ -1137,32 +1174,15 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
             removeFromCache(messageIDsToRemoveFromCache);
             metadataRemovalPreparedStatement.executeBatch();
-            connection.commit();
-
-            if (log.isDebugEnabled()) {
-                log.debug("Metadata and content removed: " + messagesToRemove.size() + " for destination queue:"
-                        + storageQueueName);
-            }
-        } catch (SQLException e) {
-            rollback(connection, RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName + " and "
-                    + RDBMSConstants.TASK_DELETING_MESSAGE_PARTS);
-            throw rdbmsStoreUtils
-                    .convertSQLException("error occurred while deleting message metadata and content for " + "queue ",
-                            e);
         } finally {
-            messageDeletionContext.stop();
-            contextWrite.stop();
-            close(connection, metadataRemovalPreparedStatement,
-                    RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName + " and "
-                            + RDBMSConstants.TASK_DELETING_MESSAGE_PARTS);
+            close(metadataRemovalPreparedStatement, TASK_DELETING_METADATA);
         }
     }
 
     /**
      * {@inheritDoc}
      */
-    public void deleteMessages(List<Long> messagesToRemove)
-            throws AndesException {
+    public void deleteMessages(List<Long> messagesToRemove) throws AndesException {
         Connection connection = null;
         PreparedStatement metadataRemovalPreparedStatement = null;
 
@@ -1323,6 +1343,13 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
     }
 
+
+
+    @Override
+    public DtxStore getDtxStore() {
+        return dtxStore;
+    }
+
     /**
      * This method caches the queue ids for destination queue names. If queried destination queue is
      * not in cache, updates the cache and returns the queue id.
@@ -1331,7 +1358,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * @return corresponding queue id for the destination queue. On error -1 is returned
      * @throws AndesException
      */
-    private int getCachedQueueID(final String destinationQueueName) throws AndesException {
+    protected int getCachedQueueID(final String destinationQueueName) throws AndesException {
         try {
             return queueMappings.get(destinationQueueName);
         } catch (ExecutionException e) {
@@ -1574,12 +1601,12 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                         " with queue ID " + queueID);
             }
         } catch (SQLException e) {
-            rollback(connection, RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName);
+            rollback(connection, RDBMSConstants.TASK_DELETING_METADATA + storageQueueName);
             throw rdbmsStoreUtils.convertSQLException(
                     "error occurred while clearing message metadata from queue :" + storageQueueName, e);
         } finally {
             contextWrite.stop();
-            close(connection, preparedStatement, RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName);
+            close(connection, preparedStatement, RDBMSConstants.TASK_DELETING_METADATA + storageQueueName);
         }
         return deletedMessagecount;
     }

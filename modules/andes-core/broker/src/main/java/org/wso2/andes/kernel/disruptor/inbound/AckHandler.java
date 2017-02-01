@@ -26,7 +26,6 @@ import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.kernel.disruptor.BatchEventHandler;
 import org.wso2.andes.kernel.subscription.AndesSubscription;
 import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.store.AndesTransactionRollbackException;
@@ -41,7 +40,7 @@ import java.util.List;
  * Acknowledgement Handler for the Disruptor based inbound event handling.
  * This handler processes acknowledgements received from clients and updates Andes.
  */
-public class AckHandler implements BatchEventHandler, StoreHealthListener {
+public class AckHandler implements StoreHealthListener {
 
     private static Log log = LogFactory.getLog(AckHandler.class);
     
@@ -64,7 +63,7 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
     /**
      * Keeps message meta-data that needs to be removed from the message store.
      */
-    List<DeliverableAndesMetadata> messagesToRemove;
+    private final List<DeliverableAndesMetadata> messagesToRemove;
     
     AckHandler(MessagingEngine messagingEngine) {
         this.messagingEngine = messagingEngine;
@@ -74,21 +73,25 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
         FailureObservingStoreManager.registerStoreHealthListener(this);
     }
 
-    @Override
-    public void onEvent(final List<InboundEventContainer> eventList) throws Exception {
+    /**
+     * Process the acknowledgment events and delete messages from database
+     * @param ackDataList {@link List} of {@link AndesAckData}
+     * @throws Exception
+     */
+    public void processAcknowledgements(final List<AndesAckData> ackDataList) throws Exception {
         if (log.isTraceEnabled()) {
             StringBuilder messageIDsString = new StringBuilder();
-            for (InboundEventContainer inboundEvent : eventList) {
-                messageIDsString.append(inboundEvent.ackData.getAcknowledgedMessage().getMessageID()).append(" , ");
+            for (AndesAckData andesAckData : ackDataList) {
+                messageIDsString.append(andesAckData.getAcknowledgedMessage().getMessageID()).append(" , ");
             }
-            log.trace(eventList.size() + " messages received : " + messageIDsString);
+            log.trace(ackDataList.size() + " messages received : " + messageIDsString);
         }
         if (log.isDebugEnabled()) {
-            log.debug(eventList.size() + " acknowledgements received from disruptor.");
+            log.debug(ackDataList.size() + " acknowledgements received from disruptor.");
         }
 
         try {
-            ackReceived(eventList);
+            ackReceived(ackDataList);
         } catch (AndesException e) {
             // Log the AndesException since there is no point in passing the exception to Disruptor
             log.error("Error occurred while processing acknowledgements ", e);
@@ -99,15 +102,14 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
      * Updates the state of Andes and deletes relevant messages. (For topics
      * message deletion will happen only when
      * all the clients acknowledges)
-     * 
-     * @param eventList
+     *
+     * @param ackDataList
      *            inboundEvent list
      */
-    public void ackReceived(final List<InboundEventContainer> eventList) throws AndesException {
+    public void ackReceived(final List<AndesAckData> ackDataList) throws AndesException {
         
-        for (InboundEventContainer event : eventList) {
+        for (AndesAckData ack : ackDataList) {
 
-            AndesAckData ack = event.ackData;
             // For topics message is shared. If all acknowledgements are received only we should remove message
             boolean deleteMessage = ack.getAcknowledgedMessage().markAsAcknowledgedByChannel(ack.getChannelID());
 
@@ -121,7 +123,7 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
                     log.debug("Ok to delete message id " + ack.getAcknowledgedMessage().getMessageID());
                 }
                 //it is a must to set this to event container. Otherwise, multiple event handlers will see the status
-                event.ackData.setBaringMessageRemovable();
+                ack.setBaringMessageRemovable();
                 messagesToRemove.add(ack.getAcknowledgedMessage());
             }
             
