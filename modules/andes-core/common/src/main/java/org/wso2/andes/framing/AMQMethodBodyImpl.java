@@ -88,19 +88,8 @@ public abstract class AMQMethodBodyImpl implements AMQMethodBody
         return new AMQConnectionException(code, message, getClazz(), getMethod(), getMajor(), getMinor(), cause);
     }
 
-    long totTime = 0;
-    long count = 0;
-
     public void handle(final int channelId, final AMQVersionAwareProtocolSession session) throws AMQException {
-        long start = System.nanoTime();
         session.methodFrameReceived(channelId, this);
-        totTime = totTime + (System.nanoTime() - start) / 1000000;
-        count++;
-        if (count % 100 == 0) {
-            System.out.println("AMQMethodbodyImpl methodFrameReceived took " + totTime / count + " ms " );
-            /* count = 0;
-          totTime = 0;*/
-        }
     }
 
     public int getSize()
