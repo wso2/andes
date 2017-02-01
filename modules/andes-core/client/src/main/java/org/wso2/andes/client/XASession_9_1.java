@@ -15,6 +15,8 @@
 
 package org.wso2.andes.client;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.client.failover.FailoverException;
 import org.wso2.andes.framing.BasicQosBody;
@@ -33,6 +35,7 @@ import org.wso2.andes.framing.DtxRollbackBody;
 import org.wso2.andes.framing.DtxRollbackOkBody;
 import org.wso2.andes.framing.DtxSelectBody;
 import org.wso2.andes.framing.DtxSetTimeoutBody;
+import org.wso2.andes.framing.DtxSetTimeoutOkBody;
 import org.wso2.andes.framing.DtxStartBody;
 import org.wso2.andes.framing.DtxStartOkBody;
 import org.wso2.andes.framing.amqp_0_91.DtxCommitOkBodyImpl;
@@ -48,11 +51,20 @@ import org.wso2.andes.protocol.AMQMethodEvent;
 import org.wso2.andes.transport.XaStatus;
 
 import javax.jms.JMSException;
+import javax.jms.QueueSession;
+import javax.jms.TopicSession;
+import javax.jms.XAQueueSession;
 import javax.jms.XASession;
+import javax.jms.XATopicSession;
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
 
-class XASession_9_1 extends AMQSession_0_8 implements XASession {
+class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession, XATopicSession {
+
+    /**
+     * Class logger
+     */
+    private static final Logger LOGGER = LoggerFactory.getLogger(XASession_9_1.class);
 
     /**
      * Method registry used create AMQ Method frames
@@ -137,12 +149,16 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession {
      * @throws AMQException      when an error is detected in AMQ state manager
      */
     public XaStatus endDtx(Xid xid, int flag) throws FailoverException, AMQException {
-        DtxEndBody dtxStartBody = methodRegistry
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Sending dtx.end for channel " + _channelId + ", xid " + xid);
+        }
+
+        DtxEndBody dtxEndBody = methodRegistry
                 .createDtxEndBody(xid.getFormatId(), xid.getGlobalTransactionId(), xid.getBranchQualifier(),
                         flag == XAResource.TMFAIL, flag == XAResource.TMSUSPEND);
 
         AMQMethodEvent amqMethodEvent = _connection._protocolHandler
-                .syncWrite(dtxStartBody.generateFrame(_channelId), DtxEndOkBody.class);
+                .syncWrite(dtxEndBody.generateFrame(_channelId), DtxEndOkBody.class);
 
         DtxEndOkBodyImpl response = (DtxEndOkBodyImpl) amqMethodEvent.getMethod();
 
@@ -220,10 +236,32 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession {
                                          timeout);
 
         AMQMethodEvent amqMethodEvent = _connection._protocolHandler
-                .syncWrite(dtxSetTimeoutBody.generateFrame(_channelId), DtxSetTimeoutBody.class);
+                .syncWrite(dtxSetTimeoutBody.generateFrame(_channelId), DtxSetTimeoutOkBody.class);
 
         DtxSetTimeoutOkBodyImpl response = (DtxSetTimeoutOkBodyImpl) amqMethodEvent.getMethod();
 
         return XaStatus.valueOf(response.getXaResult());
+    }
+
+    /**
+     * Get the queue session associated with this <CODE>XASession</CODE>.
+     *
+     * @return the queue session object
+     * @throws JMSException If an internal error occurs.
+     */
+    @Override
+    public QueueSession getQueueSession() throws JMSException {
+        return (QueueSession) getSession();
+    }
+
+    /**
+     * Gets the topic session associated with this <CODE>XASession</CODE>.
+     *
+     * @return the topic session object
+     * @throws JMSException If an internal error occurs.
+     */
+    @Override
+    public TopicSession getTopicSession() throws JMSException {
+        return (TopicSession) getSession();
     }
 }

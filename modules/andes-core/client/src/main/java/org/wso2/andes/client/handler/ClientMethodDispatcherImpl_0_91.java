@@ -87,7 +87,7 @@ public class ClientMethodDispatcherImpl_0_91 extends ClientMethodDispatcherImpl 
     public boolean dispatchDtxCommitOk(DtxCommitOkBody body, int channelId) throws AMQException {
         if (LOGGER.isDebugEnabled())
         {
-            LOGGER.debug("Received Dtx.end-Ok message, with status: " + body.getXaResult());
+            LOGGER.debug("Received Dtx.end-Ok message, " + channelId + " with status: " + body.getXaResult());
         }
         return true;
     }
@@ -216,7 +216,7 @@ public class ClientMethodDispatcherImpl_0_91 extends ClientMethodDispatcherImpl 
     {
         if (LOGGER.isDebugEnabled())
         {
-            LOGGER.debug("Received dtx.start-ok message, with status: " + ((DtxStartOkBodyImpl )body).getXaResult());
+            LOGGER.debug("Received dtx.start-ok message, " + channelId + " with status: " + ((DtxStartOkBodyImpl )body).getXaResult());
         }
         return true;
     }
@@ -225,7 +225,7 @@ public class ClientMethodDispatcherImpl_0_91 extends ClientMethodDispatcherImpl 
     public boolean dispatchDtxEndOk(DtxEndOkBody body, int channelId) throws AMQException {
         if (LOGGER.isDebugEnabled())
         {
-            LOGGER.debug("Received dtx.end-ok message, with status: " + body.getXaResult());
+            LOGGER.debug("Received dtx.end-ok message, for channel " + channelId + " with status: " + body.getXaResult());
         }
         return true;
     }
@@ -234,7 +234,7 @@ public class ClientMethodDispatcherImpl_0_91 extends ClientMethodDispatcherImpl 
     public boolean dispatchDtxForgetOk(DtxForgetOkBody body, int channelId) throws AMQException {
         if (LOGGER.isDebugEnabled())
         {
-            LOGGER.debug("Received dtx.forget-ok message, with status: " + body.getXaResult());
+            LOGGER.debug("Received dtx.forget-ok message, " + channelId + " with status: " + body.getXaResult());
         }
         return true;
     }
@@ -243,7 +243,7 @@ public class ClientMethodDispatcherImpl_0_91 extends ClientMethodDispatcherImpl 
     public boolean dispatchDtxPrepareOk(DtxPrepareOkBody body, int channelId) throws AMQException {
         if (LOGGER.isDebugEnabled())
         {
-            LOGGER.debug("Received dtx.prepare-ok message, with status: " + body.getXaResult());
+            LOGGER.debug("Received dtx.prepare-ok message, " + channelId + " with status: " + body.getXaResult());
         }
         return true;
     }
@@ -251,7 +251,7 @@ public class ClientMethodDispatcherImpl_0_91 extends ClientMethodDispatcherImpl 
     @Override
     public boolean dispatchDtxRollbackOk(DtxRollbackOkBody body, int channelId) throws AMQException {
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Received dtx.rollback-ok message, with status: " + body.getXaResult());
+            LOGGER.debug("Received dtx.rollback-ok message, " + channelId + " with status: " + body.getXaResult());
         }
         return true;
     }
@@ -259,7 +259,7 @@ public class ClientMethodDispatcherImpl_0_91 extends ClientMethodDispatcherImpl 
     @Override
     public boolean dispatchDtxSetTimeoutOk(DtxSetTimeoutOkBody body, int channelId) throws AMQException {
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Received dtx.set-timeout-ok message, with status: " + body.getXaResult());
+            LOGGER.debug("Received dtx.set-timeout-ok message, " + channelId + " with status: " + body.getXaResult());
         }
         return true;
     }
