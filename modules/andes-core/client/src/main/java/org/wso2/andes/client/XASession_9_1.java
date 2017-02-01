@@ -15,6 +15,8 @@
 
 package org.wso2.andes.client;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.client.failover.FailoverException;
 import org.wso2.andes.framing.BasicQosBody;
@@ -58,6 +60,11 @@ import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
 
 class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession, XATopicSession {
+
+    /**
+     * Class logger
+     */
+    private static final Logger LOGGER = LoggerFactory.getLogger(XASession_9_1.class);
 
     /**
      * Method registry used create AMQ Method frames
@@ -142,12 +149,16 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession,
      * @throws AMQException      when an error is detected in AMQ state manager
      */
     public XaStatus endDtx(Xid xid, int flag) throws FailoverException, AMQException {
-        DtxEndBody dtxStartBody = methodRegistry
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Sending dtx.end for channel " + _channelId + ", xid " + xid);
+        }
+
+        DtxEndBody dtxEndBody = methodRegistry
                 .createDtxEndBody(xid.getFormatId(), xid.getGlobalTransactionId(), xid.getBranchQualifier(),
                         flag == XAResource.TMFAIL, flag == XAResource.TMSUSPEND);
 
         AMQMethodEvent amqMethodEvent = _connection._protocolHandler
-                .syncWrite(dtxStartBody.generateFrame(_channelId), DtxEndOkBody.class);
+                .syncWrite(dtxEndBody.generateFrame(_channelId), DtxEndOkBody.class);
 
         DtxEndOkBodyImpl response = (DtxEndOkBodyImpl) amqMethodEvent.getMethod();
 
