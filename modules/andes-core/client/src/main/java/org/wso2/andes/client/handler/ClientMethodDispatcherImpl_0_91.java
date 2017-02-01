@@ -41,6 +41,8 @@ import org.wso2.andes.framing.DtxForgetBody;
 import org.wso2.andes.framing.DtxForgetOkBody;
 import org.wso2.andes.framing.DtxPrepareBody;
 import org.wso2.andes.framing.DtxPrepareOkBody;
+import org.wso2.andes.framing.DtxRecoverBody;
+import org.wso2.andes.framing.DtxRecoverOkBody;
 import org.wso2.andes.framing.DtxRollbackBody;
 import org.wso2.andes.framing.DtxRollbackOkBody;
 import org.wso2.andes.framing.DtxSetTimeoutBody;
@@ -249,6 +251,15 @@ public class ClientMethodDispatcherImpl_0_91 extends ClientMethodDispatcherImpl 
     }
 
     @Override
+    public boolean dispatchDtxRecoverOk(DtxRecoverOkBody body, int channelId) throws AMQException {
+        if (LOGGER.isDebugEnabled())
+        {
+            LOGGER.debug("Received dtx.recover-ok message, " + channelId);
+        }
+        return true;
+    }
+
+    @Override
     public boolean dispatchDtxRollbackOk(DtxRollbackOkBody body, int channelId) throws AMQException {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Received dtx.rollback-ok message, " + channelId + " with status: " + body.getXaResult());
@@ -276,6 +287,11 @@ public class ClientMethodDispatcherImpl_0_91 extends ClientMethodDispatcherImpl 
 
     @Override
     public boolean dispatchDtxPrepare(DtxPrepareBody body, int channelId) throws AMQException {
+        throw new AMQMethodNotImplementedException(body);
+    }
+
+    @Override
+    public boolean dispatchDtxRecover(DtxRecoverBody body, int channelId) throws AMQException {
         throw new AMQMethodNotImplementedException(body);
     }
 

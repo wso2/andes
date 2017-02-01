@@ -47,6 +47,7 @@ import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.Meter;
 import org.wso2.carbon.metrics.manager.MetricManager;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +56,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import javax.transaction.xa.Xid;
 
 import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_PURGED_COUNT_TIMEOUT;
 
@@ -804,6 +806,15 @@ public class Andes {
 
     public DistributedTransaction createDistributedTransaction(AndesChannel channel) {
         return new DistributedTransaction(dtxRegistry, inboundEventManager, channel);
+    }
+
+    /**
+     * Get list of prepared transactions from Dtx registry
+     *
+     * @return list of XIDs belonging to branches in prepared state
+     */
+    public ArrayList<Xid> getPreparedDtxTransactions() {
+        return dtxRegistry.getPreparedTransactions();
     }
 }
 

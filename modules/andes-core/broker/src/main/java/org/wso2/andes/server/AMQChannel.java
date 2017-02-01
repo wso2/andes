@@ -1450,9 +1450,20 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     }
 
     /**
-     * Assert if dtxselect is called
+     * Return list of XIDs belonging to dtx branches in prepared state
+     *
+     * @return list of XIDs in prepared state
+     * @throws DtxNotSelectedException if dtx.select is not called before
+     */
+    public ArrayList<Xid> recoverDtxTransactions() throws DtxNotSelectedException {
+        return Andes.getInstance().getPreparedDtxTransactions();
+    }
+
+    /**
+     * Assert if dtx.select is called
+     *
      * @return matching DistributedTransaction object
-     * @throws DtxNotSelectedException if dtxselect is not called before
+     * @throws DtxNotSelectedException if dtx.select is not called before
      */
     private QpidDistributedTransaction assertDtxTransaction() throws DtxNotSelectedException {
         if(isAttachedToADistributedTransaction())

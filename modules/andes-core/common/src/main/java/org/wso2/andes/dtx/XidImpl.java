@@ -24,13 +24,14 @@ import org.wso2.andes.AMQInvalidArgumentException;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.Arrays;
 import javax.transaction.xa.Xid;
 
 /**
  * Implements javax.transaction.dtx.Xid
  */
-public class XidImpl implements Xid
+public class XidImpl implements Xid, Serializable
 {
     /**
      * this session's logger

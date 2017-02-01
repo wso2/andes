@@ -33,6 +33,8 @@ import org.wso2.andes.framing.DtxForgetBody;
 import org.wso2.andes.framing.DtxForgetOkBody;
 import org.wso2.andes.framing.DtxPrepareBody;
 import org.wso2.andes.framing.DtxPrepareOkBody;
+import org.wso2.andes.framing.DtxRecoverBody;
+import org.wso2.andes.framing.DtxRecoverOkBody;
 import org.wso2.andes.framing.DtxRollbackBody;
 import org.wso2.andes.framing.DtxRollbackOkBody;
 import org.wso2.andes.framing.DtxSelectBody;
@@ -60,6 +62,7 @@ import org.wso2.andes.framing.amqp_0_91.DtxCommitBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxEndBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxForgetBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxPrepareBodyImpl;
+import org.wso2.andes.framing.amqp_0_91.DtxRecoverBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxRollbackBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxSetTimeoutBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxStartBodyImpl;
@@ -85,6 +88,7 @@ public class ServerMethodDispatcherImpl_0_91
     private static final DtxRollbackHandler dtxRollbackHandler = DtxRollbackHandler.getInstance();
     private static final DtxForgetHandler dtxForgetHandler = DtxForgetHandler.getInstance();
     private static final DtxSetTimeoutHandler dtxSetTimeoutHandler = DtxSetTimeoutHandler.getInstance();
+    private static final DtxRecoverHandler dtxRecoverHandler = DtxRecoverHandler.getInstance();
 
     private final AMQStateManager stateManager;
 
@@ -153,6 +157,12 @@ public class ServerMethodDispatcherImpl_0_91
     }
 
     @Override
+    public boolean dispatchDtxRecover(DtxRecoverBody body, int channelId) throws AMQException {
+        dtxRecoverHandler.methodReceived(stateManager, (DtxRecoverBodyImpl) body, channelId);
+        return true;
+    }
+
+    @Override
     public boolean dispatchDtxRollback(DtxRollbackBody body, int channelId) throws AMQException {
         dtxRollbackHandler.methodReceived(stateManager, (DtxRollbackBodyImpl) body, channelId);
         return true;
@@ -170,6 +180,11 @@ public class ServerMethodDispatcherImpl_0_91
 
     @Override
     public boolean dispatchDtxPrepareOk(DtxPrepareOkBody body, int channelId) throws AMQException {
+        throw new UnexpectedMethodException(body);
+    }
+
+    @Override
+    public boolean dispatchDtxRecoverOk(DtxRecoverOkBody body, int channelId) throws AMQException {
         throw new UnexpectedMethodException(body);
     }
 

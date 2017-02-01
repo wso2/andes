@@ -218,7 +218,7 @@ class XAResource_0_9_1 implements XAResource {
     @Override
     public int prepare(Xid xid) throws XAException {
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("prepare dtx branch with xid: ", xid);
+            LOGGER.debug("prepare dtx branch with xid: " + xid);
         }
 
         XaStatus resultStatus;
@@ -241,7 +241,19 @@ class XAResource_0_9_1 implements XAResource {
 
     @Override
     public Xid[] recover(int i) throws XAException {
-        throw new RuntimeException("Feature NotImplemented");
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("recover dtx branches with prepared state");
+        }
+
+        try {
+            List<Xid> xidList = session.recoverDtxTransactions();
+            return xidList.toArray(new Xid[xidList.size()]);
+
+        } catch (FailoverException | AMQException e) {
+            XAException xaException = new XAException("Error while recovering dtx sessions.");
+            xaException.initCause(e);
+            throw xaException;
+        }
     }
 
     @Override
