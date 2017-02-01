@@ -287,9 +287,6 @@ public class AndesContextInformationManager {
     public void deleteQueue(StorageQueue storageQueue) throws AndesException {
         String storageQueueName = storageQueue.getName();
 
-        //remove all subscriptions to the queue
-        subscriptionManager.closeAllSubscriptionsBoundToQueue(storageQueueName);
-
         //remove all bindings from memory if not removed
         List<AndesBinding> removedBindings = amqpConstructStore.removeAllBindingsForQueue(storageQueueName);
         for (AndesBinding removedBinding : removedBindings) {
@@ -328,9 +325,6 @@ public class AndesContextInformationManager {
     public void syncQueueDelete(InboundQueueSyncEvent queueDeleteSyncEvent) throws AndesException {
         StorageQueue queueWithEvent = queueDeleteSyncEvent.toStorageQueue();
         String storageQueueName = queueWithEvent.getName();
-
-        //remove all subscriptions to the queue
-        subscriptionManager.closeAllSubscriptionsBoundToQueue(storageQueueName);
 
         //clear in-memory messages buffered for queue
         handleQueuePurgeNotification(queueDeleteSyncEvent);
