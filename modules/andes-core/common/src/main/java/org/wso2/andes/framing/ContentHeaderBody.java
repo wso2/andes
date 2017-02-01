@@ -112,20 +112,10 @@ public class ContentHeaderBody implements AMQBody
         properties.writePropertyListPayload(buffer);
     }
 
-    long totTime = 0;
-    long count = 0;
     public void handle(final int channelId, final AMQVersionAwareProtocolSession session)
             throws AMQException
     {
-        long start = System.nanoTime();
         session.contentHeaderReceived(channelId, this);
-        totTime = totTime + (System.nanoTime() - start) / 1000000;
-        count++;
-        if (count % 100 == 0) {
-            System.out.println("Content Header Body contentHeaderReceived took " + totTime / count + " ms " );
-            /* count = 0;
-          totTime = 0;*/
-        }
     }
 
     public static AMQFrame createAMQFrame(int channelId, int classId, int weight, BasicContentHeaderProperties properties,
