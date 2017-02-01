@@ -357,7 +357,7 @@ public class InboundEventManager {
     }
 
     /**
-     * different transaction related events are published to Disruptor using this method
+     * Different transaction related events are published to Disruptor using this method
      * @param transactionEvent {@link InboundTransactionEvent}
      * @param eventType {@link org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type}
      * @param channel {@link org.wso2.andes.kernel.AndesChannel}
@@ -388,6 +388,12 @@ public class InboundEventManager {
         disruptor.shutdown();
     }
 
+    /**
+     * Publish the distributed transaction event to Disruptor
+     *
+     * @param dtxBranch {@link DtxBranch} related to the commit request
+     * @param channel {@link AndesChannel} related to the {@link DtxBranch} commit request
+     */
     public void requestDtxCommitEvent(DtxBranch dtxBranch, AndesChannel channel) {
         long sequence = ringBuffer.next();
         InboundEventContainer eventContainer = ringBuffer.get(sequence);

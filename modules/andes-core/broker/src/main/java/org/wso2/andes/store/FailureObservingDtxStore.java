@@ -33,10 +33,20 @@ import javax.transaction.xa.Xid;
  */
 public class FailureObservingDtxStore extends FailureObservingStore<DtxStore> implements DtxStore {
 
+    /**
+     * Create a {@link FailureObservingDtxStore} wrapper class using the underlying {@link DtxStore} implementation
+     * and a {@link FailureObservingStoreManager}
+     *
+     * @param wrappedInstance {@link DtxStore} implementation
+     * @param storeManager Reference to the {@link FailureObservingStoreManager}
+     */
     public FailureObservingDtxStore(DtxStore wrappedInstance, FailureObservingStoreManager storeManager) {
         super(wrappedInstance, storeManager);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public long storeDtxRecords(Xid xid, List<AndesMessage> enqueueRecords, List<AndesAckData> dequeueRecords)
             throws AndesException {
@@ -48,6 +58,9 @@ public class FailureObservingDtxStore extends FailureObservingStore<DtxStore> im
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void updateOnCommit(long internalXid, List<AndesMessage> enqueueRecords,
                                List<DeliverableAndesMetadata> dequeueRecords) throws AndesException {
@@ -59,6 +72,9 @@ public class FailureObservingDtxStore extends FailureObservingStore<DtxStore> im
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void removeDtxRecords(long internalXid) throws AndesException {
         try {

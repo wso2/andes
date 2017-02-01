@@ -72,7 +72,8 @@ public class MessageWriter implements StoreHealthListener {
         FailureObservingStoreManager.registerStoreHealthListener(this);
     }
 
-    public void onEvent(final List<AndesMessage> messageList, final Map<String, AndesMessage> retainMap) throws Exception {
+    public void writeMessages(final List<AndesMessage> messageList,
+                              final Map<String, AndesMessage> retainMap) throws Exception {
 
         if (messageStoresUnavailable) {
             handleStoreFailure(messageList);

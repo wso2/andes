@@ -139,6 +139,9 @@ public class RDBMSDtxStoreImpl implements DtxStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void updateOnCommit(long internalXid, List<AndesMessage> enqueueRecords,
                                List<DeliverableAndesMetadata> dequeueRecords) throws AndesException {
@@ -167,6 +170,9 @@ public class RDBMSDtxStoreImpl implements DtxStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void removeDtxRecords(long internalXid) throws AndesException {
         Connection connection = null;
@@ -184,6 +190,14 @@ public class RDBMSDtxStoreImpl implements DtxStore {
 
     }
 
+    /**
+     * Remove the prepared dtx records from the database using the provided {@link Connection}. Executed statements
+     * are not committed within the method. It is the responsibility of the caller to commit the changes
+     *
+     * @param internalXid internal {@link Xid}
+     * @param connection {@link Connection}
+     * @throws SQLException Throws when there is an JDBC driver level exception
+     */
     private void removePreparedRecords(long internalXid, Connection connection) throws SQLException {
 
         PreparedStatement statement = null;
@@ -198,6 +212,9 @@ public class RDBMSDtxStoreImpl implements DtxStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isOperational(String testString, long testTime) {
         return rdbmsMessageStore.isOperational(testString, testTime);

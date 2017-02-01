@@ -115,7 +115,7 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
 
         // Internal message list of transaction object is updated to reflect the messages
         // actually written to DB
-        eventContainer.getTransactionEvent().clearMessages();
+        eventContainer.getTransactionEvent().clearQueuedMessages();;
         eventContainer.getTransactionEvent().addMessages(eventContainer.getMessageList());
     }
 

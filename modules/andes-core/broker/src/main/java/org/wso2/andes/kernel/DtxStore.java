@@ -23,6 +23,9 @@ import org.wso2.andes.store.HealthAwareStore;
 import java.util.List;
 import javax.transaction.xa.Xid;
 
+/**
+ * Interface for distributed transaction related database operations
+ */
 public interface DtxStore extends HealthAwareStore {
 
     /**
@@ -35,9 +38,24 @@ public interface DtxStore extends HealthAwareStore {
     long storeDtxRecords(Xid xid, List<AndesMessage> enqueueRecords, List<AndesAckData> dequeueRecords)
             throws AndesException;
 
+    /**
+     * Update the store on a dtx.commit request with enqueued and dequeued records relevant to a specific {@link Xid}
+     * This is update is done in a database transaction operation
+     *
+     * @param internalXid internalXid of the dtx transaction
+     * @param enqueueRecords {@link AndesMessage} list to be stored
+     * @param dequeueRecords {@link DeliverableAndesMetadata} list that got acknowledged within the transaction
+     * @throws AndesException Throws exception on database related errors
+     */
     void updateOnCommit(long internalXid, List<AndesMessage> enqueueRecords,
                         List<DeliverableAndesMetadata> dequeueRecords) throws AndesException;
 
+    /**
+     * Remove database records related to a transaction.
+     *
+     * @param internalXid internal {@link Xid} related to the distributed transaction
+     * @throws AndesException Throws exception on database related errors
+     */
     void removeDtxRecords(long internalXid) throws AndesException;
 
 }

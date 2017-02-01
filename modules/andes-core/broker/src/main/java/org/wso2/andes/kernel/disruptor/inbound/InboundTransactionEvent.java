@@ -121,7 +121,7 @@ public class InboundTransactionEvent implements AndesInboundStateEvent {
         this.messageQueue.addAll(messages);
     }
 
-    void clearMessages() {
+    void clearQueuedMessages() {
         this.messageQueue.clear();
     }
 
