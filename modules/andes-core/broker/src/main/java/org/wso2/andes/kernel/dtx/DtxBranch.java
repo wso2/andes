@@ -90,23 +90,9 @@ public class DtxBranch implements AndesInboundStateEvent {
     private long _expiration;
 
     /**
-     * Getter for enqueueList
-     */
-    public ArrayList<AndesMessage> getEnqueueList() {
-        return enqueueList;
-    }
-
-    /**
      * Keep the list of messages that need to be published when the transaction commits
      */
     private ArrayList<AndesMessage> enqueueList = new ArrayList<>();
-
-    /**
-     * Getter for dequeueList
-     */
-    public List<AndesAckData> getDequeueList() {
-        return dequeueList;
-    }
 
     /**
      * Keep the list of messages that need to be acked when the transaction commits
@@ -147,6 +133,20 @@ public class DtxBranch implements AndesInboundStateEvent {
         this.eventManager = eventManager;
         this.createdSessionId = sessionID;
         andesApi = Andes.getInstance();
+    }
+
+    /**
+     * Getter for enqueueList
+     */
+    public ArrayList<AndesMessage> getEnqueueList() {
+        return enqueueList;
+    }
+
+    /**
+     * Getter for dequeueList
+     */
+    public List<AndesAckData> getDequeueList() {
+        return dequeueList;
     }
 
     /**
