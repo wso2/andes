@@ -200,15 +200,13 @@ public class QpidDistributedTransaction implements ServerTransaction {
      * @param andesChannel {@link AndesChannel} object related to the incoming message
      */
     public void enqueueMessage(IncomingMessage incomingMessage, AndesChannel andesChannel) {
-        AndesMessage andesMessage = null;
-
         try {
-            andesMessage = QpidAndesBridge.convertToAndesMessage(incomingMessage);
+            AndesMessage andesMessage = QpidAndesBridge.convertToAndesMessage(incomingMessage);
+            distributedTransaction.enqueueMessage(andesMessage, andesChannel);
         } catch (AndesException e) {
-            // TODO Need to propagate error in the prepare stage.
+            LOGGER.warn("Converting incoming message to Andes message failed", e);
+            failTransaction(e.getMessage());
         }
-
-        distributedTransaction.enqueueMessage(andesMessage, andesChannel);
     }
 
     public void close(long sessionId) {
