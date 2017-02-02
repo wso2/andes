@@ -26,6 +26,7 @@ import org.wso2.andes.server.txn.IncorrectDtxStateException;
 import org.wso2.andes.server.txn.RollbackOnlyDtxException;
 import org.wso2.andes.server.txn.TimeoutDtxException;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -342,6 +343,23 @@ public class DtxRegistry {
      */
     public void stop() {
         timeoutTaskExecutor.shutdown();
+    }
+
+    /**
+     * Return list of XIDs belonging to dtx branches in prepared state
+     *
+     * @return list of XIDs in prepared state
+     */
+    public ArrayList<Xid> getPreparedTransactions() {
+        ArrayList<Xid> preparedBranches = new ArrayList<>();
+
+        for (DtxBranch dtxBranch : branches.values()) {
+            if (dtxBranch.getState() == DtxBranch.State.PREPARED) {
+                preparedBranches.add(dtxBranch.getXid());
+            }
+        }
+
+        return preparedBranches;
     }
 
     private static final class ComparableXid {

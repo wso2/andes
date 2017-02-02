@@ -15,6 +15,7 @@
 
 package org.wso2.andes.client;
 
+import org.apache.commons.lang.SerializationUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wso2.andes.AMQException;
@@ -31,6 +32,8 @@ import org.wso2.andes.framing.DtxForgetBody;
 import org.wso2.andes.framing.DtxForgetOkBody;
 import org.wso2.andes.framing.DtxPrepareBody;
 import org.wso2.andes.framing.DtxPrepareOkBody;
+import org.wso2.andes.framing.DtxRecoverBody;
+import org.wso2.andes.framing.DtxRecoverOkBody;
 import org.wso2.andes.framing.DtxRollbackBody;
 import org.wso2.andes.framing.DtxRollbackOkBody;
 import org.wso2.andes.framing.DtxSelectBody;
@@ -42,6 +45,7 @@ import org.wso2.andes.framing.amqp_0_91.DtxCommitOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxEndOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxForgetOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxPrepareOkBodyImpl;
+import org.wso2.andes.framing.amqp_0_91.DtxRecoverOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxRollbackOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxSetTimeoutOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxStartOkBodyImpl;
@@ -50,6 +54,8 @@ import org.wso2.andes.jms.Session;
 import org.wso2.andes.protocol.AMQMethodEvent;
 import org.wso2.andes.transport.XaStatus;
 
+import java.util.ArrayList;
+import java.util.List;
 import javax.jms.JMSException;
 import javax.jms.QueueSession;
 import javax.jms.TopicSession;
@@ -241,6 +247,30 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession,
         DtxSetTimeoutOkBodyImpl response = (DtxSetTimeoutOkBodyImpl) amqMethodEvent.getMethod();
 
         return XaStatus.valueOf(response.getXaResult());
+    }
+
+    /**
+     * Sends a dtx.recover frame to broker node and wait for dtx.recover-ok response
+     *
+     * @return list of XIDs in prepared state
+     * @throws FailoverException if failover process started during communication with server
+     * @throws AMQException      if server sends back a error response
+     */
+    public List<Xid> recoverDtxTransactions() throws FailoverException, AMQException {
+        DtxRecoverBody dtxRecoverBody = methodRegistry.createDtxRecoverBody();
+
+        AMQMethodEvent amqMethodEvent = _connection._protocolHandler
+                .syncWrite(dtxRecoverBody.generateFrame(_channelId), DtxRecoverOkBody.class);
+
+        DtxRecoverOkBodyImpl response = (DtxRecoverOkBodyImpl) amqMethodEvent.getMethod();
+
+        byte[] inDoubtRawData = response.getInDoubt();
+
+        // No way to get around this warning. Therefore suppressing
+        @SuppressWarnings("unchecked")
+        ArrayList<Xid> xidList = (ArrayList<Xid>) SerializationUtils.deserialize(inDoubtRawData);
+
+        return xidList;
     }
 
     /**

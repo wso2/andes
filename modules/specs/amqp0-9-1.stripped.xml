@@ -577,5 +577,15 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <chassis name="client" implement="MUST"/>
       <field name="xa-result" type="short"/>
     </method>
+
+    <method name="recover" synchronous="1" index="80">
+      <chassis name="server" implement="MUST"/>
+      <response name="recover-ok"/>
+    </method>
+
+    <method name="recover-ok" synchronous="1" index="81">
+      <chassis name="client" implement="MUST"/>
+      <field name="in-doubt" type="longstr"/>
+    </method>
   </class>
 </amqp>
