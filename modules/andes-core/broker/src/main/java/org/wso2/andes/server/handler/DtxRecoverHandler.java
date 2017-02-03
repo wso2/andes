@@ -34,10 +34,10 @@ import javax.transaction.xa.Xid;
  * Handler class for dtx.recover
  */
 public class DtxRecoverHandler implements StateAwareMethodListener<DtxRecoverBodyImpl> {
-    private static DtxRecoverHandler _instance = new DtxRecoverHandler();
+    private static DtxRecoverHandler instance = new DtxRecoverHandler();
 
     public static DtxRecoverHandler getInstance() {
-        return _instance;
+        return instance;
     }
 
     private DtxRecoverHandler() {
