@@ -87,8 +87,7 @@ public class ClientMethodDispatcherImpl_0_91 extends ClientMethodDispatcherImpl 
 
     @Override
     public boolean dispatchDtxCommitOk(DtxCommitOkBody body, int channelId) throws AMQException {
-        if (LOGGER.isDebugEnabled())
-        {
+        if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Received Dtx.end-Ok message, " + channelId + " with status: " + body.getXaResult());
         }
         return true;
@@ -216,8 +215,7 @@ public class ClientMethodDispatcherImpl_0_91 extends ClientMethodDispatcherImpl 
 
     public boolean dispatchDtxStartOk(DtxStartOkBody body, int channelId) throws AMQException
     {
-        if (LOGGER.isDebugEnabled())
-        {
+        if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Received dtx.start-ok message, " + channelId + " with status: " + ((DtxStartOkBodyImpl )body).getXaResult());
         }
         return true;
@@ -225,8 +223,7 @@ public class ClientMethodDispatcherImpl_0_91 extends ClientMethodDispatcherImpl 
 
     @Override
     public boolean dispatchDtxEndOk(DtxEndOkBody body, int channelId) throws AMQException {
-        if (LOGGER.isDebugEnabled())
-        {
+        if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Received dtx.end-ok message, for channel " + channelId + " with status: " + body.getXaResult());
         }
         return true;
@@ -234,8 +231,7 @@ public class ClientMethodDispatcherImpl_0_91 extends ClientMethodDispatcherImpl 
 
     @Override
     public boolean dispatchDtxForgetOk(DtxForgetOkBody body, int channelId) throws AMQException {
-        if (LOGGER.isDebugEnabled())
-        {
+        if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Received dtx.forget-ok message, " + channelId + " with status: " + body.getXaResult());
         }
         return true;
@@ -243,8 +239,7 @@ public class ClientMethodDispatcherImpl_0_91 extends ClientMethodDispatcherImpl 
 
     @Override
     public boolean dispatchDtxPrepareOk(DtxPrepareOkBody body, int channelId) throws AMQException {
-        if (LOGGER.isDebugEnabled())
-        {
+        if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Received dtx.prepare-ok message, " + channelId + " with status: " + body.getXaResult());
         }
         return true;
@@ -252,8 +247,7 @@ public class ClientMethodDispatcherImpl_0_91 extends ClientMethodDispatcherImpl 
 
     @Override
     public boolean dispatchDtxRecoverOk(DtxRecoverOkBody body, int channelId) throws AMQException {
-        if (LOGGER.isDebugEnabled())
-        {
+        if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Received dtx.recover-ok message, " + channelId);
         }
         return true;

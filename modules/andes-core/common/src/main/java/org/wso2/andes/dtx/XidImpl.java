@@ -31,8 +31,7 @@ import javax.transaction.xa.Xid;
 /**
  * Implements javax.transaction.dtx.Xid
  */
-public class XidImpl implements Xid, Serializable
-{
+public class XidImpl implements Xid, Serializable {
     /**
      * this session's logger
      */
