@@ -457,6 +457,11 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
 
         Set<AndesSubscription> filteredSubscriptions = new HashSet<>();
         String messageRouter = destinationType.getAndesMessageRouter();
+
+        if (ProtocolType.MQTT.equals(protocolType)) {
+            messageRouter = MQTTUtils.MQTT_EXCHANGE_NAME;
+        }
+
         // query for CQ engine to get the active subscriptions based on the filtering parameters.
         // since there is a need for contains search in binding key, contains operation of CQ engine is used in query
         Query<AndesSubscription> subscriptionQuery = and
@@ -473,7 +478,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
         for (AndesSubscription subscription : subscriptions) {
             filteredSubscriptions.add(subscription);
         }
-        return filteredSubscriptions;
+                return filteredSubscriptions;
     }
 
 
