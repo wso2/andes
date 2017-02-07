@@ -600,10 +600,11 @@ public enum AndesConfiguration implements ConfigurationProperty {
     PERFORMANCE_TUNING_SAFE_DELETE_REGION_SLOT_COUNT
             ("performanceTuning/messageExpiration/safetySlotCount", "3", Integer.class),
     /**
-     * Maximum batch size (Messages) for a transaction. Exceeding this limit will result in a failure in the subsequent
-     * commit request. Default is set to 10MB. Limit is calculated considering the payload of messages.
+     * Maximum batch size (Messages) in kilobytes for a transaction. Exceeding this limit will result in a failure in
+     * the subsequent commit (or prepare) request. Default is set to 1MB. Limit is calculated considering the payload
+     * of messages.
      */
-    MAX_TRANSACTION_BATCH_SIZE ("transaction/maxBatchSizeInBytes", "10000000", Integer.class),
+    MAX_TRANSACTION_BATCH_SIZE ("transaction/maxBatchSizeInKB", "1024", Integer.class),
 
     /**
      * Maximum wait time (in seconds) for a transactional publisher commit, rollback or close event to complete on

@@ -405,7 +405,7 @@ public class DtxBranch implements AndesInboundStateEvent {
     }
 
     /**
-     * Clear the list of enqueu records
+     * Clear the list of enqueue records
      */
     public void clearEnqueueList() {
         enqueueList.clear();
