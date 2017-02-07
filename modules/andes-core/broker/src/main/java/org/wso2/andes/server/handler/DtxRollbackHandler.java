@@ -15,12 +15,14 @@
 
 package org.wso2.andes.server.handler;
 
+import org.wso2.andes.AMQChannelException;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.dtx.XidImpl;
 import org.wso2.andes.framing.DtxRollbackOkBody;
 import org.wso2.andes.framing.amqp_0_91.DtxRollbackBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.MethodRegistry_0_91;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
 import org.wso2.andes.kernel.dtx.UnknownDtxBranchException;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
@@ -45,10 +47,10 @@ public class DtxRollbackHandler implements StateAwareMethodListener<DtxRollbackB
     }
 
     @Override
-    public void methodReceived(AMQStateManager stateManager, DtxRollbackBodyImpl body, int channelId)
+    public void methodReceived(AMQStateManager stateManager, final DtxRollbackBodyImpl body, final int channelId)
             throws AMQException {
         Xid xid = new XidImpl(body.getBranchId(), body.getFormat(), body.getGlobalId());
-        AMQProtocolSession session = stateManager.getProtocolSession();
+        final AMQProtocolSession session = stateManager.getProtocolSession();
 
         AMQChannel channel = session.getChannel(channelId);
 
@@ -59,15 +61,32 @@ public class DtxRollbackHandler implements StateAwareMethodListener<DtxRollbackB
         try {
             DtxRollbackOkBody dtxRollbackOkBody;
             try {
-                channel.rollbackDtxTransaction(xid);
+                channel.rollbackDtxTransaction(xid, new DisruptorEventCallback() {
+                    @Override
+                    public void execute() {
+                        MethodRegistry_0_91 methodRegistry = (MethodRegistry_0_91) session.getMethodRegistry();
+                        DtxRollbackOkBody dtxRollbackOkBody =
+                                methodRegistry.createDtxRollbackOkBody(DtxXaStatus.XA_OK.getValue());
+                        session.writeFrame(dtxRollbackOkBody.generateFrame(channelId));
+                    }
 
-                MethodRegistry_0_91 methodRegistry = (MethodRegistry_0_91) session.getMethodRegistry();
-                dtxRollbackOkBody = methodRegistry.createDtxRollbackOkBody(DtxXaStatus.XA_OK.getValue());
+                    @Override
+                    public void onException(Exception exception) {
+                        if (exception instanceof AndesException) {
+                            AMQChannelException channelException =
+                                    body.getChannelException(AMQConstant.INTERNAL_ERROR,
+                                                             "Internal error occurred while rolling back records",
+                                                             exception);
+                            session.writeFrame(channelException.getCloseFrame(channelId));
+                        }
+                    }
+                });
+;
             } catch (TimeoutDtxException e) {
                 MethodRegistry_0_91 methodRegistry = (MethodRegistry_0_91) session.getMethodRegistry();
                 dtxRollbackOkBody = methodRegistry.createDtxRollbackOkBody(DtxXaStatus.XA_RBTIMEOUT.getValue());
+                session.writeFrame(dtxRollbackOkBody.generateFrame(channelId));
             }
-            session.writeFrame(dtxRollbackOkBody.generateFrame(channelId));
         } catch (DtxNotSelectedException e) {
             throw body.getChannelException(AMQConstant.COMMAND_INVALID, "Error rolling back dtx ", e);
         } catch (IncorrectDtxStateException e) {

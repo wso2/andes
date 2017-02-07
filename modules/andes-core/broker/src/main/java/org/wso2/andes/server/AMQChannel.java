@@ -1390,14 +1390,14 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
      */
     public void startDtxTransaction(Xid xid, boolean join, boolean resume)
             throws DtxNotSelectedException, JoinAndResumeDtxException, UnknownDtxBranchException,
-            AlreadyKnownDtxException {
+                   AlreadyKnownDtxException, AndesException {
         QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
         distributedTransaction.start(_session.getSessionID(), xid,join, resume);
     }
 
     public void endDtxTransaction(Xid xid, boolean fail, boolean suspend)
             throws DtxNotSelectedException, UnknownDtxBranchException, SuspendAndFailDtxException,
-            NotAssociatedDtxException, TimeoutDtxException {
+                   NotAssociatedDtxException, TimeoutDtxException, AndesException {
         QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
         distributedTransaction.end(_session.getSessionID(), xid,fail, suspend);
     }
@@ -1416,11 +1416,11 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         distributedTransaction.commit(xid, onePhase, callback);
     }
 
-    public void rollbackDtxTransaction(Xid xid)
+    public void rollbackDtxTransaction(Xid xid, DisruptorEventCallback callback)
             throws DtxNotSelectedException, UnknownDtxBranchException, AndesException, TimeoutDtxException,
             IncorrectDtxStateException {
         QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
-        distributedTransaction.rollback(xid);
+        distributedTransaction.rollback(xid, callback);
     }
 
     /**
@@ -1433,7 +1433,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
      *                                    current state
      */
     public void forgetDtxTransaction(Xid xid)
-            throws DtxNotSelectedException, UnknownDtxBranchException, IncorrectDtxStateException {
+            throws DtxNotSelectedException, UnknownDtxBranchException, IncorrectDtxStateException, AndesException {
         QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
         distributedTransaction.forget(xid);
     }
@@ -1445,7 +1445,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
      * @param timeout timeout value that should be set
      */
     public void setDtxTransactionTimeout(Xid xid, long timeout)
-            throws DtxNotSelectedException, UnknownDtxBranchException {
+            throws DtxNotSelectedException, UnknownDtxBranchException, AndesException {
         QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
         distributedTransaction.setTimeout(xid, timeout);
     }

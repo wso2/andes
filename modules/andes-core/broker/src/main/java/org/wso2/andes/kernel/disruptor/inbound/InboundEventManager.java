@@ -57,7 +57,6 @@ import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_
 import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_PARALLEL_TRANSACTION_MESSAGE_WRITERS;
 import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_PUBLISHING_BUFFER_SIZE;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.ACKNOWLEDGEMENT_EVENT;
-import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.DTX_COMMIT_EVENT;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.MESSAGE_EVENT;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.PUBLISHER_RECOVERY_EVENT;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.SAFE_ZONE_DECLARE_EVENT;
@@ -390,12 +389,13 @@ public class InboundEventManager {
      *
      * @param dtxBranch {@link DtxBranch} related to the commit request
      * @param channel {@link AndesChannel} related to the {@link DtxBranch} commit request
+     * @param type Dtx event type of {@link org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type}
      */
-    public void requestDtxCommitEvent(DtxBranch dtxBranch, AndesChannel channel) {
+    public void requestDtxEvent(DtxBranch dtxBranch, AndesChannel channel, InboundEventContainer.Type type) {
         long sequence = ringBuffer.next();
         InboundEventContainer eventContainer = ringBuffer.get(sequence);
         try {
-            eventContainer.setEventType(DTX_COMMIT_EVENT);
+            eventContainer.setEventType(type);
             eventContainer.setDtxBranch(dtxBranch);
             eventContainer.pubAckHandler = disablePubAck;
             eventContainer.setChannel(channel);

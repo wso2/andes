@@ -18,11 +18,12 @@
 
 package org.wso2.andes.store;
 
-import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
-import org.wso2.andes.kernel.DeliverableAndesMetadata;
+import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.DtxStore;
+import org.wso2.andes.kernel.dtx.AndesPreparedMessageMetadata;
+import org.wso2.andes.kernel.dtx.DtxBranch;
 
 import java.util.List;
 import javax.transaction.xa.Xid;
@@ -48,8 +49,8 @@ public class FailureObservingDtxStore extends FailureObservingStore<DtxStore> im
      * {@inheritDoc}
      */
     @Override
-    public long storeDtxRecords(Xid xid, List<AndesMessage> enqueueRecords, List<AndesAckData> dequeueRecords)
-            throws AndesException {
+    public long storeDtxRecords(Xid xid, List<AndesMessage> enqueueRecords,
+                                List<? extends AndesMessageMetadata> dequeueRecords) throws AndesException {
         try {
             return wrappedInstance.storeDtxRecords(xid, enqueueRecords, dequeueRecords);
         } catch (AndesStoreUnavailableException e) {
@@ -62,23 +63,29 @@ public class FailureObservingDtxStore extends FailureObservingStore<DtxStore> im
      * {@inheritDoc}
      */
     @Override
-    public void updateOnCommit(long internalXid, List<AndesMessage> enqueueRecords,
-                               List<DeliverableAndesMetadata> dequeueRecords) throws AndesException {
+    public void updateOnCommit(long internalXid, List<AndesMessage> enqueueRecords) throws AndesException {
         try {
-            wrappedInstance.updateOnCommit(internalXid, enqueueRecords, dequeueRecords);
+            wrappedInstance.updateOnCommit(internalXid, enqueueRecords);
         } catch (AndesStoreUnavailableException e) {
             notifyFailures(e);
             throw new AndesException(e);
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public void removeDtxRecords(long internalXid) throws AndesException {
+    public void updateOnRollback(long internalXid, List<AndesPreparedMessageMetadata> messagesToRestore) throws AndesException {
         try {
-            wrappedInstance.removeDtxRecords(internalXid);
+            wrappedInstance.updateOnRollback(internalXid, messagesToRestore);
+        } catch (AndesStoreUnavailableException e) {
+            notifyFailures(e);
+            throw new AndesException(e);
+        }
+    }
+
+    @Override
+    public long recoverBranchData(DtxBranch branch, String nodeId) throws AndesException {
+        try {
+            return wrappedInstance.recoverBranchData(branch, nodeId);
         } catch (AndesStoreUnavailableException e) {
             notifyFailures(e);
             throw new AndesException(e);

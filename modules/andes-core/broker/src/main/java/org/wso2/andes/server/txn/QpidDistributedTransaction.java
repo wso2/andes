@@ -135,7 +135,7 @@ public class QpidDistributedTransaction implements ServerTransaction {
     }
 
     public void start(long sessionID, Xid xid, boolean join, boolean resume)
-            throws JoinAndResumeDtxException, UnknownDtxBranchException, AlreadyKnownDtxException {
+            throws JoinAndResumeDtxException, UnknownDtxBranchException, AlreadyKnownDtxException, AndesException {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Starting distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
         }
@@ -144,7 +144,7 @@ public class QpidDistributedTransaction implements ServerTransaction {
 
     public void end(long sessionID, Xid xid, boolean fail, boolean suspend)
             throws UnknownDtxBranchException, SuspendAndFailDtxException, NotAssociatedDtxException,
-            TimeoutDtxException {
+                   TimeoutDtxException, AndesException {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Ending distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
         }
@@ -179,19 +179,20 @@ public class QpidDistributedTransaction implements ServerTransaction {
      * Rewind the transaction state to the point where transaction was started.
      *
      * @param xid
+     * @param callback
      * @throws UnknownDtxBranchException
      * @throws AndesException
      * @throws TimeoutDtxException
      * @throws IncorrectDtxStateException
      */
-    public void rollback(Xid xid)
+    public void rollback(Xid xid, DisruptorEventCallback callback)
             throws UnknownDtxBranchException, AndesException, TimeoutDtxException, IncorrectDtxStateException {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Rolling back distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
         }
 
         try {
-            distributedTransaction.rollback(xid);
+            distributedTransaction.rollback(xid, callback);
         } finally {
             for (Action action : postTransactionActions) {
                 action.onRollback();
@@ -245,7 +246,7 @@ public class QpidDistributedTransaction implements ServerTransaction {
      * @throws IncorrectDtxStateException If the branch is in a invalid state, forgetting is not possible with
      *                                    current state
      */
-    public void forget(Xid xid) throws UnknownDtxBranchException, IncorrectDtxStateException {
+    public void forget(Xid xid) throws UnknownDtxBranchException, IncorrectDtxStateException, AndesException {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Forgetting the distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
         }
@@ -259,7 +260,7 @@ public class QpidDistributedTransaction implements ServerTransaction {
      * @param xid     XID of the dtx branch
      * @param timeout timeout value that should be set
      */
-    public void setTimeout(Xid xid, long timeout) throws UnknownDtxBranchException {
+    public void setTimeout(Xid xid, long timeout) throws UnknownDtxBranchException, AndesException {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Setting timeout" + timeout + "for the distributed transaction " + Arrays.toString(xid
                                                                                                                     .getGlobalTransactionId()));

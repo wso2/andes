@@ -23,6 +23,7 @@ import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.dtx.AndesPreparedMessageMetadata;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotCoordinator;
 import org.wso2.andes.kernel.slot.SlotCoordinatorCluster;
@@ -231,11 +232,9 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public void deleteMessages(List<DeliverableAndesMetadata> messagesToRemove) throws AndesException {
-
         //delete message content along with metadata
         messageStore.deleteMessages(messagesToRemove);
         markAsDeleted(messagesToRemove);
-
     }
 
     private void markAsDeleted(List<DeliverableAndesMetadata> messagesToRemove) {
@@ -262,18 +261,10 @@ public class MessagingEngine {
         return storageSeparatedMessages;
     }
 
-    /**
-     * Persist changes done in the distributed transaction to DTX store
-     *
-     * @param internalXid internal XID used to identify the transaction
-     * @param enqueueList list of enqueue records
-     * @param ackDataList list of dequeue records
-     * @throws AndesException if an internal error
-     */
-    public void dtxCommit(long internalXid, List<AndesMessage> enqueueList, List<AndesAckData> ackDataList)
+    public List<AndesPreparedMessageMetadata> acknowledgeOnDtxPrepare(List<AndesAckData> ackDataList)
             throws AndesException {
 
-        List<DeliverableAndesMetadata> messagesToRemove = new ArrayList<>(ackDataList.size());
+        List<AndesPreparedMessageMetadata> messagesToRemove = new ArrayList<>(ackDataList.size());
         for (AndesAckData ack : ackDataList) {
 
             // For topics message is shared. If all acknowledgements are received only we should remove message
@@ -289,13 +280,13 @@ public class MessagingEngine {
                 }
                 //it is a must to set this to event container. Otherwise, multiple event handlers will see the status
                 ack.setBaringMessageRemovable();
-                messagesToRemove.add(ack.getAcknowledgedMessage());
+                AndesPreparedMessageMetadata rollbackMessageMetadata =
+                        new AndesPreparedMessageMetadata(ack.getAcknowledgedMessage());
+                messagesToRemove.add(rollbackMessageMetadata);
             }
 
         }
-        messageStore.getDtxStore().updateOnCommit(internalXid, enqueueList, messagesToRemove);
-        markAsDeleted(messagesToRemove);
-
+        return messagesToRemove;
     }
 
     /**

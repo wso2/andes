@@ -20,6 +20,7 @@ import org.wso2.andes.dtx.XidImpl;
 import org.wso2.andes.framing.DtxEndOkBody;
 import org.wso2.andes.framing.amqp_0_91.DtxEndBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.MethodRegistry_0_91;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.dtx.NotAssociatedDtxException;
 import org.wso2.andes.kernel.dtx.SuspendAndFailDtxException;
 import org.wso2.andes.kernel.dtx.UnknownDtxBranchException;
@@ -78,6 +79,8 @@ public class DtxEndHandler implements StateAwareMethodListener<DtxEndBodyImpl> {
         } catch (SuspendAndFailDtxException e) {
             throw body.getChannelException(AMQConstant.NOT_ALLOWED,
                     "Error ending dtx. Both suspend and failed are set ", e);
+        } catch (AndesException e) {
+            throw body.getChannelException(AMQConstant.INTERNAL_ERROR, "Internal error in ending dtx.", e);
         }
     }
 }
