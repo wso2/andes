@@ -102,7 +102,8 @@ public class DistributedTransaction {
      */
     public void start(long sessionID, Xid xid, boolean join, boolean resume) throws JoinAndResumeDtxException,
                                                                                     UnknownDtxBranchException,
-                                                                                    AlreadyKnownDtxException {
+                                                                                    AlreadyKnownDtxException,
+                                                                                    AndesException {
 
         if (join && resume) {
             throw new JoinAndResumeDtxException(xid);
@@ -156,7 +157,10 @@ public class DistributedTransaction {
      * @throws TimeoutDtxException Thrown when the {@link DtxBranch} has timed out
      */
     public void end(long sessionId, Xid xid, boolean fail, boolean suspend) throws SuspendAndFailDtxException,
-            UnknownDtxBranchException, NotAssociatedDtxException, TimeoutDtxException {
+                                                                                   UnknownDtxBranchException,
+                                                                                   NotAssociatedDtxException,
+                                                                                   TimeoutDtxException,
+                                                                                   AndesException {
         DtxBranch branch = dtxRegistry.getBranch(xid);
         if (suspend && fail) {
             branch.disassociateSession(sessionId);
@@ -281,17 +285,18 @@ public class DistributedTransaction {
      * Rollback the transaction session for the provided {@link Xid}
      *
      * @param xid {@link Xid} to be rollbacked
+     * @param callback {@link DisruptorEventCallback}
      * @throws UnknownDtxBranchException thrown when an unknown xid is provided
      * @throws AndesException thrown on internal Andes core error
      * @throws TimeoutDtxException thrown when the branch is expired
      * @throws IncorrectDtxStateException if the state of the branch is invalid. For instance the branch is not prepared
      */
-    public void rollback(Xid xid)
+    public void rollback(Xid xid, DisruptorEventCallback callback)
             throws UnknownDtxBranchException, AndesException, TimeoutDtxException, IncorrectDtxStateException {
         totalMessageSize = 0;
         transactionFailed = false;
         failedReasons.clear();
-        dtxRegistry.rollback(xid);
+        dtxRegistry.rollback(xid, callback);
     }
 
     /**
@@ -333,7 +338,7 @@ public class DistributedTransaction {
      * @throws IncorrectDtxStateException If the branch is in a invalid state, forgetting is not possible with
      *                                    current state
      */
-    public void forget(Xid xid) throws UnknownDtxBranchException, IncorrectDtxStateException {
+    public void forget(Xid xid) throws UnknownDtxBranchException, IncorrectDtxStateException, AndesException {
         dtxRegistry.forget(xid);
     }
 
@@ -343,7 +348,7 @@ public class DistributedTransaction {
      * @param xid     XID of the dtx branch
      * @param timeout timeout value that should be set
      */
-    public void setTimeout(Xid xid, long timeout) throws UnknownDtxBranchException {
+    public void setTimeout(Xid xid, long timeout) throws UnknownDtxBranchException, AndesException {
         dtxRegistry.setTimeout(xid, timeout);
     }
 }

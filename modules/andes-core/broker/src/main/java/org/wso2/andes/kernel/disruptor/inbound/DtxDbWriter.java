@@ -22,7 +22,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.disruptor.InboundEventHandler;
-import org.wso2.andes.kernel.dtx.DtxBranch;
 
 /**
  * Distributed transaction messages and acknowledgment handler class. Invokes database calls related to the
@@ -62,14 +61,15 @@ public class DtxDbWriter extends InboundEventHandler {
 
         long currentTurn = sequence % handlerCount;
 
-        if ((turn == currentTurn) && (InboundEventContainer.Type.DTX_COMMIT_EVENT == event.getEventType())) {
-            DtxBranch dtxBranch = event.getDtxBranch();
-            messagingEngine.dtxCommit(dtxBranch.getInternalXid(),
-                                      dtxBranch.getEnqueueList(), dtxBranch.getDequeueList());
-
+        if (turn == currentTurn) {
             if (log.isDebugEnabled()) {
-                log.debug("Sequence [ " + sequence + " ] Event " + event.getEventType()
-                                  + " Internal Xid " + dtxBranch.getInternalXid());
+                log.debug("Sequence [ " + sequence + " ] Event " + event.getEventType());
+
+            }
+            if (InboundEventContainer.Type.DTX_COMMIT_EVENT == event.getEventType()) {
+                event.getDtxBranch().writeToDbOnCommit();
+            } else if (InboundEventContainer.Type.DTX_ROLLBACK_EVENT == event.getEventType()) {
+                event.getDtxBranch().writeToDbOnRollback();
             }
         }
     }

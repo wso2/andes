@@ -20,6 +20,7 @@ import org.wso2.andes.dtx.XidImpl;
 import org.wso2.andes.framing.DtxStartOkBody;
 import org.wso2.andes.framing.amqp_0_91.DtxStartBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.MethodRegistry_0_91;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.dtx.AlreadyKnownDtxException;
 import org.wso2.andes.kernel.dtx.JoinAndResumeDtxException;
 import org.wso2.andes.kernel.dtx.UnknownDtxBranchException;
@@ -71,6 +72,9 @@ public class DtxStartHandler implements StateAwareMethodListener<DtxStartBodyImp
                     , e);
         } catch (UnknownDtxBranchException e) {
             throw body.getChannelException(AMQConstant.NOT_ALLOWED, "Unknown XID " + xid, e);
+        } catch (AndesException e) {
+            throw body.getChannelException(AMQConstant.INTERNAL_ERROR, "Internal error occurred while starting " +
+                    "transaction for " + xid, e);
         }
     }
 }

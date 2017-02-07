@@ -44,7 +44,6 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
     @Override
     public void onEvent(InboundEventContainer event, long sequence, boolean endOfBatch) throws Exception {
 
-
         if (log.isDebugEnabled()) {
             log.debug("[ sequence " + sequence + " ] Event received from disruptor. Event type: "
                     + event.eventInfo());
@@ -74,7 +73,6 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
             // previous iterations.
             event.clear();
         }
-
     }
 
     private void updateTrackerWithAck(InboundEventContainer event) throws AndesException {

@@ -679,7 +679,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * @param queueName         queue to be assigned
      * @throws SQLException
      */
-    private void addMetadataToBatch(PreparedStatement preparedStatement, AndesMessageMetadata metadata,
+    void addMetadataToBatch(PreparedStatement preparedStatement, AndesMessageMetadata metadata,
             final String queueName) throws AndesException {
 
         Context metaAdditionToBatchContext = MetricManager.timer(MetricsConstants.ADD_META_DATA_TO_BATCH, Level.INFO)
@@ -908,7 +908,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             if (currentBatchCount < messageLimitPerSlot) {
                 restoreMessagesCounter = restoreMessagesCounter + currentBatchCount;
                 callBack.initializeSlotMapForQueue(storageQueueName, batchStartMessageID, currentMessageId,
-                                                    messageLimitPerSlot);
+                                                   messageLimitPerSlot);
             }
         } catch (SQLException e) {
             throw rdbmsStoreUtils.convertSQLException("error occurred while retrieving message ids from queue ", e);
@@ -1153,6 +1153,13 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         }
     }
 
+    /**
+     * Delete the messages from message store using the provided database {@link Connection}
+     * @param connection JDBC {@link Connection}
+     * @param messagesToRemove {@link Collection} of {@link AndesMessageMetadata}
+     * @throws AndesException throws {@link AndesException} on JDBC driver related exception
+     * @throws SQLException throws {@link SQLException} on JDBC driver related exception
+     */
     void prepareToDeleteMessages(Connection connection, Collection<? extends AndesMessageMetadata> messagesToRemove)
             throws AndesException, SQLException {
 

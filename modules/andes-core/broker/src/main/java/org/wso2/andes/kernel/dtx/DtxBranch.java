@@ -16,18 +16,19 @@
 package org.wso2.andes.kernel.dtx;
 
 import org.apache.log4j.Logger;
-import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
 import org.wso2.andes.kernel.disruptor.inbound.AndesInboundStateEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer;
 import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
 import org.wso2.andes.kernel.slot.SlotMessageCounter;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +48,12 @@ public class DtxBranch implements AndesInboundStateEvent {
     /**
      * Internal XID has this value when the branch is not in prepared state
      */
-    private static final int NULL_XID = -1;
+    public static final int NULL_XID = -1;
+
+    /**
+     * Session Id of a session that is recovered from storage
+     */
+    public static final int RECOVERY_SESSION_ID = -1;
 
     /**
      * XID used to identify the dtx branch by external parties
@@ -100,6 +106,11 @@ public class DtxBranch implements AndesInboundStateEvent {
     private List<AndesAckData> dequeueList = new ArrayList<>();
 
     /**
+     * Messages that were dequeued within a the transaction branch which is in prepared state.
+     */
+    private List<AndesPreparedMessageMetadata> preparedDequeueMessages;
+
+    /**
      * Current branch state
      */
     private State state = State.ACTIVE;
@@ -115,9 +126,10 @@ public class DtxBranch implements AndesInboundStateEvent {
     private long createdSessionId;
 
     /**
-     * Reference to the {@link Andes}
+     * Reference to the specific command that needs to be executed when updateState method is invoked by the
+     * {@link org.wso2.andes.kernel.disruptor.inbound.StateEventHandler}
      */
-    private Andes andesApi;
+    private Runnable updateSlotCommand;
 
     /**
      * Default constructor
@@ -132,7 +144,6 @@ public class DtxBranch implements AndesInboundStateEvent {
         this.dtxRegistry = dtxRegistry;
         this.eventManager = eventManager;
         this.createdSessionId = sessionID;
-        andesApi = Andes.getInstance();
     }
 
     /**
@@ -140,6 +151,29 @@ public class DtxBranch implements AndesInboundStateEvent {
      */
     public ArrayList<AndesMessage> getEnqueueList() {
         return enqueueList;
+    }
+
+    /**
+     * Set the messages that were acknowledged but not commited withing the transaction that needs to be restored when
+     * rollback is called.
+     * @param messagesToRestore {@link List} of {@link AndesPreparedMessageMetadata}
+     */
+    public void setMessagesToRestore(List<AndesPreparedMessageMetadata> messagesToRestore) {
+        dequeueList.clear();
+        this.preparedDequeueMessages = messagesToRestore;
+    }
+
+    /**
+     * Set the messages to be stored in Database
+     * @param messagesToStore {@link Collection} of {@link AndesMessage}
+     */
+    public void setMessagesToStore(Collection<AndesMessage> messagesToStore) {
+        this.enqueueList.clear();
+        this.enqueueList.addAll(messagesToStore);
+    }
+
+    void clearEnqueueList() {
+        enqueueList.clear();
     }
 
     /**
@@ -235,14 +269,6 @@ public class DtxBranch implements AndesInboundStateEvent {
     }
 
     /**
-     * Enqueue a list of messages to the branch
-     * @param messagesList list of enqueue records
-     */
-    public void enqueueMessages(Collection<AndesMessage> messagesList) {
-        enqueueList.addAll(messagesList);
-    }
-
-    /**
      * Check if the branch has active associated sessions
      *
      * @return True if there are active associated sessions
@@ -296,7 +322,16 @@ public class DtxBranch implements AndesInboundStateEvent {
      */
     public void prepare() throws AndesException {
         LOGGER.debug("Performing prepare for DtxBranch {}" + xid);
-        internalXid = dtxRegistry.storeRecords(xid, enqueueList, dequeueList);
+        internalXid = dtxRegistry.storeRecords(this);
+    }
+
+    /**
+     * Retrieve the messages that need to be restored on a rollback event
+     *
+     * @return List of {@link AndesPreparedMessageMetadata}
+     */
+    public List<AndesPreparedMessageMetadata> getMessagesToRestore() {
+        return Collections.unmodifiableList(preparedDequeueMessages);
     }
 
     /**
@@ -318,25 +353,25 @@ public class DtxBranch implements AndesInboundStateEvent {
 
     /***
      * Cancel timeout task and remove corresponding enqueue and dequeue records from the dtx registry.
-     * @throws AndesException if an internal error occured
+     *
+     * @param callback {@link DisruptorEventCallback}
+     * @throws AndesException if an internal error occurred
      */
-    public synchronized void rollback() throws AndesException {
+    public synchronized void rollback(DisruptorEventCallback callback) throws AndesException {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Performing rollback for DtxBranch {}" + xid);
         }
-
+        this.callback = callback;
         cancelTimeoutTaskIfExists();
 
         if (internalXid != NULL_XID) {
-            for (AndesAckData ackData: dequeueList) {
-                andesApi.messageRejected(ackData.getAcknowledgedMessage(), ackData.getChannelID());
-            }
-            dtxRegistry.removePreparedRecords(internalXid);
-            internalXid = NULL_XID;
+            updateSlotCommand = new DtxRollbackCommand();
+            eventManager.requestDtxEvent(this, null, InboundEventContainer.Type.DTX_ROLLBACK_EVENT);
         } else {
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("Cannot rollback since could not find a internal XID " + "{}" + xid);
             }
+            callback.execute();
         }
     }
 
@@ -374,7 +409,17 @@ public class DtxBranch implements AndesInboundStateEvent {
         cancelTimeoutTaskIfExists();
 
         this.callback = callback;
-        eventManager.requestDtxCommitEvent(this, channel);
+        updateSlotCommand = new DtxCommitCommand();
+        eventManager.requestDtxEvent(this, channel, InboundEventContainer.Type.DTX_COMMIT_EVENT);
+    }
+
+    /**
+     * Write the committed messages to the database
+     *
+     * @throws AndesException throws AndesException on database error
+     */
+    public void writeToDbOnCommit() throws AndesException {
+        dtxRegistry.getStore().updateOnCommit(internalXid, enqueueList);
     }
 
     /**
@@ -382,13 +427,27 @@ public class DtxBranch implements AndesInboundStateEvent {
      */
     @Override
     public void updateState() throws AndesException {
+        if (updateSlotCommand != null) {
+            updateSlotCommand.run();
+        } else {
+            LOGGER.error("Update state called without setting the state update command ");
+        }
+    }
+
+    /**
+     *
+     * @param messageList
+     */
+    private void updateSlotAndClearLists(List<AndesMessage> messageList) {
         try {
-            SlotMessageCounter.getInstance().recordMetadataCountInSlot(enqueueList);
+            SlotMessageCounter.getInstance().recordMetadataCountInSlot(messageList);
             enqueueList.clear();
             dequeueList.clear();
             callback.execute();
+            internalXid = NULL_XID;
+
             if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Dtx commit messages state updated. Internal Xid " + internalXid);
+                LOGGER.debug("Messages state updated. Internal Xid " + internalXid);
             }
 
         } catch (Exception exception) {
@@ -405,17 +464,13 @@ public class DtxBranch implements AndesInboundStateEvent {
     }
 
     /**
-     * Clear the list of enqueue records
+     * Update data store when rollback is called. Restore the acknowledged but not yet committed messages and
+     * information regarding the transaction
+     *
+     * @throws AndesException throws {@link AndesException} when there is an internal data store error.
      */
-    public void clearEnqueueList() {
-        enqueueList.clear();
-    }
-
-    /**
-     * Getter for internalXid
-     */
-    public long getInternalXid() {
-        return internalXid;
+    public void writeToDbOnRollback() throws AndesException {
+        dtxRegistry.getStore().updateOnRollback(internalXid, preparedDequeueMessages);
     }
 
     /**
@@ -446,7 +501,17 @@ public class DtxBranch implements AndesInboundStateEvent {
 
                     setState(State.TIMEDOUT);
                     try {
-                        rollback();
+                        rollback(new DisruptorEventCallback() {
+                            @Override
+                            public void execute() {
+                                // nothing to do be done. This is an internally triggered event
+                            }
+
+                            @Override
+                            public void onException(Exception exception) {
+                                // nothing to be done. This is an internally triggered event
+                            }
+                        });
                     } catch (AndesException e) {
                         LOGGER.error("Error while rolling back dtx due to store exception");
                     }
@@ -456,9 +521,51 @@ public class DtxBranch implements AndesInboundStateEvent {
     }
 
     /**
+     * Recover branch details from the persistent storage for already prepared transactions
+     *
+     * @param nodeId node id of the server
+     * @return internal xid of the node
+     * @throws AndesException throws {@link AndesException} when data storage exception occur
+     */
+    boolean recoverFromStore(String nodeId) throws AndesException {
+        internalXid = dtxRegistry.getStore().recoverBranchData(this, nodeId);
+        if (internalXid != NULL_XID) {
+            setState(State.PREPARED);
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * States of a {@link DtxBranch}
      */
     public enum State {
         SUSPENDED, ACTIVE, ROLLBACK_ONLY, PREPARED, FORGOTTEN, TIMED_OUT, HEUR_COM, TIMEDOUT, HEUR_RB
     }
-}
+
+    /**
+     * Command to update slots for Dtx Commit event
+     */
+    private class DtxCommitCommand implements Runnable {
+
+        @Override
+        public void run() {
+            updateSlotAndClearLists(enqueueList);
+        }
+    }
+
+    /**
+     * Command to update slots for Dtx Rollback event
+     */
+    private class DtxRollbackCommand implements Runnable {
+
+        @Override
+        public void run() {
+            List<AndesMessage> dequeuedMessages = new ArrayList<>();
+            for (AndesPreparedMessageMetadata metadata: preparedDequeueMessages) {
+                dequeuedMessages.add(new AndesMessage(metadata));
+            }
+            updateSlotAndClearLists(dequeuedMessages);
+        }
+    }
+ }

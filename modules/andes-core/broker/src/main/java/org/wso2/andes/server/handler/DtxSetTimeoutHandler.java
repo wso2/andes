@@ -20,6 +20,7 @@ import org.wso2.andes.dtx.XidImpl;
 import org.wso2.andes.framing.DtxSetTimeoutOkBody;
 import org.wso2.andes.framing.amqp_0_91.DtxSetTimeoutBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.MethodRegistry_0_91;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.dtx.UnknownDtxBranchException;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
@@ -65,6 +66,9 @@ public class DtxSetTimeoutHandler implements StateAwareMethodListener<DtxSetTime
                                            "Error ending dtx. Unknown branch for the given " + xid , e);
         } catch (DtxNotSelectedException e) {
             throw body.getChannelException(AMQConstant.NOT_ALLOWED, "Not a distributed transacted session", e);
+        } catch (AndesException e) {
+            throw body.getChannelException(AMQConstant.INTERNAL_ERROR, "Internal error occurred while setting " +
+                    "dtx.timeout", e);
         }
     }
 }

@@ -244,7 +244,7 @@ public class QpidAndesBridge {
             throw new AndesException("Queue cannot be null, for " + incomingMessage.getMessageNumber());
         }
 
-        AndesMessage andesMessage = new AMQPMessage(metadata);
+        AndesMessage andesMessage = new AndesMessage(metadata);
 
         // Update Andes message with all the chunk details
         int contentChunks = incomingMessage.getBodyCount();
