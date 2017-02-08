@@ -87,22 +87,6 @@ public class AMQPUtils {
 
 
     /**
-     * convert Andes metadata list to qpid AMQMessages
-     *
-     * @param metadataList andes metadata list
-     * @return AMQ message list
-     */
-    public static List<AMQMessage> getEntryAMQMessageListFromAndesMetaDataList(List<AndesMessageMetadata> metadataList) {
-        List<AMQMessage> messages = new ArrayList<AMQMessage>();
-
-        for (AndesMessageMetadata metadata : metadataList) {
-            AMQMessage amqMessage = getAMQMessageFromAndesMetaData(metadata);
-            messages.add(amqMessage);
-        }
-        return messages;
-    }
-
-    /**
      * convert andes metadata to qpid AMQMessage
      *
      * @param metadata andes metadata
