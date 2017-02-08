@@ -17,6 +17,8 @@ package org.wso2.andes.kernel.dtx;
 
 import org.apache.commons.lang.StringUtils;
 import org.wso2.andes.amqp.QpidAndesBridge;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesChannel;
@@ -36,6 +38,11 @@ import javax.transaction.xa.Xid;
  * Acts as a distributed transaction related interface for the transport layer.
  */
 public class DistributedTransaction {
+
+    /**
+     * Max amount of memory allowed to be used for keeping message content per transaction
+     */
+    private final long maxTotalMessageSizeAllowed;
 
     /**
      * Reference to the {@link DtxRegistry} which stores details related to all the active distributed transactions in
@@ -68,10 +75,18 @@ public class DistributedTransaction {
      */
     private ArrayList<String> failedReasons = new ArrayList<>();
 
+    /**
+     * Total memory consumed by content of the published messages belonging to this transaction
+     */
+    private long totalMessageSize = 0;
+
     public DistributedTransaction(DtxRegistry dtxRegistry, InboundEventManager eventManager, AndesChannel channel) {
         this.dtxRegistry = dtxRegistry;
         this.eventManager = eventManager;
         this.channel = channel;
+        //noinspection ConstantConditions
+        maxTotalMessageSizeAllowed =
+                (Integer) AndesConfigurationManager.readValue(AndesConfiguration.MAX_TRANSACTION_BATCH_SIZE) * 1024;
     }
 
     /**
@@ -173,7 +188,7 @@ public class DistributedTransaction {
      * is done
      *
      * @param ackList {@link List} of {@link AndesAckData}
-     * @throws AndesException
+     * @throws AndesException if internal error while calling ack received
      */
     public void dequeue(List<AndesAckData> ackList) throws AndesException {
         if (isInsideStartEnd()) {
@@ -202,6 +217,7 @@ public class DistributedTransaction {
                                                                                           IncorrectDtxStateException,
                                                                                           AndesException,
                                                                                           RollbackOnlyDtxException, TimeoutDtxException {
+        totalMessageSize = 0;
         dtxRegistry.commit(xid, onePhase, callback, channel);
     }
 
@@ -214,7 +230,18 @@ public class DistributedTransaction {
      */
     public void enqueueMessage(AndesMessage andesMessage, AndesChannel andesChannel) {
         if (isInsideStartEnd()) {
-            branch.enqueueMessage(andesMessage);
+            totalMessageSize = totalMessageSize + andesMessage.getMetadata().getMessageContentLength();
+
+            if (totalMessageSize < maxTotalMessageSizeAllowed) {
+                branch.enqueueMessage(andesMessage);
+            } else {
+                if (!transactionFailed) {
+                    branch.clearEnqueueList();
+                    long totalMessageSizeInKB = totalMessageSize / 1024L;
+                    failTransaction("Current total message size " + totalMessageSizeInKB + " KB exceeds max total "
+                                            + "message size allowed per transaction");
+                }
+            }
         } else {
             QpidAndesBridge.messageReceived(andesMessage, andesChannel);
         }
@@ -261,6 +288,7 @@ public class DistributedTransaction {
      */
     public void rollback(Xid xid)
             throws UnknownDtxBranchException, AndesException, TimeoutDtxException, IncorrectDtxStateException {
+        totalMessageSize = 0;
         transactionFailed = false;
         failedReasons.clear();
         dtxRegistry.rollback(xid);

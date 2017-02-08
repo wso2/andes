@@ -114,7 +114,7 @@ public class Andes {
      * Maximum batch size for a transaction. Limit is set for content size of the batch.
      * Exceeding this limit will lead to a failure in the subsequent commit request.
      */
-    private final int MAX_TX_BATCH_SIZE;
+    private final int maxTxBatchSize;
 
     /**
      * Transaction events such as commit, rollback and close are blocking calls waiting on
@@ -143,8 +143,8 @@ public class Andes {
     private Andes() {
         PURGE_TIMEOUT_SECONDS = AndesConfigurationManager.readValue(PERFORMANCE_TUNING_PURGED_COUNT_TIMEOUT);
         this.flowControlManager = new FlowControlManager();
-        MAX_TX_BATCH_SIZE = AndesConfigurationManager.
-                readValue(AndesConfiguration.MAX_TRANSACTION_BATCH_SIZE);
+        maxTxBatchSize = (Integer) AndesConfigurationManager.
+                readValue(AndesConfiguration.MAX_TRANSACTION_BATCH_SIZE) * 1024;
         TX_EVENT_TIMEOUT = AndesConfigurationManager.readValue(AndesConfiguration.MAX_TRANSACTION_WAIT_TIMEOUT);
     }
 
@@ -770,8 +770,8 @@ public class Andes {
      * @throws AndesException
      */
     public InboundTransactionEvent newTransaction(AndesChannel channel) throws AndesException {
-        return new InboundTransactionEvent(messagingEngine, inboundEventManager, MAX_TX_BATCH_SIZE, TX_EVENT_TIMEOUT,
-                channel);
+        return new InboundTransactionEvent(messagingEngine, inboundEventManager, maxTxBatchSize, TX_EVENT_TIMEOUT,
+                                           channel);
     }
 
     /**

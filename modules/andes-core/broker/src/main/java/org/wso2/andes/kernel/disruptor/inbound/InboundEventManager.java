@@ -48,7 +48,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.wso2.andes.configuration.enums.AndesConfiguration.MAX_TRANSACTION_BATCH_SIZE;
 import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_ACKNOWLEDGEMENT_HANDLER_BATCH_SIZE;
 import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLER_COUNT;
 import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_CONTENT_CHUNK_HANDLER_COUNT;
@@ -97,8 +96,6 @@ public class InboundEventManager {
                 PERFORMANCE_TUNING_ACKNOWLEDGEMENT_HANDLER_BATCH_SIZE);
         Integer transactionHandlerCount = AndesConfigurationManager.readValue(
                 PERFORMANCE_TUNING_PARALLEL_TRANSACTION_MESSAGE_WRITERS);
-        Integer transactionBatchSize = AndesConfigurationManager.readValue(
-                MAX_TRANSACTION_BATCH_SIZE);
 
         Integer dtxDbWriterCount = 1; // need to merge local and distributed transaction writing logic to the same
 
@@ -144,9 +141,9 @@ public class InboundEventManager {
         for (int turn = 0; turn < transactionHandlerCount; turn++) {
             batchEventHandlers[writeHandlerCount + turn] =
                     new ConcurrentBatchEventHandler(turn, transactionHandlerCount,
-                            transactionBatchSize,
+                            writerBatchSize,
                             TRANSACTION_COMMIT_EVENT,
-                            new MessageWriter(messagingEngine, transactionBatchSize));
+                            new MessageWriter(messagingEngine, writerBatchSize));
         }
 
         for (int turn = 0; turn < ackHandlerCount; turn++) {
