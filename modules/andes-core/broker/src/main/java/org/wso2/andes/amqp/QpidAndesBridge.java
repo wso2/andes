@@ -38,7 +38,7 @@ import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.DisablePubAckImpl;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolType;
-import org.wso2.andes.kernel.QueueBrowserDeliveryWorker;
+import org.wso2.andes.kernel.QueueBrowserMessageFlusher;
 import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.disruptor.inbound.InboundBindingEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundExchangeEvent;
@@ -385,9 +385,8 @@ public class QpidAndesBridge {
             }
 
             if (subscription instanceof SubscriptionImpl.BrowserSubscription) {
-                QueueBrowserDeliveryWorker deliveryWorker = new QueueBrowserDeliveryWorker(subscription, queue,
-                        ((SubscriptionImpl.BrowserSubscription) subscription).getProtocolSession());
-                deliveryWorker.send();
+                QueueBrowserMessageFlusher deliveryWorker = new QueueBrowserMessageFlusher(subscription, queue);
+                deliveryWorker.readAndSendFromMessageStore();
             } else {
                 if (log.isDebugEnabled()) {
                     log.debug("Adding Subscription " + subscription.getSubscriptionID() + " to queue " + queue.getName());
