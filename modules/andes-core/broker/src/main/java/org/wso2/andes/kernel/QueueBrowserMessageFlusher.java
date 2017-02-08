@@ -81,8 +81,10 @@ public class QueueBrowserMessageFlusher {
     public void readAndSendFromMessageStore() throws AndesException {
         long startMessageIdOfBatch = 0;
         long lastMessageIdOfBatch = 0;
-        int messageCountToRead = 10000000;
+        int messageCountToRead = 1000;
         int errorCount = 0;
+        //max number of send failures tolerated before stop flushing to subscriber
+        int maxErrorCount = 20;
         long messageCount = 0;
         List<QueueEntry> messages;
 
@@ -103,13 +105,13 @@ public class QueueBrowserMessageFlusher {
                                 + " to browser subscription id= "
                                 + subscription.getSubscriptionID());
                         errorCount = errorCount + 1;
-                        if (errorCount > 20) {
+                        if (errorCount > maxErrorCount) {
                             break;  //no point of trying to send. Something is wrong
                         }
                     }
                 }
 
-                if (errorCount > 20) {
+                if (errorCount > maxErrorCount) {
                     log.error("Stopping delivery to browser subscription id = " + subscription.getSubscriptionID());
                     break;  //no point of trying to send. Something is wrong
                 }
