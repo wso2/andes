@@ -235,6 +235,11 @@ public class MQTTLocalSubscription implements OutboundSubscription {
         return 0;
     }
 
+    @Override
+    public String getProtocolQueueName() {
+        return wildcardDestination;
+    }
+
     //TODO: decide how to call this
     public void ackReceived(long messageID) {
         // Remove if received acknowledgment message id contains in retained message list.

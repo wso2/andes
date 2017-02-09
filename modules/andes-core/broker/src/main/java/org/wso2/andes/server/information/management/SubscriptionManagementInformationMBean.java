@@ -336,7 +336,8 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
         subscriptionForUI.append(SEPARATOR);
         subscriptionForUI.append(subscription.getStorageQueue().getMessageRouter().getName());
         subscriptionForUI.append(SEPARATOR);
-        subscriptionForUI.append(subscription.getStorageQueue().getName());
+        subscriptionForUI.append(subscription.isDurable() ? subscription.getStorageQueue().getName()
+                : subscription.getProtocolQueue());
         subscriptionForUI.append(SEPARATOR);
         subscriptionForUI.append(subscription.isDurable());
         subscriptionForUI.append(SEPARATOR);
