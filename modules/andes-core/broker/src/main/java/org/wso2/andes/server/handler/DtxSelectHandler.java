@@ -16,6 +16,8 @@ package org.wso2.andes.server.handler;
 
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.DtxSelectBody;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.state.AMQStateManager;
@@ -41,6 +43,11 @@ public class DtxSelectHandler implements StateAwareMethodListener<DtxSelectBody>
             throw body.getChannelNotFoundException(channelId);
         }
 
-        channel.setDtxTransactional();
+        try {
+            channel.setDtxTransactional();
+        } catch (AndesException e) {
+            throw body.getChannelException(AMQConstant.INTERNAL_ERROR, "Maximum number of parallel transactions limit"
+                                                   + " reached", e);
+        }
     }
 }

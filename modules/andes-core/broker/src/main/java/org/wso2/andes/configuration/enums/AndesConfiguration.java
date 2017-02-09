@@ -607,6 +607,11 @@ public enum AndesConfiguration implements ConfigurationProperty {
     MAX_TRANSACTION_BATCH_SIZE ("transaction/maxBatchSizeInKB", "1024", Integer.class),
 
     /**
+     * Maximum number of parallel dtx enabled channel count. Transaction requests exceeding this limit will fail.
+     */
+    MAX_PARALLEL_DISTRIBUTED_TRANSACTION_COUNT("transaction/maxParallelDtxChannels", "100", Integer.class),
+
+    /**
      * Maximum wait time (in seconds) for a transactional publisher commit, rollback or close event to complete on
      * server side.
      */
