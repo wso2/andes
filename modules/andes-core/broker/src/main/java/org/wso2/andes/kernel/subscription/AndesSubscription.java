@@ -180,6 +180,15 @@ public class AndesSubscription {
     }
 
     /**
+     * Get protocol queue name
+     *
+     * @return queue name
+     */
+    public String getProtocolQueue() {
+        return subscriberConnection.getProtocolQueueName();
+    }
+
+    /**
      * Get protocol of the subscriber
      *
      * @return protocol of the connection

@@ -78,4 +78,10 @@ public interface OutboundSubscription {
      */
     long getSubscribeTime();
 
+    /**
+     * Get name of the protocol queue
+     *
+     * @return name of the queue set by protocol
+     */
+    String getProtocolQueueName();
 }
