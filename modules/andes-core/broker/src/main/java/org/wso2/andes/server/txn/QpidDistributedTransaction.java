@@ -61,8 +61,14 @@ public class QpidDistributedTransaction implements ServerTransaction {
      */
     private final DistributedTransaction distributedTransaction;
 
-    public QpidDistributedTransaction(AndesChannel channel) {
-        distributedTransaction = Andes.getInstance().createDistributedTransaction(channel);
+    /**
+     * Used communicate transaction creation and release
+     */
+    private final Andes andes;
+
+    public QpidDistributedTransaction(AndesChannel channel, long sessionID) throws AndesException {
+        andes = Andes.getInstance();
+        distributedTransaction = andes.createDistributedTransaction(channel, sessionID);
     }
 
         /**
@@ -209,8 +215,17 @@ public class QpidDistributedTransaction implements ServerTransaction {
         }
     }
 
+    /**
+     * Release resources allocated for distributed transaction in the core
+     *
+     * @param sessionId corresponding session ID
+     */
     public void close(long sessionId) {
-        distributedTransaction.close(sessionId);
+        try {
+            distributedTransaction.close(sessionId);
+        } finally {
+            andes.releaseDistributedTransaction(sessionId);
+        }
     }
 
     /**
