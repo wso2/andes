@@ -137,6 +137,11 @@ public class AMQPLocalSubscription implements OutboundSubscription {
         return subscribeTime;
     }
 
+    @Override
+    public String getProtocolQueueName() {
+        return amqpSubscription.getQueue().getName();
+    }
+
     /**
      * {@inheritDoc}
      */

@@ -69,4 +69,10 @@ public class NullSubscription implements OutboundSubscription {
         return 0;
     }
 
+    @Override
+    public String getProtocolQueueName() {
+        log.warn("NullSubscription  getProtocolQueueName() method invoked");
+        return null;
+    }
+
 }

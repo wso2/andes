@@ -144,6 +144,15 @@ public class SubscriberConnection {
     }
 
     /**
+     * Get name of the protocol queue
+     *
+     * @return name of the queue set by protocol
+     */
+    public String getProtocolQueueName() {
+        return outboundSubscription.getProtocolQueueName();
+    }
+
+    /**
      * Forcefully disconnects protocol subscriber connection from server. This is initiated by a server admin using the
      * management console.
      *
