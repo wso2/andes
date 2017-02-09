@@ -91,7 +91,6 @@ public class Publisher
         }
         catch (Exception e)
         {
-            e.printStackTrace();
             _log.error("Exception", e);
         }
     }
@@ -140,7 +139,6 @@ public class Publisher
             {
                 _session.rollback();
                 _log.error("JMSException", e);
-                e.printStackTrace();
                 return false;
             }
             catch (JMSException j)

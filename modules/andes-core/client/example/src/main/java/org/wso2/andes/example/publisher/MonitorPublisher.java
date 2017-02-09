@@ -66,7 +66,6 @@ public class MonitorPublisher extends Publisher
         {
             //Have to assume our commit failed but do not rollback here as channel closed
             _log.error("JMSException", e);
-            e.printStackTrace();
             throw new UndeliveredMessageException("Cannot deliver immediate message", e);
         }
 
@@ -95,7 +94,6 @@ public class MonitorPublisher extends Publisher
         {
             //Have to assume our commit failed but do not rollback here as channel closed
             _log.error("JMSException", e);
-            e.printStackTrace();
             throw new UndeliveredMessageException("Cannot deliver immediate message", e);
         }
 
