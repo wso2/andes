@@ -315,8 +315,8 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     /**
      * Sets this channels to be part of a distributed transaction
      */
-    public void setDtxTransactional() {
-        _transaction = new QpidDistributedTransaction(andesChannel);
+    public void setDtxTransactional() throws AndesException {
+        _transaction = new QpidDistributedTransaction(andesChannel, _session.getSessionID());
     }
 
     public boolean isTransactional()

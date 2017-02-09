@@ -129,6 +129,16 @@ public class Andes {
     private DtxRegistry dtxRegistry;
 
     /**
+     * Keep the list of dtx enabled channels
+     */
+    private List<Long> dtxChannelList;
+
+    /**
+     * Maximum number of parallel dtx enabled channel count
+     */
+    private final int maxParallelDtxConnections;
+
+    /**
      * Instance of AndesAPI returned.
      *
      * @return AndesAPI
@@ -146,6 +156,9 @@ public class Andes {
         maxTxBatchSize = (Integer) AndesConfigurationManager.
                 readValue(AndesConfiguration.MAX_TRANSACTION_BATCH_SIZE) * 1024;
         TX_EVENT_TIMEOUT = AndesConfigurationManager.readValue(AndesConfiguration.MAX_TRANSACTION_WAIT_TIMEOUT);
+        maxParallelDtxConnections = AndesConfigurationManager.readValue(AndesConfiguration.MAX_PARALLEL_DISTRIBUTED_TRANSACTION_COUNT);
+
+        dtxChannelList = new ArrayList<Long>();
     }
 
 
@@ -804,8 +817,35 @@ public class Andes {
         inboundEventManager.publishRecoveryEvent();
     }
 
-    public DistributedTransaction createDistributedTransaction(AndesChannel channel) {
-        return new DistributedTransaction(dtxRegistry, inboundEventManager, channel);
+    /**
+     * Allocate a distributed transaction object for dtx calls
+     *
+     * @param channel   channel object of the session
+     * @param sessionID session id
+     * @return created DistributeTransaction object
+     * @throws AndesException if maximum number of parallel transactions limit reached
+     */
+    public synchronized DistributedTransaction createDistributedTransaction(AndesChannel channel, long sessionID)
+            throws AndesException {
+        if (dtxChannelList.size() <= maxParallelDtxConnections) {
+            DistributedTransaction distributedTransaction = new DistributedTransaction(dtxRegistry,
+                                                                                       inboundEventManager,
+                                                                                       channel);
+            dtxChannelList.add(sessionID);
+            return distributedTransaction;
+        } else {
+            throw new AndesException("Maximum number of parallel transactions limit " + maxParallelDtxConnections
+                                             + " reached. ");
+        }
+    }
+
+    /**
+     * Consider the given distributed transaction as stale
+     *
+     * @param sessionId session id of the transaction channel
+     */
+    public synchronized void releaseDistributedTransaction(long sessionId) {
+        dtxChannelList.remove(sessionId);
     }
 
     /**
