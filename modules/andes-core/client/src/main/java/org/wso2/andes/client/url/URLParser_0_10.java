@@ -21,6 +21,8 @@ import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.wso2.andes.client.AMQBrokerDetails;
 import org.wso2.andes.jms.BrokerDetails;
 
@@ -93,6 +95,7 @@ public class URLParser_0_10
     private String _currentPropName;
     private boolean _endOfURL = false;
     private URLParserState _currentParserState;
+    private static final Logger log = LoggerFactory.getLogger(URLParser_0_10.class);
 
     public URLParser_0_10(String url) throws MalformedURLException
     {
@@ -417,7 +420,7 @@ public class URLParser_0_10
         }
         catch (Exception e)
         {
-            e.printStackTrace();
+            log.error("Error while parsing url", e);
         }
     }
 }

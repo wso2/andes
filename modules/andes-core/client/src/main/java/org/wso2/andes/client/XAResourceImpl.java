@@ -478,7 +478,7 @@ public class XAResourceImpl implements XAResource
                 }
                 catch (XAException e)
                 {
-                    e.printStackTrace();
+                    _logger.error("XA Error ",e);
                     throw e;
                 }
             case ILLEGAL_STATE:
