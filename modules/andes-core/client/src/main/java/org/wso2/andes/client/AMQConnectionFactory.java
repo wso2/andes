@@ -20,6 +20,8 @@
  */
 package org.wso2.andes.client;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.wso2.andes.configuration.ClientProperties;
 import org.wso2.andes.jms.Connection;
 import org.wso2.andes.jms.ConnectionURL;
@@ -52,6 +54,8 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
 
     private ThreadLocal<Boolean> removeVersion91 = new ThreadLocal<Boolean>();
     private ThreadLocal<Boolean> removeBURL = new ThreadLocal<Boolean>();
+
+    private static final Logger log = LoggerFactory.getLogger(AMQConnectionFactory.class);
 
     public AMQConnectionFactory()
     {
@@ -361,7 +365,7 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
             JMSException jmse = new JMSException("Error creating connection: " + e.getMessage());
             jmse.setLinkedException(e);
             jmse.initCause(e);
-            e.printStackTrace();
+            log.error("Error while creating connection", e);
             throw jmse;
         }
 
