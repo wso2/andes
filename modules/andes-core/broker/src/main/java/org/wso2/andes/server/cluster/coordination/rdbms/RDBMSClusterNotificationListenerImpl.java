@@ -111,6 +111,9 @@ public class RDBMSClusterNotificationListenerImpl implements ClusterNotification
         //We need to skip processing a cluster notification which was sent by this node since it has
         // already been processed.
         if (!nodeID.equals(notification.getOriginatedNode())) {
+            if(log.isDebugEnabled()) {
+                log.debug("Received cluster notification " + notification.getEncodedObjectAsString());
+            }
             ClusterNotificationListener.NotifiedArtifact notifiedArtifact =
                     ClusterNotificationListener.NotifiedArtifact.valueOf(notification.getNotifiedArtifact());
             ClusterNotificationListener handlerToDispatch = clusterNotificationListeners.get
