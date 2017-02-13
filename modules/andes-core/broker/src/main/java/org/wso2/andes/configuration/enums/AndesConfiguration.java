@@ -601,15 +601,15 @@ public enum AndesConfiguration implements ConfigurationProperty {
             ("performanceTuning/messageExpiration/safetySlotCount", "3", Integer.class),
     /**
      * Maximum batch size (Messages) in kilobytes for a transaction. Exceeding this limit will result in a failure in
-     * the subsequent commit (or prepare) request. Default is set to 1MB. Limit is calculated considering the payload
+     * the subsequent commit (or prepare) request. Default is set to 10MB. Limit is calculated considering the payload
      * of messages.
      */
-    MAX_TRANSACTION_BATCH_SIZE ("transaction/maxBatchSizeInKB", "1024", Integer.class),
+    MAX_TRANSACTION_BATCH_SIZE ("transaction/maxBatchSizeInKB", "10240", Integer.class),
 
     /**
      * Maximum number of parallel dtx enabled channel count. Transaction requests exceeding this limit will fail.
      */
-    MAX_PARALLEL_DISTRIBUTED_TRANSACTION_COUNT("transaction/maxParallelDtxChannels", "100", Integer.class),
+    MAX_PARALLEL_DISTRIBUTED_TRANSACTION_COUNT("transaction/maxParallelDtxChannels", "10", Integer.class),
 
     /**
      * Maximum wait time (in seconds) for a transactional publisher commit, rollback or close event to complete on
