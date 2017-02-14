@@ -212,6 +212,24 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
 
         coordinatorElectionTask = new CoordinatorElectionTask();
         threadExecutor.execute(coordinatorElectionTask);
+
+        // Wait until node state become Candidate/Coordinator because thrift server needs to start after that.
+        int timeout = 500;
+        int waitTime = 0;
+        int maxWaitTime = heartbeatMaxAge * 5;
+        while (currentNodeState == NodeState.ELECTION) {
+            try {
+                TimeUnit.MILLISECONDS.sleep(timeout);
+                waitTime = waitTime + timeout;
+                if (waitTime == maxWaitTime) {
+                    throw new RuntimeException("Node is stuck in the ELECTION state for "
+                            + waitTime + " milliseconds.");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("An error occurred while waiting to get current node state.", e);
+            }
+        }
     }
 
     /**
