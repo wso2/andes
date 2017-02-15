@@ -124,6 +124,7 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
 
                     //if no subscriber has a matching selector, route message to DLC queue
                     if (!subscriberWithMatchingSelectorFound) {
+                        message.addMessageStatus(MessageStatus.NO_MATCHING_CONSUMER);
                         Andes.getInstance().moveMessageToDeadLetterChannel(message, message.getDestination());
                         iterator.remove();
                     } else {
