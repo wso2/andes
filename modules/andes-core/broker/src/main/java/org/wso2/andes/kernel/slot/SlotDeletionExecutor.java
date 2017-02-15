@@ -22,15 +22,12 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
-import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.server.cluster.error.detection.NetworkPartitionListener;
-
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
 
 /**
  * This class is responsible for deleting slots and scheduling slot deletions.
@@ -38,15 +35,6 @@ import java.util.concurrent.TimeUnit;
 public class SlotDeletionExecutor implements NetworkPartitionListener {
 
     private static Log log = LogFactory.getLog(SlotDeletionExecutor.class);
-
-
-    private LinkedBlockingQueue<Slot> slotsToDelete = new LinkedBlockingQueue<>();
-
-    /**
-     * Slot deletion thread factory in one MB node
-     */
-    private static ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat
-            ("SlotDeletionExecutor-%d").build();
 
     /**
      * Slot deletion executor service
@@ -59,9 +47,19 @@ public class SlotDeletionExecutor implements NetworkPartitionListener {
     private static SlotDeletionExecutor instance;
 
     /**
-     * Reference of the deletion task.
+     * Number of threads executing slot deleting task in parallel
      */
-    private SlotDeletionTask slotDeletionTask;
+    private int parallelTaskCount;
+
+    /**
+     * Total number of slots submitted to delete
+     */
+    private int numOfScheduledSlots;
+
+    /**
+     * List of SlotDeletingTask executing slot delete in parallel
+     */
+    private List<SlotDeletingTask> slotDeletingTasks;
 
     /**
      * SlotDeletionExecutor constructor
@@ -73,89 +71,26 @@ public class SlotDeletionExecutor implements NetworkPartitionListener {
     /**
      * Create slot deletion scheduler
      */
-    public void init() {
+    public void init(int parallelTaskCount, int maxNumberOfPendingSlots) {
 
-        if (AndesContext.getInstance().isClusteringEnabled()) { // network partition detection works only when
-            // clustered.
+        this.numOfScheduledSlots = 0;
+        this.parallelTaskCount = parallelTaskCount;
+        this.slotDeletingTasks = new ArrayList<>(parallelTaskCount);
+
+        // network partition detection works only when clustered.
+        if (AndesContext.getInstance().isClusteringEnabled()) {
             AndesContext.getInstance().getClusterAgent().addNetworkPartitionListener(40, this);
         }
 
-        this.slotDeletionExecutorService = Executors.newSingleThreadExecutor(namedThreadFactory);
-        slotDeletionTask = new SlotDeletionTask();
-        this.slotDeletionExecutorService.submit(slotDeletionTask);
-    }
+        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat
+                ("SlotDeletionExecutor-%d").build();
 
-    /**
-     * Slot deletion task running and take slot from queue.
-     */
-    class SlotDeletionTask implements Runnable {
+        this.slotDeletionExecutorService = Executors.newFixedThreadPool(parallelTaskCount, namedThreadFactory);
 
-        /**
-         * Condition running the task.
-         */
-        boolean isLive = true;
-
-        void setLive(boolean live) {
-            isLive = live;
-        }
-
-        /**
-         * Running slot deletion task
-         */
-        public void run() {
-            while (isLive) {
-                try {
-                    // Slot to attempt current deletion
-                    Slot slot = slotsToDelete.poll(1, TimeUnit.SECONDS);
-
-                    // Check current slot to delete is not null
-                    if (slot != null) {
-
-                        // Check DB for any remaining messages. (JIRA FIX: MB-1612)
-                        // If there are any remaining messages wait till overlapped slot delivers the messages
-                        if (MessagingEngine.getInstance().getMessageCountForQueueInRange(
-                                slot.getStorageQueueName(), slot.getStartMessageId(), slot.getEndMessageId()) == 0) {
-                            // Invoke coordinator to delete slot
-                            boolean deleteSuccess = deleteSlotAtCoordinator(slot);
-                            if (!deleteSuccess) {
-                                // Delete attempt not success, therefore adding slot to the queue
-                                slotsToDelete.put(slot);
-                            } else {
-                                StorageQueue storageQueue = slot.getStorageQueue();
-                                storageQueue.deleteSlot(slot);
-                            }
-                        } else {
-                            slotsToDelete.put(slot); // Not deleted. Hence putting back in queue
-                        }
-                    }
-
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    log.error("SlotDeletionTask was interrupted while trying to delete the slot.", e);
-                } catch (Throwable throwable) {
-                    log.error("Unexpected error occurred while trying to delete the slot.", throwable);
-                }
-            }
-            log.info("SlotDeletionExecutor has shutdown with " + slotsToDelete.size() + " slots to delete.");
-        }
-
-        /**
-         * Delete slot at coordinator and return delete status
-         *
-         * @param slot slot to be removed from cluster
-         * @return slot deletion status
-         */
-        private boolean deleteSlotAtCoordinator(Slot slot) {
-            boolean deleteSuccess = false;
-            try {
-                deleteSuccess = MessagingEngine.getInstance().getSlotCoordinator().deleteSlot
-                        (slot.getStorageQueueName(), slot);
-            } catch (ConnectionException e) {
-                log.error("Error while trying to delete the slot " + slot + " Thrift connection failed. " +
-                        "Rescheduling delete.", e);
-
-            }
-            return deleteSuccess;
+        for(int taskCount = 0; taskCount < parallelTaskCount; taskCount++) {
+            SlotDeletingTask slotDeletingTask = new SlotDeletingTask(maxNumberOfPendingSlots);
+            this.slotDeletingTasks.add(slotDeletingTask);
+            this.slotDeletionExecutorService.submit(slotDeletingTask);
         }
     }
 
@@ -165,19 +100,20 @@ public class SlotDeletionExecutor implements NetworkPartitionListener {
      *
      * @param slot slot to be removed from cluster
      */
-    public void executeSlotDeletion(Slot slot) {
-        slotsToDelete.add(slot);
-
+    public void scheduleToDelete(Slot slot) {
+        numOfScheduledSlots = numOfScheduledSlots + 1;
+        int taskIndex = numOfScheduledSlots % parallelTaskCount;
+        slotDeletingTasks.get(taskIndex).scheduleToDelete(slot);
     }
 
     /**
      * Shutdown slot deletion executor service
      */
     public void stopSlotDeletionExecutor() {
-        if (slotDeletionExecutorService != null) {
-            slotDeletionTask.setLive(false);
-            slotDeletionExecutorService.shutdown();
+        for (SlotDeletingTask slotDeletingTask : slotDeletingTasks) {
+            slotDeletingTask.stop();
         }
+        slotDeletionExecutorService.shutdown();
     }
 
     /**

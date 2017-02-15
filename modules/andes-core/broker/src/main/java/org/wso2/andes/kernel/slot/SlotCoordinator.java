@@ -29,7 +29,7 @@ public interface SlotCoordinator {
      * @return New Slot
      * @throws ConnectionException
      */
-    public Slot getSlot(String queueName) throws ConnectionException;
+     Slot getSlot(String queueName) throws ConnectionException;
 
     /**
      * Record Slot's last message ID related to a particular queue
@@ -39,14 +39,14 @@ public interface SlotCoordinator {
      * @param localSafeZone
      * @throws ConnectionException
      */
-    public void updateMessageId(String queueName,long startMessageId, long endMessageId, long localSafeZone) throws ConnectionException;
+     void updateMessageId(String queueName,long startMessageId, long endMessageId, long localSafeZone) throws ConnectionException;
 
     /**
      *  Record safe zone to delete slots by node. This ping comes from nodes as messages are not
      *  published by them so that safe zone value keeps moving ahead.
      * @param currentSlotDeleteSafeZone Safe zone value of the node
      */
-    public void updateSlotDeletionSafeZone(long currentSlotDeleteSafeZone) throws ConnectionException;
+     void updateSlotDeletionSafeZone(long currentSlotDeleteSafeZone) throws ConnectionException;
 
     /**
      * Delete slot records from SlotManagerClusterMode
@@ -55,20 +55,20 @@ public interface SlotCoordinator {
      * @return Whether the slot deletion is successful or not
      * @throws ConnectionException
      */
-    public boolean deleteSlot(String queueName, Slot slot) throws ConnectionException;
+     boolean deleteSlot(String queueName, Slot slot) throws ConnectionException;
 
     /**
      * Re-assign slot to SlotManagerClusterMode when there are no subscribers
      * @param queueName Name of the queue
      * @throws ConnectionException
      */
-    public void reAssignSlotWhenNoSubscribers(String queueName) throws ConnectionException;
+     void reAssignSlotWhenNoSubscribers(String queueName) throws ConnectionException;
 
     /**
      * Delete all slot associations with a given queue. This is required to handle a queue purge event.
      * @param queueName Name of the queue
      */
-    public void clearAllActiveSlotRelationsToQueue(String queueName) throws ConnectionException;
+     void clearAllActiveSlotRelationsToQueue(String queueName) throws ConnectionException;
 
     /**
      * Add listener to coordinator connection listeners so that they can be notified when the conneciton is broken with
