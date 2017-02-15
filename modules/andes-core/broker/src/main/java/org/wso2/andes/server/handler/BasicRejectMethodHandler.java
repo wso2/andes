@@ -127,7 +127,6 @@ public class BasicRejectMethodHandler implements StateAwareMethodListener<BasicR
             }
             else
             {
-                _logger.warn("Dropping message as requeue not required and there is no dead letter queue");
                 try {
                     DeliverableAndesMetadata andesMetadata = AndesUtils.lookupDeliveredMessage(message.getMessage()
                             .getMessageNumber(), channel.getId());
@@ -135,7 +134,8 @@ public class BasicRejectMethodHandler implements StateAwareMethodListener<BasicR
                             .getQueue()
                             .getName());
                 } catch (AndesException e) {
-                    _logger.error("Error while moving message to DLC" , e);
+                    _logger.error("Error while moving message to DLC message Id = "
+                            + message.getMessage().getMessageNumber() , e);
                     throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while moving message to DLC", e);
                 }
             }
