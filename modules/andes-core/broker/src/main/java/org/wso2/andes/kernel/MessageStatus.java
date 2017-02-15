@@ -58,24 +58,29 @@ public enum MessageStatus {
     EXPIRED(6),
 
     /**
+     * Message is discarded as no valid subscriber to send
+     */
+    NO_MATCHING_CONSUMER(7),
+
+    /**
      * Message is moved to the DLC queue
      */
-    DLC_MESSAGE(7),
+    DLC_MESSAGE(8),
 
     /**
      * Message has been cleared from delivery due to a queue purge event.
      */
-    PURGED(8),
+    PURGED(9),
 
     /**
      * Message is deleted from the store
      */
-    DELETED(9),
+    DELETED(10),
 
     /**
      * Slot of the message is returned back to the coordinator, causing message to remove from memory
      */
-    SLOT_RETURNED(10);
+    SLOT_RETURNED(11);
 
 
     private int code;
@@ -144,8 +149,11 @@ public enum MessageStatus {
         READ.next = EnumSet.of(BUFFERED, SLOT_RETURNED);
         READ.previous = EnumSet.complementOf(EnumSet.allOf(MessageStatus.class));
 
-        BUFFERED.next = EnumSet.of(SCHEDULED_TO_SEND, SLOT_RETURNED);
+        BUFFERED.next = EnumSet.of(SCHEDULED_TO_SEND, NO_MATCHING_CONSUMER, SLOT_RETURNED);
         BUFFERED.previous = EnumSet.of(READ);
+
+        NO_MATCHING_CONSUMER.next = EnumSet.of(DLC_MESSAGE);
+        NO_MATCHING_CONSUMER.previous = EnumSet.of(BUFFERED);
 
         SCHEDULED_TO_SEND.next = EnumSet.of(EXPIRED, ACKED_BY_ALL, BUFFERED, DLC_MESSAGE, SLOT_RETURNED);
         SCHEDULED_TO_SEND.previous = EnumSet.of(BUFFERED);
