@@ -33,7 +33,6 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -157,7 +156,7 @@ public class MessageHandler {
 
         //if no messages are in the slot range, delete the slot from coordinator. No use of it
         if (messagesReadFromStore.isEmpty()) {
-            SlotDeletionExecutor.getInstance().executeSlotDeletion(currentSlot);
+            SlotDeletionExecutor.getInstance().scheduleToDelete(currentSlot);
         }
 
         Slot trackedSlot = slotsRead.get(currentSlot.getId());

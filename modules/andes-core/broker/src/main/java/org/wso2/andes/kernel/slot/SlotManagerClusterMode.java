@@ -388,7 +388,7 @@ public class SlotManagerClusterMode extends AbstractSlotManager {
                                 nodeId + " as member left");
                     }
                 } else { // Delete empty slots
-                    SlotDeletionExecutor.getInstance().executeSlotDeletion(slotToBeReAssigned);
+                    SlotDeletionExecutor.getInstance().scheduleToDelete(slotToBeReAssigned);
                 }
             }
             slotAgent.deleteOverlappedSlots(nodeId);

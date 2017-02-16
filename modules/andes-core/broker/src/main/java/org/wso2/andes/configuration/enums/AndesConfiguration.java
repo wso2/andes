@@ -434,7 +434,22 @@ public enum AndesConfiguration implements ConfigurationProperty {
     PERFORMANCE_TUNING_SUBMIT_SLOT_TIMER_PERIOD (
             "performanceTuning/slots/timerPeriod", "3000", Integer.class, PERFORMANCE_TUNING_SUBMIT_SLOT_TIMEOUT),
 
-    
+    /**
+     * Number of parallel threads to execute slot deletion task. Increasing this value will remove slots
+     * whose messages are read, delivered to consumers, acknowledged faster reducing heap memory used by server.
+     */
+    PERFORMANCE_TUNING_SLOT_DELETE_TASK_COUNT (
+            "performanceTuning/slots/deleteTaskCount", "5",  Integer.class),
+
+    /**
+     * Max number of pending message count to delete per Slot Deleting Task. This config is used to raise a WARN
+     * when pending scheduled number of slots exceeds this limit (indicate of an  issue that can lead to
+     * message accumulation on server.
+     */
+    PERFORMANCE_TUNING_MAX_PENDING_SLOTS_TO_DELETE (
+             "performanceTuning/slots/SlotDeleteQueueDepthWarningThreshold", "1000", Integer.class),
+
+
     /**
      * Maximum number of undelivered messages that can be in memory. Increasing this value could cause out of memory
      * scenarios, but performance will be improved

@@ -88,9 +88,10 @@ final class MessageDeliveryTask extends Task {
                 }
             } else {
                 if (log.isDebugEnabled()) {
-                    log.debug("Received slot for storage queue " + storageQueueName + " is: " +
-                                      currentSlot.getStartMessageId() + " - " + currentSlot.getEndMessageId() +
-                                      "Thread Id:" + Thread.currentThread().getId());
+                    log.debug("Received slot for storage queue " + storageQueueName
+                            + " is: " + currentSlot.getStartMessageId() + " - "
+                            + currentSlot.getEndMessageId() + "Thread Id:"
+                            + Thread.currentThread().getId());
                 }
 
                 storageQueue.loadMessagesForDelivery(currentSlot);
