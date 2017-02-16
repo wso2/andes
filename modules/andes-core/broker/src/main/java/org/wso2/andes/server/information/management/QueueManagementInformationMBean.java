@@ -527,7 +527,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                         .getNextNMessageMetadataFromQueue(queueName, nextMsgId, maxMsgCount);
             } else {
                 nextNMessageMetadataFromQueue = Andes.getInstance()
-                        .getNextNMessageMetadataFromDLC(queueName, 0, maxMsgCount);
+                        .getNextNMessageMetadataFromDLC(queueName, nextMsgId, maxMsgCount);
             }
 
             return getDisplayableMetaData(nextNMessageMetadataFromQueue, true);

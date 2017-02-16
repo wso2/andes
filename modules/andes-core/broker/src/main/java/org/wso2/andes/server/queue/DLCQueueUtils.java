@@ -57,8 +57,13 @@ public class DLCQueueUtils {
     public static String identifyTenantInformationAndGenerateDLCString(String queueName) {
         String destinationString;
 
+        //The Queue is in the tenant realm
         if (queueName.contains(AndesConstants.TENANT_SEPARATOR)) {
-            //The Queue is in the tenant realm
+
+            //If the queue is a durable subscription,  we need to remove the prefix 'carbon:' from the DLC queue name
+            if (queueName.contains(AndesConstants.DURABLE_SUBSCRIPTION_QUEUE_PREFIX)) {
+                queueName = queueName.split(":")[1];
+            }
             destinationString = queueName.split(AndesConstants.TENANT_SEPARATOR,
                     2)[0] + AndesConstants.TENANT_SEPARATOR + AndesConstants.DEAD_LETTER_QUEUE_SUFFIX;
         } else {
