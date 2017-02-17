@@ -1784,8 +1784,12 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         try {
             connection = getConnection();
 
-            previousTransactionIsolationValue = connection.getTransactionIsolation();
-            connection.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
+            // Some databases e.g. oracle do not support the transaction isolation level, TRANSACTION_READ_UNCOMMITTED.
+            // This check is needed to prevent error situations in such scenarios.
+            if (connection.getMetaData().supportsTransactionIsolationLevel(Connection.TRANSACTION_READ_UNCOMMITTED)) {
+                previousTransactionIsolationValue = connection.getTransactionIsolation();
+                connection.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
+            }
 
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_QUEUE_MESSAGE_COUNT);
             preparedStatement.setInt(1, getCachedQueueID(storageQueueName));
