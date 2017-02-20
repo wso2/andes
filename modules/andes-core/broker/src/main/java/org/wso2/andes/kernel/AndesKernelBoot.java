@@ -129,15 +129,11 @@ public class AndesKernelBoot {
         registerMBeans();
         startThriftServer();
         Andes.getInstance().startSafeZoneAnalysisWorker();
-        //Start slot deleting thread only if clustering is enabled.
-        //Otherwise slots assignment will not happen
-        if (AndesContext.getInstance().isClusteringEnabled()) {
-            int slotDeletingTaskCount = AndesConfigurationManager.readValue
-                    (AndesConfiguration.PERFORMANCE_TUNING_SLOT_DELETE_TASK_COUNT);
-            int maxNumberOfPendingSlotsToDelete = AndesConfigurationManager.readValue
-                    (AndesConfiguration.PERFORMANCE_TUNING_MAX_PENDING_SLOTS_TO_DELETE);
-            SlotDeletionExecutor.getInstance().init(slotDeletingTaskCount, maxNumberOfPendingSlotsToDelete);
-        }
+        int slotDeletingWorkerCount = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_SLOT_DELETE_WORKER_COUNT);
+        int maxNumberOfPendingSlotsToDelete = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_SLOT_DELETE_QUEUE_DEPTH_WARNING_THRESHOLD);
+        SlotDeletionExecutor.getInstance().init(slotDeletingWorkerCount, maxNumberOfPendingSlotsToDelete);
     }
 
     /**

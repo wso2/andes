@@ -95,7 +95,7 @@ public class SlotMessageCounter implements StoreHealthListener {
     private SlotMessageCounter() {
 
         SLOT_SUBMIT_TIMEOUT = AndesConfigurationManager
-                .readValue(AndesConfiguration.PERFORMANCE_TUNING_SUBMIT_SLOT_TIMER_PERIOD);
+                .readValue(AndesConfiguration.PERFORMANCE_TUNING_MAX_SLOT_SUBMIT_DELAY);
 
         slotWindowSize = AndesConfigurationManager
                 .readValue(AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);

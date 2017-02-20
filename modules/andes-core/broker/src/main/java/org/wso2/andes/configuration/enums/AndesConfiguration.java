@@ -404,7 +404,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
     /**
      * Number of Slot Delivery Worker threads that should be started.
      */
-    PERFORMANCE_TUNING_SLOTS_WORKER_THREAD_COUNT("performanceTuning/slots/workerThreadCount", "5",
+    PERFORMANCE_TUNING_SLOTS_WORKER_THREAD_COUNT("performanceTuning/slots/deliveryThreadCount", "5",
             Integer.class),
 
     /**
@@ -431,22 +431,22 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * to deliver'
      * (- slots which have a aged more than 'messageAccumulationTimeout')
      */
-    PERFORMANCE_TUNING_SUBMIT_SLOT_TIMER_PERIOD (
-            "performanceTuning/slots/timerPeriod", "3000", Integer.class, PERFORMANCE_TUNING_SUBMIT_SLOT_TIMEOUT),
+    PERFORMANCE_TUNING_MAX_SLOT_SUBMIT_DELAY(
+            "performanceTuning/slots/maxSubmitDelay", "3000", Integer.class, PERFORMANCE_TUNING_SUBMIT_SLOT_TIMEOUT),
 
     /**
      * Number of parallel threads to execute slot deletion task. Increasing this value will remove slots
      * whose messages are read, delivered to consumers, acknowledged faster reducing heap memory used by server.
      */
-    PERFORMANCE_TUNING_SLOT_DELETE_TASK_COUNT (
-            "performanceTuning/slots/deleteTaskCount", "5",  Integer.class),
+    PERFORMANCE_TUNING_SLOT_DELETE_WORKER_COUNT(
+            "performanceTuning/slots/deleteThreadCount", "5",  Integer.class),
 
     /**
      * Max number of pending message count to delete per Slot Deleting Task. This config is used to raise a WARN
      * when pending scheduled number of slots exceeds this limit (indicate of an  issue that can lead to
      * message accumulation on server.
      */
-    PERFORMANCE_TUNING_MAX_PENDING_SLOTS_TO_DELETE (
+    PERFORMANCE_TUNING_SLOT_DELETE_QUEUE_DEPTH_WARNING_THRESHOLD(
              "performanceTuning/slots/SlotDeleteQueueDepthWarningThreshold", "1000", Integer.class),
 
 
