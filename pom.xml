@@ -554,7 +554,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <carbon.kernel.version>4.4.13</carbon.kernel.version>
+        <carbon.kernel.version>4.4.14</carbon.kernel.version>
         <project.scm.id>wso2-scm-server</project.scm.id>
         <!--This fixed version value is used to version intermediate ant artifacts which are installed only
         to local maven repo by maven-install-plugin. Those artifacts will be dependencies of the orbit bundle
