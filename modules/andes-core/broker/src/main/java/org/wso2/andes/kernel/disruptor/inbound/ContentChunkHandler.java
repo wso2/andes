@@ -103,8 +103,7 @@ public class ContentChunkHandler implements EventHandler<InboundEventContainer> 
      */
     private void handleTransaction(InboundEventContainer event, long sequence) {
         AndesMessage message = resizeContentChunks(event.popMessage(), sequence);
-        event.addMessage(message);
-        event.getTransactionEvent().setMessagesToStore(event.getMessageList());
+        event.getTransactionEvent().enqueueMessage(message);
     }
 
     /**
