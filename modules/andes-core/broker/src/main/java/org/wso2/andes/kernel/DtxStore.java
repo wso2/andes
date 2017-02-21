@@ -18,6 +18,8 @@
 
 package org.wso2.andes.kernel;
 
+import org.wso2.andes.kernel.dtx.AndesPreparedMessageMetadata;
+import org.wso2.andes.kernel.dtx.DtxBranch;
 import org.wso2.andes.store.HealthAwareStore;
 
 import java.util.List;
@@ -35,8 +37,8 @@ public interface DtxStore extends HealthAwareStore {
      * @param enqueueRecords list of enqueue records
      * @param dequeueRecords list of dequeue records
      */
-    long storeDtxRecords(Xid xid, List<AndesMessage> enqueueRecords, List<AndesAckData> dequeueRecords)
-            throws AndesException;
+    long storeDtxRecords(Xid xid, List<AndesMessage> enqueueRecords,
+                         List<? extends AndesMessageMetadata> dequeueRecords) throws AndesException;
 
     /**
      * Update the store on a dtx.commit request with enqueued and dequeued records relevant to a specific {@link Xid}
@@ -44,18 +46,26 @@ public interface DtxStore extends HealthAwareStore {
      *
      * @param internalXid internalXid of the dtx transaction
      * @param enqueueRecords {@link AndesMessage} list to be stored
-     * @param dequeueRecords {@link DeliverableAndesMetadata} list that got acknowledged within the transaction
      * @throws AndesException Throws exception on database related errors
      */
-    void updateOnCommit(long internalXid, List<AndesMessage> enqueueRecords,
-                        List<DeliverableAndesMetadata> dequeueRecords) throws AndesException;
+    void updateOnCommit(long internalXid, List<AndesMessage> enqueueRecords) throws AndesException;
 
     /**
-     * Remove database records related to a transaction.
+     * Update the data store on rollback. Move acknowledged but not committed messages to message store
      *
-     * @param internalXid internal {@link Xid} related to the distributed transaction
-     * @throws AndesException Throws exception on database related errors
+     * @param internalXid internalXid of the dtx transaction
+     * @param messagesToRestore {@link List} of {@link AndesPreparedMessageMetadata}
+     * @throws AndesException throws {@link AndesException} on storage realted exceptions
      */
-    void removeDtxRecords(long internalXid) throws AndesException;
+    void updateOnRollback(long internalXid, List<AndesPreparedMessageMetadata> messagesToRestore) throws AndesException;
 
+    /**
+     * Retrieve {@link DtxBranch} details from storage.
+     *
+     * @param branch Reference to {@link DtxBranch}
+     * @param nodeId unique node id
+     * @return internal xid
+     * @throws AndesException throws {@link AndesException} on store exceptions
+     */
+    long recoverBranchData(DtxBranch branch, String nodeId) throws AndesException;
 }

@@ -71,11 +71,26 @@ public class ContentChunkHandler implements EventHandler<InboundEventContainer> 
             case TRANSACTION_ENQUEUE_EVENT:
                 handleTransaction(event, sequence);
                 break;
+            case DTX_COMMIT_EVENT:
+                handleDtxEvent(event, sequence);
+                break;
             default:
                 if (log.isDebugEnabled()) {
                     log.debug("Message chunk ignored for event type " + event.getEventType());
                 }
                 break;
+        }
+    }
+
+    /**
+     * Resize content chunks for transactional messages
+     * @param event {@link InboundEventContainer}
+     * @param sequence Disruptor sequence number
+     */
+    private void handleDtxEvent(InboundEventContainer event, long sequence) {
+        ArrayList<AndesMessage> enqueueList = event.getDtxBranch().getEnqueueList();
+        for (AndesMessage andesMessage: enqueueList) {
+            resizeContentChunks(andesMessage, sequence);
         }
     }
 
@@ -89,7 +104,7 @@ public class ContentChunkHandler implements EventHandler<InboundEventContainer> 
     private void handleTransaction(InboundEventContainer event, long sequence) {
         AndesMessage message = resizeContentChunks(event.popMessage(), sequence);
         event.addMessage(message);
-        event.getTransactionEvent().addMessages(event.getMessageList());
+        event.getTransactionEvent().setMessagesToStore(event.getMessageList());
     }
 
     /**

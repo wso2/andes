@@ -20,6 +20,7 @@ import org.wso2.andes.dtx.XidImpl;
 import org.wso2.andes.framing.DtxForgetOkBody;
 import org.wso2.andes.framing.amqp_0_91.DtxForgetBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.MethodRegistry_0_91;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.dtx.UnknownDtxBranchException;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
@@ -67,6 +68,9 @@ public class DtxForgetHandler implements StateAwareMethodListener<DtxForgetBodyI
                     + "given xid ", e);
         } catch (IncorrectDtxStateException e) {
             throw body.getChannelException(AMQConstant.COMMAND_INVALID, e.getMessage(), e);
+        } catch (AndesException e) {
+            throw body.getChannelException(AMQConstant.INTERNAL_ERROR, "Error forgetting dtx. Internal Error occurred "
+                    , e);
         }
     }
 }
