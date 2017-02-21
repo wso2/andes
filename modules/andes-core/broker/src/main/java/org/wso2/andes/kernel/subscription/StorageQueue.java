@@ -414,13 +414,11 @@ public class StorageQueue {
     }
 
     /**
-     * Purge the messages in the queue. This will remove all the messages from read buffer
-     * delete the slots and delete all messages from persistent storage
+     * Purge the messages in the queue. This will remove all the messages from read buffer.
      *
-     * @return how many messages were removed from persistent storage
-     * @throws AndesException
+     * @return the number if messages removed from the read buffer
      */
-    public int purgeMessages() throws AndesException {
+    public int purgeMessages() {
         lastPurgedTimestamp = System.currentTimeMillis();
         log.info("Purging messages of queue " + name);
         return messageHandler.purgeMessagesOfQueue();
