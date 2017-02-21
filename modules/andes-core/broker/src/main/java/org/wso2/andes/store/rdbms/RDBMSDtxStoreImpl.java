@@ -272,6 +272,8 @@ public class RDBMSDtxStoreImpl implements DtxStore {
         } catch (SQLException e) {
             rdbmsMessageStore.rollback(connection, task);
             throw rdbmsStoreUtils.convertSQLException("Error occurred while recovering DtxBranch ", e);
+        } finally {
+            rdbmsMessageStore.close(connection, task);
         }
     }
 
