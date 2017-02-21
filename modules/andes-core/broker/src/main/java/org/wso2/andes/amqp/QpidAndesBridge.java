@@ -181,7 +181,7 @@ public class QpidAndesBridge {
             if(null == transactionEvent) { // not a transaction
                 Andes.getInstance().messageReceived(andesMessage, andesChannel, pubAckHandler);
             } else { // transaction event
-                transactionEvent.enqueue(andesMessage);
+                transactionEvent.preProcessEnqueue(andesMessage);
             }
 
         } catch (AndesException e) {
