@@ -51,20 +51,24 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
 
         try {
             switch (event.getEventType()) {
-                case MESSAGE_EVENT:
-                    updateSlotsAndQueueCounts(event);
-                    // Since this is the final handler to be executed, message list needs to be cleared on message event.
-                    event.clearMessageList(event.getChannel());
-                    break;
-                case ACKNOWLEDGEMENT_EVENT:
-                    updateTrackerWithAck(event);
-                    break;
-                case SAFE_ZONE_DECLARE_EVENT:
-                    updateSlotDeleteSafeZone(event);
-                    break;
-                default:
-                    event.updateState();
-                    break;
+            case MESSAGE_EVENT:
+                updateSlotsAndQueueCounts(event);
+                // Since this is the final handler to be executed, message list needs to be cleared on message event.
+                event.clearMessageList(event.getChannel());
+                break;
+            case TRANSACTION_COMMIT_EVENT:
+                event.updateState();
+                event.clearMessageList(event.getChannel());
+                break;
+            case ACKNOWLEDGEMENT_EVENT:
+                updateTrackerWithAck(event);
+                break;
+            case SAFE_ZONE_DECLARE_EVENT:
+                updateSlotDeleteSafeZone(event);
+                break;
+            default:
+                event.updateState();
+                break;
             }
 
         } finally {

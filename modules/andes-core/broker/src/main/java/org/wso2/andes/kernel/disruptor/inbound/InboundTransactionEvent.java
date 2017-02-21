@@ -123,6 +123,15 @@ public class InboundTransactionEvent implements AndesInboundStateEvent {
     }
 
     /**
+     * Enqueue resized message to transaction
+     *
+     * @param message resized message
+     */
+    public void enqueueMessage(AndesMessage message) {
+        messageQueue.add(message);
+    }
+
+    /**
      * Supported state events
      */
     private enum EventType {
@@ -216,7 +225,7 @@ public class InboundTransactionEvent implements AndesInboundStateEvent {
      * This is a asynchronous call
      * @param message AndesMessage
      */
-    public void enqueue(AndesMessage message) {
+    public void preProcessEnqueue(AndesMessage message) {
         currentBatchSize = currentBatchSize + message.getMetadata().getMessageContentLength();
 
         if (currentBatchSize > maxBatchSize) {
