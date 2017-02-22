@@ -19,7 +19,6 @@
 package org.wso2.andes.kernel.disruptor.inbound;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
@@ -35,6 +34,7 @@ import org.wso2.andes.kernel.disruptor.ConcurrentBatchEventHandler;
 import org.wso2.andes.kernel.disruptor.InboundEventHandler;
 import org.wso2.andes.kernel.disruptor.LogExceptionHandler;
 import org.wso2.andes.kernel.disruptor.compression.LZ4CompressionHelper;
+import org.wso2.andes.kernel.disruptor.waitStrategy.SleepingBlockingWaitStrategy;
 import org.wso2.andes.kernel.dtx.DtxBranch;
 import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.metrics.MetricsConstants;
@@ -112,7 +112,7 @@ public class InboundEventManager {
                 bufferSize,
                 executorPool,
                 ProducerType.MULTI,
-                new BlockingWaitStrategy());
+                new SleepingBlockingWaitStrategy());
 
         disruptor.handleExceptionsWith(new LogExceptionHandler());
 
