@@ -319,11 +319,47 @@ public class MessageHandler {
     }
 
     /**
+     * Removes all the messages from read buffer, deletes the slots and deletes all messages from persistent storage.
+     *
+     * @return the number of messages that were deleted from the store
+     */
+    public int purgeMessagesOfQueue() throws AndesException {
+
+        try {
+            /*
+             * Clear all slots assigned to the Queue. This should ideally stop
+             * any messages being buffered during the purge. This call clears all slot associations
+             * for the queue in all nodes calling to coordinator node via Thrift protocol (could take time).
+             */
+            MessagingEngine.getInstance().getSlotCoordinator().clearAllActiveSlotRelationsToQueue(queueName);
+
+            //clear all in-memory messages
+            purgeInMemoryMessagesOfQueue();
+
+            // Delete messages from store
+            int deletedMessageCount;
+            if (!(DLCQueueUtils.isDeadLetterQueue(queueName))) {
+                // delete all messages for the queue
+                deletedMessageCount = messageStore.deleteAllMessageMetadata(queueName);
+            } else {
+                //delete all the messages in dlc
+                deletedMessageCount = messageStore.clearDLCQueue(queueName);
+            }
+            return deletedMessageCount;
+
+        } catch (AndesException e) {
+            // This will be a store-specific error.
+            throw new AndesException("Error occurred when purging queue from store : " + queueName, e);
+        }
+
+    }
+
+    /**
      * Delete all in memory messages that are ready to be delivered.
      *
-     * @return how many read but undelivered messages were removed from queue
+     * @return the number read but undelivered messages were removed from queue
      */
-    public int purgeMessagesOfQueue() {
+    public int purgeInMemoryMessagesOfQueue() {
 
         //clear all messages read to memory and return the slots
         return clearReadButUndeliveredMessages();
