@@ -38,7 +38,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * changes, etc. sent within the cluster be synchronized using RDBMS. If set to false, Hazelcast will be used for
      * this purpose.
      */
-    CLUSTER_EVENT_SYNC_MODE_RDBMS_ENABLED("coordination/RDBMSBasedClusterEventSynchronization/@enabled", "false",
+    CLUSTER_EVENT_SYNC_MODE_RDBMS_ENABLED("coordination/RDBMSBasedClusterEventSynchronization/@enabled", "true",
             Boolean.class),
 
     /**
@@ -731,7 +731,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * default value: false
      * </p>
      */
-    RDBMS_BASED_COORDINATION("coordination/rdbmsBasedCoordination/@enabled", "false", Boolean.class),
+    RDBMS_BASED_COORDINATION("coordination/rdbmsBasedCoordination/@enabled", "true", Boolean.class),
 
     /**
      * Enable network partition detection ( and surrounding functionality, such
