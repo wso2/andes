@@ -35,6 +35,7 @@ import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.ClusterNotificationAgent;
 import org.wso2.andes.server.cluster.coordination.CoordinationComponentFactory;
+import org.wso2.andes.server.queue.DLCQueueUtils;
 
 import java.util.List;
 
@@ -191,7 +192,7 @@ public class AndesContextInformationManager {
         //get the queue from queue registry
         StorageQueue registeredQueue = AndesContext.getInstance().
                 getStorageQueueRegistry().getStorageQueue(queue.getName());
-        int numOfMessagesPurged = registeredQueue.purgeMessages();
+        int numOfMessagesPurged = deleteMessagesFromStore(registeredQueue);
         //notify other nodes
         clusterNotificationAgent.notifyQueueChange(queue, ClusterNotificationListener.QueueChange.Purged);
         return numOfMessagesPurged;
@@ -295,7 +296,7 @@ public class AndesContextInformationManager {
         }
 
         //purge the queue cluster-wide. Other nodes will only delete messages buffered to memory on those nodes
-        int purgedMessageCount = storageQueue.purgeMessages();
+        int purgedMessageCount = deleteMessagesFromStore(storageQueue);
 
         if (log.isDebugEnabled()) {
             log.debug(purgedMessageCount + " messages purged while deleting queue " + storageQueueName );
@@ -488,6 +489,46 @@ public class AndesContextInformationManager {
             ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterBindingRemoved(removedBinding);
 
             log.info("Binding Sync [delete]: " + binding.toString());
+        }
+    }
+
+    /**
+     * Remove all the messages from read buffer, deletes the slots and deletes all messages from persistent storage.
+     *
+     * @param storageQueue the storage queue for which messages should be purged
+     * @return number of messages that were removed from the persistent store
+     * @throws AndesException if either the connection to the coordinator is broken or if an error occurs when
+     *                        deleting messages from the store
+     */
+    private int deleteMessagesFromStore(StorageQueue storageQueue) throws AndesException {
+
+        String queueName = storageQueue.getName();
+        try {
+            /**
+             * Clear all slots assigned to the Queue. This should ideally stop
+             * any messages being buffered during the purge. This call clears all slot associations
+             * for the queue in all nodes calling to coordinator node via Thrift protocol (could take time).
+             */
+            MessagingEngine.getInstance().getSlotCoordinator().
+                    clearAllActiveSlotRelationsToQueue(queueName);
+
+            // Delete all in-memory messages
+            storageQueue.purgeMessages();
+
+            // Delete messages from store
+            int deletedMessageCount;
+            if (!(DLCQueueUtils.isDeadLetterQueue(queueName))) {
+                // delete all messages for the queue
+                deletedMessageCount = messageStore.deleteAllMessageMetadata(queueName);
+            } else {
+                //delete all the messages in dlc
+                deletedMessageCount = messageStore.clearDLCQueue(queueName);
+            }
+            return deletedMessageCount;
+
+        } catch (AndesException e) {
+            // This will be a store-specific error.
+            throw new AndesException("Error occurred when purging queue from store : " + queueName, e);
         }
     }
 
