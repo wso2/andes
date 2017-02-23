@@ -26,7 +26,6 @@ public class SleepingBlockingWaitStrategy implements WaitStrategy {
                 while(cursorSequence.get() < sequence) {
                     barrier.checkAlert();
                     this.processorNotifyCondition.await();
-                    LockSupport.parkNanos(1L);
                 }
             } finally {
                 this.lock.unlock();

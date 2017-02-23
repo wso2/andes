@@ -19,7 +19,6 @@
 package org.wso2.andes.kernel.disruptor.delivery;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.SequenceBarrier;
 import com.lmax.disruptor.TimeoutException;
@@ -30,6 +29,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.ProtocolMessage;
+import org.wso2.andes.kernel.disruptor.waitStrategy.SleepingBlockingWaitStrategy;
 import org.wso2.andes.kernel.subscription.AndesSubscription;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.tools.utils.MessageTracer;
@@ -84,7 +84,7 @@ public class DisruptorBasedFlusher {
         disruptor = new Disruptor<>(new DeliveryEventData.DeliveryEventDataFactory(), ringBufferSize,
                                                      threadPoolExecutor,
                                                      ProducerType.MULTI,
-                                                     new BlockingWaitStrategy());
+                                                     new SleepingBlockingWaitStrategy());
 
         disruptor.handleExceptionsWith(new DeliveryExceptionHandler());
 
