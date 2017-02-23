@@ -81,11 +81,11 @@ public class RDBMSConstants {
     // Message Store tables
     protected static final String CONTENT_TABLE = "MB_CONTENT";
     protected static final String METADATA_TABLE = "MB_METADATA";
-    protected static final String DTX_ENQUEUE_RECORD_TABLE = "MB_DTX_PREPARED_ENQUEUE_RECORD";
-    protected static final String DTX_DEQUEUE_RECORD_TABLE = "MB_DTX_PREPARED_DEQUEUE_RECORD";
-    protected static final String DTX_ENTRY_TABLE = "MB_DTX_PREPARED_XID";
-    protected static final String DTX_CONTENT_ENQUEUE_TABLE = "MB_DTX_PREPARED_ENQUEUE_CONTENT";
-    protected static final String DTX_CONTENT_DEQUEUE_TABLE = "MB_DTX_PREPARED_DEQUEUE_CONTENT";
+    protected static final String DTX_ENQUEUE_RECORD_TABLE = "MB_DTX_ENQUEUE_RECORD";
+    protected static final String DTX_DEQUEUE_RECORD_TABLE = "MB_DTX_DEQUEUE_RECORD";
+    protected static final String DTX_ENTRY_TABLE = "MB_DTX_XID";
+    protected static final String DTX_CONTENT_ENQUEUE_TABLE = "MB_DTX_ENQUEUE_CONTENT";
+    protected static final String DTX_CONTENT_DEQUEUE_TABLE = "MB_DTX_DEQUEUE_CONTENT";
     protected static final String QUEUES_TABLE = "MB_QUEUE_MAPPING";
     protected static final String EXPIRATION_TABLE = "MB_EXPIRATION_DATA";
     protected static final String MSG_STORE_STATUS_TABLE = "MB_MSG_STORE_STATUS";
