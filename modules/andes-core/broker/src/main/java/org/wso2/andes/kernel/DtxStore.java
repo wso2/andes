@@ -18,11 +18,13 @@
 
 package org.wso2.andes.kernel;
 
+import org.wso2.andes.dtx.XidImpl;
 import org.wso2.andes.kernel.dtx.AndesPreparedMessageMetadata;
 import org.wso2.andes.kernel.dtx.DtxBranch;
 import org.wso2.andes.store.HealthAwareStore;
 
 import java.util.List;
+import java.util.Set;
 import javax.transaction.xa.Xid;
 
 /**
@@ -68,4 +70,13 @@ public interface DtxStore extends HealthAwareStore {
      * @throws AndesException throws {@link AndesException} on store exceptions
      */
     long recoverBranchData(DtxBranch branch, String nodeId) throws AndesException;
+
+    /**
+     * Retrieve already prepared xid set for the given broker node.
+     *
+     * @param nodeId Node id of the broker
+     * @return Set of {@link XidImpl}
+     * @throws AndesException throws {@link AndesException} on store related error
+     */
+    Set<XidImpl> getStoredXidSet(String nodeId) throws AndesException;
 }

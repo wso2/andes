@@ -88,7 +88,6 @@ public class ContentChunkHandlerTest {
 
             part.setData(contentPart.getBytes());
             part.setOffSet(offset);
-            part.setDataLength(originalChunkSize);
             originalChunks.add(part);
             offset = offset + originalChunkSize;
         }

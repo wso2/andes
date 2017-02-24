@@ -173,61 +173,6 @@ public class XidImpl implements Xid, Serializable {
     }
 
     //--- Object operations
-
-    /**
-     * Indicates whether some other Xid is "equal to" this one.
-     * <p> Two Xids are equal if and only if their three elementary parts are equal
-     *
-     * @param o the object to compare this <code>XidImpl</code> against.
-     * @return true if the <code>XidImpl</code> are equal, false otherwise.
-     */
-    public boolean equals(Object o)
-    {
-        if (this == o)
-        {
-            return true;
-        }
-        if (o instanceof XidImpl)
-        {
-            XidImpl other = (XidImpl) o;
-            if (_formatID == other.getFormatId())
-            {
-                if (_branchQualifier.length == other.getBranchQualifier().length)
-                {
-                    for (int i = 0; i < _branchQualifier.length; i++)
-                    {
-                        if (_branchQualifier[i] != other.getBranchQualifier()[i])
-                        {
-                            return false;
-                        }
-                    }
-                    if (_globalTransactionID.length == other.getGlobalTransactionId().length)
-                    {
-                        for (int i = 0; i < _globalTransactionID.length; i++)
-                        {
-                            if (_globalTransactionID[i] != other.getGlobalTransactionId()[i])
-                            {
-                                return false;
-                            }
-                        }
-                        // everithing is equal
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
-    @Override
-    public int hashCode()
-    {
-        int result = _branchQualifier != null ? Arrays.hashCode(_branchQualifier) : 0;
-        result = 31 * result + _formatID;
-        result = 31 * result + (_globalTransactionID != null ? Arrays.hashCode(_globalTransactionID) : 0);
-        return result;
-    }
-
     //-- Static helper method
     /**
      * Convert an Xid into the AMQP String format.
@@ -263,5 +208,40 @@ public class XidImpl implements Xid, Serializable {
 
         return getClass().getSimpleName() + "(" + getFormatId() + "|" + Arrays.toString(getGlobalTransactionId())
                 + "|" + Arrays.toString(getBranchQualifier()) + ")";
+    }
+
+    /**
+     * Indicates whether some other Xid is "equal to" this one.
+     * <p> Two Xids are equal if and only if their three elementary parts are equal
+     *
+     * @param o the object to compare this <code>XidImpl</code> against.
+     * @return true if the <code>XidImpl</code> are equal, false otherwise.
+     */
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        Xid that = (Xid) o;
+
+        return Arrays.equals(this.getBranchQualifier(), that.getBranchQualifier())
+                && Arrays.equals(this.getGlobalTransactionId(), that.getGlobalTransactionId());
+    }
+
+    @Override
+    public int hashCode() {
+        int result = 0;
+        for (int i = 0; i < this.getGlobalTransactionId().length; i++) {
+            result = 31 * result + (int) this.getGlobalTransactionId()[i];
+        }
+        for (int i = 0; i < this.getBranchQualifier().length; i++) {
+            result = 31 * result + (int) this.getBranchQualifier()[i];
+        }
+
+        return result;
     }
 }

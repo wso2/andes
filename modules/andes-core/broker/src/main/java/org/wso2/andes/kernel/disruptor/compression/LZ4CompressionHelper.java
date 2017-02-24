@@ -194,7 +194,6 @@ public class LZ4CompressionHelper {
         AndesMessagePart messagePart = new AndesMessagePart();
         messagePart.setMessageID(messageID);
         // Ultimately we write the full content as a chunk here
-        messagePart.setDataLength(data.length);
         messagePart.setOffSet(0);
         messagePart.setData(data);
 
@@ -230,7 +229,6 @@ public class LZ4CompressionHelper {
 
             AndesMessagePart messagePart = new AndesMessagePart();
             messagePart.setMessageID(messageID);
-            messagePart.setDataLength(copy.length);
             messagePart.setOffSet(srcOffset);
             messagePart.setData(copy);
 
