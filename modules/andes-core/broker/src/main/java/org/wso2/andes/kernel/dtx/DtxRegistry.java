@@ -16,6 +16,7 @@
 package org.wso2.andes.kernel.dtx;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import org.wso2.andes.dtx.XidImpl;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DtxStore;
@@ -32,6 +33,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -47,7 +49,7 @@ public class DtxRegistry {
     /**
      * {@link Xid} to {@link DtxBranch} mapping
      */
-    private final Map<ComparableXid, DtxBranch> branches;
+    private final Map<Xid, DtxBranch> branches;
 
     /**
      * Persistence storage used by the {@link DtxRegistry}
@@ -75,17 +77,24 @@ public class DtxRegistry {
     private InboundEventManager eventManager;
 
     /**
+     * Xids of branches that are not cached in branches map but are stored in database
+     */
+    private Set<XidImpl> storeOnlyXidSet;
+
+    /**
      * Default constructor
      *
      * @param dtxStore        Store used to persist data
      */
-    public DtxRegistry(DtxStore dtxStore, MessagingEngine messagingEngine, InboundEventManager eventManager) {
+    public DtxRegistry(DtxStore dtxStore, MessagingEngine messagingEngine, InboundEventManager eventManager)
+            throws AndesException {
         this.dtxStore = dtxStore;
         branches = new HashMap<>();
         this.messagingEngine = messagingEngine;
         this.eventManager = eventManager;
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("DtxTimeoutExecutor-%d").build();
         nodeId = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
+        storeOnlyXidSet = dtxStore.getStoredXidSet(nodeId);
         timeoutTaskExecutor = Executors.newSingleThreadScheduledExecutor(namedThreadFactory);
     }
 
@@ -96,8 +105,9 @@ public class DtxRegistry {
      * @return DtxBranch
      */
     synchronized DtxBranch getBranch(Xid xid) throws AndesException {
-        DtxBranch dtxBranch = branches.get(new ComparableXid(xid));
-        if (dtxBranch == null) {
+        DtxBranch dtxBranch = branches.get(xid);
+        if (dtxBranch == null && storeOnlyXidSet.contains(new XidImpl(xid))) {
+
             dtxBranch = new DtxBranch(DtxBranch.RECOVERY_SESSION_ID, xid, this, eventManager);
             if (!dtxBranch.recoverFromStore(nodeId)) {
                 dtxBranch = null;
@@ -113,9 +123,8 @@ public class DtxRegistry {
      * @return True if the registration was successful and wise versa
      */
     synchronized boolean registerBranch(DtxBranch branch) {
-        ComparableXid xid = new ComparableXid(branch.getXid());
-        if(!branches.containsKey(xid)) {
-            branches.put(xid, branch);
+        if(!branches.containsKey(branch.getXid())) {
+            branches.put(branch.getXid(), branch);
             return true;
         }
         return false;
@@ -182,7 +191,7 @@ public class DtxRegistry {
      * @return True if successfully removed and false otherwise
      */
     private synchronized boolean unregisterBranch(DtxBranch branch) {
-        return (branches.remove(new ComparableXid(branch.getXid())) != null);
+        return (branches.remove(branch.getXid()) != null);
     }
 
     /**
@@ -222,9 +231,7 @@ public class DtxRegistry {
 
             if (!branch.hasAssociatedActiveSessions()) {
                 branch.clearAssociations();
-                branch.rollback(callback);
-                branch.setState(DtxBranch.State.FORGOTTEN);
-                unregisterBranch(branch);
+                branch.rollback(new RollbackCallback(callback, branch));
             } else {
                 throw new IncorrectDtxStateException("Branch is still associates with a session", xid);
             }
@@ -323,10 +330,10 @@ public class DtxRegistry {
      */
     public void close(long sessionId) {
 
-        for (Iterator<Map.Entry<ComparableXid, DtxBranch>> iterator = branches.entrySet().iterator();
+        for (Iterator<Map.Entry<Xid, DtxBranch>> iterator = branches.entrySet().iterator();
              iterator.hasNext(); ) {
 
-            Map.Entry<ComparableXid, DtxBranch> entry = iterator.next();
+            Map.Entry<Xid, DtxBranch> entry = iterator.next();
             DtxBranch branch = entry.getValue();
 
             if (branch.getCreatedSessionId() == sessionId &&
@@ -396,54 +403,6 @@ public class DtxRegistry {
         return preparedBranches;
     }
 
-    private static final class ComparableXid {
-        private final Xid xid;
-
-        private ComparableXid(Xid xid) {
-            this.xid = xid;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-
-            ComparableXid that = (ComparableXid) o;
-
-            return compareBytes(xid.getBranchQualifier(), that.xid.getBranchQualifier()) && compareBytes(
-                    xid.getGlobalTransactionId(), that.xid.getGlobalTransactionId());
-        }
-
-        private static boolean compareBytes(byte[] a, byte[] b) {
-            if (a.length != b.length) {
-                return false;
-            }
-            for (int i = 0; i < a.length; i++) {
-                if (a[i] != b[i]) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        @Override
-        public int hashCode() {
-            int result = 0;
-            for (int i = 0; i < xid.getGlobalTransactionId().length; i++) {
-                result = 31 * result + (int) xid.getGlobalTransactionId()[i];
-            }
-            for (int i = 0; i < xid.getBranchQualifier().length; i++) {
-                result = 31 * result + (int) xid.getBranchQualifier()[i];
-            }
-
-            return result;
-        }
-    }
-
     /**
      * DisruptorEventCallback implementation for dtx commit event
      */
@@ -468,8 +427,49 @@ public class DtxRegistry {
         public void execute() {
             synchronized (DtxRegistry.this) {
                 unregisterBranch(dtxBranch);
+                storeOnlyXidSet.remove(new XidImpl(dtxBranch.getXid()));
             }
 
+            callback.execute();
+        }
+
+        @Override
+        public void onException(Exception exception) {
+            synchronized (DtxRegistry.this) {
+                dtxBranch.setState(DtxBranch.State.PREPARED);
+            }
+
+            callback.onException(exception);
+        }
+    }
+
+    /**
+     * DisruptorEventCallback implementation for dtx rollback event
+     */
+    private class RollbackCallback implements DisruptorEventCallback {
+
+        /**
+         * callback given by Distributed Transaction object
+         */
+        private final DisruptorEventCallback callback;
+
+        /**
+         * Corresponding DTX branch
+         */
+        private final DtxBranch dtxBranch;
+
+        public RollbackCallback(DisruptorEventCallback callback, DtxBranch dtxBranch) {
+            this.callback = callback;
+            this.dtxBranch = dtxBranch;
+        }
+
+        @Override
+        public void execute() {
+            synchronized (DtxRegistry.this) {
+                dtxBranch.setState(DtxBranch.State.FORGOTTEN);
+                unregisterBranch(dtxBranch);
+                storeOnlyXidSet.remove(new XidImpl(dtxBranch.getXid()));
+            }
             callback.execute();
         }
 

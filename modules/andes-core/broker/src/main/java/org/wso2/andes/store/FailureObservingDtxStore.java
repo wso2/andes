@@ -18,6 +18,7 @@
 
 package org.wso2.andes.store;
 
+import org.wso2.andes.dtx.XidImpl;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
@@ -26,6 +27,7 @@ import org.wso2.andes.kernel.dtx.AndesPreparedMessageMetadata;
 import org.wso2.andes.kernel.dtx.DtxBranch;
 
 import java.util.List;
+import java.util.Set;
 import javax.transaction.xa.Xid;
 
 /**
@@ -86,6 +88,16 @@ public class FailureObservingDtxStore extends FailureObservingStore<DtxStore> im
     public long recoverBranchData(DtxBranch branch, String nodeId) throws AndesException {
         try {
             return wrappedInstance.recoverBranchData(branch, nodeId);
+        } catch (AndesStoreUnavailableException e) {
+            notifyFailures(e);
+            throw new AndesException(e);
+        }
+    }
+
+    @Override
+    public Set<XidImpl> getStoredXidSet(String nodeId) throws AndesException {
+        try {
+            return wrappedInstance.getStoredXidSet(nodeId);
         } catch (AndesStoreUnavailableException e) {
             notifyFailures(e);
             throw new AndesException(e);

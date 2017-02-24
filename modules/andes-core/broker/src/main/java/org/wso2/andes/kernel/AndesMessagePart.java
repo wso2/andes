@@ -22,10 +22,9 @@ package org.wso2.andes.kernel;
  * This class defines the content of an Andes message.
  */
 public class AndesMessagePart {
-    long messageID;
-    int offSet = 0;
+    private long messageID;
+    private int offSet = 0;
     private byte[] data;
-    private int dataLength;
 
     public int getOffset() {
         return offSet;
@@ -52,11 +51,7 @@ public class AndesMessagePart {
     }
 
     public int getDataLength() {
-        return dataLength;
-    }
-
-    public void setDataLength(int dataLength) {
-        this.dataLength = dataLength;
+        return data.length;
     }
 
     /**
@@ -69,7 +64,6 @@ public class AndesMessagePart {
         clone.messageID = messageId;
         clone.offSet = offSet;
         clone.data = data;
-        clone.dataLength = dataLength;
         return clone;
     }
 }

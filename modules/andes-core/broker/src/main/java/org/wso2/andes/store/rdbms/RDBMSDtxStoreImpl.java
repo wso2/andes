@@ -18,6 +18,7 @@
 
 package org.wso2.andes.store.rdbms;
 
+import org.wso2.andes.dtx.XidImpl;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
@@ -34,8 +35,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import javax.transaction.xa.Xid;
 
 /**
@@ -278,6 +281,40 @@ public class RDBMSDtxStoreImpl implements DtxStore {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Set<XidImpl> getStoredXidSet(String nodeId) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        String task = "Retrieving stored xids for node " + nodeId;
+        Set<XidImpl> xidSet = new HashSet<>();
+        ResultSet resultSet = null;
+        try {
+            connection = rdbmsMessageStore.getConnection();
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_PREPARED_XID);
+            resultSet = preparedStatement.executeQuery();
+
+            while (resultSet.next()) {
+
+                        XidImpl xid = new XidImpl(resultSet.getBytes(RDBMSConstants.DTX_BRANCH_ID),
+                                                  resultSet.getInt(RDBMSConstants.DTX_FORMAT),
+                                                  resultSet.getBytes(RDBMSConstants.DTX_GLOBAL_ID)
+                        );
+                        xidSet.add(xid);
+            }
+            return xidSet;
+        } catch (SQLException e) {
+            rdbmsMessageStore.rollback(connection, task);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while recovering DtxBranch ", e);
+        } finally {
+            rdbmsMessageStore.close(resultSet, task);
+            rdbmsMessageStore.close(preparedStatement, task);
+            rdbmsMessageStore.close(connection, task);
+        }
+    }
+
+    /**
      * Retrieve the dequeued messages from the dtx store
      * @param internalXid internal Xid of the transaction
      * @param branch {@link DtxBranch} of the transaction
@@ -353,7 +390,8 @@ public class RDBMSDtxStoreImpl implements DtxStore {
 
                 contentChunk.setMessageID(messageId);
                 contentChunk.setOffSet(contentResultSet.getInt(RDBMSConstants.MSG_OFFSET));
-                contentChunk.setData(contentResultSet.getBytes(RDBMSConstants.MESSAGE_CONTENT));
+                byte[] data = contentResultSet.getBytes(RDBMSConstants.MESSAGE_CONTENT);
+                contentChunk.setData(data);
 
                 message.addMessagePart(contentChunk);
             }
