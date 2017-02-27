@@ -499,7 +499,7 @@ public class DtxBranch implements AndesInboundStateEvent {
                         LOGGER.debug("Timing out DtxBranch " + xid);
                     }
 
-                    setState(State.TIMEDOUT);
+                    setState(State.TIMED_OUT);
                     try {
                         rollback(new DisruptorEventCallback() {
                             @Override
@@ -540,7 +540,51 @@ public class DtxBranch implements AndesInboundStateEvent {
      * States of a {@link DtxBranch}
      */
     public enum State {
-        SUSPENDED, ACTIVE, ROLLBACK_ONLY, PREPARED, FORGOTTEN, TIMED_OUT, HEUR_COM, TIMEDOUT, HEUR_RB
+
+        /**
+         * The branch was suspended in a dtx.end
+         */
+        SUSPENDED,
+
+        /**
+         * Branch is registered in DtxRegistry
+         */
+        ACTIVE,
+
+        /**
+         * Branch can only be rolled back
+         */
+        ROLLBACK_ONLY,
+
+        /**
+         * Branch is in prepared state. Branch can only be committed or rolled back after this
+         */
+        PREPARED,
+
+        /**
+         * Branch was unregistered from DtxRegistry
+         */
+        FORGOTTEN,
+
+        /**
+         * Branch expired
+         */
+        TIMED_OUT,
+
+        /**
+         * Branch heuristically committed
+         */
+        HEUR_COM,
+
+        /**
+         * Branch received a prepare call and in the process of persisting
+         */
+        PRE_PREPARE,
+
+        /**
+         * Branch heuristically rolled back
+         */
+        HEUR_RB
     }
 
     /**
