@@ -154,7 +154,7 @@ public class DtxRegistry {
                         throw new IncorrectDtxStateException("Cannot prepare a transaction in state " + branch.getState(),
                         xid);
                     } else {
-                        branch.setState(DtxBranch.State.PREPARED);
+                        branch.setState(DtxBranch.State.PRE_PREPARE);
                     }
                 } else {
                     throw new IncorrectDtxStateException("Branch still has associated sessions", xid);
@@ -168,6 +168,7 @@ public class DtxRegistry {
         // TODO: add the call to disruptor
         try {
             branch.prepare();
+            branch.setState(DtxBranch.State.PREPARED);
         } catch (AndesException e) {
             branch.setState(DtxBranch.State.ROLLBACK_ONLY);
             throw e;
