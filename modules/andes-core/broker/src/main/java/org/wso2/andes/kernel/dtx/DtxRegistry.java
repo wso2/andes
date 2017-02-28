@@ -133,32 +133,45 @@ public class DtxRegistry {
      * @throws AndesException   Thrown when an internal error occur
      * @throws RollbackOnlyDtxException Thrown when the branch is set to ROLLBACK_ONLY
      */
-    public synchronized void prepare(Xid xid)
+    public void prepare(Xid xid)
             throws UnknownDtxBranchException, IncorrectDtxStateException, TimeoutDtxException, AndesException,
             RollbackOnlyDtxException {
-        DtxBranch branch = getBranch(xid);
+        DtxBranch branch;
 
-        if (branch != null) {
-            if (!branch.hasAssociatedActiveSessions()) {
-                branch.clearAssociations();
+        synchronized (this) {
+            branch = getBranch(xid);
 
-                if (branch.expired()) {
-                    unregisterBranch(branch);
-                    throw new TimeoutDtxException(xid);
-                } else if (branch.getState() == DtxBranch.State.ROLLBACK_ONLY) {
-                    throw new RollbackOnlyDtxException(xid);
-                } else if (branch.getState() != DtxBranch.State.ACTIVE) {
-                    throw new IncorrectDtxStateException("Cannot prepare a transaction in state " + branch.getState(),
-                    xid);
+            if (branch != null) {
+                if (!branch.hasAssociatedActiveSessions()) {
+                    branch.clearAssociations();
+
+                    if (branch.expired()) {
+                        unregisterBranch(branch);
+                        throw new TimeoutDtxException(xid);
+                    } else if (branch.getState() == DtxBranch.State.ROLLBACK_ONLY) {
+                        throw new RollbackOnlyDtxException(xid);
+                    } else if (branch.getState() != DtxBranch.State.ACTIVE) {
+                        throw new IncorrectDtxStateException("Cannot prepare a transaction in state " + branch.getState(),
+                        xid);
+                    } else {
+                        branch.setState(DtxBranch.State.PRE_PREPARE);
+                    }
                 } else {
-                    branch.prepare();
-                    branch.setState(DtxBranch.State.PREPARED);
+                    throw new IncorrectDtxStateException("Branch still has associated sessions", xid);
                 }
             } else {
-                throw new IncorrectDtxStateException("Branch still has associated sessions", xid);
+                throw new UnknownDtxBranchException(xid);
             }
-        } else {
-            throw new UnknownDtxBranchException(xid);
+        }
+
+        // Note: Branch should only be in PREPARED state to call branch.prepare()
+        // TODO: add the call to disruptor
+        try {
+            branch.prepare();
+            branch.setState(DtxBranch.State.PREPARED);
+        } catch (AndesException e) {
+            branch.setState(DtxBranch.State.ROLLBACK_ONLY);
+            throw e;
         }
     }
 
@@ -233,7 +246,7 @@ public class DtxRegistry {
      * @throws RollbackOnlyDtxException Thrown when commit is invoked on a ROLLBACK_ONLY {@link DtxBranch}
      * @throws TimeoutDtxException Thrown when the respective {@link DtxBranch} relating to the {@link Xid} has expired
      */
-    public void commit(Xid xid, boolean onePhase, DisruptorEventCallback callback, AndesChannel channel)
+    public synchronized void commit(Xid xid, boolean onePhase, DisruptorEventCallback callback, AndesChannel channel)
             throws UnknownDtxBranchException, IncorrectDtxStateException, AndesException, TimeoutDtxException,
             RollbackOnlyDtxException {
 
@@ -254,9 +267,11 @@ public class DtxRegistry {
                     throw new IncorrectDtxStateException("Cannot call two-phase commit on a non-prepared branch", xid);
                 }
 
-                dtxBranch.commit(callback, channel);
                 dtxBranch.setState(DtxBranch.State.FORGOTTEN);
-                unregisterBranch(dtxBranch);
+
+                DisruptorEventCallback wrappedCallback = new CommitCallback(callback, dtxBranch);
+                dtxBranch.commit(wrappedCallback, channel);
+
             } else {
                 throw new IncorrectDtxStateException("Branch still has associated sessions", xid);
             }
@@ -428,4 +443,44 @@ public class DtxRegistry {
             return result;
         }
     }
+
+    /**
+     * DisruptorEventCallback implementation for dtx commit event
+     */
+    private class CommitCallback implements DisruptorEventCallback {
+
+        /**
+         * callback given by Distributed Transaction object
+         */
+        private final DisruptorEventCallback callback;
+
+        /**
+         * Corresponding DTX branch
+         */
+        private final DtxBranch dtxBranch;
+
+        private CommitCallback(DisruptorEventCallback callback, DtxBranch dtxBranch) {
+            this.callback = callback;
+            this.dtxBranch = dtxBranch;
+        }
+
+        @Override
+        public void execute() {
+            synchronized (DtxRegistry.this) {
+                unregisterBranch(dtxBranch);
+            }
+
+            callback.execute();
+        }
+
+        @Override
+        public void onException(Exception exception) {
+            synchronized (DtxRegistry.this) {
+                dtxBranch.setState(DtxBranch.State.PREPARED);
+            }
+
+            callback.onException(exception);
+        }
+    }
+
 }
