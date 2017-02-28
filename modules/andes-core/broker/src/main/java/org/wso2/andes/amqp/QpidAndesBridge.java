@@ -298,7 +298,6 @@ public class QpidAndesBridge {
         part.setData(chunkData);
         part.setMessageID(messageID);
         part.setOffSet(offsetInMessage);
-        part.setDataLength(chunkData.length);
 
         return part;
     }

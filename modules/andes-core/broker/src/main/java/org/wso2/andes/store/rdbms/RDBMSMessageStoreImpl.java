@@ -353,7 +353,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         AndesMessagePart messagePart = new AndesMessagePart();
         messagePart.setMessageID(messageId);
         messagePart.setData(b);
-        messagePart.setDataLength(b.length);
         messagePart.setOffSet(offsetValue);
 
         return messagePart;
@@ -2290,7 +2289,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
                 messagePart.setMessageID(messageID);
                 messagePart.setData(b);
-                messagePart.setDataLength(b.length);
                 messagePart.setOffSet(offset);
                 contentParts.put(offset, messagePart);
             }

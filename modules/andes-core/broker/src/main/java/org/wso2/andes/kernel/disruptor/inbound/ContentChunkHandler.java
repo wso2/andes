@@ -181,7 +181,6 @@ public class ContentChunkHandler implements EventHandler<InboundEventContainer> 
 
                 AndesMessagePart newChunk = new AndesMessagePart();
                 newChunk.setMessageID(chunk.getMessageID());
-                newChunk.setDataLength(data.length); // ultimately we write a max chunk here
                 newChunk.setOffSet(written);
                 newChunk.setData(data);
                 chunkList.add(newChunk);
@@ -223,7 +222,6 @@ public class ContentChunkHandler implements EventHandler<InboundEventContainer> 
                     AndesMessagePart newChunk = new AndesMessagePart();
                     newChunk.setMessageID(chunk.getMessageID());
                     newChunk.setOffSet(written);
-                    newChunk.setDataLength(data.length);
                     newChunk.setData(data);
                     chunkList.add(newChunk);
                     written = written + data.length;

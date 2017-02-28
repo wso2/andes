@@ -1089,6 +1089,11 @@ public class RDBMSConstants {
                     + " AND " + DTX_GLOBAL_ID + "=?"
                     + " AND " + NODE_ID + "=?";
 
+
+    static final String PS_SELECT_PREPARED_XID =
+            "SELECT " + DTX_FORMAT + "," + DTX_BRANCH_ID + "," + DTX_GLOBAL_ID
+                    + " FROM " + DTX_ENTRY_TABLE;
+
     public static final String PS_SELECT_DTX_DEQUEUE_METADATA =
             "SELECT " + MESSAGE_ID + "," + QUEUE_NAME + "," + METADATA
                     + " FROM " + DTX_DEQUEUE_RECORD_TABLE
@@ -1261,4 +1266,5 @@ public class RDBMSConstants {
      */
     private RDBMSConstants() {
     }
+
 }
