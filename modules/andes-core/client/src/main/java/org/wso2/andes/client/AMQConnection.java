@@ -389,12 +389,6 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
             _temporaryTopicExchangeName = connectionURL.getTemporaryTopicExchangeName();
         }
 
-        _protocolHandler = new AMQProtocolHandler(this);
-
-        if (_logger.isDebugEnabled()) {
-            _logger.debug("Connecting with ProtocolHandler Version:" + _protocolHandler.getProtocolVersion());
-        }
-
         // We are not currently connected
         _connected = false;
 
@@ -402,6 +396,12 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
         Exception connectionException = null;
         while (!_connected && retryAllowed && brokerDetails != null)
         {
+            _protocolHandler = new AMQProtocolHandler(this);
+
+            if (_logger.isDebugEnabled()) {
+                _logger.debug("Connecting with ProtocolHandler Version:" + _protocolHandler.getProtocolVersion() + " and object hashcode : " + _protocolHandler.hashCode());
+            }
+
             ProtocolVersion pe = null;
             try
             {
