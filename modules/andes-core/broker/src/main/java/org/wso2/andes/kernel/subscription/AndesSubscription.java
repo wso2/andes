@@ -384,6 +384,18 @@ public class AndesSubscription {
     }
 
     /**
+     * Check subscription is belong to local node
+     *
+     * @return true/false based on the connection
+     */
+    public boolean isLocal() {
+        String myNodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
+        String connectedNode = ((null == getSubscriberConnection()) ? "" : getSubscriberConnection()
+                .getConnectedNode());
+        return connectedNode.equals(myNodeID);
+    }
+
+    /**
      * Encode the subscription to a string representation
      *
      * @return String of encoded subscription

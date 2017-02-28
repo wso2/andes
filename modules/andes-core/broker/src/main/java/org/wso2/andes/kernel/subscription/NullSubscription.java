@@ -35,44 +35,38 @@ public class NullSubscription implements OutboundSubscription {
 
     @Override
     public void forcefullyDisconnect() throws AndesException {
-        log.warn("NullSubscription forcefullyDisconnect() method invoked");
+        throw new UnsupportedOperationException("Invalid operation for forcefully disconnect.");
     }
 
     @Override
     public boolean isMessageAcceptedBySelector(AndesMessageMetadata messageMetadata) throws AndesException {
-        log.warn("NullSubscription  isMessageAcceptedBySelector() method invoked");
-        return false;
+        throw new UnsupportedOperationException("Invalid operation for check a message is accepted by the selector.");
     }
 
     @Override
     public boolean sendMessageToSubscriber(ProtocolMessage messageMetadata, AndesContent content) throws
             AndesException {
-        log.warn("NullSubscription  sendMessageToSubscriber() method invoked");
-        return false;
+        throw new UnsupportedOperationException("Invalid operation for send messages to the subscriber.");
     }
 
     @Override
     public boolean isOutboundConnectionLive() {
-        log.warn("NullSubscription  isOutboundConnectionLive() method invoked");
-        return false;
+        throw new UnsupportedOperationException("Invalid operation for check outbound connection is live.");
     }
 
     @Override
     public UUID getChannelID() {
-        log.warn("NullSubscription  getChannelID() method invoked");
-        return null;
+        throw new UnsupportedOperationException("Invalid operation for retrieve channel id.");
     }
 
     @Override
     public long getSubscribeTime() {
-        log.warn("NullSubscription  getSubscribeTime() method invoked");
-        return 0;
+        throw new UnsupportedOperationException("Invalid operation for retrieve subscribes time.");
     }
 
     @Override
     public String getProtocolQueueName() {
-        log.warn("NullSubscription  getProtocolQueueName() method invoked");
-        return null;
+        throw new UnsupportedOperationException("Invalid operation for retrieve protocol name.");
     }
 
 }
