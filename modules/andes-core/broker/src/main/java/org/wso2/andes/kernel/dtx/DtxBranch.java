@@ -38,7 +38,7 @@ import javax.transaction.xa.Xid;
 /**
  * Class which holds information relates to a specific {@link Xid} within the broker
  */
-public class DtxBranch implements AndesInboundStateEvent {
+public class DtxBranch {
 
     /**
      * Class logger
@@ -423,14 +423,16 @@ public class DtxBranch implements AndesInboundStateEvent {
     }
 
     /**
-     * {@inheritDoc}
+     * Update the state of the transaction and respond to the client on dtx.commt and dtx.rollback events
+     *
+     * @param event {@link InboundEventContainer}
+     * @throws AndesException
      */
-    @Override
-    public void updateState() throws AndesException {
-        if (updateSlotCommand != null) {
-            updateSlotCommand.run();
+    public void updateState(InboundEventContainer event) throws AndesException {
+        if (event.hasErrorOccurred()) {
+            callback.onException(new Exception(event.getError()));
         } else {
-            LOGGER.error("Update state called without setting the state update command ");
+            updateSlotCommand.run();
         }
     }
 
@@ -440,6 +442,7 @@ public class DtxBranch implements AndesInboundStateEvent {
      */
     private void updateSlotAndClearLists(List<AndesMessage> messageList) {
         try {
+
             SlotMessageCounter.getInstance().recordMetadataCountInSlot(messageList);
             enqueueList.clear();
             dequeueList.clear();
@@ -453,14 +456,6 @@ public class DtxBranch implements AndesInboundStateEvent {
         } catch (Exception exception) {
             callback.onException(exception);
         }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String eventInfo() {
-        return null;
     }
 
     /**
