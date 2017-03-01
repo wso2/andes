@@ -340,8 +340,9 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
      */
     public boolean isPurgedOrDeletedOrExpired() {
         MessageStatus currentStatus = getLatestState();
-        return currentStatus.equals(MessageStatus.PURGED) || currentStatus.equals(MessageStatus.DELETED)
-                || currentStatus.equals(MessageStatus.EXPIRED);
+        return currentStatus.equals(MessageStatus.PURGED)
+                || currentStatus.equals(MessageStatus.EXPIRED)
+                || currentStatus.equals(MessageStatus.DELETED);
     }
 
     /**
@@ -358,6 +359,14 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
      */
     public void markAsPurgedMessage() {
         addMessageStatus(MessageStatus.PURGED);
+    }
+
+    /**
+     * Mark message as prepared to be removed. Usually Andes kernel has asynchronous processes to remove messages.
+     * Once scheduled to be removed this state is set.
+     */
+    public void markAsPreparedToDelete() {
+        addMessageStatus(MessageStatus.PREPARED_TO_DELETE);
     }
 
     /**

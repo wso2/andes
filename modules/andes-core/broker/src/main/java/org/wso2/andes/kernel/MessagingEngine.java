@@ -224,23 +224,47 @@ public class MessagingEngine {
     }
 
     /**
-     * Delete messages from store. Optionally move to dead letter channel.  Delete
-     * call is blocking and then slot message count is dropped in order. Message state
-     * is updated.
+     * Delete messages from store. Message states are updated.
      *
      * @param messagesToRemove List of messages to remove
-     * @throws AndesException
+     * @throws AndesException on an DB issue
      */
     public void deleteMessages(List<DeliverableAndesMetadata> messagesToRemove) throws AndesException {
+        markAsPreparedToDelete(messagesToRemove);
         //delete message content along with metadata
         messageStore.deleteMessages(messagesToRemove);
         markAsDeleted(messagesToRemove);
     }
 
+    /**
+     * Mark message set as prepared to delete. Before delete call is done
+     * to DB store this state is set to the messages.
+     *
+     * @param messagesToRemove set of messages scheduled to delete
+     */
+    private void markAsPreparedToDelete(List<DeliverableAndesMetadata> messagesToRemove) {
+        for (DeliverableAndesMetadata message : messagesToRemove) {
+            //mark messages as deleted
+            message.markAsPreparedToDelete();
+            if(log.isDebugEnabled()) {
+                log.debug("Scheduled to delete message id= " + message.messageID);
+            }
+        }
+    }
+
+    /**
+     * Mark message set as deleted. State update is done here. Should be called after
+     * actual delete is done
+     *
+     * @param messagesToRemove  set of messages to remove
+     */
     private void markAsDeleted(List<DeliverableAndesMetadata> messagesToRemove) {
         for (DeliverableAndesMetadata message : messagesToRemove) {
             //mark messages as deleted
             message.markAsDeletedMessage();
+            if(log.isDebugEnabled()) {
+                log.debug("Deleted message id= " + message.messageID);
+            }
         }
     }
 

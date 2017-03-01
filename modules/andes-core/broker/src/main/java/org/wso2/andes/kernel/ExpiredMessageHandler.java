@@ -39,7 +39,7 @@ public class ExpiredMessageHandler extends DeliveryResponsibility {
      *
      * @param task deletion task
      */
-    public void setExpiryMessageDeletionTask(PreDeliveryExpiryMessageDeletionTask task) {
+    void setExpiryMessageDeletionTask(PreDeliveryExpiryMessageDeletionTask task) {
         this.preDeliveryExpiryMessageDeletionTask = task;
     }
 
@@ -60,7 +60,7 @@ public class ExpiredMessageHandler extends DeliveryResponsibility {
             // Since this message is not going to be delivered, no point in wait for ack.
             message.getSlot().decrementPendingMessageCount();
             // Add the expired messages to a list for a batch delete
-            preDeliveryExpiryMessageDeletionTask.addMessageIdToExpiredQueue(message.getMessageID());
+            preDeliveryExpiryMessageDeletionTask.addMessageIdToExpiredQueue(message);
             MessageTracer.trace(message, MessageTracer.EXPIRED_MESSAGE_DETECTED_AND_QUEUED);
             isOkayToProceed = false;
         }
