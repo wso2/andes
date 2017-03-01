@@ -71,9 +71,9 @@ public class QueueDeclareHandler implements StateAwareMethodListener<QueueDeclar
 
         // if we aren't given a queue name, we create one which we return to the client
         if ((null == body.getQueue()) || (0 == body.getQueue().length())) {
-            queueName = createName();
+            queueName = AMQShortString.toLowerCase(createName());
         } else {
-            queueName = body.getQueue().intern();
+            queueName = AMQShortString.toLowerCase(body.getQueue().intern());
         }
         AMQQueue queue;
         try {

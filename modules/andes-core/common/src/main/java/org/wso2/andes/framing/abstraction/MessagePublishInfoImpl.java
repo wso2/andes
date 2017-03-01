@@ -39,7 +39,7 @@ public class MessagePublishInfoImpl implements MessagePublishInfo
         _exchange = exchange;
         _immediate = immediate;
         _mandatory = mandatory;
-        _routingKey = routingKey;
+        _routingKey = AMQShortString.toLowerCase(routingKey);
     }
 
     public AMQShortString getExchange()

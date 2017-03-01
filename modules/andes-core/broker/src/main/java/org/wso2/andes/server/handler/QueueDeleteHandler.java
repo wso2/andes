@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.amqp.QpidAndesBridge;
+import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.MethodRegistry;
 import org.wso2.andes.framing.QueueDeleteBody;
 import org.wso2.andes.framing.QueueDeleteOkBody;
@@ -87,7 +88,7 @@ public class QueueDeleteHandler implements StateAwareMethodListener<QueueDeleteB
         }
         else
         {
-            queue = queueRegistry.getQueue(body.getQueue());
+            queue = queueRegistry.getQueue(AMQShortString.toLowerCase(body.getQueue()));
         }
         if (!(DLCQueueUtils.isDeadLetterQueue(queue.getName()))) {
             if (null == queue) {

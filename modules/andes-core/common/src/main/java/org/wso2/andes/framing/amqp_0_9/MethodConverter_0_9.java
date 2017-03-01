@@ -80,7 +80,7 @@ public class MethodConverter_0_9 extends AbstractMethodConverter implements Prot
         final BasicPublishBody publishBody = ((BasicPublishBody) methodBody);
 
         final AMQShortString exchange = publishBody.getExchange();
-        final AMQShortString routingKey = publishBody.getRoutingKey();
+        final AMQShortString routingKey = AMQShortString.toLowerCase(publishBody.getRoutingKey());
 
         return new MessagePublishInfoImpl(exchange,
                                           publishBody.getImmediate(),
