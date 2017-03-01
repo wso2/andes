@@ -965,10 +965,13 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             resultSet = preparedStatement.executeQuery();
 
             while (resultSet.next()) {
-                AndesBinding andesBinding = new AndesBinding(
-                        resultSet.getString(RDBMSConstants.BINDING_INFO)
-                );
-                bindingList.add(andesBinding);
+                String bindingInfo = resultSet.getString(RDBMSConstants.BINDING_INFO);
+                try {
+                    AndesBinding andesBinding = new AndesBinding(bindingInfo);
+                    bindingList.add(andesBinding);
+                } catch (AndesException e) {
+                    logger.error("Could not add binding: " + bindingInfo, e);
+                }
             }
 
             return bindingList;
