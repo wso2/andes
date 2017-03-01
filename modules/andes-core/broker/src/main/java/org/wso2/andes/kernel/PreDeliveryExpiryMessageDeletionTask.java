@@ -24,12 +24,8 @@ import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Queue;
-import java.util.Set;
 import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingDeque;
 
@@ -40,12 +36,12 @@ import java.util.concurrent.LinkedBlockingDeque;
  */
 public class PreDeliveryExpiryMessageDeletionTask implements Runnable, StoreHealthListener {
 
+    private static Log log = LogFactory.getLog(PreDeliveryExpiryMessageDeletionTask.class);
+
     /**
      * Holds expired messages detected in the message flusher delivery rule check for batch delete
      */
-    private BlockingDeque<Long> expiredMessageIds;
-
-    private static Log log = LogFactory.getLog(PreDeliveryExpiryMessageDeletionTask.class);
+    private BlockingDeque<DeliverableAndesMetadata> expiredMessages;
 
     /**
      * Indicates and provides a barrier if messages stores become offline.
@@ -53,17 +49,23 @@ public class PreDeliveryExpiryMessageDeletionTask implements Runnable, StoreHeal
      */
     private volatile SettableFuture<Boolean> messageStoresUnavailable;
 
-    public PreDeliveryExpiryMessageDeletionTask() {
-
+    /**
+     * Create a task that keeps expired messages and delete them in batches.
+     */
+    PreDeliveryExpiryMessageDeletionTask() {
         this.messageStoresUnavailable = null;
-        this.expiredMessageIds = new LinkedBlockingDeque<>();
+        this.expiredMessages = new LinkedBlockingDeque<>();
         // Register AndesRecoveryTask class as a StoreHealthListener
         FailureObservingStoreManager.registerStoreHealthListener(this);
-
     }
 
-    public void addMessageIdToExpiredQueue(long messageId) {
-        expiredMessageIds.add(messageId);
+    /**
+     * Add an expired message to be removed asynchronously
+     *
+     * @param expiredMessage expired message
+     */
+    void addMessageIdToExpiredQueue(DeliverableAndesMetadata expiredMessage) {
+        expiredMessages.add(expiredMessage);
     }
 
     @Override
@@ -78,8 +80,7 @@ public class PreDeliveryExpiryMessageDeletionTask implements Runnable, StoreHeal
                 //act as a barrier
                 messageStoresUnavailable.get();
                 log.info("Message store became available. Resuming expiry message deletion task");
-                messageStoresUnavailable = null; // we are passing the blockade
-                // (therefore clear the it).
+                messageStoresUnavailable = null; // we are passing the blockade (therefore clear the it).
             } catch (InterruptedException e) {
                 log.error("Thread interrupted while waiting for message stores to come online", e);
             } catch (ExecutionException e) {
@@ -90,15 +91,15 @@ public class PreDeliveryExpiryMessageDeletionTask implements Runnable, StoreHeal
 
         }
 
-        //delete the accumulated messages in the list that are filtered out from the message flusher expiration rule
-        //should be run in all the nodes
-        if (!expiredMessageIds.isEmpty()) {
+        /*
+         * delete the accumulated messages in the list that are filtered out from the message
+         * flusher expiration rule should be run in all the nodes
+         */
+        if (!expiredMessages.isEmpty()) {
             try {
-                List<Long> expiredMessageIdList = new ArrayList<>();
-                //removes the messages from the queue and add them into a list
-                expiredMessageIds.drainTo(expiredMessageIdList);
-                //delete the messages from the store
-                MessagingEngine.getInstance().deleteMessagesById(expiredMessageIdList);
+                List<DeliverableAndesMetadata> expiredMessagesList = new ArrayList<>();
+                expiredMessages.drainTo(expiredMessagesList);
+                MessagingEngine.getInstance().deleteMessages(expiredMessagesList);
             } catch (AndesException e) {
                 log.error("Error running message expiration checker ", e);
             }
