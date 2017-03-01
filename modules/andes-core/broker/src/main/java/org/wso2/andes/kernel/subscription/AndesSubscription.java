@@ -117,7 +117,7 @@ public class AndesSubscription {
                     this.storageQueue = AndesContext.getInstance().
                             getStorageQueueRegistry().getStorageQueue(storageQueueName);
                     if (null == storageQueue) {
-                        throw new SubscriptionException("StorageQueue" + storageQueueName
+                        throw new SubscriptionException("StorageQueue: " + storageQueueName
                                 + " is not registered while creating "
                                 + "subscription id=" + subscriptionId);
                     }
