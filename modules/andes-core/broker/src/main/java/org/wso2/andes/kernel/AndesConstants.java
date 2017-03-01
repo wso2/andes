@@ -28,7 +28,7 @@ public class AndesConstants {
     /**
      * The default Dead Letter Channel queue name suffix
      */
-    public static final String DEAD_LETTER_QUEUE_SUFFIX = "DeadLetterChannel";
+    public static final String DEAD_LETTER_QUEUE_SUFFIX = "deadletterchannel";
 
     /**
      * The separator to separate a domain name and the queue name in a tenant mode.

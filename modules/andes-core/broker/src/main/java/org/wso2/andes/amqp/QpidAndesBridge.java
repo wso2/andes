@@ -470,7 +470,7 @@ public class QpidAndesBridge {
         try {
             List<StorageQueue> queues = AndesContext.getInstance().getStorageQueueRegistry().getAllStorageQueues();
             for (StorageQueue storageQueue : queues) {
-                if (storageQueue.getName().equalsIgnoreCase(queue.getName())) {
+                if (storageQueue.getName().equals(queue.getName())) {
                     throw new AMQException("Cannot create already existing queue: " + queue.getName());
                 }
             }

@@ -238,7 +238,7 @@ public class AMQQueueFactory
 
     public static AMQQueue createAMQQueueImpl(QueueConfiguration config, VirtualHost host) throws AMQException
     {
-        String queueName = config.getName();
+        String queueName = config.getName().toLowerCase();
 
         boolean durable = config.getDurable();
         boolean autodelete = config.getAutoDelete();
