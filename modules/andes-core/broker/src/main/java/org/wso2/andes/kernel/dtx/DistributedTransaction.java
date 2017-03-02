@@ -256,6 +256,7 @@ public class DistributedTransaction {
      * acknowledgements and published messages to a temporary database location
      *
      * @param xid {@link Xid} related to the transaction
+     * @param callback {@link DisruptorEventCallback}
      * @throws TimeoutDtxException Thrown when the {@link DtxBranch} has expired
      * @throws UnknownDtxBranchException Thrown when the provided {@link Xid} is not known to the broker
      * @throws IncorrectDtxStateException Thrown when invoking prepare for the {@link DtxBranch} is invalid from
@@ -263,10 +264,10 @@ public class DistributedTransaction {
      * @throws AndesException   Thrown when an internal error occur
      * @throws RollbackOnlyDtxException Thrown when the branch is set to ROLLBACK_ONLY
      */
-    public void prepare(Xid xid) throws TimeoutDtxException, UnknownDtxBranchException,
+    public void prepare(Xid xid, DisruptorEventCallback callback) throws TimeoutDtxException, UnknownDtxBranchException,
             IncorrectDtxStateException, AndesException, RollbackOnlyDtxException {
         if (!transactionFailed) {
-            dtxRegistry.prepare(xid);
+            dtxRegistry.prepare(xid, callback);
         } else {
             DtxBranch branch = dtxRegistry.getBranch(xid);
             if (branch != null) {

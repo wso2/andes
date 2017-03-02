@@ -320,8 +320,8 @@ public class DtxBranch {
      * Persist enqueue and dequeue records
      * @throws AndesException if an internal error occured
      */
-    public void prepare() throws AndesException {
-        LOGGER.debug("Performing prepare for DtxBranch {}" + xid);
+    public void persistRecords() throws AndesException {
+        LOGGER.debug("Performing prepare for DtxBranch : " + xid);
         internalXid = dtxRegistry.storeRecords(this);
     }
 
@@ -411,6 +411,15 @@ public class DtxBranch {
         this.callback = callback;
         updateSlotCommand = new DtxCommitCommand();
         eventManager.requestDtxEvent(this, channel, InboundEventContainer.Type.DTX_COMMIT_EVENT);
+    }
+
+    /**
+     * Store enqueue and dequeue records in the DtxStore
+     * @param callback callback that is called after completing the commit task
+     */
+    public void prepare(DisruptorEventCallback callback) {
+        updateSlotCommand = new DtxPrepareCommand(callback);
+        eventManager.requestDtxEvent(this, null, InboundEventContainer.Type.DTX_PREPARE_EVENT);
     }
 
     /**
@@ -607,4 +616,20 @@ public class DtxBranch {
             updateSlotAndClearLists(dequeuedMessages);
         }
     }
- }
+
+    /**
+     * Command to update slots for Dtx Prepare event
+     */
+    private class DtxPrepareCommand implements Runnable {
+        private final DisruptorEventCallback callback;
+
+        DtxPrepareCommand(DisruptorEventCallback callback) {
+            this.callback = callback;
+        }
+
+        @Override
+        public void run() {
+            callback.execute();
+        }
+    }
+}
