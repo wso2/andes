@@ -1402,11 +1402,11 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         distributedTransaction.end(_session.getSessionID(), xid,fail, suspend);
     }
 
-    public void prepareDtxTransaction(Xid xid)
+    public void prepareDtxTransaction(Xid xid, DisruptorEventCallback callback)
             throws DtxNotSelectedException, TimeoutDtxException, UnknownDtxBranchException, IncorrectDtxStateException,
             AndesException, RollbackOnlyDtxException {
         QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
-        distributedTransaction.prepare(xid);
+        distributedTransaction.prepare(xid, callback);
     }
 
     public void commitDtxTransaction(Xid xid, boolean onePhase, DisruptorEventCallback callback) throws DtxNotSelectedException,

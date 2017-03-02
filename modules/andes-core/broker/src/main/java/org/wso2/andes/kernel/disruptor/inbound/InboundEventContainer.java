@@ -175,6 +175,11 @@ public class InboundEventContainer {
         PUBLISHER_RECOVERY_EVENT,
 
         /**
+         * Distributed transaction prepare event
+         */
+        DTX_PREPARE_EVENT,
+
+        /**
          * Distributed transaction commit event
          */
         DTX_COMMIT_EVENT,
@@ -218,6 +223,7 @@ public class InboundEventContainer {
             case TRANSACTION_CLOSE_EVENT:
                 getTransactionEvent().updateState();
                 break;
+            case DTX_PREPARE_EVENT:
             case DTX_COMMIT_EVENT:
             case DTX_ROLLBACK_EVENT:
                 getDtxBranch().updateState();
