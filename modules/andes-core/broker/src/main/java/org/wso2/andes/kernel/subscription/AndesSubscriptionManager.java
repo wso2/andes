@@ -890,8 +890,12 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
         //get all subscriptions in DB
         for (Map.Entry<String, List<String>> entry : results.entrySet()) {
             for (String subscriptionAsStr : entry.getValue()) {
-                AndesSubscription subscription = new AndesSubscription(subscriptionAsStr);
-                dbSubscriptions.add(subscription);
+                try {
+                    AndesSubscription subscription = new AndesSubscription(subscriptionAsStr);
+                    dbSubscriptions.add(subscription);
+                } catch (SubscriptionException e) {
+                    log.error("Could not add subscription: " + subscriptionAsStr, e);
+                }
             }
         }
 
@@ -937,8 +941,12 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
                 .getAllStoredDurableSubscriptions();
         for (Map.Entry<String, List<String>> entry : newResults.entrySet()) {
             for (String subscriptionAsStr : entry.getValue()) {
-                AndesSubscription subscription = new AndesSubscription(subscriptionAsStr);
-                dbSubscriptions.add(subscription);
+                try {
+                    AndesSubscription subscription = new AndesSubscription(subscriptionAsStr);
+                    dbSubscriptions.add(subscription);
+                } catch (SubscriptionException e) {
+                    log.error("Could not add subscription: " + subscriptionAsStr, e);
+                }
             }
         }
 
@@ -963,8 +971,12 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
         dbSubscriptions = new HashSet<>();
         for (Map.Entry<String, List<String>> entry : newResults.entrySet()) {
             for (String subscriptionAsStr : entry.getValue()) {
-                AndesSubscription subscription = new AndesSubscription(subscriptionAsStr);
-                dbSubscriptions.add(subscription);
+                try {
+                    AndesSubscription subscription = new AndesSubscription(subscriptionAsStr);
+                    dbSubscriptions.add(subscription);
+                } catch (SubscriptionException e) {
+                    log.error("Could not add subscription: " + subscriptionAsStr, e);
+                }
             }
         }
         allMemorySubscriptions.removeAll(dbSubscriptions);
