@@ -1134,6 +1134,21 @@ public class RDBMSConstants {
                     + " FROM " + DTX_CONTENT_ENQUEUE_TABLE
                     + " WHERE " + INTERNAL_XID + "=?";
 
+    protected static final String PS_SELECT_MESSAGE_IDS_IN_DLC_FROM_METADATA_FOR_QUEUE =
+            "SELECT " + MESSAGE_ID
+                    + " FROM " + METADATA_TABLE
+                    + " WHERE " + QUEUE_ID + "=?"
+                    + " AND " + MESSAGE_ID + ">?"
+                    + " AND " + DLC_QUEUE_ID + "=? "
+                    + " ORDER BY " + MESSAGE_ID ;
+
+    protected static final String PS_SELECT_MESSAGE_IDS_IN_DLC_FROM_METADATA =
+            "SELECT " + MESSAGE_ID
+                    + " FROM " + METADATA_TABLE
+                    + " WHERE " + MESSAGE_ID + ">?"
+                    + " AND " + DLC_QUEUE_ID + "=? "
+                    + " ORDER BY " + MESSAGE_ID ;
+
     // Message Store related jdbc tasks executed
     protected static final String TASK_STORING_MESSAGE_PARTS = "storing message parts.";
     protected static final String TASK_DELETING_MESSAGE_PARTS = "deleting message parts.";
@@ -1249,6 +1264,10 @@ public class RDBMSConstants {
 
     protected static final String TASK_REMOVE_NODE_HEARTBEAT = "removing node heartbeat entry";
     protected static final String TASK_MARK_NODE_NOT_NEW = "marking node as not new";
+    protected static final String TASK_RETRIEVING_NEXT_N_MESSAGE_IDS_IN_DLC_OF_QUEUE = "retrieving message ID list " +
+            "in DLC from queue. ";
+    protected static final String TASK_RETRIEVING_NEXT_N_MESSAGE_IDS_IN_DLC = "retrieving message ID list in DLC.";
+
     /**
      * Messages related to checking message store is operational.
      */

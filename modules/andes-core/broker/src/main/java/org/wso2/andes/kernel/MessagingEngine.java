@@ -663,4 +663,33 @@ public class MessagingEngine {
         }
         return lastMessageId;
     }
+
+
+    /**
+     * Get message IDs from queue starting from given startMessageId up to the given message count.
+     *
+     * @param sourceQueue    name of the queue
+     * @param dlcQueueName   name of the dead letter channel queue
+     * @param startMessageId starting message id
+     * @param messageLimit   maximum num of messages to return in one invocation.
+     * @return List<Long> of message IDs
+     * @throws AndesException if an error occurs while reading message IDs from the database.
+     */
+    public List<Long> getNextNMessageIdsInDLCForQueue(final String sourceQueue, final String dlcQueueName,
+                                                      long startMessageId, int messageLimit) throws AndesException {
+        return messageStore.getMessageIdsInDLCForQueue(sourceQueue, dlcQueueName, startMessageId, messageLimit);
+    }
+
+    /***
+     * Get message IDs in DLC starting from given startMessageId up to the given message count.
+     *
+     * @param dlcQueueName Queue name of the Dead Letter Channel
+     * @param startMessageId last message ID returned from invoking this method.
+     * @return List<Long> of message IDs moved to the DLC from the sourceQueue.
+     * @throws AndesException if an error occurs while reading messages from the database.
+     */
+    public List<Long> getNextNMessageIdsInDLC(final String dlcQueueName, long startMessageId, int messageLimit)
+            throws AndesException {
+        return messageStore.getMessageIdsInDLC(dlcQueueName, startMessageId, messageLimit);
+    }
 }

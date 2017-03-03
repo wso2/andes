@@ -860,5 +860,33 @@ public class Andes {
     public ArrayList<Xid> getPreparedDtxTransactions() {
         return dtxRegistry.getPreparedTransactions();
     }
+
+    /**
+     * Get message IDs in dlc for a queue for a given number of messages starting from the specified id.
+     *
+     * @param sourceQueue    name of the queue
+     * @param dlcQueueName   name of the dead letter channel queue
+     * @param startMessageId starting message id
+     * @param messageLimit   maximum num of messages to return in one invocation.
+     * @return List<Long> of message IDs
+     * @throws AndesException if an error occurs while reading message IDs from database.
+     */
+    public List<Long> getNextNMessageIdsInDLCForQueue(final String sourceQueue, final String dlcQueueName,
+                                                      long startMessageId, int messageLimit) throws AndesException {
+        return MessagingEngine.getInstance().getNextNMessageIdsInDLCForQueue(sourceQueue, dlcQueueName, startMessageId, messageLimit);
+    }
+
+    /***
+     * Get message IDs in DLC starting from given startMessageId up to the given message count.
+     *
+     * @param dlcQueueName Queue name of the Dead Letter Channel
+     * @param startMessageId last message ID returned from invoking this method.
+     * @return List<Long> of message IDs moved to the DLC from the sourceQueue.
+     * @throws AndesException if an error occurs while reading messages from the database.
+     */
+    public List<Long> getNextNMessageIdsInDLC(final String dlcQueueName, long startMessageId, int messageLimit)
+            throws AndesException {
+        return MessagingEngine.getInstance().getNextNMessageIdsInDLC(dlcQueueName, startMessageId, messageLimit);
+    }
 }
 
