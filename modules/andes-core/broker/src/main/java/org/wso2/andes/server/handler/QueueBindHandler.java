@@ -120,7 +120,7 @@ public class QueueBindHandler implements StateAwareMethodListener<QueueBindBody>
                 }
             }
 
-            if (!exch.isBound(routingKey, body.getArguments(), queue))
+            if (!exch.isBound(routingKey, null, queue))
             {
                 String bindingKey = String.valueOf(routingKey);
                 Map<String,Object> arguments = FieldTable.convertToMap(body.getArguments());
