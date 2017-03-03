@@ -24,6 +24,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.cluster.coordination.SlotAgent;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
@@ -387,7 +388,10 @@ public class SlotManagerClusterMode extends AbstractSlotManager {
                         log.debug("Returned slot " + slotToBeReAssigned + "from node " +
                                 nodeId + " as member left");
                     }
-                } else { // Delete empty slots
+                } else {
+                    // Delete empty slots
+                    slotToBeReAssigned.setStorageQueue(AndesContext.getInstance().getStorageQueueRegistry()
+                            .getStorageQueue(slotToBeReAssigned.getStorageQueueName()));
                     SlotDeletionExecutor.getInstance().scheduleToDelete(slotToBeReAssigned);
                 }
             }
