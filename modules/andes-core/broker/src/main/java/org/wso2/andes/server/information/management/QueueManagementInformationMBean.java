@@ -21,6 +21,7 @@ package org.wso2.andes.server.information.management;
 import com.gs.collections.api.iterator.MutableLongIterator;
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
@@ -59,7 +60,6 @@ import org.wso2.andes.server.queue.QueueRegistry;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostImpl;
 import org.wso2.andes.transport.codec.BBDecoder;
-
 import javax.jms.JMSException;
 import javax.jms.MessageEOFException;
 import javax.jms.MessageFormatException;
@@ -390,141 +390,57 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
         }
     }
 
-    /**
-     * Restore a given browser message Id list from the Dead Letter Queue to the same queue it was previous in before
-     * moving to the Dead Letter Queue
-     * and remove them from the Dead Letter Queue.
-     *
-     * @param andesMetadataIDs     The browser message Ids
-     * @param destinationQueueName The Dead Letter Queue Name for the tenant
-     * @return unavailable message count
-     */
+    /***
+    * {@inheritDoc}
+    */
     @Override
-    public long restoreMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "andesMetadataIDs",
-            description = "IDs of the Messages to Be Restored") long[] andesMetadataIDs,
+    public void restoreSelectedMessagesFromDeadLetterChannel(
+            @MBeanOperationParameter(name = "andesMessageIds",
+                    description = "IDs of the Messages to Be restored") long[] andesMessageIds,
             @MBeanOperationParameter(name = "destinationQueueName",
-            description = "The Dead Letter Queue Name for the selected tenant") String destinationQueueName) {
-        long unavailableMessageCount = 0L;
-        if (null != andesMetadataIDs) {
-            LongArrayList andesMessageIdList = new LongArrayList(andesMetadataIDs.length);
-            andesMessageIdList.addAll(andesMetadataIDs);
-            List<AndesMessageMetadata> messagesToRemove = new ArrayList<>(andesMessageIdList.size());
+                    description = "Original destination queue of the messages") String destinationQueueName)
+            throws MBeanException {
 
+        if (null != andesMessageIds) {
+            int movedMessageCount = -1;
+            List<Long> andesMessageIdList = new ArrayList<>(andesMessageIds.length);
+            Collections.addAll(andesMessageIdList, ArrayUtils.toObject(andesMessageIds));
             try {
-                LongObjectHashMap<List<AndesMessagePart>> messageContent = Andes.getInstance()
-                        .getContent(andesMessageIdList);
-
-                boolean interruptedByFlowControl = false;
-
-                MutableLongIterator iterator = andesMessageIdList.longIterator();
-
-                while (iterator.hasNext()) {
-                    long messageId = iterator.next();
-                    if (restoreBlockedByFlowControl) {
-                        interruptedByFlowControl = true;
-                        break;
-                    }
-                    AndesMessageMetadata metadata = Andes.getInstance().getMessageMetaData(messageId);
-                    if (null != metadata) {
-                        messagesToRemove.add(metadata);
-                        // get the message chunk details
-                        List<AndesMessagePart> messageParts = messageContent.get(messageId);
-                        AndesMessage andesMessage = createMessage(metadata, messageParts);
-                        // Handover message to Andes. This will generate a new message ID and store it
-                        Andes.getInstance().messageReceived(andesMessage, andesChannel, disablePubAck);
-                    } else {
-                        log.warn("Message Id: " + messageId +" could not be restored due to message being unavailable.");
-                        unavailableMessageCount++;
-                    }
-                }
-                // Delete old messages
-                Andes.getInstance().deleteMessagesFromDLC(messagesToRemove);
-
-                if (interruptedByFlowControl) {
-                    // Throw this out so UI will show this to the user as an error message.
-                    throw new RuntimeException("Message restore from dead letter queue has been interrupted by flow "
-                            + "control. Please try again later.");
-                }
-
-            } catch (AndesException e) {
-                throw new RuntimeException("Error restoring messages from " + destinationQueueName, e);
+                movedMessageCount = moveMessagesFromDLCToNewDestination(andesMessageIdList, destinationQueueName,
+                        destinationQueueName, true);
+            } catch (AndesException ex) {
+                throw new MBeanException(ex, "Error occurred when restoring messages from DLC to original qeueue : " +
+                        destinationQueueName + " movedMessageCount : " + movedMessageCount);
             }
         }
-        return unavailableMessageCount;
     }
 
-    /**
-     * Restore a given browser message Id list from the Dead Letter Queue to a different given queue in the same
-     * tenant and remove them from the Dead Letter Queue.
-     *
-     * @param destinationQueueName    The Dead Letter Queue Name for the tenant
-     * @param andesMetadataIDs        The browser message Ids
-     * @param newDestinationQueueName The new destination
-     * @return unavailable message count
+    /***
+     * {@inheritDoc}
      */
     @Override
-    public long restoreMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "andesMetadataIDs",
-            description = "IDs of the Messages to Be Restored") long[] andesMetadataIDs,
-            @MBeanOperationParameter(name = "destination",
-            description = "Destination of the message to be restored") String newDestinationQueueName,
-            @MBeanOperationParameter(name = "destinationQueueName",
-            description = "The Dead Letter Queue Name for the selected tenant") String destinationQueueName) {
-        long unavailableMessageCount = 0L;
-        if (null != andesMetadataIDs) {
+    public void rerouteSelectedMessagesFromDeadLetterChannel(
+            @MBeanOperationParameter(name = "andesMessageIds",
+                    description = "IDs of the Messages to Be Restored") long[] andesMessageIds,
+            @MBeanOperationParameter(name = "sourceQueue",
+                    description = "The  original queue name of the messages") String sourceQueue,
+            @MBeanOperationParameter(name = "targetQueue",
+                    description = "New destination queue for the messages") String targetQueue)
+            throws MBeanException {
 
-            LongArrayList andesMessageIdList = new LongArrayList(andesMetadataIDs.length);
-            andesMessageIdList.addAll(andesMetadataIDs);
-            List<AndesMessageMetadata> messagesToRemove = new ArrayList<>(andesMessageIdList.size());
-
+        if (null != andesMessageIds) {
+            int movedMessageCount = -1;
+            List<Long> andesMessageIdList = new ArrayList<>(andesMessageIds.length);
+            Collections.addAll(andesMessageIdList, ArrayUtils.toObject(andesMessageIds));
             try {
-                LongObjectHashMap<List<AndesMessagePart>> messageContent = Andes.getInstance()
-                        .getContent(andesMessageIdList);
-
-                boolean interruptedByFlowControl = false;
-
-                MutableLongIterator iterator = andesMessageIdList.longIterator();
-                while (iterator.hasNext()) {
-
-                    long messageId = iterator.next();
-                    if (restoreBlockedByFlowControl) {
-                        interruptedByFlowControl = true;
-                        break;
-                    }
-                    AndesMessageMetadata metadata = Andes.getInstance().getMessageMetaData(messageId);
-                    if(null != metadata) {
-                        StorageQueue newStorageQueue = AndesContext.getInstance().getStorageQueueRegistry()
-                                .getStorageQueue(newDestinationQueueName);
-                        // Set the new destination queue
-                        metadata.setDestination(newDestinationQueueName);
-                        metadata.setStorageQueueName(newDestinationQueueName);
-                        metadata.setMessageRouterName(newStorageQueue.getMessageRouter().getName());
-                        metadata.updateMetadata(newDestinationQueueName, newStorageQueue.getMessageRouter().getName());
-                        messagesToRemove.add(metadata);
-                        // get the message chunk details
-                        List<AndesMessagePart> messageParts = messageContent.get(messageId);
-                        AndesMessage andesMessage = createMessage(metadata, messageParts);
-                        // Handover message to Andes. This will generate a new message ID and store it
-                        Andes.getInstance().messageReceived(andesMessage, andesChannel, disablePubAck);
-                    } else {
-                        log.warn("Message Id: " + messageId + " could not be rerouted due to message being "
-                                + "unavailable.");
-                        unavailableMessageCount++;
-                    }
-                }
-                // Delete old messages
-                Andes.getInstance().deleteMessagesFromDLC(messagesToRemove);
-
-                if (interruptedByFlowControl) {
-                    // Throw this out so UI will show this to the user as an error message.
-                    throw new RuntimeException("Message restore from dead letter queue has been interrupted by flow "
-                            + "control. Please try again later.");
-                }
-
-            } catch (AndesException e) {
-                throw new RuntimeException("Error restoring messages from " + destinationQueueName, e);
+                movedMessageCount = moveMessagesFromDLCToNewDestination(andesMessageIdList, sourceQueue, targetQueue,
+                        false);
+            } catch (AndesException ex) {
+                throw new MBeanException(ex, "Error occurred when moving messages destined to sourceQueue : " + sourceQueue
+                        + " from DLC to targetQueue : " + targetQueue + ". movedMessageCount : "
+                        + movedMessageCount);
             }
         }
-        return unavailableMessageCount;
     }
 
     /**
@@ -568,7 +484,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                         .getNextNMessageMetadataFromDLC(queueName, nextMsgId, maxMsgCount);
             }
 
-            return getDisplayableMetaData(nextNMessageMetadataFromQueue);
+            return getDisplayableMetaData(nextNMessageMetadataFromQueue, true);
 
         } catch (AndesException e) {
             throw new MBeanException(e, "Error occurred in browse queue.");
@@ -592,7 +508,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      * {@inheritDoc}
      */
     @Override
-    public CompositeData[] getMessageInDLCForQueue(@MBeanOperationParameter(name = "queueName",
+    public CompositeData[] getMessagesInDLCForQueue(@MBeanOperationParameter(name = "queueName",
                                                                             description = "Name of queue to browse "
                                                                                     + "messages") String queueName,
             @MBeanOperationParameter(name = "lastMsgId",
@@ -613,7 +529,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                         DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(queueName), nextMsgId,
                         maxMessageCount);
             }
-            return getDisplayableMetaData(nextNMessageMetadataFromQueue);
+            return getDisplayableMetaData(nextNMessageMetadataFromQueue, true);
         } catch (AndesException e) {
             throw new MBeanException(e, "Error occurred in browse queue.");
         }
@@ -951,13 +867,13 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      *
      * @param metadataList the list of message metadata
      * @return Composite data array of properties of all messages
-     * @throws MBeanException
+     * @throws MBeanException if an OpenDataException occurs while mapping JMS headers for the Message.
      */
-    private CompositeData[] getDisplayableMetaData(List<AndesMessageMetadata> metadataList) throws MBeanException {
+    private CompositeData[] getDisplayableMetaData(List<AndesMessageMetadata> metadataList, boolean includeContent) throws MBeanException {
         List<CompositeData> compositeDataList = new ArrayList<>();
         try {
             for (AndesMessageMetadata andesMessageMetadata : metadataList) {
-                Object[] itemValues = getItemValues(andesMessageMetadata);
+                Object[] itemValues = getItemValues(andesMessageMetadata, includeContent);
                 if (null != itemValues) {
                     CompositeDataSupport support = new CompositeDataSupport(_msgContentType,
                             VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC
@@ -967,7 +883,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                 }
             }
         } catch (OpenDataException exception) {
-            throw new MBeanException(exception, "Error occurred in browse queue.");
+            throw new MBeanException(exception, "Error occurred when formatting message in queue.");
         }
         return compositeDataList.toArray(new CompositeData[compositeDataList.size()]);
     }
@@ -977,9 +893,9 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      *
      * @param andesMessageMetadata andes message metadata to be parsed
      * @return an array of properties of the message
-     * @throws MBeanException
+     * @throws MBeanException if an AMQException occurs while reading Message Content headers.
      */
-    private Object[] getItemValues(AndesMessageMetadata andesMessageMetadata) throws MBeanException {
+    private Object[] getItemValues(AndesMessageMetadata andesMessageMetadata, boolean includeContent) throws MBeanException {
         try {
 
             Object[] itemValues = null;
@@ -1021,34 +937,30 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             //content is constructing
             final int bodySize = (int) amqMessage.getSize();
 
-            AndesMessagePart constructedContent = constructContent(bodySize, amqMessage);
-            byte[] messageContent = constructedContent.getData();
-            int position = constructedContent.getOffset();
-
-            //if position did not proceed, there is an error receiving content. If not, decode content
-            if (!((bodySize != 0) && (position == 0))) {
-
-                String[] content = decodeContent(amqMessage, messageContent);
-
-                //set content type of message to readable name
-                contentType = getReadableNameForMessageContentType(contentType);
-
-                //set CompositeData of message
-                itemValues = new Object[] {
-                        msgProperties, contentType, content, messageId, redelivered, timeStamp, destination,
-                        andesMessageMetadataId
-                };
-
-            } else if (bodySize == 0) { //empty message
-                itemValues = new Object[] {
-                        msgProperties, contentType, "", messageId, redelivered, timeStamp, destination,
-                        andesMessageMetadataId
-                };
-
+            if (includeContent) {
+                AndesMessagePart constructedContent = constructContent(bodySize, amqMessage);
+                byte[] messageContent = constructedContent.getData();
+                int position = constructedContent.getOffset();
+                //if position did not proceed, there is an error receiving content. If not, decode content
+                if (!((bodySize != 0) && (position == 0))) {
+                    String[] content = decodeContent(amqMessage, messageContent);
+                    //set content type of message to readable name
+                    contentType = getReadableNameForMessageContentType(contentType);
+                    //set CompositeData of message
+                    itemValues = new Object[]{msgProperties, contentType, content, messageId, redelivered,
+                            timeStamp, destination, andesMessageMetadataId};
+                } else if (bodySize == 0) { //empty message
+                    itemValues = new Object[]{msgProperties, contentType, "", messageId, redelivered,
+                            timeStamp, destination, andesMessageMetadataId};
+                }
+            } else {
+                itemValues = new Object[]{msgProperties, contentType, new String[]{}, messageId, redelivered,
+                        timeStamp, destination, andesMessageMetadataId};
             }
             return itemValues;
         } catch (AMQException exception) {
-            throw new MBeanException(exception, "Error occurred in browse queue.");
+            throw new MBeanException(exception, "Error occurred when formatting message with Id : " +
+                    andesMessageMetadata.getMessageID() + " assigned to queue : " + andesMessageMetadata.getDestination());
         }
     }
 
@@ -1175,4 +1087,181 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             throw new MBeanException(exception, "Error occurred in browse queue.");
         }
     }
+
+    /**
+     * Common method to restore a list of messages based on Id to its original queue or a different queue.
+     *
+     * @param messageIds             list of messages to be restored
+     * @param sourceQueue            original destination queue of the messages.
+     * @param targetQueue            new target destination of the messages.
+     * @param restoreToOriginalQueue true if the messages need to be restored to their original
+     *                               queues instead of a single target queue.
+     * @return int Number of messages that were successfully restored.
+     * @throws AndesException if the database calls to read/delete the messages/content fails.
+     */
+    private int moveMessagesFromDLCToNewDestination(List<Long> messageIds, String sourceQueue, String targetQueue,
+                                                    boolean restoreToOriginalQueue)
+            throws AndesException {
+
+        List<AndesMessageMetadata> messagesToRemove = new ArrayList<>(messageIds.size());
+
+        LongArrayList messageIdCollection = new LongArrayList();
+        for (Long messageId : messageIds) {
+            messageIdCollection.add(messageId);
+        }
+
+        int movedMessageCount = 0;
+        LongObjectHashMap<List<AndesMessagePart>> messageContent = Andes.getInstance().getContent(messageIdCollection);
+        boolean interruptedByFlowControl = false;
+
+        for (Long messageId : messageIds) {
+            if (restoreBlockedByFlowControl) {
+                interruptedByFlowControl = true;
+                break;
+            }
+            AndesMessageMetadata metadata = Andes.getInstance().getMessageMetaData(messageId);
+            if (!restoreToOriginalQueue) {
+                StorageQueue newStorageQueue = AndesContext.getInstance().getStorageQueueRegistry()
+                        .getStorageQueue(targetQueue);
+
+                // Set the new destination queue
+                metadata.setDestination(targetQueue);
+                metadata.setStorageQueueName(targetQueue);
+                metadata.setMessageRouterName(newStorageQueue.getMessageRouter().getName());
+                metadata.updateMetadata(targetQueue, newStorageQueue.getMessageRouter().getName());
+            }
+
+            AndesMessageMetadata clonedMetadata = metadata.shallowCopy(metadata.getMessageID());
+            AndesMessage andesMessage = new AndesMessage(clonedMetadata);
+
+            messagesToRemove.add(metadata);
+            // Update Andes message with all the chunk details
+            List<AndesMessagePart> messageParts = messageContent.get(messageId);
+            for (AndesMessagePart messagePart : messageParts) {
+                andesMessage.addMessagePart(messagePart);
+            }
+
+            // Handover message to Andes. This will generate a new message ID and store it
+            Andes.getInstance().messageReceived(andesMessage, andesChannel, disablePubAck);
+
+            movedMessageCount++;
+        }
+
+        if (interruptedByFlowControl) {
+            // Throw this out so UI will show this to the user as an error message.
+            // Messages can be duplicated
+            throw new AndesException("Message restore from dead letter queue has been interrupted by flow "
+                    + "control. Messages in the DLC for sourceQueue : " + sourceQueue + " may be duplicated due to "
+                    + "this situation. Please try again later. movedMessageCount : " + movedMessageCount);
+        }
+
+        // Delete old messages
+        Andes.getInstance().deleteMessagesFromDLC(messagesToRemove);
+
+        return movedMessageCount;
+    }
+
+
+    /***
+     * {@inheritDoc}
+     */
+    @Override
+    public CompositeData[] getMessageMetadataInDeadLetterChannel(
+            @MBeanOperationParameter(name = "targetQueue", description = "Name of destination queue ") String targetQueue,
+            @MBeanOperationParameter(name = "startMessageId",
+                    description = "Message Id to start the resultset with.") long startMessageId,
+            @MBeanOperationParameter(name = "pageLimit",
+                    description = "Maximum message count required in a single response") int pageLimit)
+            throws MBeanException {
+
+        try {
+            List<AndesMessageMetadata> nextNMessageMetadataFromQueue;
+
+            if (!DLCQueueUtils.isDeadLetterQueue(targetQueue)) {
+                nextNMessageMetadataFromQueue = Andes.getInstance().getNextNMessageMetadataInDLCForQueue(targetQueue,
+                        DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(targetQueue), startMessageId,
+                        pageLimit);
+            } else {
+                nextNMessageMetadataFromQueue = Andes.getInstance().getNextNMessageMetadataFromDLC(
+                        DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(targetQueue), startMessageId,
+                        pageLimit);
+            }
+            return getDisplayableMetaData(nextNMessageMetadataFromQueue, false);
+
+        } catch (AndesException e) {
+            throw new MBeanException(e,
+                    "Error occurred when listing metadata in DLC for queue : " + targetQueue + " from message Id : "
+                            + startMessageId + " onwards.");
+        }
+    }
+
+    /***
+     * {@inheritDoc}
+     */
+    @Override
+    public int rerouteAllMessagesInDeadLetterChannelForQueue(
+            @MBeanOperationParameter(name = "sourceQueue", description = "Name of the source queue") String sourceQueue,
+            @MBeanOperationParameter(name = "targetQueue", description = "Name of the target queue") String targetQueue,
+            @MBeanOperationParameter(name = "internalBatchSize", description = "Number of messages processed in a "
+                    + "single database call.") int internalBatchSize)
+            throws MBeanException {
+
+        List<Long> currentMessageIdList;
+        Long lastMessageId = 0L;
+        int movedMessageCount = 0;
+
+        // Get full name of Dead Letter Channel
+        String dlcQueueName = DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(sourceQueue);
+
+        try {
+            if (DLCQueueUtils.isDeadLetterQueue(sourceQueue)) {
+                currentMessageIdList = Andes.getInstance()
+                        .getNextNMessageIdsInDLC(dlcQueueName, lastMessageId, internalBatchSize);
+
+                while (currentMessageIdList.size() > 0) {
+                    int movedMessageCountInThisBatch = moveMessagesFromDLCToNewDestination(currentMessageIdList,
+                            sourceQueue, targetQueue, false);
+
+                    if (log.isDebugEnabled()) {
+                        log.debug("Successfully restored messages from DLC to targetQueue: " + targetQueue
+                                + " movedMessageCountInThisBatch : " + movedMessageCountInThisBatch);
+                    }
+
+                    movedMessageCount = movedMessageCount + movedMessageCountInThisBatch;
+                    lastMessageId = currentMessageIdList.get(currentMessageIdList.size() - 1);
+
+                    currentMessageIdList = Andes.getInstance().getNextNMessageIdsInDLC(dlcQueueName, lastMessageId,
+                            internalBatchSize);
+                }
+            } else {
+                currentMessageIdList = Andes.getInstance()
+                        .getNextNMessageIdsInDLCForQueue(sourceQueue, dlcQueueName, lastMessageId,
+                                internalBatchSize);
+
+                while (currentMessageIdList.size() > 0) {
+                    int movedMessageCountInThisBatch = moveMessagesFromDLCToNewDestination(currentMessageIdList,
+                            sourceQueue, targetQueue, false);
+
+                    if (log.isDebugEnabled()) {
+                        log.debug("Successfully restored messages from sourceQueue : " + sourceQueue
+                                + " to targetQueue : " + targetQueue + " movedMessageCountInThisBatch : "
+                                + movedMessageCountInThisBatch);
+                    }
+
+                    movedMessageCount = movedMessageCount + movedMessageCountInThisBatch;
+                    lastMessageId = currentMessageIdList.get(currentMessageIdList.size() - 1);
+
+                    currentMessageIdList = Andes.getInstance()
+                            .getNextNMessageIdsInDLCForQueue(sourceQueue, dlcQueueName,
+                                    lastMessageId, internalBatchSize);
+                }
+            }
+        } catch (AndesException ex) {
+            throw new MBeanException(ex, "Error occurred when moving metadata destined to sourceQueue : " + sourceQueue
+                    + " from DLC to targetQueue : " + targetQueue + ". movedMessageCount : " + movedMessageCount);
+        }
+
+        return movedMessageCount;
+    }
+
 }
