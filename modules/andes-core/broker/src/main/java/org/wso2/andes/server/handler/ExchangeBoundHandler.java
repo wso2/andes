@@ -74,8 +74,8 @@ public class ExchangeBoundHandler implements StateAwareMethodListener<ExchangeBo
 
 
         AMQShortString exchangeName = body.getExchange();
-        AMQShortString queueName = body.getQueue();
-        AMQShortString routingKey = body.getRoutingKey();
+        AMQShortString queueName = AMQShortString.toLowerCase(body.getQueue());
+        AMQShortString routingKey = AMQShortString.toLowerCase(body.getRoutingKey());
         if (exchangeName == null)
         {
             throw new AMQException("Exchange exchange must not be null");
@@ -141,7 +141,7 @@ public class ExchangeBoundHandler implements StateAwareMethodListener<ExchangeBo
             }
             else
             {
-                if (exchange.isBound(body.getRoutingKey(), queue))
+                if (exchange.isBound(routingKey, queue))
                 {
 
                     response = methodRegistry.createExchangeBoundOkBody(OK,	// replyCode
@@ -158,7 +158,7 @@ public class ExchangeBoundHandler implements StateAwareMethodListener<ExchangeBo
         }
         else
         {
-            if (exchange.isBound(body.getRoutingKey()))
+            if (exchange.isBound(routingKey))
             {
 
                 response = methodRegistry.createExchangeBoundOkBody(OK,	// replyCode

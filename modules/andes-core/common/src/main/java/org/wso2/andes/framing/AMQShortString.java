@@ -787,4 +787,18 @@ public final class AMQShortString implements CharSequence, Comparable<AMQShortSt
         }
     }
 
+    /**
+     * Given any string, this method returns the lower case representation of that.
+     *
+     * @param stringToConvert the original string
+     * @return the lower case representation of the the given string
+     */
+    public static AMQShortString toLowerCase(AMQShortString stringToConvert) {
+        if (null != stringToConvert) {
+            return new AMQShortString(stringToConvert.asString().toLowerCase());
+        } else {
+            return null;
+        }
+    }
+
 }

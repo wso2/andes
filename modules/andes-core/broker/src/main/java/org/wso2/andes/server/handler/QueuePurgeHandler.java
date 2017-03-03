@@ -19,6 +19,7 @@
 package org.wso2.andes.server.handler;
 
 import org.wso2.andes.AMQException;
+import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.QueuePurgeBody;
 import org.wso2.andes.framing.MethodRegistry;
 import org.wso2.andes.framing.AMQMethodBody;
@@ -84,7 +85,7 @@ public class QueuePurgeHandler implements StateAwareMethodListener<QueuePurgeBod
         }
         else
         {
-            queue = queueRegistry.getQueue(body.getQueue());
+            queue = queueRegistry.getQueue(AMQShortString.toLowerCase(body.getQueue()));
         }
 
         if(queue == null)
