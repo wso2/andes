@@ -189,19 +189,22 @@ public class InboundEventManager {
         // Publishers claim events in sequence
         long sequence = ringBuffer.next();
         InboundEventContainer event = ringBuffer.get(sequence);
-        event.setEventType(MESSAGE_EVENT);
-        event.setChannel(andesChannel);
-        event.addMessage(message,andesChannel);
-        event.pubAckHandler = pubAckHandler;
+        try {
+            event.setEventType(MESSAGE_EVENT);
+            event.setChannel(andesChannel);
+            event.addMessage(message, andesChannel);
+            event.pubAckHandler = pubAckHandler;
+        } finally {
+            // make the event available to EventProcessors
+            ringBuffer.publish(sequence);
 
-        // make the event available to EventProcessors
-        ringBuffer.publish(sequence);
+            //Tracing message activity
+            MessageTracer.trace(message, MessageTracer.PUBLISHED_TO_INBOUND_DISRUPTOR);
 
-        //Tracing message activity
-        MessageTracer.trace(message, MessageTracer.PUBLISHED_TO_INBOUND_DISRUPTOR);
-
-        if (log.isDebugEnabled()) {
-            log.debug("[ sequence: " + sequence + " ] Message published to disruptor.");
+            if (log.isDebugEnabled()) {
+                log.debug("[ sequence: " + sequence + " ] Message published to disruptor. Message id: "
+                          + message.getMetadata().getMessageID());
+            }
         }
     }
 
@@ -216,21 +219,23 @@ public class InboundEventManager {
         // Publishers claim events in sequence
         long sequence = ringBuffer.next();
         InboundEventContainer event = ringBuffer.get(sequence);
+        try {
+            event.setEventType(ACKNOWLEDGEMENT_EVENT);
+            event.ackData = ackData;
+        } finally {
+            // make the event available to EventProcessors
+            ringBuffer.publish(sequence);
 
-        event.setEventType(ACKNOWLEDGEMENT_EVENT);
-        event.ackData = ackData;
-        // make the event available to EventProcessors
-        ringBuffer.publish(sequence);
+            //Tracing message
+            if (MessageTracer.isEnabled()) {
+                MessageTracer.trace(ackData.getAcknowledgedMessage().getMessageID(), ackData.getAcknowledgedMessage()
+                        .getDestination(), MessageTracer.ACK_PUBLISHED_TO_DISRUPTOR);
+            }
 
-        //Tracing message
-        if (MessageTracer.isEnabled()) {
-            MessageTracer.trace(ackData.getAcknowledgedMessage().getMessageID(), ackData.getAcknowledgedMessage()
-                    .getDestination(), MessageTracer.ACK_PUBLISHED_TO_DISRUPTOR);
-        }
-
-        if (log.isDebugEnabled()) {
-            log.debug("[ sequence: " + sequence + " ] Message acknowledgement published to disruptor. Message id " +
-                    ackData.getAcknowledgedMessage().getMessageID());
+            if (log.isDebugEnabled()) {
+                log.debug("[ sequence: " + sequence + " ] Message acknowledgement published to disruptor. Message id " +
+                          ackData.getAcknowledgedMessage().getMessageID());
+            }
         }
     }
 
