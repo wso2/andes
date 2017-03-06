@@ -17,12 +17,14 @@ package org.wso2.andes.server.handler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.wso2.andes.AMQChannelException;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.dtx.XidImpl;
 import org.wso2.andes.framing.DtxPrepareOkBody;
 import org.wso2.andes.framing.amqp_0_91.DtxPrepareBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.MethodRegistry_0_91;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
 import org.wso2.andes.kernel.dtx.UnknownDtxBranchException;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
@@ -52,10 +54,10 @@ public class DtxPrepareHandler implements StateAwareMethodListener<DtxPrepareBod
     }
 
     @Override
-    public void methodReceived(AMQStateManager stateManager, DtxPrepareBodyImpl body, int channelId) throws
+    public void methodReceived(AMQStateManager stateManager, final DtxPrepareBodyImpl body, final int channelId) throws
             AMQException {
         Xid xid = new XidImpl(body.getBranchId(), body.getFormat(), body.getGlobalId());
-        AMQProtocolSession session = stateManager.getProtocolSession();
+        final AMQProtocolSession session = stateManager.getProtocolSession();
 
         AMQChannel channel = session.getChannel(channelId);
 
@@ -64,40 +66,61 @@ public class DtxPrepareHandler implements StateAwareMethodListener<DtxPrepareBod
         }
 
         try {
-            DtxPrepareOkBody dtxPrepareOkBody;
+            channel.prepareDtxTransaction(xid, new DisruptorEventCallback() {
 
-            try {
-                channel.prepareDtxTransaction(xid);
-
-                MethodRegistry_0_91 methodRegistry = (MethodRegistry_0_91) session.getMethodRegistry();
-                dtxPrepareOkBody = methodRegistry.createDtxPrepareOkBody(DtxXaStatus.XA_OK.getValue());
-            } catch (TimeoutDtxException e) {
-                LOGGER.info("Error while preparing dtx: " + e.getMessage());
-
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Error while preparing dtx", e);
+                @Override
+                public void execute() {
+                    MethodRegistry_0_91 methodRegistry = (MethodRegistry_0_91) session.getMethodRegistry();
+                    DtxPrepareOkBody dtxPrepareOkBody = methodRegistry.createDtxPrepareOkBody(
+                            DtxXaStatus.XA_OK.getValue());
+                    session.writeFrame(dtxPrepareOkBody.generateFrame(channelId));
                 }
 
-                MethodRegistry_0_91 methodRegistry = (MethodRegistry_0_91) session.getMethodRegistry();
-                dtxPrepareOkBody = methodRegistry.createDtxPrepareOkBody(DtxXaStatus.XA_RBTIMEOUT.getValue());
-            } catch (RollbackOnlyDtxException e) {
-                LOGGER.info("Error while preparing dtx: " + e.getMessage());
-
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Error while preparing dtx", e);
+                @Override
+                public void onException(Exception exception) {
+                    LOGGER.error("Exception occurred when preparing ", exception);
+                    AMQChannelException channelException = body.getChannelException(AMQConstant.INTERNAL_ERROR,
+                                                                                    exception.getMessage());
+                    session.writeFrame(channelException.getCloseFrame(channelId));
+                    try {
+                        session.closeChannel(channelId);
+                    } catch (AMQException e) {
+                        LOGGER.error("Couldn't close channel (channel id ) " + channelId, e);
+                    }
                 }
+            });
 
-                MethodRegistry_0_91 methodRegistry = (MethodRegistry_0_91) session.getMethodRegistry();
-                dtxPrepareOkBody = methodRegistry.createDtxPrepareOkBody(DtxXaStatus.XA_RBROLLBACK.getValue());
+        } catch (TimeoutDtxException e) {
+            LOGGER.info("Error while preparing dtx: " + e.getMessage());
+
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Error while preparing dtx", e);
             }
 
+            MethodRegistry_0_91 methodRegistry = (MethodRegistry_0_91) session.getMethodRegistry();
+            DtxPrepareOkBody dtxPrepareOkBody = methodRegistry.createDtxPrepareOkBody(DtxXaStatus.XA_RBTIMEOUT
+                                                                                              .getValue());
             session.writeFrame(dtxPrepareOkBody.generateFrame(channelId));
+
+        } catch (RollbackOnlyDtxException e) {
+            LOGGER.info("Error while preparing dtx: " + e.getMessage());
+
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Error while preparing dtx", e);
+            }
+
+            MethodRegistry_0_91 methodRegistry = (MethodRegistry_0_91) session.getMethodRegistry();
+            DtxPrepareOkBody dtxPrepareOkBody = methodRegistry.createDtxPrepareOkBody(DtxXaStatus.XA_RBROLLBACK
+                                                                                              .getValue());
+            session.writeFrame(dtxPrepareOkBody.generateFrame(channelId));
+
         } catch (DtxNotSelectedException e) {
             throw body.getChannelException(AMQConstant.COMMAND_INVALID, "Not a distributed transacted session", e);
         } catch (IncorrectDtxStateException e) {
             throw body.getChannelException(AMQConstant.COMMAND_INVALID, e.getMessage(), e);
         } catch (AndesException e) {
-            throw body.getChannelException(AMQConstant.INTERNAL_ERROR, "Internal error occurred while persisting records", e);
+            throw body.getChannelException(AMQConstant.INTERNAL_ERROR,
+                                           "Internal error occurred while persisting records", e);
         } catch (UnknownDtxBranchException e) {
             throw body.getChannelException(AMQConstant.COMMAND_INVALID, "Could not find the specified dtx branch ", e);
         }

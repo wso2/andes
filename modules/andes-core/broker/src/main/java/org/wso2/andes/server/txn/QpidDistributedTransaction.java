@@ -151,14 +151,14 @@ public class QpidDistributedTransaction implements ServerTransaction {
         distributedTransaction.end(sessionID, xid, fail, suspend);
     }
 
-    public void prepare(Xid xid)
+    public void prepare(Xid xid, DisruptorEventCallback callback)
             throws TimeoutDtxException, UnknownDtxBranchException, IncorrectDtxStateException, AndesException,
             RollbackOnlyDtxException {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Preparing distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
         }
         try {
-            distributedTransaction.prepare(xid);
+            distributedTransaction.prepare(xid, callback);
         } finally {
             for (Action action : postTransactionActions) {
                 action.postCommit();
@@ -201,7 +201,7 @@ public class QpidDistributedTransaction implements ServerTransaction {
     }
 
     /**
-     * Store messages published within a transaction in memory until the {@link #prepare(Xid)} is invoked
+     * Store messages published within a transaction in memory until the {@link #prepare(Xid, DisruptorEventCallback)} is invoked
      *
      * @param incomingMessage {@link IncomingMessage} to be enqueued
      * @param andesChannel {@link AndesChannel} object related to the incoming message

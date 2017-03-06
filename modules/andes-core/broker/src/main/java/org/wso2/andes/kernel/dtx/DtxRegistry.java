@@ -135,6 +135,7 @@ public class DtxRegistry {
      * acknowledgements and published messages to a temporary database location
      *
      * @param xid {@link Xid} related to the transaction
+     * @param callback {@link DisruptorEventCallback} to be called when the prepare is done from the Disruptor end
      * @throws TimeoutDtxException Thrown when the {@link DtxBranch} has expired
      * @throws UnknownDtxBranchException Thrown when the provided {@link Xid} is not known to the broker
      * @throws IncorrectDtxStateException Thrown when invoking prepare for the {@link DtxBranch} is invalid from
@@ -142,7 +143,7 @@ public class DtxRegistry {
      * @throws AndesException   Thrown when an internal error occur
      * @throws RollbackOnlyDtxException Thrown when the branch is set to ROLLBACK_ONLY
      */
-    public void prepare(Xid xid)
+    public void prepare(Xid xid, DisruptorEventCallback callback)
             throws UnknownDtxBranchException, IncorrectDtxStateException, TimeoutDtxException, AndesException,
             RollbackOnlyDtxException {
         DtxBranch branch;
@@ -173,15 +174,8 @@ public class DtxRegistry {
             }
         }
 
-        // Note: Branch should only be in PREPARED state to call branch.prepare()
-        // TODO: add the call to disruptor
-        try {
-            branch.prepare();
-            branch.setState(DtxBranch.State.PREPARED);
-        } catch (AndesException e) {
-            branch.setState(DtxBranch.State.ROLLBACK_ONLY);
-            throw e;
-        }
+        PrepareCallback prepareCallback = new PrepareCallback(callback, branch);
+        branch.prepare(prepareCallback);
     }
 
     /**
@@ -201,8 +195,7 @@ public class DtxRegistry {
      * @return Internal XID of the distributed transaction
      * @throws AndesException when database error occurs
      */
-    long storeRecords(DtxBranch branch)
-            throws AndesException {
+    long storeRecords(DtxBranch branch) throws AndesException {
         List<AndesPreparedMessageMetadata> dequeueRecords =
                 messagingEngine.acknowledgeOnDtxPrepare(branch.getDequeueList());
         branch.setMessagesToRestore(dequeueRecords);
@@ -477,6 +470,45 @@ public class DtxRegistry {
         public void onException(Exception exception) {
             synchronized (DtxRegistry.this) {
                 dtxBranch.setState(DtxBranch.State.PREPARED);
+            }
+
+            callback.onException(exception);
+        }
+    }
+
+    /**
+     * DisruptorEventCallback implementation for dtx prepare event
+     */
+    private class PrepareCallback implements DisruptorEventCallback {
+
+        /**
+         * Callback given by Distributed Transaction object
+         */
+        private final DisruptorEventCallback callback;
+
+        /**
+         * Corresponding DTX branch
+         */
+        private final DtxBranch branch;
+
+        private PrepareCallback(DisruptorEventCallback callback, DtxBranch branch) {
+            this.callback = callback;
+            this.branch = branch;
+        }
+
+        @Override
+        public void execute() {
+            synchronized (DtxRegistry.this) {
+                branch.setState(DtxBranch.State.PREPARED);
+            }
+
+            callback.execute();
+        }
+
+        @Override
+        public void onException(Exception exception) {
+            synchronized (DtxRegistry.this) {
+                branch.setState(DtxBranch.State.ROLLBACK_ONLY);
             }
 
             callback.onException(exception);
