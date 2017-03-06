@@ -212,7 +212,7 @@ public class InboundEventManager {
     public void ackReceived(AndesAckData ackData) {
         //For metrics
         ackedMessageCount.getAndIncrement();
-        
+
         // Publishers claim events in sequence
         long sequence = ringBuffer.next();
         InboundEventContainer event = ringBuffer.get(sequence);
@@ -314,12 +314,16 @@ public class InboundEventManager {
             eventContainer.setChannel(channel);
             eventContainer.addMessage(message, channel);
             eventContainer.pubAckHandler = disablePubAck;
-
         } finally {
             ringBuffer.publish(sequence);
+
+            //Tracing message activity
+            MessageTracer.traceTransaction(message, channel, MessageTracer
+                    .ENQUEUE_EVENT_PUBLISHED_TO_INBOUND_DISRUPTOR);
+
             if (log.isDebugEnabled()) {
                 log.debug("[ Sequence: " + sequence + " ] " + eventContainer.getEventType() +
-                        "' published to Disruptor");
+                          "' published to Disruptor");
             }
         }
     }
@@ -332,6 +336,10 @@ public class InboundEventManager {
      */
     public void requestTransactionCommitEvent(InboundTransactionEvent transactionEvent, AndesChannel channel) {
         requestTransactionEvent(transactionEvent, TRANSACTION_COMMIT_EVENT, channel);
+
+        //Tracing message activity
+        MessageTracer.traceTransaction(channel, transactionEvent.getQueuedMessages().size(), MessageTracer
+                .TRANSACTION_COMMIT_EVENT_PUBLISHED_TO_INBOUND_DISRUPTOR);
     }
 
     /**
@@ -341,6 +349,10 @@ public class InboundEventManager {
      */
     public void requestTransactionRollbackEvent(InboundTransactionEvent transactionEvent, AndesChannel channel) {
         requestTransactionEvent(transactionEvent, TRANSACTION_ROLLBACK_EVENT, channel);
+
+        //Tracing message activity
+        MessageTracer.traceTransaction(channel, transactionEvent.getQueuedMessages().size(), MessageTracer
+                .TRANSACTION_ROLLBACK_EVENT_PUBLISHED_TO_INBOUND_DISRUPTOR);
     }
 
     /**
@@ -350,6 +362,10 @@ public class InboundEventManager {
      */
     public void requestTransactionCloseEvent(InboundTransactionEvent transactionEvent, AndesChannel channel) {
         requestTransactionEvent(transactionEvent, TRANSACTION_CLOSE_EVENT, channel);
+
+        //Tracing message activity
+        MessageTracer.traceTransaction(channel, transactionEvent.getQueuedMessages().size(), MessageTracer
+                .TRANSACTION_CLOSE_EVENT_PUBLISHED_TO_INBOUND_DISRUPTOR);
     }
 
     /**
