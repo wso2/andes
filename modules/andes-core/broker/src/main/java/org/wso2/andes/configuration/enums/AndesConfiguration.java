@@ -393,7 +393,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * NOTE : specified in milliseconds.
      */
     PERFORMANCE_TUNING_SLOTS_MESSAGE_ACCUMULATION_TIMEOUT("performanceTuning/slots" +
-            "/messageAccumulationTimeout", "1000", Long.class, PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY),
+            "/messageAccumulationTimeout", "2000", Long.class, PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY),
 
     /**
      * Rough estimate for size of a slot. e.g. If the slot window size is 1000, given 3 nodes, it can expand up to 3000.
@@ -432,7 +432,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * (- slots which have a aged more than 'messageAccumulationTimeout')
      */
     PERFORMANCE_TUNING_MAX_SLOT_SUBMIT_DELAY(
-            "performanceTuning/slots/maxSubmitDelay", "3000", Integer.class, PERFORMANCE_TUNING_SUBMIT_SLOT_TIMEOUT),
+            "performanceTuning/slots/maxSubmitDelay", "1000", Integer.class, PERFORMANCE_TUNING_SUBMIT_SLOT_TIMEOUT),
 
     /**
      * Number of parallel threads to execute slot deletion task. Increasing this value will remove slots
