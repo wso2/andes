@@ -199,8 +199,12 @@ public class AMQSession_0_8 extends AMQSession<BasicMessageConsumer_0_8, BasicMe
 
     public void sendRecover() throws AMQException, FailoverException
     {
+        //no need to send reject to any dispatched message
         _unacknowledgedMessageTags.clear();
         ackWaitTimeOutTrackingMap.clear();
+
+        //send reject to all messages that are not yet dispatched
+        rejectAllMessages(false);
 
         if (isStrictAMQP())
         {
@@ -263,16 +267,26 @@ public class AMQSession_0_8 extends AMQSession<BasicMessageConsumer_0_8, BasicMe
             || (_acknowledgeMode == CLIENT_ACKNOWLEDGE)
             || (_acknowledgeMode == SESSION_TRANSACTED))
         {
-            if (_logger.isDebugEnabled())
-            {
-                _logger.debug("Rejecting delivery tag:" + deliveryTag + ":SessionHC:" + this.hashCode());
-            }
-
-            BasicRejectBody body = getMethodRegistry().createBasicRejectBody(deliveryTag, requeue);
-            AMQFrame frame = body.generateFrame(_channelId);
-
-            _connection.getProtocolHandler().writeFrame(frame);
+            sendReject(deliveryTag, requeue);
         }
+    }
+
+    /**
+     * Send amq.reject message to server
+     *
+     * @param deliveryTag delivery tag of the message
+     * @param reQueue whether to re-queue message
+     */
+    public void sendReject(long deliveryTag, boolean reQueue) {
+        if (_logger.isDebugEnabled())
+        {
+            _logger.debug("Rejecting delivery tag:" + deliveryTag + ":SessionHC:" + this.hashCode());
+        }
+
+        BasicRejectBody body = getMethodRegistry().createBasicRejectBody(deliveryTag, reQueue);
+        AMQFrame frame = body.generateFrame(_channelId);
+
+        _connection.getProtocolHandler().writeFrame(frame);
     }
 
     public boolean isQueueBound(final AMQDestination destination) throws JMSException

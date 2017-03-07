@@ -49,13 +49,10 @@ public class BasicRecoverMethodHandler implements StateAwareMethodListener<Basic
         _logger.debug("Recover received on protocol session " + session + " and channel " + channelId);
         AMQChannel channel = session.getChannel(channelId);
 
-
         if (channel == null)
         {
             throw body.getChannelNotFoundException(channelId);
         }
-
-        Map<Long, QueueEntry> recoveredMsgs = channel.recoverMessages(body.getRequeue());
 
         // Qpid 0-8 hacks a synchronous -ok onto recover.
         // In Qpid 0-9 we create a separate sync-recover, sync-recover-ok pair to be "more" compliant
@@ -67,6 +64,6 @@ public class BasicRecoverMethodHandler implements StateAwareMethodListener<Basic
 
         }
 
-        channel.resendRecoveredMessages(recoveredMsgs);
+        channel.resendRecoveredMessages();
     }
 }

@@ -112,21 +112,6 @@ public class AndesUtils {
         return andesMessageId;
     }
 
-    public static void writeToFile(String whatToWrite, String filePath) {
-        try {
-            if (printWriterGlobal == null) {
-                BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(filePath));
-                printWriterGlobal = new PrintWriter(bufferedWriter);
-            }
-
-            printWriterGlobal.println(whatToWrite);
-
-        } catch (IOException e) {
-            System.out.println("Error. File to print received messages is not provided" + e);
-        }
-
-    }
-
     /**
      * Generate storage queue name for given internal queue information
      * @param routingKey    routing key by which queue is bound
@@ -159,26 +144,6 @@ public class AndesUtils {
             storageQueueName = queueName;
         }
         return storageQueueName;
-    }
-
-    /**
-     * create andes ack data message
-     *
-     * @param channelID id of the connection message was received
-     * @param messageID id of the message
-     * @return Andes Ack Data
-     */
-    public static AndesAckData generateAndesAckMessage(UUID channelID, long messageID) throws AndesException {
-        org.wso2.andes.kernel.subscription.AndesSubscription localSubscription = AndesContext.getInstance().
-                getAndesSubscriptionManager().getSubscriptionByProtocolChannel(channelID);
-        if (null == localSubscription) {
-            log.error("Cannot handle acknowledgement for message ID = " + messageID + " as subscription is closed "
-                    + "channelID= " + "" + channelID);
-            return null;
-        }
-        DeliverableAndesMetadata metadata = localSubscription.
-                getSubscriberConnection().getUnAckedMessage(messageID);
-        return new AndesAckData(channelID, metadata);
     }
 
     /**

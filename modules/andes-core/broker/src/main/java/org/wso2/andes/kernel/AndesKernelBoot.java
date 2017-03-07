@@ -348,7 +348,7 @@ public class AndesKernelBoot {
         AndesContext.getInstance().setAndesContextInformationManager(contextInformationManager);
 
         //Create an inbound event manager. This will prepare inbound events to disruptor
-        InboundEventManager inboundEventManager =  new InboundEventManager(subscriptionManager, messagingEngine);
+        InboundEventManager inboundEventManager =  new InboundEventManager(messagingEngine);
         AndesContext.getInstance().setInboundEventManager(inboundEventManager);
 
         DtxRegistry dtxRegistry = new DtxRegistry(messageStore.getDtxStore(), messagingEngine, inboundEventManager);

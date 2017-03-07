@@ -279,7 +279,12 @@ public class AMQSession_0_10 extends AMQSession<BasicMessageConsumer_0_10, Basic
     {
         flushAcknowledgments(false);
     }
-    
+
+    @Override
+    public void sendReject(long deliveryTag, boolean reQueue) {
+        rejectMessage(deliveryTag, reQueue);
+    }
+
     void flushAcknowledgments(boolean setSyncBit)
     {
         synchronized (unacked)

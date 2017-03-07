@@ -31,6 +31,7 @@ import org.wso2.andes.kernel.disruptor.inbound.InboundDeleteMessagesEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
 import org.wso2.andes.kernel.disruptor.inbound.InboundExchangeEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundKernelOpsEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundMessageRejectEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
@@ -167,21 +168,14 @@ public class Andes {
     /**
      * Recover messages for the subscriber. Re-schedule sent but un-ackenowledged
      * messages back
+     *
      * @param channelID ID of the channel recover request is received
-     * @throws AndesException
+     * @throws AndesException in case of publishing event to the disruptor.
      */
-    public void recoverMessage(UUID channelID) throws AndesException {
-        AndesSubscription subscription  = AndesContext.getInstance().
-                getAndesSubscriptionManager().getSubscriptionByProtocolChannel(channelID);
-
-        // Subscription can be null if we send a recover call without subscribing. In this case we do not have
-        // to recover any messages. Therefore print a log and return.
-        if (null == subscription) {
-            log.warn("Cannot handle recover. No subscriptions found for channel " + channelID);
-            return;
-        }
-
-        subscription.recoverMessages();
+    public void recoverMessagesOfChannel(UUID channelID) throws AndesException {
+         InboundAndesChannelEvent inboundChannelEvent = new InboundAndesChannelEvent(channelID);
+         inboundChannelEvent.prepareForChannelRecover();
+         inboundEventManager.publishStateEvent(inboundChannelEvent);
     }
 
     /**
@@ -253,49 +247,7 @@ public class Andes {
      * @throws AndesException
      */
     public void ackReceived(AndesAckData ackData) throws AndesException {
-
-        //Tracing Message
-        MessageTracer.trace(ackData.getAcknowledgedMessage().getMessageID(),
-                ackData.getAcknowledgedMessage().getDestination(), MessageTracer.ACK_RECEIVED_FROM_PROTOCOL);
-
-        //Adding metrics meter for ack rate
-        Meter ackMeter = MetricManager.meter(MetricsConstants.ACK_RECEIVE_RATE + MetricsConstants.METRICS_NAME_SEPARATOR
-                + ackData.getAcknowledgedMessage().getMessageRouterName() + MetricsConstants.METRICS_NAME_SEPARATOR
-                + ackData.getAcknowledgedMessage().getDestination(), Level.INFO);
-        ackMeter.mark();
-
-        //Adding metrics counter for ack messages
-        Counter counter = MetricManager.counter(MetricsConstants.ACK_MESSAGES + MetricsConstants.METRICS_NAME_SEPARATOR
-                + ackData.getAcknowledgedMessage().getMessageRouterName() + MetricsConstants.METRICS_NAME_SEPARATOR
-                + ackData.getAcknowledgedMessage().getDestination(), Level.INFO);
-        counter.inc();
-
-        //We call this later as this call removes the ackData.getAcknowledgedMessage() message
         inboundEventManager.ackReceived(ackData);
-    }
-
-    /**
-     * Connection Client to client is closed.
-     *
-     * @param channelID id of the closed connection
-     */
-    //TODO: review: after publishing to disruptor done nothing
-    public void clientConnectionClosed(UUID channelID) {
-        InboundAndesChannelEvent channelEvent = new InboundAndesChannelEvent(channelID);
-        channelEvent.prepareForChannelClose();
-        inboundEventManager.publishStateEvent(channelEvent);
-    }
-
-    /**
-     * Notify client connection is opened. This is for message tracking purposes on Andes side.
-     *
-     * @param channelID channelID of the client connection
-     */
-    //TODO: review: after publishing to disruptor done nothing
-    public void clientConnectionCreated(UUID channelID) {
-        InboundAndesChannelEvent channelEvent = new InboundAndesChannelEvent(channelID);
-        channelEvent.prepareForChannelOpen();
-        inboundEventManager.publishStateEvent(channelEvent);
     }
 
     /**
@@ -507,25 +459,19 @@ public class Andes {
     }
 
     /**
-     * Message is rejected.
+     * Handle message reject.
      *
-     * @param metadata  message that is rejected.
-     * @param channelID ID of the connection channel reject is received
-     * @throws AndesException
+     * @param messageId  Id of message that is rejected.
+     * @param channelID Id of the connection channel reject is received
+     * @param reQueue true if message should be re-queued to subscriber
+     * @param isMessageBeyondLastRollback  true if the message was rejected after the last rollback event.
+     * @throws AndesException on a message re-schedule issue
      */
-    public void messageRejected(DeliverableAndesMetadata metadata, UUID channelID) throws AndesException {
-        AndesSubscription subscription = AndesContext.getInstance().
-                getAndesSubscriptionManager().getSubscriptionByProtocolChannel(channelID);
-        if (subscription != null) {
-            subscription.onMessageReject(metadata.getMessageID());
-        } else {
-            log.warn("Cannot handle reject. Subscription not found for channel "
-                    + channelID + "Dropping message id= "
-                    + metadata.getMessageID());
-            metadata.markDeliveredChannelAsClosed(channelID);
-        }
-        //Tracing message activity
-        MessageTracer.trace(metadata, MessageTracer.MESSAGE_REJECTED);
+    public void messageRejected(long messageId, UUID channelID, boolean reQueue,
+                                boolean isMessageBeyondLastRollback) throws AndesException {
+        InboundMessageRejectEvent messageRejectEvent = new InboundMessageRejectEvent(messageId, channelID, reQueue);
+        messageRejectEvent.prepareToRejectMessage(isMessageBeyondLastRollback);
+        inboundEventManager.publishStateEvent(messageRejectEvent);
     }
 
     /**

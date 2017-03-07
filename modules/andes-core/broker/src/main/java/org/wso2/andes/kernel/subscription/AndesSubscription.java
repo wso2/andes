@@ -39,6 +39,7 @@ import org.wso2.carbon.metrics.manager.Meter;
 import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 
@@ -224,11 +225,12 @@ public class AndesSubscription {
      * Perform on reject receive for a message
      *
      * @param messageID id of the message acknowledged
-     * @throws AndesException
+     * @param reQueue true if message should be re-queued to subscriber
+     * @throws AndesException on a message re-schedule issue
+     * @return DeliverableAndesMetadata reference of rejected message
      */
-    public void onMessageReject(long messageID) throws AndesException {
-        DeliverableAndesMetadata rejectedMessage = subscriberConnection.onMessageReject(messageID);
-        reDeliverMessage(rejectedMessage);
+    public DeliverableAndesMetadata onMessageReject(long messageID, boolean reQueue) throws AndesException {
+        DeliverableAndesMetadata rejectedMessage = subscriberConnection.onMessageReject(messageID, reQueue);
         //Adding metrics meter for ack rate
         Meter ackMeter = MetricManager.meter(MetricsConstants.REJECT_RECEIVE_RATE
                 + MetricsConstants.METRICS_NAME_SEPARATOR + rejectedMessage.getMessageRouterName()
@@ -240,23 +242,46 @@ public class AndesSubscription {
                 + MetricsConstants.METRICS_NAME_SEPARATOR + rejectedMessage.getMessageRouterName()
                 + MetricsConstants.METRICS_NAME_SEPARATOR + rejectedMessage.getDestination(), Level.INFO);
         counter.inc();
+        if(reQueue) {
+            if(log.isDebugEnabled()) {
+                log.debug("Message rejected id= " + rejectedMessage.getMessageID() + " reQueue= true");
+            }
+            reDeliverMessage(rejectedMessage);
+        } else {
+            if(log.isDebugEnabled()) {
+                log.debug("Message rejected id= " + rejectedMessage.getMessageID() + " reQueue= false");
+            }
+            /*
+             * This is done when message is rejected
+             * when message is in client side buffer. Message is DELIVERED but NACKED.
+             * currently session.recover() uses this. Note that message reference is still kept by this
+             * subscriber.
+             */
+            rejectedMessage.rollbackDelivery(subscriberConnection.getProtocolChannelID());
+            //TODO: how to identify states where recover not intended. There we need to put message to DLC
+            //Andes.getInstance().moveMessageToDeadLetterChannel(andesMetadata, message.getQueue().getName());
+        }
+
+        return rejectedMessage;
     }
 
     /**
      * Recover messages of the subscriber. This call put back
-     * all sent but un-acknowledged messages back to the queue it is bound
+     * all sent but un-acknowledged messages back to the queue it is bound.
      */
     public void recoverMessages() throws AndesException {
-        List<DeliverableAndesMetadata> unAckedMessages = subscriberConnection.getSentButUnAckedMessages();
+        List<DeliverableAndesMetadata> unAckedMessages = subscriberConnection.clearAndReturnUnackedMessages();
         if (isDurable()) {     //add un-acknowledged messages back to queue
-
-            for (DeliverableAndesMetadata unAckedMessage : unAckedMessages) {
+            Iterator<DeliverableAndesMetadata> unAckedMessageIterator = unAckedMessages.iterator();
+            while (unAckedMessageIterator.hasNext()) {
+                DeliverableAndesMetadata unAckedMessage = unAckedMessageIterator.next();
                 if (log.isDebugEnabled()) {
                     log.debug("Recovered message id= " + unAckedMessage.getMessageID() + " channel = "
                             + subscriberConnection.getProtocolChannelID());
                 }
-                unAckedMessage.markAsNackedByClient(subscriberConnection.getProtocolChannelID());
+                unAckedMessage.markAsRecoveredByClient(subscriberConnection.getProtocolChannelID());
                 storageQueue.bufferMessageForDelivery(unAckedMessage);
+                unAckedMessageIterator.remove();
             }
         } else {    //reschedule messages back to subscriber
             for (DeliverableAndesMetadata unAckedMessage : unAckedMessages) {
@@ -264,7 +289,7 @@ public class AndesSubscription {
                     log.debug("Recovered message id= " + unAckedMessage.getMessageID() + " channel = "
                             + subscriberConnection.getProtocolChannelID());
                 }
-                unAckedMessage.markAsNackedByClient(subscriberConnection.getProtocolChannelID());
+                unAckedMessage.markAsRecoveredByClient(subscriberConnection.getProtocolChannelID());
                 reDeliverMessage(unAckedMessage);
             }
         }
@@ -275,7 +300,7 @@ public class AndesSubscription {
      * messages back to the queue it is bound
      */
     public void rebufferUnackedMessages() throws AndesException {
-        List<DeliverableAndesMetadata> unAckedMessages = subscriberConnection.getSentButUnAckedMessages();
+        List<DeliverableAndesMetadata> unAckedMessages = subscriberConnection.clearAndReturnUnackedMessages();
         if (isDurable()) {     // add un-acknowledged messages back to queue
 
             for (DeliverableAndesMetadata unAckedMessage : unAckedMessages) {
@@ -297,8 +322,8 @@ public class AndesSubscription {
 
             for (DeliverableAndesMetadata unAckedMessage : unAckedMessages) {
                 if (log.isDebugEnabled()) {
-                    log.debug("Re message id= " + unAckedMessage.getMessageID() + " channel = " + subscriberConnection
-                            .getProtocolChannelID());
+                    log.debug("Re message id= " + unAckedMessage.getMessageID()
+                            + " channel = " + subscriberConnection.getProtocolChannelID());
                 }
 
                 UUID protocolChannelID = getSubscriberConnection().getProtocolChannelID();

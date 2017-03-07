@@ -82,7 +82,7 @@ public class AckHandler implements StoreHealthListener {
         if (log.isTraceEnabled()) {
             StringBuilder messageIDsString = new StringBuilder();
             for (AndesAckData andesAckData : ackDataList) {
-                messageIDsString.append(andesAckData.getAcknowledgedMessage().getMessageID()).append(" , ");
+                messageIDsString.append(andesAckData.getIdOfAcknowledgedMessage()).append(" , ");
             }
             log.trace(ackDataList.size() + " messages received : " + messageIDsString);
         }
@@ -110,21 +110,23 @@ public class AckHandler implements StoreHealthListener {
         
         for (AndesAckData ack : ackDataList) {
 
+            ack.setMeradataReference();
+
             // For topics message is shared. If all acknowledgements are received only we should remove message
-            boolean deleteMessage = ack.getAcknowledgedMessage().markAsAcknowledgedByChannel(ack.getChannelID());
+            boolean deleteMessage = ack.getMetadataReference().markAsAcknowledgedByChannel(ack.getChannelID());
 
             AndesSubscription subscription = subscriptionManager
                     .getSubscriptionByProtocolChannel(ack.getChannelID());
 
-            subscription.onMessageAck(ack.getAcknowledgedMessage().getMessageID());
+            subscription.onMessageAck(ack.getIdOfAcknowledgedMessage());
 
             if (deleteMessage) {
                 if (log.isDebugEnabled()) {
-                    log.debug("Ok to delete message id " + ack.getAcknowledgedMessage().getMessageID());
+                    log.debug("Ok to delete message id " + ack.getIdOfAcknowledgedMessage());
                 }
                 //it is a must to set this to event container. Otherwise, multiple event handlers will see the status
                 ack.setBaringMessageRemovable();
-                messagesToRemove.add(ack.getAcknowledgedMessage());
+                messagesToRemove.add(ack.getMetadataReference());
             }
             
         }

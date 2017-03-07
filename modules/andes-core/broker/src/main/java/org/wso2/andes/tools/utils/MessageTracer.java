@@ -95,6 +95,25 @@ public class MessageTracer {
     }
 
     /**
+     * Trace log on message activity. Accepts message Id and a description
+     *
+     * @param messageId Id of the message
+     * @param description Description to place in log on message activity
+     */
+    public static void trace(long messageId, String description) {
+        if (log.isTraceEnabled()) {
+            StringBuilder messageContent = new StringBuilder();
+            if (messageId > 0) { // Check if andes message id is assigned, else ignore
+                messageContent.append("Id: ");
+                messageContent.append(messageId);
+                messageContent.append(", ");
+            }
+            messageContent.append(description);
+            log.trace(messageContent.toString());
+        }
+    }
+
+    /**
 	 * This method will print debug logs for message activities. This will accept andes message as
 	 * a parameter
 	 * @param message Andes message

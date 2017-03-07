@@ -1787,9 +1787,15 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
      *
      * <ul>
      * <li>Stop message delivery.</li>
-     * <li>Mark all messages that might have been delivered but not acknowledged as "redelivered".
+     * <li>Mark all messages that have been delivered to the application but not acknowledged as "redelivered".
+     * <li>Send reject messages to all application consumed messages. For these messages "redelivered" flag will be
+     * set and from server side re-delivery count is increased. After max number of times increased these messages
+     * will be marked for Dead Letter Channel and removed from queue.
+     * </li>
+     * <li>Clear internal message buffers.</li>
      * <li>Restart the delivery sequence including all unacknowledged messages that had been previously delivered.
-     * Redelivered messages do not have to be delivered in exactly their original delivery order.</li>
+     * Redelivered messages do not have to be delivered in exactly their original delivery order. They may also go to
+     * other subscribers subscribed for the queue</li>
      * </ul>
      *
      * <p/>If the recover operation is interrupted by a fail-over, between asking that the broker begin recovery and
@@ -1887,6 +1893,20 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
 
     }
 
+    /**
+     * Send amq.reject message to server
+     *
+     * @param deliveryTag delivery tag of the message
+     * @param reQueue whether to re-queue message
+     */
+    public abstract void sendReject(long deliveryTag, boolean reQueue);
+
+    /**
+     * Send amq.reject message to server. Here Acknowledgement patterns are also considered
+     *
+     * @param deliveryTag delivery tag of the message
+     * @param requeue whether to re-queue message
+     */
     public abstract void rejectMessage(long deliveryTag, boolean requeue);
 
     /**
@@ -3013,7 +3033,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
         _producers.put(new Long(producerId), producer);
     }
 
-    private void rejectAllMessages(boolean requeue)
+    void rejectAllMessages(boolean requeue)
     {
         rejectMessagesForConsumerTag(0, requeue, true);
     }
@@ -3021,7 +3041,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
     /**
      * @param consumerTag The consumerTag to prune from queue or all if null
      * @param requeue     Should the removed messages be requeued (or discarded. Possibly to DLQ)
-     * @param rejectAllConsumers
+     * @param rejectAllConsumers  if to force message rejecting
      */
 
     private void rejectMessagesForConsumerTag(int consumerTag, boolean requeue, boolean rejectAllConsumers)
@@ -3145,7 +3165,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
     }
 
     /** Signifies that the session has no pending sends to commit. */
-    public void markClean()
+    private void markClean()
     {
         _dirty = false;
         _failedOverDirty = false;
@@ -3367,6 +3387,12 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
                     _unacknowledgedMessageTags.addAll(tags);
                     //add messages for ack wait timeout tracking
                     for(long tag : tags) {
+                        //send reject message to server with reQueue=false as these messages are not yet seen by
+                        // consumer
+                        sendReject(tag, false);
+                        if(log.isDebugEnabled()) {
+                            log.debug("Send reject message to server reQueue=false tag= " + tag);
+                        }
                         ackWaitTimeOutTrackingMap.put(tag, System.currentTimeMillis());
                     }
                 }
