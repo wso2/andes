@@ -24,11 +24,9 @@
     <dirname property="project.root" file="${ant.file.common}"/>
 
     <property name="project.name"          value="qpid"/>
-    <property name="andes.version"         value="3.2.0"/>
     <property name="project.url"           value="http://qpid.apache.org"/>
     <property name="project.groupid"       value="org.apache.qpid"/>
     <property name="project.namever"       value="${project.name}-${andes.version}"/>
-
     <property name="resources"             location="${project.root}/resources"/>
     <property name="test.profiles"         location="${project.root}/test-profiles"/>
     <property name="build"                 location="${project.root}/build"/>
