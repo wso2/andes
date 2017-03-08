@@ -108,7 +108,8 @@ public class Andes {
     /**
      * Interval in milliseconds above update call should trigger
      */
-    private static final int safeZoneUpdateTriggerInterval = 3000;
+    private static final int safeZoneUpdateTriggerInterval = AndesConfigurationManager.readValue(AndesConfiguration
+            .PERFORMANCE_TUNING_MAX_SLOT_SUBMIT_DELAY);
 
     /**
      * Maximum batch size for a transaction. Limit is set for content size of the batch.

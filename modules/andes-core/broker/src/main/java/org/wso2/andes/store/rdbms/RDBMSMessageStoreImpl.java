@@ -904,7 +904,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                                                     lastStatPublishTime);
             }
 
-            if (currentBatchCount < messageLimitPerSlot) {
+            // The slot map should be initialized only if there are messages. Or else, this will result in a slot
+            // submit with last assgined messsage id set to zero.
+            if ((currentBatchCount > 0) && (currentBatchCount < messageLimitPerSlot)) {
                 restoreMessagesCounter = restoreMessagesCounter + currentBatchCount;
                 callBack.initializeSlotMapForQueue(storageQueueName, batchStartMessageID, currentMessageId,
                                                    messageLimitPerSlot);
