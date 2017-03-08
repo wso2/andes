@@ -231,6 +231,7 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession,
      * @throws AMQException      if server sends back a error response
      */
     public XaStatus forget(Xid xid) throws FailoverException, AMQException, XAException {
+
         throwErrorIfClosed();
 
         DtxForgetBody dtxForgetBody = methodRegistry
