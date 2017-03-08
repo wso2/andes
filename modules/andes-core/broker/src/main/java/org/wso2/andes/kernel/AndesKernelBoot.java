@@ -128,7 +128,7 @@ public class AndesKernelBoot {
         syncNodeWithClusterState();
         registerMBeans();
         startThriftServer();
-        Andes.getInstance().startSafeZoneAnalysisWorker();
+        Andes.getInstance().startSafeZoneUpdateWorkers();
         int slotDeletingWorkerCount = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_SLOT_DELETE_WORKER_COUNT);
         int maxNumberOfPendingSlotsToDelete = AndesConfigurationManager.readValue

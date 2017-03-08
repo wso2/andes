@@ -37,6 +37,7 @@ import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.kernel.dtx.DistributedTransaction;
 import org.wso2.andes.kernel.dtx.DtxRegistry;
+import org.wso2.andes.kernel.slot.SlotMessageCounter;
 import org.wso2.andes.kernel.subscription.AndesSubscription;
 import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.kernel.subscription.StorageQueue;
@@ -205,13 +206,15 @@ public class Andes {
      * Start the safe zone calculation worker. The safe zone is used to decide if a slot can be safely deleted,
      * assuming all messages in the slot range has been delivered.
      */
-    public void startSafeZoneAnalysisWorker() {
+    public void startSafeZoneUpdateWorkers() {
         SafeZoneUpdateEventTriggeringTask safeZoneUpdateTask = new SafeZoneUpdateEventTriggeringTask(
                 inboundEventManager);
 
         log.info("Starting Safe Zone Calculator for slots.");
         safeZoneUpdateScheduler
                 .scheduleAtFixedRate(safeZoneUpdateTask, 5, safeZoneUpdateTriggerInterval, TimeUnit.MILLISECONDS);
+
+        SlotMessageCounter.getInstance().scheduleSubmitSlotToCoordinatorTimer();
 
     }
 
