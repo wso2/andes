@@ -35,16 +35,16 @@ public class FailoverRoundRobinServers implements FailoverMethod
     private int _currentBrokerIndex = 0;
 
     /** The number of times to retry connecting for each server */
-    private int _serverRetries;
+    int _serverRetries;
 
     /** The current number of retry attempts made */
-    private int _currentServerRetry = 0;
+    int _currentServerRetry = 0;
 
     /** The number of times to cycle through the servers */
-    private int _cycleRetries;
+    int _cycleRetries;
 
     /** The current number of cycles performed. */
-    private int _currentCycleRetries = 0;
+    int _currentCycleRetries = 0;
 
     /** Array of BrokerDetail used to make connections. */
     protected ConnectionURL _connectionDetails;
