@@ -96,6 +96,7 @@ import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.store.StoredAMQPMessage;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -717,6 +718,10 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             //Channel is already closing
             _logger.debug("Channel " + _channelId + " is already closing. Hence dropping close request.");
             return;
+        }
+
+        if (_logger.isDebugEnabled()) {
+            _logger.debug("Closing channel with channel ID " + _channelId);
         }
 
         try {
@@ -1392,6 +1397,11 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             throws DtxNotSelectedException, JoinAndResumeDtxException, UnknownDtxBranchException,
                    AlreadyKnownDtxException, AndesException {
         QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
+
+        if (_logger.isDebugEnabled()) {
+            _logger.debug(
+                    "Starting distributed transaction with GID : " + Arrays.toString(xid.getGlobalTransactionId()));
+        }
         distributedTransaction.start(_session.getSessionID(), xid,join, resume);
     }
 
@@ -1399,6 +1409,10 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             throws DtxNotSelectedException, UnknownDtxBranchException, SuspendAndFailDtxException,
                    NotAssociatedDtxException, TimeoutDtxException, AndesException {
         QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
+
+        if (_logger.isDebugEnabled()) {
+            _logger.debug("Ending distributed transaction with GID : " + Arrays.toString(xid.getGlobalTransactionId()));
+        }
         distributedTransaction.end(_session.getSessionID(), xid,fail, suspend);
     }
 
@@ -1406,13 +1420,23 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             throws DtxNotSelectedException, TimeoutDtxException, UnknownDtxBranchException, IncorrectDtxStateException,
             AndesException, RollbackOnlyDtxException {
         QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
+
+        if (_logger.isDebugEnabled()) {
+            _logger.debug(
+                    "Preparing distributed transaction with GID : " + Arrays.toString(xid.getGlobalTransactionId()));
+        }
         distributedTransaction.prepare(xid, callback);
     }
 
-    public void commitDtxTransaction(Xid xid, boolean onePhase, DisruptorEventCallback callback) throws DtxNotSelectedException,
-                                                                                                        UnknownDtxBranchException, IncorrectDtxStateException, AndesException, RollbackOnlyDtxException,
-                                                                                                        TimeoutDtxException {
+    public void commitDtxTransaction(Xid xid, boolean onePhase, DisruptorEventCallback callback)
+            throws DtxNotSelectedException, UnknownDtxBranchException, IncorrectDtxStateException, AndesException,
+            RollbackOnlyDtxException, TimeoutDtxException {
         QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
+
+        if (_logger.isDebugEnabled()) {
+            _logger.debug("Committing distributed transaction with GID : " + Arrays.toString(xid.getGlobalTransactionId
+                    ()));
+        }
         distributedTransaction.commit(xid, onePhase, callback);
     }
 
@@ -1420,6 +1444,11 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             throws DtxNotSelectedException, UnknownDtxBranchException, AndesException, TimeoutDtxException,
             IncorrectDtxStateException {
         QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
+
+        if (_logger.isDebugEnabled()) {
+            _logger.debug(
+                    "Rolling back distributed transaction with GID : " + Arrays.toString(xid.getGlobalTransactionId()));
+        }
         distributedTransaction.rollback(xid, callback);
     }
 
@@ -1435,6 +1464,10 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     public void forgetDtxTransaction(Xid xid)
             throws DtxNotSelectedException, UnknownDtxBranchException, IncorrectDtxStateException, AndesException {
         QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
+
+        if (_logger.isDebugEnabled()) {
+            _logger.debug("Forgetting the distributed transaction with GID : " + Arrays.toString(xid.getGlobalTransactionId()));
+        }
         distributedTransaction.forget(xid);
     }
 
@@ -1447,6 +1480,11 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     public void setDtxTransactionTimeout(Xid xid, long timeout)
             throws DtxNotSelectedException, UnknownDtxBranchException, AndesException {
         QpidDistributedTransaction distributedTransaction = assertDtxTransaction();
+
+        if (_logger.isDebugEnabled()) {
+            _logger.debug("Setting timeout" + timeout + "for the distributed transaction with GID : "
+                                  + Arrays.toString(xid.getGlobalTransactionId()));
+        }
         distributedTransaction.setTimeout(xid, timeout);
     }
 
