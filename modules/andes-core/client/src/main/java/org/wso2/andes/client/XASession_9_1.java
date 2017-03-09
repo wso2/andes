@@ -62,6 +62,7 @@ import javax.jms.TopicSession;
 import javax.jms.XAQueueSession;
 import javax.jms.XASession;
 import javax.jms.XATopicSession;
+import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
 
@@ -131,7 +132,9 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession,
      * @throws FailoverException when a connection issue is detected
      * @throws AMQException      when an error is detected in AMQ state manager
      */
-    XaStatus startDtx(Xid xid, int flag) throws FailoverException, AMQException {
+    XaStatus startDtx(Xid xid, int flag) throws FailoverException, AMQException, XAException {
+
+        throwErrorIfClosed();
 
         DtxStartBody dtxStartBody = methodRegistry
                 .createDtxStartBody(xid.getFormatId(), xid.getGlobalTransactionId(), xid.getBranchQualifier(),
@@ -154,7 +157,10 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession,
      * @throws FailoverException when a connection issue is detected
      * @throws AMQException      when an error is detected in AMQ state manager
      */
-    public XaStatus endDtx(Xid xid, int flag) throws FailoverException, AMQException {
+    public XaStatus endDtx(Xid xid, int flag) throws FailoverException, AMQException, XAException {
+
+        throwErrorIfClosed();
+
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Sending dtx.end for channel " + _channelId + ", xid " + xid);
         }
@@ -171,7 +177,10 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession,
         return XaStatus.valueOf(response.getXaResult());
     }
 
-    public XaStatus prepareDtx(Xid xid) throws FailoverException, AMQException {
+    public XaStatus prepareDtx(Xid xid) throws FailoverException, AMQException, XAException {
+
+        throwErrorIfClosed();
+
         DtxPrepareBody dtxPrepareBody = methodRegistry
                 .createDtxPrepareBody(xid.getFormatId(), xid.getGlobalTransactionId(), xid.getBranchQualifier());
 
@@ -183,7 +192,10 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession,
         return XaStatus.valueOf(response.getXaResult());
     }
 
-    public XaStatus commitDtx(Xid xid, boolean onePhase) throws FailoverException, AMQException {
+    public XaStatus commitDtx(Xid xid, boolean onePhase) throws FailoverException, AMQException, XAException {
+
+        throwErrorIfClosed();
+
         DtxCommitBody dtxCommitBody = methodRegistry
                 .createDtxCommitBody(xid.getFormatId(), xid.getGlobalTransactionId(), xid.getBranchQualifier(), onePhase);
 
@@ -195,7 +207,10 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession,
         return XaStatus.valueOf(response.getXaResult());
     }
 
-    public XaStatus rollbackDtx(Xid xid) throws FailoverException, AMQException {
+    public XaStatus rollbackDtx(Xid xid) throws FailoverException, AMQException, XAException {
+
+        throwErrorIfClosed();
+
         DtxRollbackBody dtxRollbackBody = methodRegistry
                 .createDtxRollbackBody(xid.getFormatId(), xid.getGlobalTransactionId(), xid.getBranchQualifier());
 
@@ -215,7 +230,10 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession,
      * @throws FailoverException if failover process started during communication with server
      * @throws AMQException      if server sends back a error response
      */
-    public XaStatus forget(Xid xid) throws FailoverException, AMQException {
+    public XaStatus forget(Xid xid) throws FailoverException, AMQException, XAException {
+
+        throwErrorIfClosed();
+
         DtxForgetBody dtxForgetBody = methodRegistry
                 .createDtxForgetBody(xid.getFormatId(), xid.getGlobalTransactionId(), xid.getBranchQualifier());
 
@@ -236,7 +254,10 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession,
      * @throws FailoverException if failover process started during communication with server
      * @throws AMQException      if server sends back a error response
      */
-    public XaStatus setDtxTimeout(Xid xid, int timeout) throws FailoverException, AMQException {
+    public XaStatus setDtxTimeout(Xid xid, int timeout) throws FailoverException, AMQException, XAException {
+
+        throwErrorIfClosed();
+
         DtxSetTimeoutBody dtxSetTimeoutBody = methodRegistry
                 .createDtxSetTimeoutBody(xid.getFormatId(), xid.getGlobalTransactionId(), xid.getBranchQualifier(),
                                          timeout);
@@ -256,7 +277,10 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession,
      * @throws FailoverException if failover process started during communication with server
      * @throws AMQException      if server sends back a error response
      */
-    public List<Xid> recoverDtxTransactions() throws FailoverException, AMQException {
+    public List<Xid> recoverDtxTransactions() throws FailoverException, AMQException, XAException {
+
+        throwErrorIfClosed();
+
         DtxRecoverBody dtxRecoverBody = methodRegistry.createDtxRecoverBody();
 
         AMQMethodEvent amqMethodEvent = _connection._protocolHandler
@@ -294,4 +318,18 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession,
     public TopicSession getTopicSession() throws JMSException {
         return (TopicSession) getSession();
     }
+
+    /**
+     * Throw {@link XAException} if the connection is closed
+     *
+     * @throws XAException if connection not active
+     */
+    private void throwErrorIfClosed() throws XAException {
+        if (isClosed()) {
+            XAException xaException = new XAException("Session is already closed");
+            xaException.errorCode = XAException.XA_RBCOMMFAIL;
+            throw xaException;
+        }
+    }
+
 }
