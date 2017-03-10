@@ -19,6 +19,7 @@ import org.apache.commons.lang.SerializationUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wso2.andes.AMQException;
+import org.wso2.andes.XaJmsSession;
 import org.wso2.andes.client.failover.FailoverException;
 import org.wso2.andes.framing.BasicQosBody;
 import org.wso2.andes.framing.BasicQosOkBody;
@@ -59,6 +60,7 @@ import java.util.List;
 import javax.jms.JMSException;
 import javax.jms.QueueSession;
 import javax.jms.TopicSession;
+import javax.jms.TransactionInProgressException;
 import javax.jms.XAQueueSession;
 import javax.jms.XASession;
 import javax.jms.XATopicSession;
@@ -66,7 +68,7 @@ import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
 
-class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession, XATopicSession {
+public class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession, XATopicSession {
 
     /**
      * Class logger
@@ -115,7 +117,7 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession,
 
     @Override
     public javax.jms.Session getSession() throws JMSException {
-        return this;
+        return new XaJmsSession(this);
     }
 
     @Override
@@ -330,6 +332,42 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession,
             xaException.errorCode = XAException.XA_RBCOMMFAIL;
             throw xaException;
         }
+    }
+
+    /**
+     * Throws a {@link TransactionInProgressException}, since it should
+     * not be called for an XASession object.
+     *
+     * @throws TransactionInProgressException always.
+     */
+    public void commit() throws JMSException
+    {
+        throw new TransactionInProgressException(
+                "XASession:  A direct invocation of the commit operation is prohibited!");
+    }
+
+    /**
+     * Throws a {@link TransactionInProgressException}, since it should
+     * not be called for an XASession object.
+     *
+     * @throws TransactionInProgressException always.
+     */
+    public void rollback() throws JMSException
+    {
+        throw new TransactionInProgressException(
+                "XASession: A direct invocation of the rollback operation is prohibited!");
+    }
+
+    /**
+     * Throws a {@link TransactionInProgressException}, since it should
+     * not be called for an XASession object.
+     *
+     * @throws TransactionInProgressException always.
+     */
+    public void recover() throws JMSException
+    {
+        throw new TransactionInProgressException(
+                "XASession: A direct invocation of the recover operation is prohibited!");
     }
 
 }
