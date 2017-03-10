@@ -68,14 +68,7 @@ public class SlotMessageCounter implements StoreHealthListener {
     private final int slotWindowSize;
     private long currentSlotDeleteSafeZone;
 
-    /**
-     * Keep track of how many update loops are skipped without messages.
-     */
-    private int slotSubmitLoopSkipCount;
-
     private SlotCoordinator slotCoordinator;
-
-    private static final int SLOT_SUBMIT_LOOP_SKIP_COUNT_THRESHOLD = 10;
 
     /**
      * Time between successive slot submit scheduled tasks.
@@ -103,7 +96,6 @@ public class SlotMessageCounter implements StoreHealthListener {
         timeOutForMessagesInQueue = AndesConfigurationManager
                 .readValue(AndesConfiguration.PERFORMANCE_TUNING_SLOTS_MESSAGE_ACCUMULATION_TIMEOUT);
 
-        slotSubmitLoopSkipCount = 0;
         slotCoordinator = MessagingEngine.getInstance().getSlotCoordinator();
 
         messageStoresUnavailable = false;
@@ -112,15 +104,16 @@ public class SlotMessageCounter implements StoreHealthListener {
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("SlotMessageCounterTimeoutTask")
                 .build();
         submitSlotToCoordinatorExecutor = Executors.newScheduledThreadPool(2, namedThreadFactory);
-        scheduleSubmitSlotToCoordinatorTimer();
     }
 
     /**
      * This thread is to record message IDs in slot manager when a timeout is passed
      */
-    private void scheduleSubmitSlotToCoordinatorTimer() {
+    public void scheduleSubmitSlotToCoordinatorTimer() {
+        // The start of the task to submit slots is delayed since the coordinator should be elected before the start
+        // of this
         submitSlotToCoordinatorExecutor
-                .scheduleWithFixedDelay(new SlotTimeoutTask(), SLOT_SUBMIT_TIMEOUT, SLOT_SUBMIT_TIMEOUT,
+                .scheduleWithFixedDelay(new SlotTimeoutTask(), SLOT_SUBMIT_TIMEOUT * 10, SLOT_SUBMIT_TIMEOUT,
                         TimeUnit.MILLISECONDS);
     }
 
@@ -361,39 +354,35 @@ public class SlotMessageCounter implements StoreHealthListener {
         }
 
         /**
-         * Local nodes safe-zone is sent to the coordinator. This is done to keep the safezone moving forward when
+         * Local nodes safe-zone is sent to the coordinator. This is done to keep the safe-zone moving forward when
          * there are no publishers in the local node.
          */
         private void updateCoordinatorWithCurrentSafezone() {
-            slotSubmitLoopSkipCount++;
-            if (slotSubmitLoopSkipCount == SLOT_SUBMIT_LOOP_SKIP_COUNT_THRESHOLD) {
-                //update current slot Deletion Safe Zone
-                try {
 
-                    long evaluatedSafeZone = currentSlotDeleteSafeZone;
+            //update current slot Deletion Safe Zone
+            try {
+                long evaluatedSafeZone = currentSlotDeleteSafeZone;
 
-                    // If there are any slots pending submission to coordinator, we must lower the safe zone to their
-                    // starting point.
-
-                    // If we do not consider pending slots at this calculation, safe zone will fly up unexpectedly.
-                    for (Map.Entry<String, Slot> slotEntry : queueToSlotMap.entrySet()) {
-                        if (!checkMessageLimitReached(slotEntry.getValue())) {
-                            evaluatedSafeZone = Math.min(slotEntry.getValue().getStartMessageId(),
-                                    evaluatedSafeZone);
-                        }
+                // If there are any slots pending submission to coordinator, we must lower the safe zone to their
+                // starting point.
+                // If we do not consider pending slots at this calculation, safe zone will fly up unexpectedly.
+                for (Map.Entry<String, Slot> slotEntry : queueToSlotMap.entrySet()) {
+                    if (!checkMessageLimitReached(slotEntry.getValue())) {
+                        evaluatedSafeZone = Math.min(slotEntry.getValue().getStartMessageId(),
+                                evaluatedSafeZone);
                     }
-
-                    if (log.isDebugEnabled()) {
-                        log.debug("Updating coordinator with local safe zone " + evaluatedSafeZone);
-                    }
-
-                    submitCurrentSafeZone(evaluatedSafeZone);
-                    currentSlotDeleteSafeZone = evaluatedSafeZone;
-                    slotSubmitLoopSkipCount = 0;
-                } catch (ConnectionException e) {
-                    log.error("Error while sending slot deletion safe zone update", e);
                 }
+
+                if (log.isDebugEnabled()) {
+                    log.debug("Updating coordinator with local safe zone " + evaluatedSafeZone);
+                }
+
+                submitCurrentSafeZone(evaluatedSafeZone);
+                currentSlotDeleteSafeZone = evaluatedSafeZone;
+            } catch (ConnectionException e) {
+                log.error("Error while sending slot deletion safe zone update", e);
             }
+
         }
     }
 
