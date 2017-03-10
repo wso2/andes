@@ -359,24 +359,24 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
         if (isActive) {
             if (isExactMatchBindingKey) {
                 filteredSubscriptions = getActiveSubscriptionsByExactBindingKeyMatch(isDurable, protocolType,
-                        destinationType, bindingKeyPattern, connectedNode);
+                        destinationType, bindingKeyPattern.trim(), connectedNode);
                 filteredSubscriptions = filterActiveSubscriptionsBySubscriptionId(filteredSubscriptions,
-                        subscriptionIdPattern, isExactMatchSubscriptionId);
+                        subscriptionIdPattern.trim(), isExactMatchSubscriptionId);
             } else {
                 filteredSubscriptions = getActiveSubscriptionsByTokenizedBindingKeyMatch(isDurable, protocolType,
-                        destinationType, bindingKeyPattern, connectedNode);
+                        destinationType, bindingKeyPattern.trim(), connectedNode);
                 filteredSubscriptions = filterActiveSubscriptionsBySubscriptionId(filteredSubscriptions,
-                        subscriptionIdPattern, isExactMatchSubscriptionId);
+                        subscriptionIdPattern.trim(), isExactMatchSubscriptionId);
             }
         } else {
             if (isExactMatchBindingKey) {
-                filteredSubscriptions = getInactiveSubscriptionsByByExactBindingKeyMatch(bindingKeyPattern);
+                filteredSubscriptions = getInactiveSubscriptionsByByExactBindingKeyMatch(bindingKeyPattern.trim());
                 filteredSubscriptions = filterInactiveSubscriptionsBySubscriptionId(filteredSubscriptions,
-                        protocolType, destinationType, subscriptionIdPattern, isExactMatchSubscriptionId);
+                        protocolType, destinationType, subscriptionIdPattern.trim(), isExactMatchSubscriptionId);
             } else {
-                filteredSubscriptions = getInactiveSubscriptionsByTokenizedBindingKeyMatch(bindingKeyPattern);
+                filteredSubscriptions = getInactiveSubscriptionsByTokenizedBindingKeyMatch(bindingKeyPattern.trim());
                 filteredSubscriptions = filterInactiveSubscriptionsBySubscriptionId(filteredSubscriptions,
-                        protocolType, destinationType, subscriptionIdPattern, isExactMatchSubscriptionId);
+                        protocolType, destinationType, subscriptionIdPattern.trim(), isExactMatchSubscriptionId);
             }
         }
 
@@ -558,7 +558,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
                     filteredSubscriptions.add(subscription);
                 } else if (subscription.isDurable() && subscription.getStorageQueue().getMessageRouter().getName()
                         .equals(AMQPUtils.TOPIC_EXCHANGE_NAME)) {
-                    if (subscriptionIdPattern.equalsIgnoreCase(((DurableTopicSubscriber) subscription).getClientID())) {
+                    if (subscriptionIdPattern.equalsIgnoreCase(subscription.getSubscriptionId())) {
                         filteredSubscriptions.add(subscription);
                     }
                 }
@@ -569,8 +569,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
                     filteredSubscriptions.add(subscription);
                 } else if (subscription.isDurable() && subscription.getStorageQueue().getMessageRouter().getName()
                         .equals(AMQPUtils.TOPIC_EXCHANGE_NAME)) {
-                    if (StringUtils.containsIgnoreCase(((DurableTopicSubscriber) subscription).getClientID(),
-                            subscriptionIdPattern)) {
+                    if (StringUtils.containsIgnoreCase(subscription.getSubscriptionId(), subscriptionIdPattern)) {
                         filteredSubscriptions.add(subscription);
                     }
                 }
