@@ -29,7 +29,7 @@
     <groupId>org.wso2.andes</groupId>
     <artifactId>andes-parent</artifactId>
     <packaging>pom</packaging>
-    <version>3.2.x-SNAPSHOT</version>
+    <version>3.2.2-SNAPSHOT</version>
     <name>Andes</name>
     <description>Andes, Distributed message broker engine</description>
 
