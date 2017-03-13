@@ -95,7 +95,6 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                 }
                 break;
         }
-        inboundEvent.preProcessed = true;
     }
 
     /**

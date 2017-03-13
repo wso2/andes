@@ -41,6 +41,7 @@ public class LogExceptionHandler implements ExceptionHandler<InboundEventContain
             eventType = "";
         } else {
             eventType = "Event type: " + event.getEventType().toString();
+            event.setError(throwable);
         }
 
         log.error("[ Sequence: " + sequence + " ] Exception occurred while processing inbound events." +
