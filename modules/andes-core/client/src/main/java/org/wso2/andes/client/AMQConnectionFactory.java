@@ -24,10 +24,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wso2.andes.configuration.ClientProperties;
 import org.wso2.andes.jms.Connection;
+import org.wso2.andes.jms.ConnectionListener;
 import org.wso2.andes.jms.ConnectionURL;
 import org.wso2.andes.url.AMQBindingURL;
 import org.wso2.andes.url.URLSyntaxException;
 
+import javax.jms.*;
+import javax.naming.*;
+import javax.naming.spi.ObjectFactory;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.security.AccessController;
@@ -61,6 +67,8 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
                                              ObjectFactory, Referenceable, XATopicConnectionFactory,
                                              XAQueueConnectionFactory, XAConnectionFactory
 {
+    private static final Logger logger = LoggerFactory.getLogger(AMQConnectionFactory.class);
+
     private String _host;
     private int _port;
     private String _defaultUsername;
@@ -70,7 +78,8 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
     private ConnectionURL _connectionDetails;
     private SSLConfiguration _sslConfig;
 
-    private ThreadLocal<Boolean> removeBURL = new ThreadLocal<>();
+    private ConnectionListener connectionListener = null;
+    private ThreadLocal<Boolean> removeBURL = new ThreadLocal<Boolean>();
 
     private static final Logger log = LoggerFactory.getLogger(AMQConnectionFactory.class);
 
@@ -347,12 +356,19 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
                     _sslConfig.setTrustStorePassword(_connectionDetails.getTrustStorePassword());
 
                 }*/
-                return new AMQConnection(_connectionDetails, _sslConfig);
+                AMQConnection amqConnection = new AMQConnection(_connectionDetails, _sslConfig);
+                if (logger.isDebugEnabled()) {
+                    Throwable t = new Throwable();
+                    logger.debug("Setting connection listener to newly created connection from stack : " + displayStack(t).toString());
+                }
+                amqConnection.setConnectionListener(connectionListener);
+                return amqConnection;
             }
             else
             {
-                return new AMQConnection(_host, _port, _defaultUsername, _defaultPassword, getUniqueClientID(),
-                                         _virtualPath);
+                AMQConnection amqConnection = new AMQConnection(_host, _port, _defaultUsername, _defaultPassword, getUniqueClientID(), _virtualPath);
+                amqConnection.setConnectionListener(connectionListener);
+                return amqConnection;
             }
         }
         catch (Exception e)
@@ -374,6 +390,7 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
     
     public Connection createConnection(String userName, String password, String id) throws JMSException
     {
+
         if (removeBURL == null) {
             removeBURL = new ThreadLocal<Boolean>();
             removeBURL.set(new Boolean(false));
@@ -406,11 +423,20 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
                 {
                     _connectionDetails.setClientName(getUniqueClientID());
                 }
-                return new AMQConnection(_connectionDetails, _sslConfig);
+
+                AMQConnection amqConnection = new AMQConnection(_connectionDetails, _sslConfig);
+                if (logger.isDebugEnabled()) {
+                    Throwable t = new Throwable();
+                    logger.debug("Setting connection listener while creating connection from stack : " + displayStack(t).toString());
+                }
+                amqConnection.setConnectionListener(connectionListener);
+                return amqConnection;
             }
             else
             {
-                return new AMQConnection(_host, _port, userName, password, (id != null ? id : getUniqueClientID()), _virtualPath);
+                AMQConnection amqConnection = new AMQConnection(_host, _port, userName, password, (id != null ? id : getUniqueClientID()), _virtualPath);
+                amqConnection.setConnectionListener(connectionListener);
+                return amqConnection;
             }
         }
         catch (Exception e)
@@ -493,7 +519,9 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
 
                 if (addr != null)
                 {
-                    return new AMQConnection((String) addr.getContent());
+                    AMQConnection amqConnection = new AMQConnection((String) addr.getContent());
+                    amqConnection.setConnectionListener(connectionListener);
+                    return amqConnection;
                 }
             }
 
@@ -664,5 +692,20 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
     public XAQueueConnection createXAQueueConnection(String username, String password) throws JMSException
     {
         return (XAQueueConnection) createXAConnection(username, password);
+    }
+
+    public ConnectionListener getConnectionListener() {
+        return connectionListener;
+    }
+
+    public void setConnectionListener(ConnectionListener connectionListener) {
+        this.connectionListener = connectionListener;
+    }
+
+    private StringWriter displayStack(Throwable t) {
+         StringWriter errors = new StringWriter();
+         t.printStackTrace(new PrintWriter(errors));
+
+        return errors;
     }
 }

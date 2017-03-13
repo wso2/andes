@@ -131,21 +131,24 @@ public class AMQConnectionDelegate_8_0 implements AMQConnectionDelegate
             }
         }
 
-
-        OutgoingNetworkTransport transport = Transport.getOutgoingTransportInstance(getProtocolVersion());
-        NetworkConnection network = transport.connect(settings,_conn._protocolHandler, null);
-        _conn._protocolHandler.setNetworkConnection(network);
-        _conn._protocolHandler.getProtocolSession().init();
-        // this blocks until the connection has been set up or when an error
-        // has prevented the connection being set up
-
         AMQState state = null;
+        NetworkConnection network = null;
+
         try {
+            OutgoingNetworkTransport transport = Transport.getOutgoingTransportInstance(getProtocolVersion());
+            network = transport.connect(settings,_conn._protocolHandler, null);
+            _conn._protocolHandler.setNetworkConnection(network);
+            _conn._protocolHandler.getProtocolSession().init();
+            // this blocks until the connection has been set up or when an error
+            // has prevented the connection being set up
+
             state = waiter.await();
-        } catch (AMQException e) {
-            //We need to close the network connection to shut down the IOProcessor created by Mina
-            network.close();
-            throw new AMQException("Error occurred while establishing a connection ", e);
+        } catch (Exception e) {
+
+            if(null != network){
+                   //We need to close the network connection to shut down the IOProcessor created by Mina
+                   network.close();
+            }
         }
 
         if(state == AMQState.CONNECTION_OPEN)
