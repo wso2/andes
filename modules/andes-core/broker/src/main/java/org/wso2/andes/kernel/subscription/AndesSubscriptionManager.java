@@ -260,7 +260,8 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
     }
 
     /**
-     * Remove non-local subscription from registry, unbind subscription from queue and remove from database.
+     * Remove non-local subscription from registry, remove from the database and delete queue if it is the last
+     * non-durable subscription for its queue.
      *
      * @param subscription AndesSubscription to close
      * @throws AndesException if any error is occurred when unbinding subscription or deleting the queue
@@ -281,7 +282,8 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
 
         StorageQueue storageQueue = subscription.getStorageQueue();
         // If there are no subscriptions for this queue, then delete it
-        if (!storageQueue.isDurable() && storageQueue.getBoundSubscriptions().isEmpty()) {
+        if (!storageQueue.isDurable()
+            && (0 == numberOfSubscriptionsInCluster(storageQueue.getName(), subscription.getProtocolType()))) {
 
             AndesContextInformationManager contextInformationManager = AndesContext.getInstance()
                     .getAndesContextInformationManager();
@@ -293,7 +295,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
     }
 
     /**
-     * Remove non-local subscription from registry and unbind subscription from queue.
+     * Remove non-local subscription from registry.
      *
      * @param subscription AndesSubscription to close
      * @throws AndesException if any error is occurred when unbinding subscription or deleting the queue
