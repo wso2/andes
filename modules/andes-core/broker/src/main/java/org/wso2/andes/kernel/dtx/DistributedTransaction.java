@@ -48,7 +48,7 @@ public class DistributedTransaction {
      * Reference to the {@link DtxRegistry} which stores details related to all the active distributed transactions in
      * the broker
      */
-    private DtxRegistry dtxRegistry;
+    private final DtxRegistry dtxRegistry;
 
     /**
      * Reference to distributed transaction related branch for this specific transaction
@@ -58,12 +58,12 @@ public class DistributedTransaction {
     /**
      * Reference to event manager to push event to Disruptor
      */
-    private InboundEventManager eventManager;
+    private final InboundEventManager eventManager;
 
     /**
      * Reference to the {@link AndesChannel} related to the transaction
      */
-    private AndesChannel channel;
+    private final AndesChannel channel;
 
     /**
      * Indicate if we should fail the transaction due to an error in enqueue dequeue stages
@@ -73,7 +73,7 @@ public class DistributedTransaction {
     /**
      * Reasons for failing the transaction
      */
-    private ArrayList<String> failedReasons = new ArrayList<>();
+    private final ArrayList<String> failedReasons = new ArrayList<>();
 
     /**
      * Total memory consumed by content of the published messages belonging to this transaction
@@ -211,7 +211,7 @@ public class DistributedTransaction {
      * @param onePhase True if this a one phase commit.
      * @param callback {@link DisruptorEventCallback} to be called when the commit is done from the Disruptor end
      * @throws UnknownDtxBranchException Thrown when the {@link Xid} is unknown
-     * @throws IncorrectDtxStateException Thrown when the state transistion of the {@link DtxBranch} is invalid
+     * @throws IncorrectDtxStateException Thrown when the state transition of the {@link DtxBranch} is invalid
      *                                    For instance invoking commit without invoking prepare for a two phase commit
      * @throws AndesException Thrown when and internal exception occur
      * @throws RollbackOnlyDtxException Thrown when commit is invoked on a ROLLBACK_ONLY {@link DtxBranch}
@@ -285,7 +285,7 @@ public class DistributedTransaction {
     /**
      * Rollback the transaction session for the provided {@link Xid}
      *
-     * @param xid {@link Xid} to be rollbacked
+     * @param xid {@link Xid} to be rolled back
      * @param callback {@link DisruptorEventCallback}
      * @throws UnknownDtxBranchException thrown when an unknown xid is provided
      * @throws AndesException thrown on internal Andes core error
