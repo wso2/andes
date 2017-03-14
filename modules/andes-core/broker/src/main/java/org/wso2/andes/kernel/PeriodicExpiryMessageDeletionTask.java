@@ -40,6 +40,7 @@ import java.util.concurrent.ExecutionException;
 public class PeriodicExpiryMessageDeletionTask implements Runnable, StoreHealthListener {
 
     private static Log log = LogFactory.getLog(PeriodicExpiryMessageDeletionTask.class);
+    private static Log expiryLog = LogFactory.getLog("MessageExpirationTask");
 
     /**
      * Expired Message count that is retrieved for one batch delete.
@@ -124,6 +125,12 @@ public class PeriodicExpiryMessageDeletionTask implements Runnable, StoreHealthL
                             }
                             //delete message metadata, content from the meta data table, content table and expiry table
                             MessagingEngine.getInstance().deleteMessagesById(expiredMessages);
+                            if (expiryLog.isWarnEnabled()) {
+                                for (Long expiredMessageId : expiredMessages) {
+                                    expiryLog.warn("Message is expired. Therefore, it will be deleted. : id= "
+                                            + expiredMessageId);
+                                }
+                            }
                             if (log.isDebugEnabled()) {
                                 log.debug("Expired message count for queue : " + queueName + "is" + expiredMessages
                                         .size());
