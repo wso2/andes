@@ -32,6 +32,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
@@ -121,12 +123,18 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
     private final ExecutorService threadExecutor;
 
     /**
+     * Thread executor used for expiring the coordinator state
+     */
+    private final ScheduledExecutorService scheduledExecutorService;
+
+    /**
      * Default constructor
      */
     RDBMSCoordinationStrategy() {
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("RDBMSCoordinationStrategy-%d")
                                                                      .build();
         threadExecutor = Executors.newSingleThreadExecutor(namedThreadFactory);
+        scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
         heartBeatInterval = AndesConfigurationManager
                 .readValue(AndesConfiguration.RDBMS_BASED_COORDINATION_HEARTBEAT_INTERVAL);
@@ -303,6 +311,7 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
         membershipEventingEngine.stop();
         coordinatorElectionTask.stop();
         threadExecutor.shutdown();
+        scheduledExecutorService.shutdown();
     }
 
     /**
@@ -327,6 +336,11 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
          * Indicate if the task should run
          */
         private boolean running;
+
+        /**
+         * Scheduled future for the COORDINATOR state expiration task
+         */
+        private ScheduledFuture<?> scheduledFuture;
 
         private CoordinatorElectionTask() {
             running = true;
@@ -356,6 +370,7 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
                 } catch (Throwable e) {
                     logger.error("Error detected while running coordination algorithm. Node became a "
                             + NodeState.CANDIDATE + " node", e);
+                    cancelStateExpirationTask();
                     currentNodeState = NodeState.CANDIDATE;
                 }
 
@@ -421,6 +436,8 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
             boolean stillCoordinator = contextStore.updateCoordinatorHeartbeat(localNodeId);
 
             if (stillCoordinator) {
+                resetScheduleStateExpirationTask();
+                long startTime = System.currentTimeMillis();
                 updateNodeHeartBeat();
 
                 long currentTimeMillis = System.currentTimeMillis();
@@ -459,10 +476,20 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
                             removedNode);
                 }
 
-                TimeUnit.MILLISECONDS.sleep(heartBeatInterval);
+                // Reduce the time spent in updating membership events from wait time
+                long endTime = System.currentTimeMillis();
+                long timeToWait = heartBeatInterval - (endTime - startTime);
+
+                if (timeToWait > 0) {
+                    TimeUnit.MILLISECONDS.sleep(timeToWait);
+                } else {
+                    logger.warn("Sending membership events took more than the heart beat interval");
+                }
+
                 return NodeState.COORDINATOR;
             } else {
                 logger.info("Going for election since Coordinator state is lost");
+                cancelStateExpirationTask();
                 return NodeState.ELECTION;
             }
         }
@@ -502,6 +529,8 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
 
                 if (isCoordinator) {
                     contextStore.updateCoordinatorHeartbeat(localNodeId);
+                    resetScheduleStateExpirationTask();
+
                     logger.info("Elected current node as the coordinator");
 
                     configurableClusterAgent.becameCoordinator();
@@ -528,6 +557,28 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
          */
         public void stop() {
             running = false;
+        }
+
+        /**
+         * Cancel the coordinator expiration task if one exists.
+         */
+        private void cancelStateExpirationTask() {
+            if (scheduledFuture != null) {
+                scheduledFuture.cancel(true);
+            }
+        }
+
+        /**
+         * Reset the coordinator expiration task. This method is called when the COORDINATOR state is reassigned
+         */
+        private void resetScheduleStateExpirationTask() {
+            cancelStateExpirationTask();
+            scheduledFuture = scheduledExecutorService.schedule(new Runnable() {
+                @Override
+                public void run() {
+                    currentNodeState = NodeState.ELECTION;
+                }
+            }, heartbeatMaxAge, TimeUnit.MILLISECONDS);
         }
     }
 }
