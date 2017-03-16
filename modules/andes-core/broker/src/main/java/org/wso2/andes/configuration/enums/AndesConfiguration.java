@@ -693,11 +693,6 @@ public enum AndesConfiguration implements ConfigurationProperty {
     RECOVERY_MESSAGES_CONCURRENT_STORAGE_QUEUE_READS("recovery/concurrentStorageQueueReads", "5", Integer.class),
 
     /**
-     * Enable RDBMS slot information store
-     */
-    SLOT_MANAGEMENT_STORAGE("slotManagement/storage", "RDBMS", String.class),
-
-    /**
      * Heartbeat interval used in the RDBMS base coordination algorithm in seconds
      * <p>
      * default value: 5
