@@ -41,10 +41,19 @@ public interface SlotAgent {
 							throws AndesException;
 
 	/**
-	 * Delete a slot from database
+	 * Delete a slot that is not overlapping, from database.
 	 *
 	 * @param nodeId id of the node
 	 * @param queueName queue name
+	 * @param startMessageId start message id
+	 * @param endMessageId end message id
+	 */
+    boolean deleteNonOverlappingSlot(String nodeId, String queueName, long startMessageId, long endMessageId)
+            throws AndesException;
+
+	/**
+	 * Delete a slot from database.
+	 *
 	 * @param startMessageId start message id
 	 * @param endMessageId end message id
 	 */
@@ -205,6 +214,15 @@ public interface SlotAgent {
 	 * @throws org.wso2.andes.kernel.AndesException
 	 */
 	TreeSet<Slot> getAssignedSlotsByNodeId(String nodeId) throws AndesException;
+
+    /**
+     * Get all overlapped slots for a given node id.
+     *
+     * @param nodeId id of node
+     * @return set of assigned slot objects
+     * @throws org.wso2.andes.kernel.AndesException
+     */
+    TreeSet<Slot> getOverlappedSlotsByNodeId(String nodeId) throws AndesException;
 
 	/**
 	 * Get all slots for a given queue

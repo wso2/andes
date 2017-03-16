@@ -365,28 +365,37 @@ public class SlotManagerClusterMode extends AbstractSlotManager {
     public void reassignSlotsWhenMemberLeaves(String nodeId) throws AndesException {
 
         TreeSet<Slot> assignedSlotsSet;
-        //Get all assigned nodes by node id
+        //Get all assigned slots for the left node
         assignedSlotsSet = slotAgent.getAssignedSlotsByNodeId(nodeId);
-        if (null != assignedSlotsSet) {
-            for (Slot slotToBeReAssigned : assignedSlotsSet) {
-                //Re-assign only if the slot is not empty
-                if (!(SlotUtils.checkSlotEmptyFromMessageStore(slotToBeReAssigned))) {
-                    slotAgent.reassignSlot(slotToBeReAssigned);
-                    if (log.isDebugEnabled()) {
-                        log.debug("Returned slot " + slotToBeReAssigned + "from node " +
-                                nodeId + " as member left");
-                    }
-                } else {
-                    // Delete empty slots
-                    slotToBeReAssigned.setStorageQueue(AndesContext.getInstance().getStorageQueueRegistry()
-                            .getStorageQueue(slotToBeReAssigned.getStorageQueueName()));
-                    SlotDeletionExecutor.getInstance().scheduleToDelete(slotToBeReAssigned);
+        for (Slot slotToBeReAssigned : assignedSlotsSet) {
+            //Re-assign only if the slot is not empty
+            if (!(SlotUtils.checkSlotEmptyFromMessageStore(slotToBeReAssigned))) {
+                slotAgent.reassignSlot(slotToBeReAssigned);
+                if (log.isDebugEnabled()) {
+                    log.debug("Returned assigned slot " + slotToBeReAssigned
+                              + "from node " + nodeId + " as member left");
                 }
+            } else {
+                // Delete empty slots
+                slotToBeReAssigned.setStorageQueue(AndesContext.getInstance().getStorageQueueRegistry()
+                        .getStorageQueue(slotToBeReAssigned.getStorageQueueName()));
+                SlotDeletionExecutor.getInstance().scheduleToDelete(slotToBeReAssigned);
             }
-            slotAgent.deleteOverlappedSlots(nodeId);
-        } else {
-            if (log.isDebugEnabled()) {
-                log.debug("No slots to return from node " + nodeId + " as member left");
+        }
+        //Get all overlapped slots for the left node
+        TreeSet<Slot> overlappedSlotsSet = slotAgent.getOverlappedSlotsByNodeId(nodeId);
+        for (Slot overlappedSlot : overlappedSlotsSet) {
+            //Re-assign only if the slot is not empty
+            if (!(SlotUtils.checkSlotEmptyFromMessageStore(overlappedSlot))) {
+                slotAgent.reassignSlot(overlappedSlot);
+                if (log.isDebugEnabled()) {
+                    log.debug("Returned overlapped slot " + overlappedSlot
+                              + "from node " + nodeId + " as member left");
+                }
+            } else {
+                // Delete empty slots
+                slotAgent.deleteSlot(nodeId, overlappedSlot.getStorageQueueName(), overlappedSlot.getStartMessageId(),
+                        overlappedSlot.getEndMessageId());
             }
         }
     }
@@ -409,7 +418,7 @@ public class SlotManagerClusterMode extends AbstractSlotManager {
         if (slotDeleteSafeZone > endMsgId) {
             String lockKey = nodeId + SlotManagerClusterMode.class;
             synchronized (lockKey.intern()) {
-                slotDeleted = slotAgent.deleteSlot(nodeId, storageQueueName, startMsgId, endMsgId);
+                slotDeleted = slotAgent.deleteNonOverlappingSlot(nodeId, storageQueueName, startMsgId, endMsgId);
                 if (log.isDebugEnabled()) {
                     log.debug(" Deleted slot id = " + emptySlot.getId() + " queue name = " + storageQueueName
                             + " deleteSuccess: " + slotDeleted);
