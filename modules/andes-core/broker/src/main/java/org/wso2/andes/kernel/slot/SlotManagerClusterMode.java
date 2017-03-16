@@ -22,12 +22,9 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.gs.collections.impl.map.mutable.ConcurrentHashMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.cluster.coordination.SlotAgent;
-import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.cluster.coordination.rdbms.DatabaseSlotAgent;
 
 import java.util.Collections;
@@ -78,17 +75,8 @@ public class SlotManagerClusterMode extends AbstractSlotManager {
         slotDeleteSafeZoneCalc = new SlotDeleteSafeZoneCalc(SAFE_ZONE_EVALUATION_INTERVAL);
         new Thread(slotDeleteSafeZoneCalc).start();
 
-        String slotMgtMode = AndesConfigurationManager.readValue(AndesConfiguration.SLOT_MANAGEMENT_STORAGE);
-        if ("RDBMS".equalsIgnoreCase(slotMgtMode)) {
-            // Use RDBMS slot information storing
-            slotAgent = new DatabaseSlotAgent();
-        } else if ("HAZELCAST".equalsIgnoreCase(slotMgtMode)) {
-            // Use Hazelcast slot information storing
-            slotAgent = HazelcastAgent.getInstance();
-        } else {
-            throw new RuntimeException("Unknown slot management storage mode \"" + slotMgtMode + "\"");
-        }
-        log.info("Using " + slotMgtMode + " based slot management mode");
+        // Use RDBMS slot information storing
+        slotAgent = new DatabaseSlotAgent();
         firstMessageId = INITIAL_MESSAGE_ID;
         slotRecoveryScheduled = new AtomicBoolean(false);
 
