@@ -596,6 +596,14 @@ public class RDBMSConstants {
     /**
      * Prepared statement to delete a slot from database
      */
+    protected static final String PS_DELETE_SLOT =
+            "DELETE FROM " + SLOT_TABLE
+            + " WHERE " + START_MESSAGE_ID + "=?"
+            + " AND " + END_MESSAGE_ID + "=?";
+
+    /**
+     * Prepared statement to delete a slot from database
+     */
     protected static final String PS_DELETE_NON_OVERLAPPING_SLOT =
             "DELETE FROM " + SLOT_TABLE
             + " WHERE " + START_MESSAGE_ID + "=?"
@@ -650,6 +658,16 @@ public class RDBMSConstants {
             + " FROM " + SLOT_TABLE
             + " WHERE " + ASSIGNED_NODE_ID + "=?"
             + " AND " + SLOT_STATE + "=" + SlotState.ASSIGNED.getCode()
+            + " ORDER BY " + SLOT_ID;
+
+    /**
+     * Prepared statement to get slots assigned to a give node
+     */
+    protected static final String PS_GET_OVERLAPPED_SLOTS_BY_NODE_ID =
+            "SELECT " + START_MESSAGE_ID + "," + END_MESSAGE_ID + "," + STORAGE_QUEUE_NAME
+            + " FROM " + SLOT_TABLE
+            + " WHERE " + ASSIGNED_NODE_ID + "=?"
+            + " AND " + SLOT_STATE + "=" + SlotState.OVERLAPPED.getCode()
             + " ORDER BY " + SLOT_ID;
 
     /**
@@ -1234,6 +1252,7 @@ public class RDBMSConstants {
     protected static final String TASK_DELETE_MESSAGE_ID = "deleting message ids";
     protected static final String TASK_GET_MESSAGE_IDS = "getting message ids";
     protected static final String TASK_GET_ASSIGNED_SLOTS_BY_NODE_ID = "getting assigned slots by node id";
+    protected static final String TASK_GET_OVERLAPPED_SLOTS_BY_NODE_ID = "getting assigned slots by node id";
     protected static final String TASK_GET_ALL_SLOTS_BY_QUEUE_NAME = "getting all slots by queue name";
     protected static final String TASK_GET_OVERLAPPED_SLOT = "getting overlapped slot";
     protected static final String TASK_GET_ALL_QUEUES = "getting all queues";
