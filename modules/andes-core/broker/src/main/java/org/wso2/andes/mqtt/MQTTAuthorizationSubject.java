@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  *   WSO2 Inc. licenses this file to you under the Apache License,
  *   Version 2.0 (the "License"); you may not use this file except
@@ -17,6 +17,8 @@
  */
 
 package org.wso2.andes.mqtt;
+
+import java.util.Map;
 
 /**
  * Stores authorization details for MQTT clients.
@@ -47,6 +49,12 @@ public class MQTTAuthorizationSubject {
      * Protocol version of the MQTT client.
      */
     private byte protocolVersion;
+
+    /**
+     *  A map to store authentication related properties
+     *  eg: roles that related to authentication
+     */
+    private Map<String, Object> properties;
 
     /**
      * Initialize Authorization Subject with the clientID and userFlag which is required.
@@ -90,4 +98,12 @@ public class MQTTAuthorizationSubject {
     public byte getProtocolVersion() { return protocolVersion; }
 
     public void setProtocolVersion(byte protocolVersion) { this.protocolVersion = protocolVersion; }
+
+    public void setProperties(Map<String, Object> properties){
+        this.properties=properties;
+    }
+
+    public Map<String, Object> getProperties(){
+        return properties;
+    }
 }
