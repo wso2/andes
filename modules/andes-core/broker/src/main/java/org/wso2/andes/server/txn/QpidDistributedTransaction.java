@@ -101,7 +101,7 @@ public class QpidDistributedTransaction implements ServerTransaction {
         List<AndesAckData> ackList = new ArrayList<>(messages.size());
         try {
             for (QueueEntry entry : messages) {
-                ackList.add(AndesUtils.generateAndesAckMessage(channelID, entry.getMessage().getMessageNumber()));
+                ackList.add(new AndesAckData(channelID, entry.getMessage().getMessageNumber()));
             }
             distributedTransaction.dequeue(ackList);
         } catch (AndesException e) {

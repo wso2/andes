@@ -796,7 +796,10 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
                 } else {
                     _synchronousQueue.put(new DelayedObject(0, jmsMessage));
                 }
-                _logger.debug("dest="+ _destination.getQueueName()+  " added message " + _synchronousQueue.size() + "]");
+                if(_logger.isDebugEnabled()) {
+                    _logger.debug("dest="+ _destination.getQueueName()+  " added message "
+                            + _synchronousQueue.size() + "]");
+                }
             }
         }
         catch (Exception e)

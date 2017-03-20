@@ -58,7 +58,7 @@ public class BasicRecoverSyncMethodHandler implements StateAwareMethodListener<B
             throw body.getChannelNotFoundException(channelId);
         }
 
-        Map<Long, QueueEntry> recoveredMsgs = channel.recoverMessages(body.getRequeue());
+        //Map<Long, QueueEntry> recoveredMsgs = channel.recoverMessages(body.getRequeue());
 
         // Qpid 0-8 hacks a synchronous -ok onto recover.
         // In Qpid 0-9 we create a separate sync-recover, sync-recover-ok pair to be "more" compliant
@@ -77,6 +77,6 @@ public class BasicRecoverSyncMethodHandler implements StateAwareMethodListener<B
 
         }
 
-        channel.resendRecoveredMessages(recoveredMsgs);
+        channel.resendRecoveredMessages();
     }
 }

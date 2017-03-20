@@ -112,7 +112,7 @@ public class BasicRejectMethodHandler implements StateAwareMethodListener<BasicR
                  * Inform kernel that message has been rejected by AMQP transport
                  */
                 try {
-                    QpidAndesBridge.rejectMessage((AMQMessage) message.getMessage(), channel);
+                    QpidAndesBridge.rejectMessage((AMQMessage) message.getMessage(), channel, body.getRequeue());
                 } catch (AMQException e) {
                     _logger.error("Error while rejecting message by kernel" , e);
                     throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while rejecting message by kernel", e);
@@ -122,22 +122,8 @@ public class BasicRejectMethodHandler implements StateAwareMethodListener<BasicR
 
             if (body.getRequeue())
             {
-                //todo: we need to honour this
+                //remove message from maps
                 channel.requeue(deliveryTag);
-            }
-            else
-            {
-                try {
-                    DeliverableAndesMetadata andesMetadata = AndesUtils.lookupDeliveredMessage(message.getMessage()
-                            .getMessageNumber(), channel.getId());
-                    Andes.getInstance().moveMessageToDeadLetterChannel(andesMetadata, message
-                            .getQueue()
-                            .getName());
-                } catch (AndesException e) {
-                    _logger.error("Error while moving message to DLC message Id = "
-                            + message.getMessage().getMessageNumber() , e);
-                    throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while moving message to DLC", e);
-                }
             }
         }
     }

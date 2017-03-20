@@ -80,8 +80,7 @@ public class InboundEventManager {
     private final DisablePubAckImpl disablePubAck;
     private LZ4CompressionHelper lz4CompressionHelper;
 
-    public InboundEventManager(AndesSubscriptionManager subscriptionManager,
-                               MessagingEngine messagingEngine) {
+    public InboundEventManager(MessagingEngine messagingEngine) {
 
         Integer bufferSize = AndesConfigurationManager.readValue(
                 PERFORMANCE_TUNING_PUBLISHING_BUFFER_SIZE);
@@ -181,6 +180,7 @@ public class InboundEventManager {
     /**
      * When a message is received from a transport it is handed over to MessagingEngine through the implementation of
      * inbound event manager. (e.g: through a disruptor ring buffer) Eventually the message will be stored
+     *
      * @param message AndesMessage
      * @param andesChannel AndesChannel
      * @param pubAckHandler PubAckHandler
@@ -210,6 +210,7 @@ public class InboundEventManager {
 
     /**
      * Acknowledgement received from clients for sent messages will be handled through this method
+     *
      * @param ackData AndesAckData
      */
     public void ackReceived(AndesAckData ackData) {
@@ -228,13 +229,13 @@ public class InboundEventManager {
 
             //Tracing message
             if (MessageTracer.isEnabled()) {
-                MessageTracer.trace(ackData.getAcknowledgedMessage().getMessageID(), ackData.getAcknowledgedMessage()
-                        .getDestination(), MessageTracer.ACK_PUBLISHED_TO_DISRUPTOR);
+                MessageTracer.trace(ackData.getIdOfAcknowledgedMessage(),
+                        MessageTracer.ACK_PUBLISHED_TO_DISRUPTOR + " Channel = " + ackData.getChannelID());
             }
 
             if (log.isDebugEnabled()) {
-                log.debug("[ sequence: " + sequence + " ] Message acknowledgement published to disruptor. Message id " +
-                          ackData.getAcknowledgedMessage().getMessageID());
+                log.debug("[ sequence: " + sequence + " ] Message acknowledgement published to disruptor. "
+                        + "Message id " + ackData.getIdOfAcknowledgedMessage());
             }
         }
     }

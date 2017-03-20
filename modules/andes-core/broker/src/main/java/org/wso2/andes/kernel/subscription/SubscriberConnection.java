@@ -247,6 +247,17 @@ public class SubscriberConnection {
     }
 
     /**
+     * Clear tracked sent but un-acknowledged messages. Return the messages of the same view
+     * at the moment it was cleared. While this operation is performed, no new
+     * message will be added to the list.
+     *
+     * @return list of messages tracked when cleaned up
+     */
+    public List<DeliverableAndesMetadata> clearAndReturnUnackedMessages() {
+        return outBoundMessageTracker.clearAndReturnUnackedMessages();
+    }
+
+    /**
      * Is the underlying protocol connection active and can accept
      * messages
      *
@@ -276,10 +287,10 @@ public class SubscriberConnection {
     /**
      * Perform on reject receive for a message
      * @param messageID id of the message acknowledged
+     * @param reQueue true if message is to be delivered again
      * @return  DeliverableAndesMetadata reference of message rejected
-     * @throws AndesException
      */
-    public DeliverableAndesMetadata onMessageReject(long messageID) throws AndesException{
+    public DeliverableAndesMetadata onMessageReject(long messageID, boolean reQueue) {
         DeliverableAndesMetadata rejectedMessage = getUnAckedMessage(messageID);
         rejectedMessage.markAsNackedByClient(protocolChannelID);
         if (log.isDebugEnabled()) {

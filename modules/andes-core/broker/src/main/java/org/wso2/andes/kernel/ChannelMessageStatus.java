@@ -56,9 +56,14 @@ public enum  ChannelMessageStatus {
     CLIENT_REJECTED(5),
 
     /**
+     * Channel is recovered. Messages will be flushed to some channel again
+     */
+    RECOVERED(6),
+
+    /**
      * Consumer is closed
      */
-    CLOSED(6);
+    CLOSED(7);
 
 
     private int code;
@@ -123,20 +128,23 @@ public enum  ChannelMessageStatus {
         //Channel wise message status begins at DISPATCHED state.
         //If message CLOSED there is no next state for message.
 
-        DISPATCHED.next = EnumSet.of(SEND_FAILED, ACKED, NACKED, CLOSED);
+        DISPATCHED.next = EnumSet.of(SEND_FAILED, ACKED, NACKED, RECOVERED, CLOSED);
         DISPATCHED.previous = EnumSet.complementOf(EnumSet.allOf(ChannelMessageStatus.class));
 
         SEND_FAILED.next = EnumSet.of(DISPATCHED, CLIENT_REJECTED, CLOSED);
         SEND_FAILED.previous = EnumSet.of(DISPATCHED);
 
-        ACKED.next = EnumSet.of(CLOSED);
+        ACKED.next = EnumSet.of(RECOVERED, CLOSED);
         ACKED.previous = EnumSet.of(DISPATCHED);
 
-        NACKED.next = EnumSet.of(DISPATCHED, CLOSED);
+        NACKED.next = EnumSet.of(DISPATCHED, RECOVERED, CLOSED);
         NACKED.previous = EnumSet.of(DISPATCHED);
 
         CLIENT_REJECTED.next = EnumSet.complementOf(EnumSet.allOf(ChannelMessageStatus.class));
         CLIENT_REJECTED.previous = EnumSet.of(SEND_FAILED);
+
+        RECOVERED.next = EnumSet.of(DISPATCHED, CLOSED);
+        RECOVERED.previous = EnumSet.of(DISPATCHED, ACKED, NACKED);
 
         //this is because we directly mark close on channel close
         CLOSED.next = EnumSet.of(SEND_FAILED, CLOSED);

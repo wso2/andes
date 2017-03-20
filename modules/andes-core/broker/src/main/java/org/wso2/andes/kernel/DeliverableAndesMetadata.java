@@ -191,6 +191,16 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
     }
 
     /**
+     * Rollback message delivery on the channel. It should
+     * not be recorded as a success delivery attempt.
+     *
+     * @param channelID ID of the subscriber channel delivery should be rollback
+     */
+    public void rollbackDelivery(UUID channelID) {
+        channelDeliveryInfo.get(channelID).decrementDeliveryCount();
+    }
+
+    /**
      * Mark the message as buffered. Buffered messages will be scheduled to the subscribers.
      */
     public void markAsBuffered() {
@@ -275,6 +285,16 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
     public void markAsNackedByClient(UUID channelID) {
         ChannelInformation channelInformation = channelDeliveryInfo.get(channelID);
         channelInformation.addChannelStatus(ChannelMessageStatus.NACKED);
+    }
+
+    /**
+     * Record channel recovery
+     *
+     * @param channelID ID of the channel
+     */
+    public void markAsRecoveredByClient(UUID channelID) {
+        ChannelInformation channelInformation = channelDeliveryInfo.get(channelID);
+        channelInformation.addChannelStatus(ChannelMessageStatus.RECOVERED);
     }
 
     /**
