@@ -75,7 +75,7 @@ public class PersistenceStoreConnector implements MQTTConnector {
      */
     public void messageAck(long messageID, UUID channelID)
             throws AndesException {
-        AndesAckData andesAckData = AndesUtils.generateAndesAckMessage(channelID, messageID);
+        AndesAckData andesAckData = new AndesAckData(channelID, messageID);
 
         // Remove retain message ack upon receive from retain message metadata map
         if(retainMessageIdSet.contains(messageID + channelID.toString())) {
@@ -88,8 +88,8 @@ public class PersistenceStoreConnector implements MQTTConnector {
     /**
      * {@inheritDoc}
      */
-    public void messageNack(DeliverableAndesMetadata metadata, UUID channelID) throws AndesException{
-        Andes.getInstance().messageRejected(metadata, channelID);
+    public void messageNack(long messageId, UUID channelID) throws AndesException{
+        Andes.getInstance().messageRejected(messageId, channelID, true, false);
     }
 
     /**
@@ -179,9 +179,6 @@ public class PersistenceStoreConnector implements MQTTConnector {
             InboundBindingEvent mqttBinding =
                     new InboundBindingEvent(queueInfo, MQTTUtils.MQTT_EXCHANGE_NAME, topic);
             Andes.getInstance().addBinding(mqttBinding);
-
-            //Will notify the creation of the client connection
-            Andes.getInstance().clientConnectionCreated(subscriptionChannelID);
 
             //Once the connection is created we register subscription
             AndesSubscription localSubscription = createLocalSubscription(mqttTopicSubscriber, topic, clientID);
@@ -337,9 +334,6 @@ public class PersistenceStoreConnector implements MQTTConnector {
                         new InboundBindingEvent(queueInfo, MQTTUtils.MQTT_EXCHANGE_NAME, subscribedTopic);
                 Andes.getInstance().removeBinding(mqttBinding);
             }
-
-            //Will indicate the closure of the subscription connection
-            Andes.getInstance().clientConnectionClosed(subscriberChannel);
 
             if (log.isDebugEnabled()) {
                 log.debug("Disconnected subscriber from topic " + subscribedTopic);

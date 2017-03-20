@@ -267,24 +267,18 @@ public class MessagingEngine {
         List<AndesPreparedMessageMetadata> messagesToRemove = new ArrayList<>(ackDataList.size());
         for (AndesAckData ack : ackDataList) {
 
+            AndesAckEvent ackEvent = new AndesAckEvent(ack);
+
+            ackEvent.setMetadataReference();
+
             // For topics message is shared. If all acknowledgements are received only we should remove message
-            boolean deleteMessage = ack.getAcknowledgedMessage().markAsAcknowledgedByChannel(ack.getChannelID());
-
-            AndesSubscription subscription = subscriptionManager.getSubscriptionByProtocolChannel(ack.getChannelID());
-
-            subscription.onMessageAck(ack.getAcknowledgedMessage().getMessageID());
+            boolean deleteMessage = ackEvent.processEvent();
 
             if (deleteMessage) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Ok to delete message id " + ack.getAcknowledgedMessage().getMessageID());
-                }
-                //it is a must to set this to event container. Otherwise, multiple event handlers will see the status
-                ack.setBaringMessageRemovable();
                 AndesPreparedMessageMetadata rollbackMessageMetadata =
-                        new AndesPreparedMessageMetadata(ack.getAcknowledgedMessage());
+                        new AndesPreparedMessageMetadata(ackEvent.getMetadataReference());
                 messagesToRemove.add(rollbackMessageMetadata);
             }
-
         }
         return messagesToRemove;
     }
