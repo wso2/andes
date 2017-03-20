@@ -61,7 +61,7 @@ public class InMemoryConnector implements MQTTConnector {
     }
 
     @Override
-    public void messageNack(DeliverableAndesMetadata metadata, UUID channelID) {
+    public void messageNack(long messageId, UUID channelID) {
 
     }
 

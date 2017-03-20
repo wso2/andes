@@ -19,7 +19,7 @@
 package org.wso2.andes.kernel.disruptor.inbound;
 
 import com.lmax.disruptor.EventFactory;
-import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.kernel.AndesAckEvent;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
@@ -68,7 +68,7 @@ public class InboundEventContainer {
     /**
      * Acknowledgments received to disruptor
      */
-    public AndesAckData ackData;
+    public AndesAckEvent ackData;
 
     /**
      * When content chunk processed this boolean is set to false

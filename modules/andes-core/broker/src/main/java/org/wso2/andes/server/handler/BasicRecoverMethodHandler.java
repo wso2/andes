@@ -18,11 +18,14 @@
 package org.wso2.andes.server.handler;
 
 import org.apache.log4j.Logger;
+import org.wso2.andes.AMQChannelException;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.AMQMethodBody;
 import org.wso2.andes.framing.BasicRecoverBody;
 import org.wso2.andes.framing.ProtocolVersion;
 import org.wso2.andes.framing.amqp_8_0.MethodRegistry_8_0;
+import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
+import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.queue.QueueEntry;
@@ -42,31 +45,44 @@ public class BasicRecoverMethodHandler implements StateAwareMethodListener<Basic
         return _instance;
     }
 
-    public void methodReceived(AMQStateManager stateManager, BasicRecoverBody body, int channelId) throws AMQException
+    public void methodReceived(AMQStateManager stateManager, final BasicRecoverBody body, final int channelId) throws AMQException
     {
-        AMQProtocolSession session = stateManager.getProtocolSession();
+        final AMQProtocolSession session = stateManager.getProtocolSession();
 
         _logger.debug("Recover received on protocol session " + session + " and channel " + channelId);
         AMQChannel channel = session.getChannel(channelId);
-
 
         if (channel == null)
         {
             throw body.getChannelNotFoundException(channelId);
         }
 
-        Map<Long, QueueEntry> recoveredMsgs = channel.recoverMessages(body.getRequeue());
+        channel.resendRecoveredMessages(new DisruptorEventCallback() {
+            @Override
+            public void execute() {
+                // Qpid 0-8 hacks a synchronous -ok onto recover.
+                // In Qpid 0-9 we create a separate sync-recover, sync-recover-ok pair to be "more" compliant
+                if(session.getProtocolVersion().equals(ProtocolVersion.v8_0))
+                {
+                    MethodRegistry_8_0 methodRegistry = (MethodRegistry_8_0) session.getMethodRegistry();
+                    AMQMethodBody recoverOk = methodRegistry.createBasicRecoverOkBody();
+                    session.writeFrame(recoverOk.generateFrame(channelId));
 
-        // Qpid 0-8 hacks a synchronous -ok onto recover.
-        // In Qpid 0-9 we create a separate sync-recover, sync-recover-ok pair to be "more" compliant
-        if(session.getProtocolVersion().equals(ProtocolVersion.v8_0))
-        {
-            MethodRegistry_8_0 methodRegistry = (MethodRegistry_8_0) session.getMethodRegistry();
-            AMQMethodBody recoverOk = methodRegistry.createBasicRecoverOkBody();
-            session.writeFrame(recoverOk.generateFrame(channelId));
+                }
+            }
 
-        }
-
-        channel.resendRecoveredMessages(recoveredMsgs);
+            @Override
+            public void onException(Exception exception) {
+                _logger.error("Exception occurred when recovering session ", exception);
+                AMQChannelException channelException = body.getChannelException(AMQConstant.INTERNAL_ERROR,
+                        exception.getMessage());
+                session.writeFrame(channelException.getCloseFrame(channelId));
+                try {
+                    session.closeChannel(channelId);
+                } catch (AMQException e) {
+                    _logger.error("Couldn't close channel (channel id ) " + channelId, e);
+                }
+            }
+        });
     }
 }

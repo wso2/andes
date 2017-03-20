@@ -60,6 +60,7 @@ public class MessageTracer {
     public static final String MESSAGE_DELETED = "message deleted";
     public static final String ACK_RECEIVED_FROM_PROTOCOL = "ACK received from protocol";
     public static final String ACK_PUBLISHED_TO_DISRUPTOR = "ACK event submitted to disruptor";
+    public static final String ACK_MESSAGE_REFERENCE_SET_BY_DISRUPTOR = "ACK metadata reference set by disruptor";
     public static final String MESSAGE_REQUEUED_BUFFER = "message re-queued to buffer";
     public static final String CONTENT_DECOMPRESSION_HANDLER_MESSAGE = "Content decompressed";
     public static final String MESSAGE_BEYOND_LAST_ROLLBACK = "Message is beyond the last rollback point. Therefore " +
@@ -90,6 +91,25 @@ public class MessageTracer {
             }
             messageContent.append(" } ");
 	        messageContent.append(description);
+            log.trace(messageContent.toString());
+        }
+    }
+
+    /**
+     * Trace log on message activity. Accepts message Id and a description
+     *
+     * @param messageId Id of the message
+     * @param description Description to place in log on message activity
+     */
+    public static void trace(long messageId, String description) {
+        if (log.isTraceEnabled()) {
+            StringBuilder messageContent = new StringBuilder();
+            if (messageId > 0) { // Check if andes message id is assigned, else ignore
+                messageContent.append("Id: ");
+                messageContent.append(messageId);
+                messageContent.append(", ");
+            }
+            messageContent.append(description);
             log.trace(messageContent.toString());
         }
     }

@@ -19,10 +19,7 @@ package org.wso2.andes.mqtt.connectors;
 
 import org.dna.mqtt.wso2.QOSLevel;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
-import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.MQTTException;
 import org.wso2.andes.mqtt.MQTTMessageContext;
 import org.wso2.andes.mqtt.MQTTopicManager;
@@ -46,11 +43,11 @@ public interface MQTTConnector {
 
     /**
      * Triggers when a rejection ack is be initiated, this will be done as a result of ping request
-     * @param metadata the meta information of the message being rejected
+     * @param messageId the Id of the message being rejected
      * @param channelID the ID of the channel reject message is received
      * @throws org.wso2.andes.kernel.AndesException
      */
-    public void messageNack(DeliverableAndesMetadata metadata, UUID channelID) throws AndesException;
+    public void messageNack(long messageId, UUID channelID) throws AndesException;
 
     /**
      * Adds message to the connector to handle an incoming message
