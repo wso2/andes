@@ -163,6 +163,7 @@
                             com.google.common.util.concurrent;version="19.0.0",
                             com.google.common.cache;version="19.0.0",
                             org.wso2.carbon.andes.authentication.andes,
+                            org.wso2.carbon.andes.authorization.andes,
                             *;resolution:=optional
                         </Import-Package>
                         <Include-Resource>src/main/resources</Include-Resource>

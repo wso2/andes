@@ -200,18 +200,47 @@ public enum AndesConfiguration implements ConfigurationProperty {
 
     /**
      * Class name of the authenticator to use. class should inherit from {@link org.dna.mqtt.moquette.server.IAuthenticator}
-     * <p>Note: default implementation authenticates against carbon user store based on supplied username/password     
+     * <p>Note: default implementation authenticates against carbon user store based on supplied username/password
      */
-    TRANSPORTS_MQTT_USER_AUTHENTICATOR_CLASS("transports/mqtt/security/authenticator", 
-                                             "org.wso2.carbon.andes.authentication.andes.CarbonBasedMQTTAuthenticator", String.class),
-                                              
-    
+    TRANSPORTS_MQTT_USER_AUTHENTICATOR_CLASS("transports/mqtt/security/authenticator/@class",
+            "org.wso2.carbon.andes.authentication.andes.CarbonBasedMQTTAuthenticator", String.class),
+
     /**
-     * Instructs the MQTT server to sending credential is required or optional. 
+     * Instructs the MQTT server to sending credential is required or optional.
      * This behavior is subject to change in mqtt specification v 3.1.1
      */
-    TRANSPORTS_MQTT_USER_ATHENTICATION("transports/mqtt/security/authentication", "OPTIONAL", MQTTUserAuthenticationScheme.class),
+    TRANSPORTS_MQTT_USER_AUTHENTICATION("transports/mqtt/security/authentication", "OPTIONAL", MQTTUserAuthenticationScheme.class),
 
+    /**
+     * List of properties that can define how the server will authenticate the user with the authentication service.
+     */
+    LIST_TRANSPORT_MQTT_AUTHENTICATION_PROPERTIES("transports/mqtt/security/authenticator/property/@name", "", List.class),
+
+    /**
+     * This can be used to access a property by giving its key. e.g. hosturl
+     */
+    TRANSPORT_MQTT_AUTHENTICATION_PROPERTIES("transports/mqtt/security/authenticator/property[@name = '{key}']", "", String.class),
+    /**
+     * Instructs the MQTT server whether authorization is required or not.
+     */
+    TRANSPORTS_MQTT_USER_AUTHORIZATION("transports/mqtt/security/authorization", "NOT_REQUIRED", MQTTUserAuthorizationScheme.class),
+
+    /**
+     * Class name of the authorizer to use. class should inherit from {@link org.dna.mqtt.moquette.server.IAuthorizer}
+     * <p>Note: default implementation authorize against carbon permission
+     */
+    TRANSPORTS_MQTT_USER_AUTHORIZATION_CLASS("transports/mqtt/security/authorizer/@class",
+            "org.wso2.carbon.andes.authorization.andes.CarbonPermissionBasedMQTTAuthorizer", String.class),
+
+    /**
+     * List of properties that can define how the server will authorizer the user with the authorizer service.
+     */
+    LIST_TRANSPORT_MQTT_AUTHORIZATION_PROPERTIES("transports/mqtt/security/authorizer/property/@name", "", List.class),
+
+    /**
+     * This can be used to access a property by giving its key. e.g. hosturl
+     */
+    TRANSPORT_MQTT_AUTHORIZATION_PROPERTIES("transports/mqtt/security/authorizer/property[@name = '{key}']", "", String.class),
     /**
      * The class that is used to access an external RDBMS database to operate on messages.
      */
@@ -254,12 +283,12 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Size of the messages cache in MBs. Setting '0' will disable the cache. defaults to 256 MB.
      */
     PERSISTENCE_CACHE_SIZE("persistence/cache/size", "256", Integer.class),
-    
+
     /**
      * Expected concurrency for the cache (4 is guava default)
      */
     PERSISTENCE_CACHE_CONCURRENCY_LEVEL("persistence/cache/concurrencyLevel", "4", Integer.class),
-    
+
     /**
      * Number of seconds cache will keep messages after they are
      * added (unless they are consumed and deleted).
@@ -268,7 +297,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
 
     /**
      * Reference type used to hold messages in memory.
-     * 
+     *
      * <p>
      * <ul>
      *  <li>weak   - Using java weak references ( - results higher cache misses)</li>
@@ -284,7 +313,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Indicates weather print cache related statistics in 2 minutes interval in carbon log.
      */
     PERSISTENCE_CACHE_PRINT_STATS("persistence/cache/printStats", "false", Boolean.class),
-    
+
     /**
      * The ID generation class that is used to maintain unique IDs for each message that arrives at the server.
      */
@@ -341,8 +370,8 @@ public enum AndesConfiguration implements ConfigurationProperty {
     @Deprecated
     PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY("performanceTuning/slots" +
             "/slotRetainTimeInMemory", "1000", Long.class),
-    
-    
+
+
     /**
      * Maximum time interval until messages are accumulated into a slot before
      * marking it ( notifying to Coordinator) as deliverable.
@@ -382,7 +411,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
     PERFORMANCE_TUNING_SUBMIT_SLOT_TIMEOUT (
             "performanceTuning/slots/windowCreationTimeout", "3000", Integer.class),
 
-    
+
     /**
      * Time interval which broker check for slots that can be marked as 'ready
      * to deliver'
@@ -391,7 +420,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
     PERFORMANCE_TUNING_SUBMIT_SLOT_TIMER_PERIOD (
             "performanceTuning/slots/timerPeriod", "3000", Integer.class, PERFORMANCE_TUNING_SUBMIT_SLOT_TIMEOUT),
 
-    
+
     /**
      * Maximum number of undelivered messages that can be in memory. Increasing this value could cause out of memory
      * scenarios, but performance will be improved
@@ -410,7 +439,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * the message sending mechanism. But the load on the data store will increase.
      */
     PERFORMANCE_TUNING_DELIVERY_PARALLEL_CONTENT_READERS("performanceTuning/delivery/parallelContentReaders", "5",
-                                                         Integer.class),
+            Integer.class),
 
     /**
      * Number of parallel decompression handlers used to decompress messages before send to subscribers. Increasing
@@ -436,14 +465,14 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Specify the maximum number of entries the cache may contain
      */
     PERFORMANCE_TUNING_DELIVERY_CONTENT_CACHE_MAXIMUM_SIZE("performanceTuning/delivery/contentCache/maximumSize", "100",
-                                                           Integer.class),
+            Integer.class),
 
     /**
      * Specify the time in minutes that each entry should be automatically removed from the cache after the entry's
      * creation
      */
     PERFORMANCE_TUNING_DELIVERY_CONTENT_CACHE_EXPIRY_TIME("performanceTuning/delivery/contentCache/expiryTime", "120",
-                                                          Integer.class),
+            Integer.class),
 
     /**
      * Number of parallel writers used to write content to message store. Increasing this value will speedup
@@ -481,7 +510,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      */
     PERFORMANCE_TUNING_PURGED_COUNT_TIMEOUT
             ("performanceTuning/inboundEvents/purgedCountTimeout", "180", Integer.class),
-    
+
     /**
      * Average batch size of the batch acknowledgement handling for message acknowledgements. Andes will be updated
      * of acknowledgements batched around this number.
@@ -525,9 +554,9 @@ public enum AndesConfiguration implements ConfigurationProperty {
             "/vHostSyncTaskInterval", "900", Integer.class),
 
 
-     /**
+    /**
      * Since server startup, whenever this interval elapses, the expired messages will be cleared from the store.
-      * This messageExpiration configuration was disabled in the broker.xml configuration file. This is for future use.
+     * This messageExpiration configuration was disabled in the broker.xml configuration file. This is for future use.
      */
     PERFORMANCE_TUNING_MESSAGE_EXPIRATION_CHECK_INTERVAL
             ("performanceTuning/messageExpiration/checkInterval", "10000", Integer.class),
@@ -640,7 +669,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Meta data about configuration.
      */
     private final MetaProperties metaProperties;
-    
+
     /**
      * Holds the configuration which was deprecated by introduction of this configuration.
      */
@@ -658,7 +687,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
 
     /**
      * Constructor to define a configuration in broker.
-     * 
+     *
      * @param keyInFile Xpath (or any key value) which can be used to identify the configuration in the file.
      * @param defaultValue the default value
      * @param dataType data type of the config ( e.g. boolean, string )
@@ -683,7 +712,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
     public boolean hasDeprecatedProperty(){
         return deprecated != null;
     }
-    
+
     /**
      * Returns meta data
      */
@@ -691,7 +720,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
     public MetaProperties get() {
         return metaProperties;
     }
-    
-    
-    
+
+
+
 }

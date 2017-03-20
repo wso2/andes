@@ -2,7 +2,7 @@ package org.wso2.andes.configuration.enums;
 
 
 /**
- * Represents a configuration options instructing ( the server that )  mqtt users should always 
+ * Represents a configuration options instructing ( the server that )  mqtt users should always
  * supply credentials while establishing connections.
  */
 
@@ -16,5 +16,5 @@ public enum MQTTUserAuthenticationScheme {
      * Enforces every connection made should send credentials
      */
     REQUIRED
-    
+
 }
