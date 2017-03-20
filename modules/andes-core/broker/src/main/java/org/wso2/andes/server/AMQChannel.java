@@ -225,8 +225,6 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         _id = UUID.randomUUID();
         _actor.message(ChannelMessages.CREATE());
 
-        // message tracking related to this channel is initialised
-        Andes.getInstance().clientConnectionCreated(_id);
         beginPublisherTransaction = false;
         
         //Set channel details
@@ -296,12 +294,12 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     /**
      * Reschedule recovered messages to be resent
      *
-     * @param recovererMsgs Map of recovered messages
+     * @param recoverOKCallback Callback to send recover-ok
      */
-    public void resendRecoveredMessages(Map<Long, QueueEntry> recovererMsgs) {
+    public void resendRecoveredMessages(DisruptorEventCallback recoverOKCallback) {
         try {
-            QpidAndesBridge.recover(recovererMsgs.values(), this);
-        } catch (AMQException e ) {
+            QpidAndesBridge.recoverMessagesOfChannel(this, recoverOKCallback);
+        } catch (AMQException e) {
             _logger.error("Error while resending recovered messages.", e);
         }
     }
@@ -756,7 +754,6 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         } catch (AndesException e) {
             throw new AMQException("Exception occurred while closing channel " + _channelId, e);
         } finally {
-            QpidAndesBridge.channelIsClosing(this.getId());
             Andes.getInstance().deleteChannel(andesChannel);
         }
 
@@ -1907,7 +1904,8 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     /**
      * Set the message ID of the last rejected message.
      * Currently called by QpidAndesBridge.rejectMessage.
-     * @param lastRejectedMessageId
+     *
+     * @param lastRejectedMessageId Id of message newly rejected by this channel
      */
     public void setLastRejectedMessageId(long lastRejectedMessageId) {
         this.lastRejectedMessageId = lastRejectedMessageId;

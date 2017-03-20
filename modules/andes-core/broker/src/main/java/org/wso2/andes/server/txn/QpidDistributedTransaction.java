@@ -21,10 +21,10 @@ import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.kernel.AndesAckEvent;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
-import org.wso2.andes.kernel.AndesUtils;
 import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
 import org.wso2.andes.kernel.dtx.AlreadyKnownDtxException;
 import org.wso2.andes.kernel.dtx.DistributedTransaction;
@@ -101,11 +101,11 @@ public class QpidDistributedTransaction implements ServerTransaction {
         List<AndesAckData> ackList = new ArrayList<>(messages.size());
         try {
             for (QueueEntry entry : messages) {
-                ackList.add(AndesUtils.generateAndesAckMessage(channelID, entry.getMessage().getMessageNumber()));
+                ackList.add(new AndesAckData(channelID, entry.getMessage().getMessageNumber()));
             }
             distributedTransaction.dequeue(ackList);
         } catch (AndesException e) {
-            throw new AMQException("Error occurred while creating a AndesAckData ", e);
+            throw new AMQException("Error occurred while creating a AndesAckEvent ", e);
         }
     }
 

@@ -26,7 +26,6 @@ import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.AndesUtils;
 import org.wso2.andes.kernel.ProtocolDeliveryFailureException;
 import org.wso2.andes.kernel.ProtocolDeliveryRulesFailureException;
 import org.wso2.andes.kernel.ProtocolMessage;
@@ -243,22 +242,23 @@ public class AMQPLocalSubscription implements OutboundSubscription {
             if (amqpSubscription instanceof SubscriptionImpl.AckSubscription) {
 
                 MessageTracer.trace(messageID, "",
-                                    "Sending message " + msgHeaderStringID + " messageID-" + messageID + "-to channel "
-                                    + getChannelID());
-
+                                    "Sending message " + msgHeaderStringID
+                                            + "-to "
+                                            + "channel " + getChannelID());
                 amqpSubscription.send(queueEntry);
+
             } else if (amqpSubscription instanceof SubscriptionImpl.NoAckSubscription) {
-                MessageTracer.trace(messageID, "",
-                                    "Sending message " + msgHeaderStringID + " messageID-" + messageID + "-to channel "
-                                    + getChannelID());
+
+                MessageTracer.trace(messageID, "", "Sending message "
+                        + msgHeaderStringID + "-to channel " + getChannelID());
 
                 amqpSubscription.send(queueEntry);
 
                 // After sending message we simulate acknowledgment for NoAckSubscription
                 UUID channelID = ((SubscriptionImpl.NoAckSubscription) amqpSubscription).getChannel().getId();
-                AndesAckData andesAckData = AndesUtils.generateAndesAckMessage(channelID, messageID);
-
+                AndesAckData andesAckData = new AndesAckData(channelID, messageID);
                 Andes.getInstance().ackReceived(andesAckData);
+
             } else {
                 throw new AndesException("Error occurred while delivering message. Unexpected Subscription type for "
                         + "message with ID : " + msgHeaderStringID);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -20,7 +20,10 @@ package org.wso2.andes.kernel.disruptor.inbound;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
+import org.wso2.andes.kernel.subscription.AndesSubscription;
 
 import java.util.UUID;
 
@@ -38,12 +41,7 @@ public class InboundAndesChannelEvent implements AndesInboundStateEvent {
         /**
          * Specific client channel close event
          */
-        CHANNEL_CLOSE_EVENT,
-
-        /**
-         * New client connected and client channel is opened event
-         */
-        CHANNEL_OPEN_EVENT
+        CHANNEL_RECOVER_EVENT,
     }
 
     /**
@@ -55,17 +53,37 @@ public class InboundAndesChannelEvent implements AndesInboundStateEvent {
      * Channel ID 
      */
     private UUID channelID;
-    
-    public InboundAndesChannelEvent( UUID channelID) {
+
+    /**
+     * Callback to send recover-ok
+     */
+    private DisruptorEventCallback recoverOKCallback;
+
+    /**
+     * Create a disruptor event for channel event
+     *
+     * @param channelID         Id of the channel
+     * @param recoverOKCallback Callback to send recover-ok
+     */
+    public InboundAndesChannelEvent(UUID channelID, DisruptorEventCallback recoverOKCallback) {
+        this.recoverOKCallback = recoverOKCallback;
         this.channelID = channelID;
     }
     
     @Override
     public void updateState() throws AndesException {
         switch (eventType) {
-            case CHANNEL_OPEN_EVENT:
-                break;
-            case CHANNEL_CLOSE_EVENT:
+            case CHANNEL_RECOVER_EVENT:
+                AndesSubscription subscription  = AndesContext.getInstance().
+                        getAndesSubscriptionManager().getSubscriptionByProtocolChannel(channelID);
+
+                // Subscription can be null if we send a recover call without subscribing. In this case we do not have
+                // to recover any messages. Therefore print a log and return.
+                if (null == subscription) {
+                    log.warn("Cannot handle recover. No subscriptions found for channel " + channelID);
+                    return;
+                }
+                subscription.recoverMessages(recoverOKCallback);
                 break;
             default:
                 log.error("Event type not set properly " + eventType);
@@ -81,14 +99,7 @@ public class InboundAndesChannelEvent implements AndesInboundStateEvent {
     /**
      * Update event to a channel open event 
      */
-    public void prepareForChannelOpen() {
-        eventType = EventType.CHANNEL_OPEN_EVENT;
-    }
-
-    /**
-     * Update event to a channel close event 
-     */
-    public void prepareForChannelClose() {
-        eventType = EventType.CHANNEL_CLOSE_EVENT;
+    public void prepareForChannelRecover() {
+        eventType = EventType.CHANNEL_RECOVER_EVENT;
     }
 }

@@ -20,7 +20,7 @@ package org.wso2.andes.kernel.disruptor.inbound;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.kernel.AndesAckEvent;
 import org.wso2.andes.kernel.disruptor.InboundEventHandler;
 
 import java.util.ArrayList;
@@ -39,7 +39,7 @@ public class AckEventBatchHandler extends InboundEventHandler {
     /**
      * Batched acknowledgments event list.
      */
-    private final List<AndesAckData> ackDataList;
+    private final List<AndesAckEvent> ackDataList;
 
     /**
      * Number assigned to this handler. Value is less than the groupCount. If the turn value is equal to

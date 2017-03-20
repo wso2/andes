@@ -370,15 +370,15 @@ public class MQTTopicManager {
     /**
      * Called by the process of sending rejection for messages which have not being acked
      *
-     * @param metadata which holds information regarding the messages which has not being acked
+     * @param idOfNackedMessage id of the message which has not being acked
      * @param channelID Id of the subscription channel NAC is received
      */
-    private void onMessageNack(DeliverableAndesMetadata metadata, UUID channelID) {
+    private void onMessageNack(long idOfNackedMessage, UUID channelID) {
         try {
-            connector.messageNack(metadata, channelID);
+            connector.messageNack(idOfNackedMessage, channelID);
         } catch (AndesException e) {
             //We do not throw this any further
-            String message = "Error occurred while sending a rejection ack for message " + metadata.getMessageID();
+            String message = "Error occurred while sending a rejection ack for message " + idOfNackedMessage;
             log.error(message, e);
         }
     }
@@ -451,9 +451,7 @@ public class MQTTopicManager {
 
             for (Integer messageID : unackedMessages) {
                 MQTTSubscription subscription = mqtTopics.getSubscription(messageID);
-                DeliverableAndesMetadata mataInformation = subscription.getMessageMetaInformation(messageID);
-                onMessageNack(mataInformation, subscription.getSubscriptionChannel());
-
+                onMessageNack(messageID, subscription.getSubscriptionChannel());
                 if(log.isDebugEnabled()){
                    log.debug("Message null ack sent to message id "+messageID);
                 }

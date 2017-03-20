@@ -61,7 +61,7 @@ public class OutBoundMessageTracker {
      * @param messageID Id of the message
      * @return DeliverableAndesMetadata removed message
      */
-    public DeliverableAndesMetadata removeSentMessageFromTracker(long messageID) {
+    public synchronized DeliverableAndesMetadata removeSentMessageFromTracker(long messageID) {
         return messageSendingTracker.remove(messageID);
     }
 
@@ -112,18 +112,25 @@ public class OutBoundMessageTracker {
         return new ArrayList<>(messageSendingTracker.values());
     }
 
+    /**
+     * Clear tracked sent but un-acknowledged messages. Return the messages in the same view.
+     * While this operation is performed, no new message will be added to the list.
+     *
+     * @return list of messages tracked when cleaned up
+     */
+    public synchronized List<DeliverableAndesMetadata> clearAndReturnUnackedMessages() {
+        List<DeliverableAndesMetadata> messages = getUnackedMessages();
+        messageSendingTracker.clear();
+        return messages;
+    }
 
     /**
      * Add message to sending tracker which keeps messages delivered to channel of associated subscriber
      *
      * @param messageData message to add
      */
-    public void addMessageToSendingTracker(ProtocolMessage messageData) {
-        DeliverableAndesMetadata messageDataToAdd = messageSendingTracker.get(messageData.getMessageID());
-        if (null == messageDataToAdd) {
-            //we need to put message reference to the sending tracker
-            messageSendingTracker.put(messageData.getMessageID(), messageData.getMessage());
-        }
+    public synchronized void addMessageToSendingTracker(ProtocolMessage messageData) {
+        messageSendingTracker.putIfAbsent(messageData.getMessageID(), messageData.getMessage());
     }
 
 }

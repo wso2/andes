@@ -43,29 +43,9 @@ public class DurableTopicSubscriber extends AndesSubscription {
     public DurableTopicSubscriber(String subscriptionID, String clientID, StorageQueue storageQueue, ProtocolType
             protocol, SubscriberConnection connectionInfo) {
         super(subscriptionID, storageQueue, protocol, connectionInfo);
-        this.isActive = false;
+        this.isActive = true;
         this.clientID = clientID;
     }
-
-    /**
-     * Update the connection information of the subscriber. Also mark the subscriber
-     * as ACTIVE
-     *
-     * @param connectionInfo new connection information
-     */
-    public void addConnection(SubscriberConnection connectionInfo) throws SubscriptionException {
-        if (isActive) {
-            //An active subscription already exists. Creating another is not permitted
-            throw new SubscriptionAlreadyExistsException("An active subscription already exists with same "
-                    + "subscription id " + getSubscriptionId()
-                    + " bound to " + getStorageQueue()
-                    .getMessageRouterBindingKey());
-        } else {
-            this.subscriberConnection = connectionInfo;
-            isActive = true;
-        }
-    }
-
 
     /**
      * Upon closing subscription underlying connection is removed

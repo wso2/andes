@@ -26,6 +26,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.kernel.AndesAckEvent;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.DisablePubAckImpl;
@@ -36,7 +37,6 @@ import org.wso2.andes.kernel.disruptor.LogExceptionHandler;
 import org.wso2.andes.kernel.disruptor.compression.LZ4CompressionHelper;
 import org.wso2.andes.kernel.disruptor.waitStrategy.SleepingBlockingWaitStrategy;
 import org.wso2.andes.kernel.dtx.DtxBranch;
-import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.manager.Gauge;
@@ -80,8 +80,7 @@ public class InboundEventManager {
     private final DisablePubAckImpl disablePubAck;
     private LZ4CompressionHelper lz4CompressionHelper;
 
-    public InboundEventManager(AndesSubscriptionManager subscriptionManager,
-                               MessagingEngine messagingEngine) {
+    public InboundEventManager(MessagingEngine messagingEngine) {
 
         Integer bufferSize = AndesConfigurationManager.readValue(
                 PERFORMANCE_TUNING_PUBLISHING_BUFFER_SIZE);
@@ -181,6 +180,7 @@ public class InboundEventManager {
     /**
      * When a message is received from a transport it is handed over to MessagingEngine through the implementation of
      * inbound event manager. (e.g: through a disruptor ring buffer) Eventually the message will be stored
+     *
      * @param message AndesMessage
      * @param andesChannel AndesChannel
      * @param pubAckHandler PubAckHandler
@@ -210,7 +210,8 @@ public class InboundEventManager {
 
     /**
      * Acknowledgement received from clients for sent messages will be handled through this method
-     * @param ackData AndesAckData
+     *
+     * @param ackData Acknowledgement information by protocol
      */
     public void ackReceived(AndesAckData ackData) {
         //For metrics
@@ -221,20 +222,20 @@ public class InboundEventManager {
         InboundEventContainer event = ringBuffer.get(sequence);
         try {
             event.setEventType(ACKNOWLEDGEMENT_EVENT);
-            event.ackData = ackData;
+            event.ackData = new AndesAckEvent(ackData);
         } finally {
             // make the event available to EventProcessors
             ringBuffer.publish(sequence);
 
             //Tracing message
             if (MessageTracer.isEnabled()) {
-                MessageTracer.trace(ackData.getAcknowledgedMessage().getMessageID(), ackData.getAcknowledgedMessage()
-                        .getDestination(), MessageTracer.ACK_PUBLISHED_TO_DISRUPTOR);
+                MessageTracer.trace(ackData.getMessageId(),
+                        MessageTracer.ACK_PUBLISHED_TO_DISRUPTOR + " Channel = " + ackData.getChannelId());
             }
 
             if (log.isDebugEnabled()) {
-                log.debug("[ sequence: " + sequence + " ] Message acknowledgement published to disruptor. Message id " +
-                          ackData.getAcknowledgedMessage().getMessageID());
+                log.debug("[ sequence: " + sequence + " ] Message acknowledgement published to disruptor. "
+                        + "Message id " + ackData.getMessageId());
             }
         }
     }

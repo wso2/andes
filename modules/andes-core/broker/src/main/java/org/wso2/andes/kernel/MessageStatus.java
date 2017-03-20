@@ -28,86 +28,65 @@ public enum MessageStatus {
     /**
      * Message has been read from store
      */
-    READ(1),
+    READ,
 
     /**
      * Message has been buffered for delivery
      */
-    BUFFERED(2),
+    BUFFERED,
 
     /**
      * Message has been added to the final async delivery queue (deliverAsynchronously method has been called for
      * the message.)
      */
-    SCHEDULED_TO_SEND(3),
+    SCHEDULED_TO_SEND,
 
     /**
      * In a topic scenario, all subscribed consumers have acknowledged receipt of message
      */
-    ACKED_BY_ALL(4),
+    ACKED_BY_ALL,
 
 
     /**
      * All messages of the slot containing this message have been handled successfully, causing it to be removed
      */
-    SLOT_REMOVED(5),
+    SLOT_REMOVED,
 
     /**
      * Message has expired (JMS Expiration duration sent with the message has passed)
      */
-    EXPIRED(6),
+    EXPIRED,
 
     /**
      * Message is discarded as no valid subscriber to send
      */
-    NO_MATCHING_CONSUMER(7),
+    NO_MATCHING_CONSUMER,
 
     /**
      * Message is moved to the DLC queue
      */
-    DLC_MESSAGE(8),
+    DLC_MESSAGE,
 
     /**
      * Message has been cleared from delivery due to a queue purge event.
      */
-    PURGED(9),
+    PURGED,
 
     /**
      * Message is deleted from the store
      */
-    DELETED(10),
+    DELETED,
 
     /**
      * Slot of the message is returned back to the coordinator, causing message to remove from memory
      */
-    SLOT_RETURNED(11);
-
-
-    private int code;
+    SLOT_RETURNED;
 
     //keep next possible states
     private EnumSet<MessageStatus> next;
 
     //keep previous possible states
     private EnumSet<MessageStatus> previous;
-
-    /**
-     * Define a message state
-     *
-     * @param code integer representing state
-     */
-    MessageStatus(int code) {
-        this.code = code;
-    }
-
-    /**
-     * Get code of the state
-     *
-     * @return integer representing state
-     */
-    public int getCode() {
-        return code;
-    }
 
     /**
      * Check if submitted state is an allowed state as per state model
@@ -128,18 +107,6 @@ public enum MessageStatus {
     public boolean isValidPreviousState(MessageStatus previousState) {
         return previous.contains(previousState);
     }
-
-    static MessageStatus parseMessageState(int state) {
-
-        for (MessageStatus s : MessageStatus.values()) {
-            if (s.code == state) {
-                return s;
-            }
-        }
-
-        throw new IllegalArgumentException("Invalid message state argument specified: " + state);
-    }
-
 
     static {
 
@@ -176,7 +143,7 @@ public enum MessageStatus {
         SLOT_REMOVED.next = EnumSet.complementOf(EnumSet.allOf(MessageStatus.class));
         SLOT_REMOVED.previous = EnumSet.of(DELETED);
 
-        /**
+        /*
          * next status of slot return status can be any state due to subscription could close at any given moment.
          */
         SLOT_RETURNED.next = EnumSet.allOf(MessageStatus.class);
