@@ -136,18 +136,39 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
     public void becameCoordinator() {
         manager.localNodeElectedAsCoordinator();
     }
-    
+
     /**
-     * Get id of the give node
+     * Get id of the given node.
      *
-     * @param node
-     *         Hazelcast member node
+     * @param node Hazelcast member node
      * @return id of the node
      */
     public String getIdOfNode(Member node) {
-        String nodeId = nodeIdMap.get(node.getSocketAddress().toString());
-        if(StringUtils.isEmpty(nodeId)) {
-            return null;
+        int maximumNumOfTries = 3;
+        String nodeId = null;
+        int numberOfAttemptsTried = 0;
+        /*
+         * Try a few times until nodeId is read from distributed Hazelcast Map
+         * and give up
+         */
+        while (numberOfAttemptsTried < 3) {
+            nodeId = nodeIdMap.get(node.getSocketAddress().toString());
+            numberOfAttemptsTried = numberOfAttemptsTried + 1;
+            if ((StringUtils.isEmpty(nodeId)) && (numberOfAttemptsTried < maximumNumOfTries)) {
+                try {
+                    // Exponentially increase waiting time
+                    long sleepTime = Math.round(Math.pow(2, (numberOfAttemptsTried - 1)));
+                    TimeUnit.SECONDS.sleep(sleepTime);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            } else {
+                return nodeId;
+            }
+
+        }
+        if (StringUtils.isEmpty(nodeId)) {
+            log.warn("Node ID is not set for node " + node + " when new member joined");
         }
         return nodeId;
     }
