@@ -440,6 +440,19 @@ public class FailureObservingAndesContextStore extends FailureObservingStore<And
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean deleteNonOverlappingSlot(long startMessageId, long endMessageId) throws AndesException {
+        try {
+            return wrappedInstance.deleteNonOverlappingSlot(startMessageId, endMessageId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
      * Delete a slot from store
      *
      * @param startMessageId start message id of slot
@@ -747,6 +760,19 @@ public class FailureObservingAndesContextStore extends FailureObservingStore<And
     public TreeSet<Slot> getAssignedSlotsByNodeId(String nodeId) throws AndesException {
         try {
             return wrappedInstance.getAssignedSlotsByNodeId(nodeId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public TreeSet<Slot> getOverlappedSlotsByNodeId(String nodeId) throws AndesException {
+        try {
+            return wrappedInstance.getOverlappedSlotsByNodeId(nodeId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

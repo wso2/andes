@@ -273,6 +273,16 @@ public interface AndesContextStore extends HealthAwareStore {
             throws AndesException;
 
     /**
+     * Delete a non-overlapping slot from store.
+     *
+     * @param startMessageId start message id of slot
+     * @param endMessageId   end message id of slot
+     * @return True if slot deletion successful
+     * @throws AndesException
+     */
+    boolean deleteNonOverlappingSlot(long startMessageId, long endMessageId) throws AndesException;
+
+    /**
      * Delete a slot from store.
      *
      * @param startMessageId start message id of slot
@@ -441,6 +451,15 @@ public interface AndesContextStore extends HealthAwareStore {
      * @throws AndesException
      */
     TreeSet<Slot> getAssignedSlotsByNodeId(String nodeId) throws AndesException;
+
+    /**
+     * Get all overlapped slots for give node.
+     *
+     * @param nodeId id of node
+     * @return set of overlapped slot objects
+     * @throws AndesException
+     */
+    TreeSet<Slot> getOverlappedSlotsByNodeId(String nodeId) throws AndesException;
 
     /**
      * Get all slots for a give queue.
