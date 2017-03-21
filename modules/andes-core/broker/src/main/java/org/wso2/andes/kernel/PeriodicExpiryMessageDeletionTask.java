@@ -45,18 +45,13 @@ public class PeriodicExpiryMessageDeletionTask implements Runnable, StoreHealthL
     /**
      * Expired Message count that is retrieved for one batch delete.
      */
-    public static final long RETRIEVE_MESSAGE_COUNT = 10000L;
+    private static final long RETRIEVE_MESSAGE_COUNT = 10000L;
 
     /**
      * Indicates and provides a barrier if messages stores become offline.
      * marked as volatile since this value could be set from a different thread
      */
-    protected volatile SettableFuture<Boolean> messageStoresUnavailable;
-
-    /**
-     * Used to perform database operations on the context store.
-     */
-    private AndesContextStore andesContextStore = AndesContext.getInstance().getAndesContextStore();
+    private volatile SettableFuture<Boolean> messageStoresUnavailable;
 
     /**
      * Holds the slot manager based on broker running mode.
@@ -68,14 +63,14 @@ public class PeriodicExpiryMessageDeletionTask implements Runnable, StoreHealthL
      */
     protected boolean isClusteringEnabled;
 
-    public PeriodicExpiryMessageDeletionTask() {
+    /**
+     * Create a message deletion task that removes expired messages in batches
+     */
+    PeriodicExpiryMessageDeletionTask() {
 
         this.messageStoresUnavailable = null;
-        // Register AndesRecoveryTask class as a StoreHealthListener
         FailureObservingStoreManager.registerStoreHealthListener(this);
-
         isClusteringEnabled = AndesContext.getInstance().isClusteringEnabled();
-        // Set the appropriate slot manager
         if (isClusteringEnabled) {
             this.abstractSlotManagerSlotManager = SlotManagerClusterMode.getInstance();
         } else {
@@ -85,36 +80,37 @@ public class PeriodicExpiryMessageDeletionTask implements Runnable, StoreHealthL
     }
 
     /**
-     * Get the expiry messages queue wise from unallocated region  and delete those from DB.
+     * Get the expiry messages queue wise from unallocated region  and delete those from DB. Here there is
+     * no need to maintain message status as these messages are not still in consume cycle.
      */
-    protected void deleteExpiredMessages() {
+    private void deleteExpiredMessages() {
         try {
-            // This logic belongs to an MB run in stand alone mode / the coordinator node run in cluster mode
-            if (!isClusteringEnabled
-                    || (isClusteringEnabled && AndesContext.getInstance().getClusterAgent().isCoordinator())) {
-                //First delete the expired messages from DLC
+            if (!isClusteringEnabled || AndesContext.getInstance().getClusterAgent().isCoordinator()) {
                 deleteExpiredMessagesFromDLC();
-
                 Set<String> queues = abstractSlotManagerSlotManager.getAllQueues();
                 for (String queueName : queues) {
                     long currentDeletionRangeLowerBoundId = abstractSlotManagerSlotManager
                             .getSafeZoneLowerBoundId(queueName);
-                    // Get expired messages for that queue in the range of message ID starting from lower bound ID.
-                    // Lower bound id -1 represents that there is no valid region to perform the delete
+                    /*
+                     * Get expired messages for that queue in the range of message ID starting from lower bound ID.
+                     * Lower bound id -1 represents that there is no valid region to perform the delete
+                     */
                     if (currentDeletionRangeLowerBoundId != -1) {
                         List<Long> expiredMessages = MessagingEngine.getInstance()
                                 .getExpiredMessages(currentDeletionRangeLowerBoundId, queueName);
-                        // Checks for the message store availability if its not available
-                        // Deletion task needs to await until message store becomes available
+                        /*
+                         * Checks for the message store availability if its not available
+                         * Deletion task needs to await until message store becomes available
+                         */
                         if (null != messageStoresUnavailable) {
                             log.info("Message store has become unavailable therefore expiry message deletion task "
                                     + "waiting until store becomes available");
                             //act as a barrier
                             messageStoresUnavailable.get();
                             log.info("Message store became available. Resuming expiry message deletion task");
-                            messageStoresUnavailable = null; // we are passing the blockade
-                            // (therefore clear the it).
+                            messageStoresUnavailable = null; // we are passing the blockade (therefore clear the it).
                         }
+
                         if ((null != expiredMessages) && (!expiredMessages.isEmpty())) {
                             //Tracing message activity
                             if (MessageTracer.isEnabled()) {
@@ -156,7 +152,7 @@ public class PeriodicExpiryMessageDeletionTask implements Runnable, StoreHealthL
     /**
      * Get the messages form the DLC which are expired and delete those from DB.
      */
-    private void deleteExpiredMessagesFromDLC() throws InterruptedException, ExecutionException, AndesException{
+    private void deleteExpiredMessagesFromDLC() throws InterruptedException, ExecutionException, AndesException {
         //Checks for the message store availability if its not available
         //Deletion task needs to await until message store becomes available
         if (null != messageStoresUnavailable) {
@@ -165,27 +161,28 @@ public class PeriodicExpiryMessageDeletionTask implements Runnable, StoreHealthL
             //act as a barrier
             messageStoresUnavailable.get();
             log.info("Message store became available. Resuming expiry message deletion task");
-            messageStoresUnavailable = null; // we are passing the blockade
-            // (therefore clear the it).
+            messageStoresUnavailable = null; // we are passing the blockade (therefore clear the it).
         }
+        List<Long> expiredMessages = MessagingEngine.getInstance().
+                getExpiredMessagesFromDLC(RETRIEVE_MESSAGE_COUNT);
 
-        while (true){
-            //get the expired messages from DLC
-            List<Long> expiredMessages = MessagingEngine.getInstance().getExpiredMessagesFromDLC(RETRIEVE_MESSAGE_COUNT);
-            if (expiredMessages.isEmpty()){
-                break;
-            }
+        while (!expiredMessages.isEmpty()) {
             //Tracing message activity
             if (MessageTracer.isEnabled()) {
                 for (Long messageId : expiredMessages) {
                     MessageTracer.trace(messageId, "", MessageTracer.EXPIRED_MESSAGE_DETECTED_FROM_DLC);
                 }
             }
+
             //delete message metadata, content from the meta data table, content table and expiry table
             MessagingEngine.getInstance().deleteMessagesById(expiredMessages);
             if (log.isDebugEnabled()) {
                 log.debug("Expired message count in DLC is :" + expiredMessages.size());
             }
+
+            //get the expired messages from DLC
+            expiredMessages = MessagingEngine.getInstance().
+                    getExpiredMessagesFromDLC(RETRIEVE_MESSAGE_COUNT);
         }
     }
 
