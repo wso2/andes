@@ -408,8 +408,6 @@ public class AndesContextInformationManager {
 
         boolean queueAlreadyBound = queueToBind.bindQueueToMessageRouter(binding.getBindingKey(), messageRouter);
         if (!queueAlreadyBound) {
-            messageRouter.addMapping(binding.getBindingKey(), queueToBind);
-
             amqpConstructStore.addBinding(binding, false);
             //add binding inside qpid
             ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterBindingAdded(binding);
