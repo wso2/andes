@@ -321,6 +321,11 @@ public class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueS
         return (TopicSession) getSession();
     }
 
+    @Override
+    public boolean getTransacted() throws JMSException {
+        return true;
+    }
+
     /**
      * Throw {@link XAException} if the connection is closed
      *
