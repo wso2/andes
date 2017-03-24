@@ -24,6 +24,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.cluster.coordination.SlotAgent;
 import org.wso2.andes.server.cluster.coordination.rdbms.DatabaseSlotAgent;
 
@@ -369,7 +370,10 @@ public class SlotManagerClusterMode extends AbstractSlotManager {
         assignedSlotsSet = slotAgent.getAssignedSlotsByNodeId(nodeId);
         for (Slot slotToBeReAssigned : assignedSlotsSet) {
             //Re-assign only if the slot is not empty
-            if (!(SlotUtils.checkSlotEmptyFromMessageStore(slotToBeReAssigned))) {
+            if (MessagingEngine.getInstance().getMessageCountForQueueInRange(
+                    slotToBeReAssigned.getStorageQueueName(),
+                    slotToBeReAssigned.getStartMessageId(),
+                    slotToBeReAssigned.getEndMessageId()) != 0) {
                 slotAgent.reassignSlot(slotToBeReAssigned);
                 if (log.isDebugEnabled()) {
                     log.debug("Returned assigned slot " + slotToBeReAssigned
@@ -386,7 +390,10 @@ public class SlotManagerClusterMode extends AbstractSlotManager {
         TreeSet<Slot> overlappedSlotsSet = slotAgent.getOverlappedSlotsByNodeId(nodeId);
         for (Slot overlappedSlot : overlappedSlotsSet) {
             //Re-assign only if the slot is not empty
-            if (!(SlotUtils.checkSlotEmptyFromMessageStore(overlappedSlot))) {
+            if (MessagingEngine.getInstance().getMessageCountForQueueInRange(
+                    overlappedSlot.getStorageQueueName(),
+                    overlappedSlot.getStartMessageId(),
+                    overlappedSlot.getEndMessageId()) != 0) {
                 slotAgent.reassignSlot(overlappedSlot);
                 if (log.isDebugEnabled()) {
                     log.debug("Returned overlapped slot " + overlappedSlot
