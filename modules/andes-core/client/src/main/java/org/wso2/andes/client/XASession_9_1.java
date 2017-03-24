@@ -85,10 +85,26 @@ public class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueS
      */
     private final XAResource_0_9_1 xaResource;
 
+    /**
+     * XAConnectionImpl used to create the session. Used to indicate Session closure.
+     */
+    private final XAConnectionImpl xaConnection;
+
+    /**
+     * Indicate if the session.close is called before
+     */
+    private boolean closeSignaled = false;
+
+    /**
+     * Indicate if the connection.close is called before
+     */
+    private boolean connectionCloseSignaled = false;
+
     XASession_9_1(AMQConnection con, int channelId, int defaultPrefetchHigh, int defaultPrefetchLow)
             throws FailoverException, AMQException {
         super(con, channelId, false, Session.AUTO_ACKNOWLEDGE, defaultPrefetchHigh, defaultPrefetchLow);
 
+        xaConnection = (XAConnectionImpl) con;
         methodRegistry = (MethodRegistry_0_91) con.getProtocolHandler().getMethodRegistry();
         con.registerSession(channelId, this);
 
@@ -375,4 +391,56 @@ public class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueS
                 "XASession: A direct invocation of the recover operation is prohibited!");
     }
 
+    @Override
+    public void close() throws JMSException {
+        if (!closeSignaled) {
+            closeIfTransactionCompleted();
+        }
+    }
+
+    /**
+     * Close the session if the transaction is not active
+     *
+     * @throws JMSException if error occurred while closing the session
+     */
+    private synchronized void closeIfTransactionCompleted() throws JMSException {
+        try {
+            boolean isTransactionActive = xaResource.indicateSessionClosure();
+            if (!isTransactionActive) {
+                xaConnection.deregisterSession(this);
+                super.close();
+            }
+        } finally {
+            closeSignaled = true;
+        }
+    }
+
+    /**
+     * Indicate when the underline connection is closed
+     *
+     * @return True if there is an active transaction
+     */
+    synchronized boolean indicateConnectionClose() {
+        if (!connectionCloseSignaled) {
+            return xaResource.indicateConnectionClosure();
+        } else {
+            return true;
+        }
+    }
+
+    /**
+     * Called by the XA Resource when the transaction completes
+     *
+     * @param connectionClosable indicate if connection can be closed
+     * @throws JMSException if closing the session failed
+     */
+    void internalClose(boolean connectionClosable) throws JMSException {
+        if (connectionClosable) {
+            xaConnection.deregisterSession(this);
+            xaConnection.internalClose();
+        } else {
+            xaConnection.deregisterSession(this);
+            super.close();
+        }
+    }
 }

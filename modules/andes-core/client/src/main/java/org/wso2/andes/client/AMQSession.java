@@ -64,7 +64,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -445,7 +444,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
             notify();
         }
 
-        public boolean getFlowControl()
+        public synchronized boolean getFlowControl()
         {
             return _flowControl;
         }
@@ -2244,7 +2243,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
 
     void deregisterProducer(long producerId)
     {
-        _producers.remove(new Long(producerId));
+        _producers.remove(producerId);
     }
 
     boolean isInRecovery()
@@ -3035,7 +3034,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
     
     private void registerProducer(long producerId, MessageProducer producer)
     {
-        _producers.put(new Long(producerId), producer);
+        _producers.put(producerId, producer);
     }
 
     void rejectAllMessages(boolean requeue)
