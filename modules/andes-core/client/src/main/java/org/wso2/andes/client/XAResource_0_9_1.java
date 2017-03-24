@@ -35,6 +35,9 @@ class XAResource_0_9_1 implements XAResource {
      */
     private static final Logger LOGGER = LoggerFactory.getLogger(XAResource_0_9_1.class);
 
+    /**
+     * Reference to the connected XA Session
+     */
     private final XASession_9_1 session;
 
     /**
@@ -61,11 +64,6 @@ class XAResource_0_9_1 implements XAResource {
      * Indicate if underline {@link XASession_9_1} should be closed after commit or rollback
      */
     private boolean sessionClosable = false;
-
-    /**
-     * Indicate if underline Connection should be closed after commit or rollback
-     */
-    private boolean connectionClosable = false;
 
     XAResource_0_9_1(XASession_9_1 xaSession_9_1) {
         session = xaSession_9_1;
@@ -99,7 +97,7 @@ class XAResource_0_9_1 implements XAResource {
     private void closeSessionIfClosable() {
         if (!session.isClosed() &&  sessionClosable) {
             try {
-                session.internalClose(connectionClosable);
+                session.internalClose();
             } catch (JMSException e) {
                 LOGGER.error("Error while closing session after commit or rollback", e);
             }
@@ -441,21 +439,6 @@ class XAResource_0_9_1 implements XAResource {
     boolean indicateSessionClosure() throws JMSException {
         if (isTransactionActive()) {
             sessionClosable = true;
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    /**
-     * Signal connection closure to the XAResource. Connection is closed if the XAResource is already done (committed or
-     * rolled back). Otherwise the connection will be closed after a commit or a rollback is received
-     *
-     * @throws JMSException if closing session failed
-     */
-    public boolean indicateConnectionClosure() {
-        if (isTransactionActive()) {
-            connectionClosable = true;
             return true;
         } else {
             return false;
