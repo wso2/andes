@@ -39,11 +39,16 @@ public class XAConnectionImpl extends AMQConnection implements XAConnection, XAQ
      */
     private final ArrayList<XASession_9_1> xaSessions = new ArrayList<>();
 
+    /**
+     * Indicate if the connection.close is called before
+     */
+    private boolean connectionCloseSignaled = false;
+
     //-- constructor
     /**
      * Create a XAConnection from a connectionURL
      */
-    public XAConnectionImpl(ConnectionURL connectionURL, SSLConfiguration sslConfig) throws AMQException {
+    XAConnectionImpl(ConnectionURL connectionURL, SSLConfiguration sslConfig) throws AMQException {
         super(connectionURL, sslConfig);
     }
 
@@ -93,17 +98,21 @@ public class XAConnectionImpl extends AMQConnection implements XAConnection, XAQ
 
     @Override
     public synchronized void close() throws JMSException {
-        boolean canClosePhysicalConnection = true;
+        if (connectionCloseSignaled) {
+            boolean canClosePhysicalConnection = true;
 
-        for (XASession_9_1 xaSession : xaSessions) {
-            boolean isTransactionActive = xaSession.indicateConnectionClose();
-            if (isTransactionActive) {
-                canClosePhysicalConnection = false;
+            for (XASession_9_1 xaSession : xaSessions) {
+                boolean isTransactionActive = xaSession.indicateConnectionClose();
+                if (isTransactionActive) {
+                    canClosePhysicalConnection = false;
+                }
             }
-        }
 
-        if (canClosePhysicalConnection) {
-            super.close();
+            if (canClosePhysicalConnection) {
+                super.close();
+            }
+
+            connectionCloseSignaled = true;
         }
     }
 
@@ -122,7 +131,7 @@ public class XAConnectionImpl extends AMQConnection implements XAConnection, XAQ
      *
      * @throws JMSException if there was an error closing the physical connection
      */
-    void internalClose() throws JMSException {
+    synchronized void internalClose() throws JMSException {
         if (xaSessions.isEmpty()) {
             super.close();
         }
