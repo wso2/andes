@@ -301,4 +301,13 @@ public class SubscriptionTestHelper implements Subscription
     public boolean isNoLocal() {
         return false;
     }
+
+    public boolean isJMSRollbackInProgress() {
+        return false;
+    }
+
+    public void setJMSRollbackInProgress(boolean jmsRollbackInProgress)
+    {
+        //Not Implemented
+    }
 }

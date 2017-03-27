@@ -67,6 +67,7 @@ import org.wso2.andes.framing.QueueUnbindBody;
 import org.wso2.andes.framing.QueueUnbindOkBody;
 import org.wso2.andes.framing.amqp_0_91.DtxStartOkBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.MethodDispatcher_0_91;
+import org.wso2.andes.framing.TxRollbackWithContextBody;
 
 public class ClientMethodDispatcherImpl_0_91 extends ClientMethodDispatcherImpl implements MethodDispatcher_0_91
 {
@@ -296,6 +297,11 @@ public class ClientMethodDispatcherImpl_0_91 extends ClientMethodDispatcherImpl 
 
     @Override
     public boolean dispatchDtxSetTimeout(DtxSetTimeoutBody body, int channelId) throws AMQException {
+        return false;
+    }
+
+    @Override
+    public boolean dispatchTxRollbackWithContext(TxRollbackWithContextBody body, int channelId) throws AMQException {
         return false;
     }
 

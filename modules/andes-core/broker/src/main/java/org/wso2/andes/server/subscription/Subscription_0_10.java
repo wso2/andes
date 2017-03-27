@@ -939,4 +939,16 @@ public class Subscription_0_10 implements Subscription, FlowCreditManager.FlowCr
         return (LogSubject) this;
     }
 
+    @Override
+    public boolean isJMSRollbackInProgress() {
+        // todo JMS rollback not implemented with AMQP 0.10
+        return false;
+    }
+
+
+    @Override
+    public void setJMSRollbackInProgress(boolean jmsRollbackInProgress) {
+        // todo JMS rollback not implemented with AMQP 0.10
+    }
+
 }

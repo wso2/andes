@@ -470,6 +470,12 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <chassis name="server" implement="MUST"/>
       <response name="rollback-ok"/>
     </method>
+    <method name="rollback-with-context" synchronous="1" index="40">
+      <chassis name="server" implement="MUST"/>
+      <response name="rollback-ok"/>
+      <field name="last-dispatched-delivery-tag" type="long" />
+      <field name="consumer-tag" type="shortstr" />
+    </method>
     <method name="rollback-ok" synchronous="1" index="31">
       <chassis name="client" implement="MUST"/>
     </method>

@@ -66,6 +66,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -1930,6 +1931,12 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
     {
         synchronized (_suspensionLock)
         {
+            String rollbackEventID = UUID.randomUUID().toString();
+
+            if (log.isDebugEnabled()) {
+                log.debug("Local Transaction Rollback Begun. : " + rollbackEventID);
+            }
+
             checkTransacted();
 
             try
@@ -1945,6 +1952,14 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
                 // should be rolled back(reject/release)
                 _rollbackMark.set(_highestDeliveryTag.get());
 
+                for (C consumer : _consumers.values())
+                {
+                    if (!consumer.isNoConsume())
+                    {
+                        sendRollbackWithContext(consumer.getLastDispatchedDeliveryTag(), consumer.getConsumerTag());
+                    }
+                }
+
                 syncDispatchQueue();
 
                 releaseForRollback();
@@ -1959,8 +1974,6 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
                     }
                 }
 
-                sendRollback();
-
                 _dispatcher.rollback();
 
                 markClean();
@@ -1968,6 +1981,10 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
                 if (!isSuspended)
                 {
                     suspendChannel(false);
+                }
+
+                if (log.isDebugEnabled()) {
+                    log.debug("Local Transaction Rollback Finished. " + rollbackEventID);
                 }
             }
             catch (AMQException e)
@@ -3371,6 +3388,15 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
                 dispatcherLock.unlock();
             }
 
+            for (C consumer : _consumers.values())
+            {
+                if (!consumer.isNoConsume())
+                {
+                    consumer.waitUntilAllRejectsReceived();
+                }
+
+            }
+
         }
 
         public void recover()
@@ -3492,12 +3518,13 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
                     // pass
                 }
 
-                if (!(message instanceof CloseConsumerMessage)
-                    && tagLE(deliveryTag, _rollbackMark.get()))
-                {
-                    rejectMessage(message, true);
-                }
-                else if (isInRecovery())
+//                if (!(message instanceof CloseConsumerMessage)
+//                    && tagLE(deliveryTag, _rollbackMark.get()))
+//                {
+//                    rejectMessage(message, true);
+//                }
+//                else
+                if (isInRecovery())
                 {
                     if(log.isDebugEnabled()) {
                         log.debug("Dropping message delivery tag " + deliveryTag + " as in recovery");
@@ -3659,4 +3686,16 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
     {
     	return DECLARE_EXCHANGES;
     }
+
+    /**
+     * Send the rollback frame with additional context information so that the server can identify the messages
+     * shared with the subscriber upto now.
+     * @param lastDispatchedDeliveryTag last delivery tag dispatched from BasicMessageConsumer._synchronousQueue and
+     *                                  seen by the client application
+     * @param consumerTag consumer tag of the subscription within the session
+     * @throws AMQException
+     * @throws FailoverException
+     */
+    public abstract void sendRollbackWithContext(long lastDispatchedDeliveryTag, int consumerTag) throws AMQException,
+            FailoverException;
 }

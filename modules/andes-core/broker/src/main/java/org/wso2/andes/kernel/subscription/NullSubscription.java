@@ -69,4 +69,9 @@ public class NullSubscription implements OutboundSubscription {
         throw new UnsupportedOperationException("Invalid operation for retrieve protocol name.");
     }
 
+    @Override
+    public boolean isJMSRollbackInProgress() {
+        throw new UnsupportedOperationException("Invalid operation for retrieve if rollback is in progress.");
+    }
+
 }

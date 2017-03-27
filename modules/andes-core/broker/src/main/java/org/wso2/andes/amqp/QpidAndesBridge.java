@@ -304,11 +304,12 @@ public class QpidAndesBridge {
      */
     public static void rejectMessage(AMQMessage message, AMQChannel channel, boolean reQueue) throws AMQException {
         try {
-            channel.setLastRejectedMessageId(message.getMessageNumber());
             boolean isMessageBeyondLastRollback = channel.isMessageBeyondLastRollback(message.getMessageNumber());
 
             log.info("Reject received id = " + message.getMessageId() + " channel id= " + channel.getChannelId()
                     + "regueue = " + reQueue);
+
+            channel.setLastRejectedMessageId(message.getMessageNumber());
 
             Andes.getInstance().messageRejected(message.getMessageId(), channel.getId(),
                     reQueue, isMessageBeyondLastRollback);

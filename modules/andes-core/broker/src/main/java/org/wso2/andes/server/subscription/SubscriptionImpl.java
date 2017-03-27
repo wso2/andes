@@ -31,7 +31,6 @@ import org.wso2.andes.configuration.qpid.SubscriptionConfigType;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.kernel.AndesUtils;
-import org.wso2.andes.kernel.ProtocolDeliveryFailureException;
 import org.wso2.andes.kernel.SubscriptionAlreadyClosedException;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
@@ -102,6 +101,10 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
     private final AtomicLong _deliveredCount = new AtomicLong(0);
     private long _createTime = System.currentTimeMillis();
 
+    /**
+     * State variable to detect if this subscription is handling a JMS session rollback at a given moment.
+     */
+    private AtomicBoolean isJMSRollbackInProgress = new AtomicBoolean(false);
 
     public static final class BrowserSubscription extends SubscriptionImpl
     {
@@ -859,5 +862,23 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
     @Override
     public boolean isNoLocal() {
         return _noLocal;
+    }
+
+    /**
+     * {@inheritDoc}
+     * @return
+     */
+    @Override
+    public boolean isJMSRollbackInProgress() {
+        return isJMSRollbackInProgress.get();
+    }
+
+    /**
+     * {@inheritDoc}
+     * @param jmsRollbackInProgress
+     */
+    @Override
+    public void setJMSRollbackInProgress(boolean jmsRollbackInProgress) {
+        isJMSRollbackInProgress.set(jmsRollbackInProgress);
     }
 }

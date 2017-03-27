@@ -68,6 +68,7 @@ import org.wso2.andes.framing.QueueDeleteOkBody;
 import org.wso2.andes.framing.TxCommitOkBody;
 import org.wso2.andes.framing.TxRollbackBody;
 import org.wso2.andes.framing.TxRollbackOkBody;
+import org.wso2.andes.framing.TxRollbackWithContextBody;
 import org.wso2.andes.framing.amqp_0_9.MethodRegistry_0_9;
 import org.wso2.andes.framing.amqp_0_91.MethodRegistry_0_91;
 import org.wso2.andes.jms.Session;
@@ -633,6 +634,18 @@ public class AMQSession_0_8 extends AMQSession<BasicMessageConsumer_0_8, BasicMe
         {
             return null;
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public void sendRollbackWithContext(long lastDispatchedDeliveryTag, int consumerTag) throws FailoverException,
+            AMQException {
+
+        TxRollbackWithContextBody body = ((MethodRegistry_0_91)getMethodRegistry()).createTxRollbackWithContextBody
+                (lastDispatchedDeliveryTag, AMQShortString.valueOf(consumerTag));
+        AMQFrame frame = body.generateFrame(getChannelId());
+        getProtocolHandler().syncWrite(frame, TxRollbackOkBody.class);
     }
 
 }

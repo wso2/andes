@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -193,6 +194,31 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
      * Denotes whether the consumer is ready to consume messages or not.
      */
     private AtomicBoolean ready;
+
+    /**
+     * During the rollback process, we reject all messages in the BasicMessageConsumer._synchronousMessageQueue, even
+     * if they have not been seen by the consuming application. This contains the last such delivery tag that was
+     * rejected.
+     */
+    private long lastRejectedDeliveryTag = -1;
+
+    /**
+     * During the rollback process, we reject all messages in the BasicMessageConsumer._synchronousMessageQueue, even
+     * if they have not been seen by the consuming application. This contains the last such JMS Message ID that was
+     * rejected.
+     */
+    private String lastRejectedJMSMessageID;
+
+    /**
+     * This latch is used to block until ALL the messages rejected from the BasicMessageConsumer
+     * ._synchronousMessageQueue during rollback, are received back into the client.
+     */
+    private CountDownLatch allRejectsReceivedCountdown = new CountDownLatch(1);
+
+    /**
+     * Delivery tag of the last message exposed to the client application through the BasicMessageConsumer.receive().
+     */
+    private long lastDispatchedDeliveryTag = -1;
 
     protected BasicMessageConsumer(int channelId, AMQConnection connection, AMQDestination destination,
                                    String messageSelector, boolean noLocal, MessageFactoryRegistry messageFactory,
@@ -485,11 +511,14 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
              o = _synchronousQueue.take();
          }
          if(o != null){
-             _logger.debug("dest="+ _destination.getQueueName()+  " took message [" + _synchronousQueue.size() + "]");
+//             if (_logger.isDebugEnabled()) {
+//                 _logger.debug("dest=" + _destination.getQueueName() + " took message [" + _synchronousQueue.size() + "]");
+//             }
 
              try {
                  if (o.getObject() instanceof AbstractJMSMessage) {
                      lastDispatchedMessageTimestamp = ((AbstractJMSMessage) o.getObject()).getJMSTimestamp();
+                     lastDispatchedDeliveryTag = ((AbstractJMSMessage) o.getObject()).getDeliveryTag();
                  }
              } catch (JMSException e) {
                 _logger.error("Error when reading the message at the point of dispatch from client buffer." + e);
@@ -749,10 +778,10 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
         {
             AbstractJMSMessage jmsMessage = createJMSMessageFromUnprocessedMessage(_session.getMessageDelegateFactory(), messageFrame);
 
-            if (_logger.isDebugEnabled())
-            {
-                _logger.debug("Message is of type: " + jmsMessage.getClass().getName());
-            }
+//            if (_logger.isDebugEnabled())
+//            {
+//                _logger.debug("Message is of type: " + jmsMessage.getClass().getName());
+//            }
             notifyMessage(jmsMessage);
         }
         catch (Exception e)
@@ -776,6 +805,21 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
     {
         try
         {
+            if (_session.getTransacted() && (lastRejectedDeliveryTag > -1)) {
+
+                if ( jmsMessage.getJMSMessageID().equals(lastRejectedJMSMessageID) &&
+                        (jmsMessage.getDeliveryTag() > lastRejectedDeliveryTag)) {
+
+                    if (_logger.isDebugEnabled()) {
+                        _logger.debug("last rejected message during rollback just came back to client side." +
+                                " lastRejectedDeliveryTag :" + lastRejectedDeliveryTag +
+                                " lastRejectedJMSMessageID " + lastRejectedJMSMessageID);
+                    }
+
+                    allRejectsReceivedCountdown.countDown();
+                }
+            }
+
             if (isMessageListenerSet())
             {
                 // If message redelivery delay is set, redelivered messages are queued in delay queue. Else directly
@@ -796,9 +840,9 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
                 } else {
                     _synchronousQueue.put(new DelayedObject(0, jmsMessage));
                 }
-                if(_logger.isDebugEnabled()) {
-                    _logger.debug("dest="+ _destination.getQueueName()+  " added message "
-                            + _synchronousQueue.size() + "]");
+                if (_logger.isDebugEnabled()) {
+                    _logger.debug("dest=" + _destination.getQueueName() + " added message " + printMessage(jmsMessage) +
+                            " with size : " + _synchronousQueue.size() + "]");
                 }
             }
         }
@@ -1072,51 +1116,47 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
                         .size() + ") in _syncQueue (PRQ)" + "for consumer with tag:" + _consumerTag);
             }
 
-            Iterator<DelayedObject> iterator = _synchronousQueue.iterator();
-
             int initialSize = _synchronousQueue.size();
 
             boolean removed = false;
-            while (iterator.hasNext())
-            {
 
-                Object o = iterator.next().getObject();
-
-                if (o instanceof AbstractJMSMessage)
-                {
-                    try {
+            while (_synchronousQueue.size() > 0) {
+                Object o = _synchronousQueue.peek().getObject();
+                try {
+                    if (o instanceof AbstractJMSMessage) {
                         if ((lastRollbackedMessageTimestamp > 0) && ((AbstractJMSMessage) o).getJMSRedelivered() &&
-                                (lastRollbackedMessageTimestamp >= ((AbstractJMSMessage) o).getJMSTimestamp())) {
-                            if (_logger.isDebugEnabled())
-                            {
-                                if (o instanceof TextMessage) {
-                                    _logger.debug("Did not remove message " + ((TextMessage) o).getText() + " since its new relative to " +
-                                            "the rollback point.");
-                                }
+                                (lastRollbackedMessageTimestamp > ((AbstractJMSMessage) o).getJMSTimestamp())) {
+                            if (_logger.isDebugEnabled()) {
+                                _logger.debug("Did not remove message " + printMessage((AbstractJMSMessage) o) +
+                                        " since its new relative to the rollback point." +
+                                " lastRollbackedMessageTimestamp : " + lastRollbackedMessageTimestamp +
+                                " redelivered : " + ((AbstractJMSMessage)o).getJMSRedelivered() +
+                                " messageTimestamp : " + ((AbstractJMSMessage)o).getJMSTimestamp());
                             }
+                            break;
                         } else {
-
                             _session.rejectMessage(((AbstractJMSMessage) o), true);
-
-                            if (_logger.isDebugEnabled())
-                            {
-                                _logger.debug("Rejected message:" + ((AbstractJMSMessage) o).getDeliveryTag());
+                            if (_logger.isDebugEnabled()) {
+                                _logger.debug("Rejected message:" + printMessage((AbstractJMSMessage) o) + " with " +
+                                        "delivery tag " + ((AbstractJMSMessage) o).getDeliveryTag());
                             }
+                            lastRejectedDeliveryTag = ((AbstractJMSMessage) o).getDeliveryTag();
+                            lastRejectedJMSMessageID = ((AbstractJMSMessage) o).getJMSMessageID();
 
-                            iterator.remove();
+                            _synchronousQueue.take();
                             removed = true;
-                       }
-                    } catch (JMSException e) {
-                        // Should continue. Cannot let one faulty message crash the flow.
-                        _logger.error("Error when trying to rejecting messages in client buffer : " + e.getMessage());
+                        }
+                    } else {
+                        _logger.error("Queue contained a :" + o.getClass()
+                                + " unable to reject as it is not an AbstractJMSMessage. Will be cleared");
+                        _synchronousQueue.take();
+                        removed = true;
                     }
-                }
-                else
-                {
-                    _logger.error("Queue contained a :" + o.getClass()
-                                  + " unable to reject as it is not an AbstractJMSMessage. Will be cleared");
-                    iterator.remove();
-                    removed = true;
+                } catch (JMSException e) {
+                    // Should continue. Cannot let one faulty message crash the flow.
+                    _logger.error("Error when trying to rejecting messages in client buffer : " + e.getMessage());
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                 }
             }
 
@@ -1215,6 +1255,58 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
                     _logger.error("Error occurred while delivery message to message listener.", e);
                 }
             }
+        }
+    }
+
+    /**
+     * Utility method to print message header "MsgID" for troubleshooting purposes.
+     * @param message
+     * @return
+     */
+    private static String printMessage(AbstractJMSMessage message) {
+        try {
+            return message.getStringProperty("MsgID");
+        } catch (JMSException e) {
+            return "NO_HEADER_VALUE";
+        }
+    }
+
+    /**
+     *
+     * @return the last message exposed to the client application.
+     */
+    public long getLastDispatchedDeliveryTag() {
+        return lastDispatchedDeliveryTag;
+    }
+
+    /**
+     * During the JMS rollback scenario, we reject the messages in synchronousQueue which were not yet exposed to the
+     * consuming application. Soon after this, there's a possibility of the application consuming some of these
+     * rejects, instead of waiting all the messages to come back to the synchronousQueue. This method uses a latch to
+     * wait for all such rejected messages in order to complete the rollback event and start dispatching messages to
+     * the application.
+     */
+    public void waitUntilAllRejectsReceived() {
+        if (lastRejectedDeliveryTag > -1) {
+            if (_logger.isDebugEnabled()) {
+                _logger.debug("Starting to wait for rejects to come back ! " +
+                        "lastRejectedDeliveryTag : " +
+                        lastRejectedDeliveryTag + " lastRejectedJMSMessageID : " + lastRejectedJMSMessageID);
+            }
+
+            try {
+                allRejectsReceivedCountdown.await(20, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+
+            if (_logger.isDebugEnabled()) {
+                _logger.debug("All rejects have arrived ! lastRejectedDeliveryTag : " +
+                        lastRejectedDeliveryTag + " " +
+                        "lastRejectedJMSMessageID : " + lastRejectedJMSMessageID);
+            }
+            allRejectsReceivedCountdown = new CountDownLatch(1);
+            lastRejectedDeliveryTag = -1;
         }
     }
 }

@@ -84,4 +84,10 @@ public interface OutboundSubscription {
      * @return name of the queue set by protocol
      */
     String getProtocolQueueName();
+
+    /**
+     *
+     * @return true if a JMS session rollback is in progress for this subscriber.
+     */
+    boolean isJMSRollbackInProgress();
 }

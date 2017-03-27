@@ -207,4 +207,14 @@ public class TestAMQSession extends AMQSession<BasicMessageConsumer_0_8, BasicMe
     {
         return null;
     }
+
+    public void sendRollbackWithContext(long lastRollbackedMessageId, int consumerTag) throws FailoverException,
+            AMQException {
+
+    }
+
+    public void sendRollbackComplete(int consumerTag) throws AMQException, FailoverException {
+        // todo rollback with context for tests is Not implemented. So not doing anything here.
+
+    }
 }

@@ -20,12 +20,14 @@ package org.wso2.andes.kernel.disruptor.delivery;
 
 import com.lmax.disruptor.EventHandler;
 import org.apache.log4j.Logger;
+import org.wso2.andes.api.Message;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.MessageStatus;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolDeliveryFailureException;
+import org.wso2.andes.kernel.ProtocolDeliveryFailureOnRollbackException;
 import org.wso2.andes.kernel.ProtocolDeliveryRulesFailureException;
 import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.kernel.SubscriptionAlreadyClosedException;
@@ -142,6 +144,10 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                 // we log the exception earlier. Hence logging is not required here. We increase delivery count so max
                 // send count delivery rule is evaluated and message is sent to DLC if failure is consistent
                 onDeliveryException(message, subscription);
+                reQueueMessageIfDurable(message, subscription);
+
+            } catch (ProtocolDeliveryFailureOnRollbackException ex) {
+                onSendError(message, subscription);
                 reQueueMessageIfDurable(message, subscription);
 
             } catch (Throwable e) {

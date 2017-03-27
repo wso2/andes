@@ -254,4 +254,10 @@ public class MQTTLocalSubscription implements OutboundSubscription {
     public boolean isDurable() {
         return isDurable;
     }
+
+    @Override
+    public boolean isJMSRollbackInProgress() {
+        // Not relevant for MQTT therefore default to false.
+        return false;
+    }
 }

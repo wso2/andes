@@ -23,6 +23,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.subscription.AndesSubscription;
 import org.wso2.andes.kernel.subscription.StorageQueue;
+import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -87,6 +88,7 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
                             subscriberWithMatchingSelectorFound = false;
                             continue; // continue on to match selectors of other subscribers
                         }
+
                         if (log.isDebugEnabled()) {
                             log.debug("Scheduled to send message id = " + message.getMessageID() +
                                     " to subscription id= " + localSubscription.getSubscriptionId());

@@ -94,6 +94,7 @@ import org.wso2.andes.server.txn.TimeoutDtxException;
 import org.wso2.andes.server.virtualhost.AMQChannelMBean;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.store.StoredAMQPMessage;
+import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -193,11 +194,6 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     private final AtomicBoolean _blocking = new AtomicBoolean(false);
 
     /**
-     * Message ID that was rejected last until the current time.
-     */
-    private long lastRejectedMessageId = -1;
-
-    /**
      * Message ID that was rollbacked last until the current time.
      */
     private long lastRollbackedMessageId = -1;
@@ -214,6 +210,11 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     private long _createTime = System.currentTimeMillis();
 
     private AMQChannelMBean _managedObject;
+
+    /**
+     * ID of the last message that was rejected for this channel.
+     */
+    private long lastRejectedMessageId;
 
     public AMQChannel(AMQProtocolSession session, int channelId, MessageStore messageStore)
             throws AMQException {
@@ -1100,6 +1101,14 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                 _actor.message(_logSubject, ChannelMessages.FLOW("Started"));
             }
 
+            // We need to inform the server that, if the active subscription was handling a rollback event, that it
+            // is now complete, so that we can resume sending new messages to the subscriber.
+            // It is assumed here that AMQChannel and subscription is a 1-to-1 relationship.
+            for (Subscription subscription : _tag2SubscriptionMap.values()) {
+                if (subscription.isJMSRollbackInProgress()) {
+                    subscription.setJMSRollbackInProgress(false);
+                }
+            }
 
             // This section takes two different approaches to perform to perform
             // the same function. Ensuring that the Subscription has taken note
@@ -1902,24 +1911,14 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     }
 
     /**
-     * Set the message ID of the last rejected message.
-     * Currently called by QpidAndesBridge.rejectMessage.
-     *
-     * @param lastRejectedMessageId Id of message newly rejected by this channel
+     * Mark the last message ID seen on the client side before rejecting messages after the rollback event.
+     * Called upon receiving a rollback request from client. (TxRollbackWithContextHandler.methodReceived)
      */
-    public void setLastRejectedMessageId(long lastRejectedMessageId) {
-        this.lastRejectedMessageId = lastRejectedMessageId;
-    }
-
-    /**
-     * Mark the lastRejectedMessageID as the lastRollbackedID.
-     * Called upon receiving a rollback request from client. (TxRollbackHandler.methodReceived)
-     */
-    public void setLastRollbackedMessageId() {
+    public void setLastRollbackedMessageId(long lastRollbackedMessageId) {
         if (_logger.isDebugEnabled()) {
-            _logger.debug("set LastRollbackedMessageId to : " + lastRejectedMessageId);
+            _logger.debug("set LastRollbackedMessageId to : " + lastRollbackedMessageId);
         }
-        this.lastRollbackedMessageId = this.lastRejectedMessageId;
+        this.lastRollbackedMessageId = lastRollbackedMessageId;
     }
 
     /**
@@ -1947,8 +1946,19 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         } else {
             // True if the message is placed after the last rollbacked message, in which case it's redelivery should
             // not be counted.
-            return (messageId > lastRollbackedMessageId);
+            boolean isMessageBeyondLastRollback = messageId > lastRollbackedMessageId;
+            MessageTracer.trace(messageId, "", "isMessageBeyondLastRollback : " + isMessageBeyondLastRollback +
+                    " lastRollbackPoint " + lastRollbackedMessageId);
+            return isMessageBeyondLastRollback;
         }
+    }
+
+    public long getLastRejectedMessageId() {
+        return lastRejectedMessageId;
+    }
+
+    public void setLastRejectedMessageId(long lastRejectedMessageId) {
+        this.lastRejectedMessageId = lastRejectedMessageId;
     }
 
 

@@ -311,4 +311,11 @@ public class SubscriberConnection {
         return encodeAsString();
     }
 
+    /**
+     * @return true if a JMS Session.Rollback is in progress.
+     */
+    public boolean isJMSRollbackInProgress() {
+        return outboundSubscription.isJMSRollbackInProgress();
+    }
+
 }

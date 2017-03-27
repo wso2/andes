@@ -359,7 +359,8 @@ public class QueueEntryImpl implements QueueEntry
         }
         else
         {
-            _log.warn("Requesting rejection by null subscriber:" + this);
+            _log.warn("Requesting rejection by null subscriber for message ID : " + getMessage().getMessageNumber() +
+                    " . hashcode : " + this);
         }
     }
 

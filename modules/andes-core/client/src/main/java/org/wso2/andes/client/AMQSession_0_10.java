@@ -1381,5 +1381,12 @@ public class AMQSession_0_10 extends AMQSession<BasicMessageConsumer_0_10, Basic
         sb.append(">");
         return sb.toString();
     }
+
+    @Override
+    public void sendRollbackWithContext(long lastDispatchedDeliveryTag, int consumerTag) throws AMQException,
+            FailoverException {
+        // todo rollback with context for AMQP 0_10 is Not implemented. So using normal rollback.
+        sendRollback();
+    }
     
 }

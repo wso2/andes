@@ -113,4 +113,17 @@ public interface Subscription
      * @return isNoLocal true / false
      */
     public boolean isNoLocal();
+
+    /**
+     *
+     * @return true if a JMS rollback is in progress for this subscription.
+     */
+    boolean isJMSRollbackInProgress();
+
+    /**
+     * Set to true if the subscriber is handling a rollback event. Until the rollback is finished, we should not
+     * queue-up any new messages other than what we have already sent to this subscriber (client-side).
+     * @param jmsRollbackInProgress
+     */
+    void setJMSRollbackInProgress(boolean jmsRollbackInProgress);
 }

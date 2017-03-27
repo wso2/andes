@@ -270,4 +270,14 @@ public class MockSubscription implements Subscription
     public boolean isNoLocal() {
         return false;
     }
+
+    public boolean isJMSRollbackInProgress() {
+        return false;
+    }
+
+    @Override
+    public void setJMSRollbackInProgress(boolean jmsRollbackInProgress)
+    {
+        //Not Implemented
+    }
 }

@@ -58,6 +58,7 @@ import org.wso2.andes.framing.MessageResumeBody;
 import org.wso2.andes.framing.MessageTransferBody;
 import org.wso2.andes.framing.QueueUnbindBody;
 import org.wso2.andes.framing.QueueUnbindOkBody;
+import org.wso2.andes.framing.TxRollbackWithContextBody;
 import org.wso2.andes.framing.amqp_0_91.DtxCommitBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxEndBodyImpl;
 import org.wso2.andes.framing.amqp_0_91.DtxForgetBodyImpl;
@@ -79,6 +80,8 @@ public class ServerMethodDispatcherImpl_0_91
             BasicRecoverSyncMethodHandler.getInstance();
     private static final QueueUnbindHandler _queueUnbindHandler =
             QueueUnbindHandler.getInstance();
+    private static final TxRollbackWithContextHandler _txRollbackWithContextHandler =
+            TxRollbackWithContextHandler.getInstance();
 
     private static final DtxSelectHandler dtxSelectHandler = DtxSelectHandler.getInstance();
     private static final DtxStartHandler dtxStartHandler = DtxStartHandler.getInstance();
@@ -306,6 +309,12 @@ public class ServerMethodDispatcherImpl_0_91
     public boolean dispatchQueueUnbind(QueueUnbindBody body, int channelId) throws AMQException
     {
         _queueUnbindHandler.methodReceived(getStateManager(),body,channelId);
+        return true;
+    }
+
+    @Override
+    public boolean dispatchTxRollbackWithContext(TxRollbackWithContextBody body, int channelId) throws AMQException {
+        _txRollbackWithContextHandler.methodReceived(getStateManager(), body, channelId);
         return true;
     }
 }

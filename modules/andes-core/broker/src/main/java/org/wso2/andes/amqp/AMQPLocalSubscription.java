@@ -27,6 +27,7 @@ import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.ProtocolDeliveryFailureException;
+import org.wso2.andes.kernel.ProtocolDeliveryFailureOnRollbackException;
 import org.wso2.andes.kernel.ProtocolDeliveryRulesFailureException;
 import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.server.AMQChannel;
@@ -192,6 +193,17 @@ public class AMQPLocalSubscription implements OutboundSubscription {
 
         QueueEntry messageToSend = AMQPUtils.convertAMQMessageToQueueEntry(message, amqQueue);
 
+        if (this.isJMSRollbackInProgress() && (this.channel.getLastRejectedMessageId() < messageToSend.getMessage()
+                .getMessageNumber())) {
+
+            String rollbackInProgressError = "Skipping delivery. JMS Rollback is in progress for Subscription " +
+                    "destination with channel ID : " + this.getChannelID();
+
+            MessageTracer.trace(messageToSend.getMessage().getMessageNumber(), messageToSend.getMessage().getRoutingKey(),
+                    rollbackInProgressError);
+            throw new ProtocolDeliveryFailureOnRollbackException(rollbackInProgressError);
+        }
+
         if (evaluateDeliveryRules(messageToSend)) {
             //check if redelivered. If so, set the JMS header
             if(messageMetadata.isRedelivered()) {
@@ -274,5 +286,10 @@ public class AMQPLocalSubscription implements OutboundSubscription {
             throw new ProtocolDeliveryFailureException(
                     "Error occurred while delivering message with ID : " + msgHeaderStringID, e);
         }
+    }
+
+    @Override
+    public boolean isJMSRollbackInProgress() {
+        return amqpSubscription.isJMSRollbackInProgress();
     }
 }
