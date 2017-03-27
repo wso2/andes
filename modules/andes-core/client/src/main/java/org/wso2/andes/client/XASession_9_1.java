@@ -98,7 +98,7 @@ public class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueS
     /**
      * Indicate if underline Connection should be closed after commit or rollback
      */
-    private boolean connectionClosable = false;
+    private boolean pendingConnectionClose = false;
 
     XASession_9_1(AMQConnection con, int channelId, int defaultPrefetchHigh, int defaultPrefetchLow)
             throws FailoverException, AMQException {
@@ -412,12 +412,8 @@ public class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueS
      * @return True if there is an active transaction
      */
     boolean indicateConnectionClose() {
-        if (xaResource.isTransactionActive()) {
-            connectionClosable = true;
-            return true;
-        } else {
-            return false;
-        }
+        pendingConnectionClose = true;
+        return xaResource.isTransactionActive();
     }
 
     /**
@@ -426,11 +422,11 @@ public class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueS
      * @throws JMSException if closing the session failed
      */
     void internalClose() throws JMSException {
-        if (connectionClosable) {
-            xaConnection.deregisterSession(this);
+        xaConnection.deregisterSession(this);
+
+        if (pendingConnectionClose) {
             xaConnection.internalClose();
         } else {
-            xaConnection.deregisterSession(this);
             super.close();
         }
     }

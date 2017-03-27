@@ -63,7 +63,7 @@ class XAResource_0_9_1 implements XAResource {
     /**
      * Indicate if underline {@link XASession_9_1} should be closed after commit or rollback
      */
-    private boolean sessionClosable = false;
+    private boolean pendingSessionClose = false;
 
     XAResource_0_9_1(XASession_9_1 xaSession_9_1) {
         session = xaSession_9_1;
@@ -95,7 +95,7 @@ class XAResource_0_9_1 implements XAResource {
      * Close the underline {@link XASession_9_1} if the session close was signaled before commit or rollback
      */
     private void closeSessionIfClosable() {
-        if (!session.isClosed() &&  sessionClosable) {
+        if (!session.isClosed() && pendingSessionClose) {
             try {
                 session.internalClose();
             } catch (JMSException e) {
@@ -437,11 +437,7 @@ class XAResource_0_9_1 implements XAResource {
      * @throws JMSException if closing session failed
      */
     boolean indicateSessionClosure() throws JMSException {
-        if (isTransactionActive()) {
-            sessionClosable = true;
-            return true;
-        } else {
-            return false;
-        }
+        pendingSessionClose = true;
+        return isTransactionActive();
     }
 }

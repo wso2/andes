@@ -21,6 +21,7 @@ import org.wso2.andes.AMQException;
 import org.wso2.andes.jms.ConnectionURL;
 
 import java.util.ArrayList;
+import javax.jms.IllegalStateException;
 import javax.jms.JMSException;
 import javax.jms.XAConnection;
 import javax.jms.XAQueueConnection;
@@ -62,6 +63,10 @@ public class XAConnectionImpl extends AMQConnection implements XAConnection, XAQ
      */
     public synchronized XASession createXASession() throws JMSException {
         checkNotClosed();
+        if (connectionCloseSignaled) {
+            throw new IllegalStateException("Object " + toString() + " has been closed");
+        }
+
         XASession xaSession = _delegate.createXASession();
 
         // Need to alter the class hierarchy to avoid casting
@@ -98,7 +103,7 @@ public class XAConnectionImpl extends AMQConnection implements XAConnection, XAQ
 
     @Override
     public synchronized void close() throws JMSException {
-        if (connectionCloseSignaled) {
+        if (!connectionCloseSignaled) {
             boolean canClosePhysicalConnection = true;
 
             for (XASession_9_1 xaSession : xaSessions) {
