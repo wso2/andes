@@ -1062,6 +1062,7 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
     public void rollbackPendingMessages()
     {
 
+
         if (_synchronousQueue.size() > 0)
         {
             _logger.debug("dest="+ _destination.getQueueName()+  " rolling back messages [" + _synchronousQueue.size() + "]");
@@ -1072,51 +1073,45 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
                         .size() + ") in _syncQueue (PRQ)" + "for consumer with tag:" + _consumerTag);
             }
 
-            Iterator<DelayedObject> iterator = _synchronousQueue.iterator();
-
             int initialSize = _synchronousQueue.size();
 
             boolean removed = false;
-            while (iterator.hasNext())
-            {
 
-                Object o = iterator.next().getObject();
-
-                if (o instanceof AbstractJMSMessage)
-                {
-                    try {
+            while (_synchronousQueue.size() > 0) {
+                Object o = _synchronousQueue.peek().getObject();
+                try {
+                    if (o instanceof AbstractJMSMessage) {
                         if ((lastRollbackedMessageTimestamp > 0) && ((AbstractJMSMessage) o).getJMSRedelivered() &&
-                                (lastRollbackedMessageTimestamp >= ((AbstractJMSMessage) o).getJMSTimestamp())) {
-                            if (_logger.isDebugEnabled())
-                            {
-                                if (o instanceof TextMessage) {
-                                    _logger.debug("Did not remove message " + ((TextMessage) o).getText() + " since its new relative to " +
-                                            "the rollback point.");
-                                }
+                                (lastRollbackedMessageTimestamp > ((AbstractJMSMessage) o).getJMSTimestamp())) {
+                            if (_logger.isDebugEnabled()) {
+                                _logger.debug("Did not remove message " + printMessage((AbstractJMSMessage) o) +
+                                        " since its new relative to the rollback point." +
+                                        " lastRollbackedMessageTimestamp : " + lastRollbackedMessageTimestamp +
+                                        " redelivered : " + ((AbstractJMSMessage)o).getJMSRedelivered() +
+                                        " messageTimestamp : " + ((AbstractJMSMessage)o).getJMSTimestamp());
                             }
+                            break;
                         } else {
-
                             _session.rejectMessage(((AbstractJMSMessage) o), true);
-
-                            if (_logger.isDebugEnabled())
-                            {
-                                _logger.debug("Rejected message:" + ((AbstractJMSMessage) o).getDeliveryTag());
+                            if (_logger.isDebugEnabled()) {
+                                _logger.debug("Rejected message:" + printMessage((AbstractJMSMessage) o) + " with " +
+                                        "delivery tag " + ((AbstractJMSMessage) o).getDeliveryTag());
                             }
 
-                            iterator.remove();
+                            _synchronousQueue.take();
                             removed = true;
-                       }
-                    } catch (JMSException e) {
-                        // Should continue. Cannot let one faulty message crash the flow.
-                        _logger.error("Error when trying to rejecting messages in client buffer : " + e.getMessage());
+                        }
+                    } else {
+                        _logger.error("Queue contained a :" + o.getClass()
+                                + " unable to reject as it is not an AbstractJMSMessage. Will be cleared");
+                        _synchronousQueue.take();
+                        removed = true;
                     }
-                }
-                else
-                {
-                    _logger.error("Queue contained a :" + o.getClass()
-                                  + " unable to reject as it is not an AbstractJMSMessage. Will be cleared");
-                    iterator.remove();
-                    removed = true;
+                } catch (JMSException e) {
+                    // Should continue. Cannot let one faulty message crash the flow.
+                    _logger.error("Error when trying to rejecting messages in client buffer : " + e.getMessage());
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                 }
             }
 
@@ -1217,4 +1212,18 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
             }
         }
     }
+
+    /**
+     * Utility method to print message header "MsgID" for troubleshooting purposes.
+     * @param message
+     * @return
+     */
+    private static String printMessage(AbstractJMSMessage message) {
+        try {
+            return message.getStringProperty("MsgID");
+        } catch (JMSException e) {
+            return "NO_HEADER_VALUE";
+        }
+    }
+
 }
