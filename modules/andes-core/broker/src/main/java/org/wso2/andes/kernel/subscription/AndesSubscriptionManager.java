@@ -112,6 +112,12 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
     private boolean storeUnavailable;
 
     /**
+     * the list to store suspend request that are received and are not mapped toa subscription. A newly bound
+     * subscription must be suspended if the channel id is contained in this list.
+     */
+    List<UUID> pendingSuspension;
+
+    /**
      * Create a AndesSubscription manager instance. This is a static class managing
      * subscriptions.
      *
@@ -128,6 +134,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
         this.andesContextStore = andesContextStore;
         this.localNodeId = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         storeUnavailable = false;
+        pendingSuspension = new ArrayList<>();
 
         CoordinationComponentFactory coordinationComponentFactory = new CoordinationComponentFactory();
         this.clusterNotificationAgent = coordinationComponentFactory.createClusterNotificationAgent();
@@ -162,8 +169,13 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
         AndesSubscription subscription = subscriptionFactory
                 .createLocalSubscription(subscriptionRequest, storageQueue);
 
-        //binding contains some validations. Thus register should happen after binding subscriber to queue
         storageQueue.bindSubscription(subscription, subscriptionRequest.getRoutingKey());
+        //binding contains some validations. Thus register should happen after binding subscriber to queue
+        if (pendingSuspension.contains(subscription.getSubscriberConnection().getProtocolChannelID())) {
+            pendingSuspension.remove(subscription.getSubscriberConnection().getProtocolChannelID());
+        } else {
+            storageQueue.resumeSubscription(subscription);
+        }
         registerSubscription(subscription);
         //Store the subscription
         try {
@@ -233,6 +245,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
         StorageQueue storageQueue = subscription.getStorageQueue();
 
         storageQueue.unbindSubscription(subscription);
+        pendingSuspension.remove(subscription.getSubscriberConnection().getProtocolChannelID());
 
         if (!storeUnavailable) {
             try {
@@ -1071,4 +1084,33 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
         log.info("Store became operational.");
         storeUnavailable = false;
     }
+
+    /**
+     * Suspend/resume message delivery for a subscription identified by the given channel id.
+     *
+     * @param channelId id of the channel to be resumed
+     * @param active    whether the message flow is suspended/resumed. if set to false, the channel is suspended.
+     */
+    public void notifySubscriptionFlow(UUID channelId, boolean active) {
+        AndesSubscription subscription = getSubscriptionByProtocolChannel(channelId);
+        //a channel flow suspend/resume could be received any time after the session initiation. Could be even
+        // received for a session with only publishers. Hence a matching subscription could be not found.
+        if (null != subscription) {
+            if (active) {
+                pendingSuspension.remove(channelId);
+                subscription.resume();
+            } else {
+                subscription.suspend();
+            }
+        } else {
+            if (!active) {
+                pendingSuspension.add(channelId);
+            } else {
+                pendingSuspension.remove(channelId);
+            }
+            log.debug("Suspend: " + !active + " request will be ignored since no subscription could be found for "
+                      + "channel: " + channelId);
+        }
+    }
+
 }

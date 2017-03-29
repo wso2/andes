@@ -569,4 +569,18 @@ public class AndesSubscription {
                 + ",subscriberConnection=" + encodedConnectionInfo;
     }
 
+    /**
+     * Suspends message delivery for the subscription. Messages will no longer be buffered to the subscription until
+     * the subscription is resumed.
+     */
+    public void suspend() {
+        storageQueue.suspendSubscription(this);
+    }
+
+    /**
+     * Resume delivering messages for the subscription.
+     */
+    public void resume() {
+        storageQueue.resumeSubscription(this);
+    }
 }
