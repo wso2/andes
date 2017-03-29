@@ -643,4 +643,16 @@ public class QpidAndesBridge {
             }
         }
     }
+
+    /**
+     * notifies andes that a channel suspend/resume request has been received.
+     *
+     * @param channelId           the channel id from which the request was received
+     * @param active              whether the channel should be suspended/resumed. If set to true, channel will be
+     *                            resumed and vis versa
+     * @param channelFlowCallback the call back to be registered to send the response
+     */
+    public static void notifyChannelFlow(UUID channelId, boolean active, DisruptorEventCallback channelFlowCallback) {
+        Andes.getInstance().notifySubscriptionFlow(channelId, active, channelFlowCallback);
+    }
 }

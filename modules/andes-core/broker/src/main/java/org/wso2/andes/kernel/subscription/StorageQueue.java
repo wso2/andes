@@ -83,10 +83,14 @@ public class StorageQueue {
     private List<AndesSubscription> boundedSubscriptions;
 
     /**
+     * Subscriptions that are locally bound to the storage queue and that are not suspended for message delivery.
+     */
+    private List<AndesSubscription> boundUnSuspendedSubscriptions;
+
+    /**
      * Handler for messages which handles buffering, persisting and reading messages for queue
      */
     private MessageHandler messageHandler;
-
 
     /**
      * Create a storage queue instance. This instance MUST be registered at StorageQueueRegistry.
@@ -107,6 +111,7 @@ public class StorageQueue {
         this.isExclusive = isExclusive;
         this.lastPurgedTimestamp = 0L;
         this.boundedSubscriptions = new ArrayList<>(1);
+        this.boundUnSuspendedSubscriptions = new ArrayList<>(1);
         this.messageHandler = new MessageHandler(name);
     }
 
@@ -141,6 +146,7 @@ public class StorageQueue {
             }
         }
         this.boundedSubscriptions = new ArrayList<>(1);
+        this.boundUnSuspendedSubscriptions = new ArrayList<>(1);
     }
 
     public String encodeAsString() {
@@ -265,6 +271,36 @@ public class StorageQueue {
     }
 
     /**
+     * Retrieves subscriptions that are bound to the storage queue and are not suspended.
+     *
+     * @return a list of active(not suspended) subscriptions.
+     */
+    public List<AndesSubscription> getBoundUnSuspendedSubscriptions() {
+        return boundUnSuspendedSubscriptions;
+    }
+
+    /**
+     * Resume message delivery to the subscription. Messages will start being buffered.
+     *
+     * @param subscription subscription to be resumed for message delivery
+     */
+    public void resumeSubscription(AndesSubscription subscription) {
+        if (!boundUnSuspendedSubscriptions.contains(subscription)) {
+            boundUnSuspendedSubscriptions.add(subscription);
+        }
+    }
+
+    /**
+     * Suspend message delivery to the subscription. New messages will not get buffered to the subscription until
+     * resumed.
+     *
+     * @param subscription subscription to be suspended
+     */
+    public void suspendSubscription(AndesSubscription subscription) {
+        boundUnSuspendedSubscriptions.remove(subscription);
+    }
+
+    /**
      * Add a subscription for the queue. Binding key of the subscriber
      * should match with the binding key by which queue is bound to message router
      *
@@ -320,6 +356,9 @@ public class StorageQueue {
      */
     public void unbindSubscription(AndesSubscription subscription) throws AndesException {
         boundedSubscriptions.remove(subscription);
+        //Since subscriptions are picked up from boundUnSuspendedSubscriptions for message deliver, the subscription
+        // should be removed from this list as well.
+        boundUnSuspendedSubscriptions.remove(subscription);
         if (boundedSubscriptions.isEmpty()) {
             if (isDurable) {
                 //return slots back to coordinator
