@@ -1078,31 +1078,31 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
             boolean removed = false;
 
             while (_synchronousQueue.size() > 0) {
-                Object message = _synchronousQueue.peek().getObject();
+                Object o = _synchronousQueue.peek().getObject();
                 try {
-                    if (message instanceof AbstractJMSMessage) {
-                        if ((lastRollbackedMessageTimestamp > 0) && ((AbstractJMSMessage) message).getJMSRedelivered() &&
-                                (lastRollbackedMessageTimestamp > ((AbstractJMSMessage) message).getJMSTimestamp())) {
+                    if (o instanceof AbstractJMSMessage) {
+                        if ((lastRollbackedMessageTimestamp > 0) && ((AbstractJMSMessage) o).getJMSRedelivered() &&
+                                (lastRollbackedMessageTimestamp > ((AbstractJMSMessage) o).getJMSTimestamp())) {
                             if (_logger.isDebugEnabled()) {
-                                _logger.debug("Did not remove message " + printMessage((AbstractJMSMessage) message) +
+                                _logger.debug("Did not remove message " + printMessage((AbstractJMSMessage) o) +
                                         " since its new relative to the rollback point." +
                                         " lastRollbackedMessageTimestamp : " + lastRollbackedMessageTimestamp +
-                                        " redelivered : " + ((AbstractJMSMessage)message).getJMSRedelivered() +
-                                        " messageTimestamp : " + ((AbstractJMSMessage)message).getJMSTimestamp());
+                                        " redelivered : " + ((AbstractJMSMessage)o).getJMSRedelivered() +
+                                        " messageTimestamp : " + ((AbstractJMSMessage)o).getJMSTimestamp());
                             }
                             break;
                         } else {
-                            _session.rejectMessage(((AbstractJMSMessage) message), true);
+                            _session.rejectMessage(((AbstractJMSMessage) o), true);
                             if (_logger.isDebugEnabled()) {
-                                _logger.debug("Rejected message:" + printMessage((AbstractJMSMessage) message) + " with " +
-                                        "delivery tag " + ((AbstractJMSMessage) message).getDeliveryTag());
+                                _logger.debug("Rejected message:" + printMessage((AbstractJMSMessage) o) + " with " +
+                                        "delivery tag " + ((AbstractJMSMessage) o).getDeliveryTag());
                             }
 
                             _synchronousQueue.take();
                             removed = true;
                         }
                     } else {
-                        _logger.error("Queue contained a :" + message.getClass()
+                        _logger.error("Queue contained a :" + o.getClass()
                                 + " unable to reject as it is not an AbstractJMSMessage. Will be cleared");
                         _synchronousQueue.take();
                         removed = true;
