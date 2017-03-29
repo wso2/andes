@@ -994,16 +994,6 @@ public class FailureObservingAndesContextStore extends FailureObservingStore<And
         }
     }
 
-    @Override
-    public void clearHeartBeatData() throws AndesException {
-        try {
-            wrappedInstance.clearHeartBeatData();
-        } catch (AndesStoreUnavailableException exception) {
-            notifyFailures(exception);
-            throw exception;
-        }
-    }
-
     /**
      * {@inheritDoc}
      */
@@ -1025,19 +1015,6 @@ public class FailureObservingAndesContextStore extends FailureObservingStore<And
     public List<MembershipEvent> readMemberShipEvents(String nodeID) throws AndesException {
         try {
             return wrappedInstance.readMemberShipEvents(nodeID);
-        } catch (AndesStoreUnavailableException exception) {
-            notifyFailures(exception);
-            throw exception;
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void clearMembershipEvents() throws AndesException {
-        try {
-            wrappedInstance.clearMembershipEvents();
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -1077,18 +1054,6 @@ public class FailureObservingAndesContextStore extends FailureObservingStore<And
     public List<ClusterNotification> readClusterNotifications(String nodeID) throws AndesException {
         try {
             return wrappedInstance.readClusterNotifications(nodeID);
-        } catch (AndesStoreUnavailableException exception) {
-            notifyFailures(exception);
-            throw exception;
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public void clearClusterNotifications() throws AndesException {
-        try {
-            wrappedInstance.clearClusterNotifications();
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

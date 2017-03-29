@@ -40,7 +40,6 @@ import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
 import org.wso2.carbon.metrics.manager.Timer.Context;
 
-import javax.sql.DataSource;
 import java.net.InetSocketAddress;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -52,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import javax.sql.DataSource;
 
 /**
  * ANSI SQL based Andes Context Store implementation. This is used to persist information of
@@ -2582,56 +2582,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public void clearMembershipEvents() throws AndesException {
-        Connection connection = null;
-        PreparedStatement clearMembershipEvents = null;
-        String task = "Clearing all membership events";
-        try {
-            connection = getConnection();
-            clearMembershipEvents = connection.prepareStatement(RDBMSConstants.PS_CLEAR_ALL_MEMBERSHIP_EVENTS);
-            clearMembershipEvents.executeUpdate();
-            connection.commit();
-        } catch (SQLException e) {
-            rollback(connection, task);
-            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + task, e);
-        } finally {
-            close(clearMembershipEvents, task);
-            close(connection, task);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void clearHeartBeatData() throws AndesException {
-        Connection connection = null;
-        PreparedStatement clearNodeHeartbeatData = null;
-        PreparedStatement clearCoordinatorHeartbeatData = null;
-        String task = "Clearing all heartbeat data";
-        try {
-            connection = getConnection();
-            clearNodeHeartbeatData = connection.prepareStatement(RDBMSConstants.PS_CLEAR_NODE_HEARTBEATS);
-            clearNodeHeartbeatData.executeUpdate();
-
-            clearCoordinatorHeartbeatData = connection.prepareStatement(RDBMSConstants.PS_CLEAR_COORDINATOR_HEARTBEAT);
-            clearCoordinatorHeartbeatData.executeUpdate();
-
-            connection.commit();
-        } catch (SQLException e) {
-            rollback(connection, task);
-            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + task, e);
-        } finally {
-            close(clearNodeHeartbeatData, task);
-            close(clearCoordinatorHeartbeatData, task);
-            close(connection, task);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public void clearMembershipEvents(String nodeID) throws AndesException {
         Connection connection = null;
         PreparedStatement clearMembershipEvents = null;
@@ -2728,28 +2678,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         } finally {
             close(resultSet, task);
             close(preparedStatement, task);
-            close(clearMembershipEvents, task);
-            close(connection, task);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void clearClusterNotifications() throws AndesException {
-        Connection connection = null;
-        PreparedStatement clearMembershipEvents = null;
-        String task = "Clearing all cluster notifications";
-        try {
-            connection = getConnection();
-            clearMembershipEvents = connection.prepareStatement(RDBMSConstants.PS_CLEAR_ALL_CLUSTER_NOTIFICATIONS);
-            clearMembershipEvents.executeUpdate();
-            connection.commit();
-        } catch (SQLException e) {
-            rollback(connection, task);
-            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + task, e);
-        } finally {
             close(clearMembershipEvents, task);
             close(connection, task);
         }
