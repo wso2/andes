@@ -1037,6 +1037,7 @@ public class FailureObservingAndesContextStore extends FailureObservingStore<And
     /**
      * {@inheritDoc}
      */
+    @Override
     public void storeClusterNotification(List<String> clusterNodes, String originatedNode, String artifactType, String
             clusterNotificationType, String notification, String description) throws AndesException {
         try {
@@ -1051,6 +1052,7 @@ public class FailureObservingAndesContextStore extends FailureObservingStore<And
     /**
      * {@inheritDoc}.
      */
+    @Override
     public List<ClusterNotification> readClusterNotifications(String nodeID) throws AndesException {
         try {
             return wrappedInstance.readClusterNotifications(nodeID);
@@ -1063,6 +1065,7 @@ public class FailureObservingAndesContextStore extends FailureObservingStore<And
     /**
      * {@inheritDoc}
      */
+    @Override
     public void clearClusterNotifications(String nodeID) throws AndesException {
         try {
             wrappedInstance.clearClusterNotifications(nodeID);
