@@ -198,14 +198,6 @@ public class RDBMSClusterNotificationListenerImpl implements ClusterNotification
      * {@inheritDoc}
      */
     @Override
-    public void clearAllClusterNotifications() throws AndesException {
-        andesContextStore.clearClusterNotifications();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public void stopListener() throws AndesException {
         scheduledExecutorService.shutdown();
         log.info("RDBMS cluster event listener stopped.");

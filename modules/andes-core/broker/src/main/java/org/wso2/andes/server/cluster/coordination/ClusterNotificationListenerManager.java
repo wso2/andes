@@ -44,13 +44,6 @@ public interface ClusterNotificationListenerManager {
     void reInitializeListener() throws AndesException;
 
     /**
-     * Clears all persisted cluster notifications at server startup.
-     *
-     * @throws AndesException
-     */
-    void clearAllClusterNotifications() throws AndesException;
-
-    /**
      * Stops the cluster event listener.
      *
      * @throws AndesException
