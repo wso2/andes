@@ -25,10 +25,10 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.ProtocolMessage;
-import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * This class represents connection and transport level information
@@ -42,6 +42,18 @@ public class SubscriberConnection {
     private UUID protocolChannelID;
 
     private String connectedNode;
+
+    /**
+     * Used to mark the subscription as obsolete. Upon being set to true, messages that are scheduled to be
+     * delivered will be dropped.
+     */
+    private AtomicBoolean obsolete;
+
+    /**
+     * Used to mark the connection as suspended. Upon being seting to true, messages being scheduled to the
+     * subscription will be stopped.
+     */
+    private boolean suspended;
 
     /**
      * Outbound subscription reference. We forward outbound events to this object. Get its response
@@ -74,6 +86,18 @@ public class SubscriberConnection {
                 .readValue(AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLING_MAX_UNACKED_MESSAGES);
         this.outBoundMessageTracker = new OutBoundMessageTracker(maxNumberOfDeliveredButNotAckedMessages);
         this.outboundSubscription = outboundSubscription;
+        obsolete = new AtomicBoolean(false);
+        suspended = false;
+    }
+
+    /**
+     * Create a fresh clone of the connection. Upon creation, this will reset all the suspend/obsolete states as a
+     * fresh subscriber connection.
+     *
+     * @return a clone of the subscriber connection with reset suspend/obsolete states
+     */
+    public SubscriberConnection createFreshClone() {
+        return new SubscriberConnection(connectedIP, connectedNode, protocolChannelID, outboundSubscription);
     }
 
     /**
@@ -106,6 +130,14 @@ public class SubscriberConnection {
         this.outboundSubscription = new NullSubscription();
     }
 
+    /**
+     * Retrieves the outbound subscription for the connection.
+     *
+     * @return the outbound subscription
+     */
+    OutboundSubscription getOutboundSubscription() {
+        return outboundSubscription;
+    }
 
     /**
      * Get IP address of host machine subscriber connection is made
@@ -170,22 +202,29 @@ public class SubscriberConnection {
      *
      * @param messageMetadata metadata of the message
      * @param content         content of the message
-     * @return true if the send is a success
      * @throws AndesException on an issue writing message to the protocol
      */
-    public synchronized boolean writeMessageToConnection(ProtocolMessage messageMetadata, AndesContent content)
+    public synchronized void writeMessageToConnection(ProtocolMessage messageMetadata, AndesContent content)
             throws AndesException {
 
-        //It is needed to add the message reference to the tracker and increase un-ack message count BEFORE
-        // actual message send because if it is not done ack can come BEFORE executing those lines in parallel world
-        if (log.isDebugEnabled()) {
-            log.debug("Adding message to sending tracker channel id = " + protocolChannelID
-                    + " message id = " + messageMetadata.getMessageID());
+        //messages are dropped if the connection is marked as obsolete.
+        if (!obsolete.get()) {
+            //It is needed to add the message reference to the tracker and increase un-ack message count BEFORE
+            // actual message send because if it is not done ack can come BEFORE executing those lines in parallel world
+            if (log.isDebugEnabled()) {
+                log.debug("Adding message to sending tracker channel id = " + protocolChannelID
+                          + " message id = " + messageMetadata.getMessageID());
+            }
+            outboundSubscription.sendMessageToSubscriber(messageMetadata, content);
         }
-        outBoundMessageTracker.addMessageToSendingTracker(messageMetadata);
-        return outboundSubscription.sendMessageToSubscriber(messageMetadata, content);
     }
 
+    /**
+     * Marks the connection as obsolete. This will stop messages being delivered to the subscription.
+     */
+    public synchronized void setObsolete() {
+        obsolete.set(true);
+    }
 
     /**
      * Called upon a connection error while writing a message to the subscriber to send
@@ -206,6 +245,24 @@ public class SubscriberConnection {
      */
     public boolean hasRoomToAcceptMessages() {
         return outBoundMessageTracker.hasRoomToAcceptMessages();
+    }
+
+    /**
+     * Returns if the subscription is marked as suspended.
+     *
+     * @return true if the subscription is suspended.
+     */
+    public boolean isSuspended() {
+        return suspended;
+    }
+
+    /**
+     * Suspend/resume subscription.
+     *
+     * @param suspended if set to true, subscription is marked as suspended
+     */
+    public void setSuspended(boolean suspended) {
+        this.suspended = suspended;
     }
 
     /**
@@ -309,6 +366,10 @@ public class SubscriberConnection {
 
     public String toString() {
         return encodeAsString();
+    }
+
+    public void addMessageToSendingTracker(ProtocolMessage messageMetadata) {
+        outBoundMessageTracker.addMessageToSendingTracker(messageMetadata);
     }
 
 }

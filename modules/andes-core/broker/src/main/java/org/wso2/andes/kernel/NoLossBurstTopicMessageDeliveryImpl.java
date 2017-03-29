@@ -50,10 +50,9 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
         Iterator<DeliverableAndesMetadata> iterator = messages.iterator();
         List<DeliverableAndesMetadata> droppedTopicMessagesList = new ArrayList<>();
 
-        /**
-         * get all relevant type of subscriptions. This call does NOT
-         * return hierarchical subscriptions for the destination. There
-         * are duplicated messages for each different subscribed destination.
+        /*
+          Get all relevant types of subscriptions that are not suspended. This call does NOT return hierarchical
+          subscriptions for the destination. There are duplicated messages for each different subscribed destination.
          */
         List<org.wso2.andes.kernel.subscription.AndesSubscription> subscriptions4Queue =
                 storageQueue.getBoundSubscriptions();
@@ -70,6 +69,11 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
 
                 //All subscription filtering logic for topics goes here
                 for (AndesSubscription subscription : currentSubscriptions) {
+
+                    if (subscription.getSubscriberConnection().isSuspended()) {
+                        continue;
+                    }
+
                     /*
                      * Consider the arrival time of the message. Only topic
                      * subscribers which appeared before publishing this message should receive it
@@ -111,11 +115,11 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
 
                 message.markAsScheduledToDeliver(subscriptionsToDeliver);
 
+                iterator.remove();
                 for (AndesSubscription localSubscription : subscriptionsToDeliver) {
                     MessageFlusher.getInstance().deliverMessageAsynchronously(localSubscription, message);
                 }
 
-                iterator.remove();
 
                 if (log.isDebugEnabled()) {
                     log.debug("Removing Scheduled to send message from buffer. MsgId= " + message.getMessageID());

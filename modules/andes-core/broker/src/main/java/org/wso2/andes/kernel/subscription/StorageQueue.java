@@ -87,7 +87,6 @@ public class StorageQueue {
      */
     private MessageHandler messageHandler;
 
-
     /**
      * Create a storage queue instance. This instance MUST be registered at StorageQueueRegistry.
      *
@@ -334,6 +333,17 @@ public class StorageQueue {
     }
 
     /**
+     * Given a subscription add it to the
+     *
+     * @param existingSubscription the subscription that is being replaced
+     * @param newSubscription      replacing subscription
+     */
+    void replaceBoundSub(AndesSubscription existingSubscription, AndesSubscription newSubscription) {
+        boundedSubscriptions.remove(existingSubscription);
+        boundedSubscriptions.add(newSubscription);
+    }
+
+    /**
      * Get message router bound to queue
      *
      * @return get AndesMessageRouter queue is bound. Return null if not bound to any
@@ -368,6 +378,15 @@ public class StorageQueue {
      */
     public void bufferMessageForDelivery(DeliverableAndesMetadata message) {
         messageHandler.bufferMessage(message);
+    }
+
+    /**
+     * Removes a message that is buffered to be scheduled given the message id.
+     *
+     * @param messageId id of the message to be removed from the buffer
+     */
+    void removeMessageFromBuffer(long messageId) {
+        messageHandler.removeBufferedMessage(messageId);
     }
 
     /**

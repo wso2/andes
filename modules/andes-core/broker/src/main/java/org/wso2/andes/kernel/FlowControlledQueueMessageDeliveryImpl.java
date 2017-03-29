@@ -23,12 +23,15 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.subscription.AndesSubscription;
 import org.wso2.andes.kernel.subscription.StorageQueue;
+import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Strategy definition for queue message delivery
@@ -50,16 +53,14 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
         int sentMessageCount = 0;
         Iterator<DeliverableAndesMetadata> iterator = messages.iterator();
 
-        /**
+        /*
          * get all relevant type of subscriptions.
          * For durable topic subscriptions this should return queue subscription
          * bound to unique queue based on subscription id
          */
-        List<org.wso2.andes.kernel.subscription.AndesSubscription> subscriptions4Queue =
-                storageQueue.getBoundSubscriptions();
+        List<AndesSubscription> subscriptions4Queue = storageQueue.getBoundSubscriptions();
 
-        List<org.wso2.andes.kernel.subscription.AndesSubscription> currentSubscriptions
-                = new ArrayList<>(subscriptions4Queue);
+        List<AndesSubscription> currentSubscriptions = new ArrayList<>(subscriptions4Queue);
 
         int numOfConsumers = currentSubscriptions.size();
         int consumerIndexCounter = 0;
@@ -70,8 +71,9 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
                 DeliverableAndesMetadata message = iterator.next();
                 int numOfCurrentMsgDeliverySchedules = 0;
                 boolean subscriberWithMatchingSelectorFound = true;
+                boolean suspendedSubFound = false;
 
-                /**
+                /*
                  * if message is addressed to queues, only ONE subscriber should
                  * get the message. Otherwise, loop for every subscriber
                  */
@@ -79,6 +81,10 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
                     int currentConsumerIndex = consumerIndexCounter % numOfConsumers;
                     AndesSubscription localSubscription = currentSubscriptions.get(currentConsumerIndex);
                     consumerIndexCounter = consumerIndexCounter + 1;
+                    if (localSubscription.getSubscriberConnection().isSuspended()) {
+                        suspendedSubFound = true;
+                        continue;
+                    }
                     if (localSubscription.getSubscriberConnection().hasRoomToAcceptMessages()) {
 
                         if (!localSubscription.getSubscriberConnection().
@@ -101,6 +107,7 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
                         }
 
                         message.markAsScheduledToDeliver(localSubscription);
+                        iterator.remove();
                         MessageFlusher.getInstance().deliverMessageAsynchronously(localSubscription, message);
                         numOfCurrentMsgDeliverySchedules++;
 
@@ -110,33 +117,28 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
                     }
                 }
 
+                //if the message was delivered, it needs to be removed
                 if (numOfCurrentMsgDeliverySchedules == 1) {
-
-                    iterator.remove();
-
                     if (log.isDebugEnabled()) {
                         log.debug("Removing Scheduled to send message from buffer. MsgId= " + message.getMessageID());
                     }
-
                     sentMessageCount++;
-
                 } else {
 
                     //if no subscriber has a matching selector, route message to DLC queue
-                    if (!subscriberWithMatchingSelectorFound) {
+                    if (!subscriberWithMatchingSelectorFound && !suspendedSubFound) {
                         message.addMessageStatus(MessageStatus.NO_MATCHING_CONSUMER);
                         Andes.getInstance().moveMessageToDeadLetterChannel(message, message.getDestination());
                         iterator.remove();
                     } else {
                         if (log.isDebugEnabled()) {
                             log.debug("All subscriptions bounded for queue " + storageQueue.getName()
-                                    + " have reached number of max unacked messages. Skipping delivery of message"
-                                    + " id= " + message.getMessageID());
+                                      + " have reached number of max unacked messages, or are in the suspended state "
+                                      + "Skipping delivery of message id= " + message.getMessageID());
                         }
                         //if we continue message order will break
                         break;
                     }
-
                 }
 
             } catch (NoSuchElementException ex) {

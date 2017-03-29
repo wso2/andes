@@ -285,6 +285,17 @@ public class MessageHandler {
         MessageTracer.trace(message, MessageTracer.METADATA_BUFFERED_FOR_DELIVERY);
     }
 
+    /**
+     * Remove buffered message given the id.
+     *
+     * @param messageId id of the message to be removed.
+     */
+    public void removeBufferedMessage(long messageId) {
+        readButUndeliveredMessages.remove(messageId);
+        if (log.isDebugEnabled()) {
+            log.debug("Removing scheduled to send message from buffer with id: " + messageId);
+        }
+    }
 
     /**
      * Returns boolean variable saying whether this destination has room or not

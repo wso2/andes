@@ -43,6 +43,7 @@ public class DeliveryMessageHandler extends DeliveryResponsibility {
         UUID subscriptionChannelID = subscription.getSubscriberConnection().getProtocolChannelID();
         message.markAsDispatchedToDeliver(subscriptionChannelID);
         ProtocolMessage protocolMessage = message.generateProtocolDeliverableMessage(subscriptionChannelID);
+        subscription.getSubscriberConnection().addMessageToSendingTracker(protocolMessage);
         MessageFlusher.getInstance().getFlusherExecutor().submit(subscription, protocolMessage);
         return true;
     }

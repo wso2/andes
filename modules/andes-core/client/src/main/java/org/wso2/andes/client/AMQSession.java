@@ -1763,7 +1763,9 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
             log.debug("Message[" + message.toString() + "] received in session");
         }
         _highestDeliveryTag.set(message.getDeliveryTag());
-        _queue.add(message);        
+        if (!isInRecovery()) {
+            _queue.add(message);
+        }
     }
 
     public void declareAndBind(AMQDestination amqd)
@@ -1815,6 +1817,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
      */
     public void recover() throws JMSException
     {
+
         // Ensure that the session is open.
         checkNotClosed();
 
