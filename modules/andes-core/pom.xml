@@ -389,7 +389,7 @@
                             <target>
                                 <property name="java2.class.path" refid="maven.dependency.classpath" />
                                 <ant antfile="${basedir}/build.xml">
-                                    <property name="andes.version" value="${project.version}"/>
+                                    <property name="andes.version" value="${andes.version}"/>
                                     <target name="build" />
                                 </ant>
                             </target>

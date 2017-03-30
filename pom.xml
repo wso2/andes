@@ -556,7 +556,13 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <carbon.kernel.version>4.4.9</carbon.kernel.version>
         <project.scm.id>wso2-scm-server</project.scm.id>
-        <andes.version>${project.version}</andes.version>
+        <!--This fixed version value is used to version intermediate ant artifacts which are installed only
+        to local maven repo by maven-install-plugin. Those artifacts will be dependencies of the orbit bundle
+        which exports the packages from the artifacts with the correct version value. Reason this was set to
+        a fixed version is, when releasing the repository with maven-release-plugin, if we have the
+        project.version set here, release prepare goal would expect us to get rid of SNAPSHOT dependencies to the
+        artifacts built with ant which are not automatically updated by maven. -->
+        <andes.version>1.0.0</andes.version>
         <commons-cli.version>1.0</commons-cli.version>
         <commons-configuration.version>1.10</commons-configuration.version>
         <commons-lang.version>2.6</commons-lang.version>
