@@ -399,6 +399,8 @@ public class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueS
                 if (!isTransactionActive) {
                     xaConnection.deregisterSession(this);
                     super.close();
+                } else {
+                    LOGGER.error("XASession.close() was called before committing or rolling back");
                 }
             } finally {
                 closeSignaled = true;
