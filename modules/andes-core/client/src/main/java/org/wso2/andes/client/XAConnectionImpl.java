@@ -17,6 +17,8 @@
  */
 package org.wso2.andes.client;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.jms.ConnectionURL;
 
@@ -35,6 +37,11 @@ import javax.jms.XATopicSession;
  */
 public class XAConnectionImpl extends AMQConnection implements XAConnection, XAQueueConnection, XATopicConnection
 {
+    /**
+     * Class logger
+     */
+    private static final Logger LOGGER = LoggerFactory.getLogger(XAConnectionImpl.class);
+
     /**
      * Keep track of active XA sessions
      */
@@ -115,6 +122,8 @@ public class XAConnectionImpl extends AMQConnection implements XAConnection, XAQ
 
             if (canClosePhysicalConnection) {
                 super.close();
+            } else {
+                LOGGER.error("XAConnection.close() was called before committing or rolling back");
             }
 
             connectionCloseSignaled = true;
