@@ -21,7 +21,7 @@
     <parent>
         <groupId>org.wso2.andes</groupId>
         <artifactId>andes-parent</artifactId>
-        <version>3.2.1-SNAPSHOT</version>
+        <version>3.2.1</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
@@ -389,7 +389,7 @@
                             <target>
                                 <property name="java2.class.path" refid="maven.dependency.classpath" />
                                 <ant antfile="${basedir}/build.xml">
-                                    <property name="andes.version" value="${andes.version}"/>
+                                    <property name="andes.version" value="${andes.version}" />
                                     <target name="build" />
                                 </ant>
                             </target>
