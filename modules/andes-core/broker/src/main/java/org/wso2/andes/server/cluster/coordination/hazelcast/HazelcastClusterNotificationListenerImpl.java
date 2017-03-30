@@ -112,11 +112,6 @@ public class HazelcastClusterNotificationListenerImpl implements ClusterNotifica
     }
 
     @Override
-    public void clearAllClusterNotifications() throws AndesException {
-        //Do nothing since this is handle by hazelcast itself
-    }
-
-    @Override
     public void stopListener() throws AndesException {
         //Do nothing, this will be handled by shutting down the hazelcast instance.
     }

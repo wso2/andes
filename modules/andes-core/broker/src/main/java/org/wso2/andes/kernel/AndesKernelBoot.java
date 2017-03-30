@@ -154,9 +154,6 @@ public class AndesKernelBoot {
             try {
                 hazelcastAgent.acquireInitializationLock();
                 if (!hazelcastAgent.isClusterInitializedSuccessfully()) {
-                    contextStore.clearMembershipEvents();
-                    contextStore.clearHeartBeatData();
-                    clusterNotificationListenerManager.clearAllClusterNotifications();
                     clearSlotStorage();
 
                     // Initialize current node's last published ID

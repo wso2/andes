@@ -214,6 +214,7 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
         // Clear old membership events for current node.
         try {
             contextStore.clearMembershipEvents(nodeId);
+            contextStore.removeNodeHeartbeat(nodeId);
         } catch (AndesException e) {
             logger.warn("Error while clearing old membership events for local node (" + nodeId + ")", e);
         }

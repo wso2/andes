@@ -429,12 +429,6 @@ public class RDBMSConstants {
             + " ORDER BY " + EVENT_ID;
 
     /**
-     * Prepared statement to clear all cluster notifications.
-     */
-    protected static final String PS_CLEAR_ALL_CLUSTER_NOTIFICATIONS =
-            "DELETE FROM " + CLUSTER_EVENT_TABLE;
-
-    /**
      * Prepared statement to clear cluster notifications destined to a particular member.
      */
     protected static final String PS_CLEAR_CLUSTER_NOTIFICATIONS_FOR_NODE =
@@ -884,12 +878,6 @@ public class RDBMSConstants {
             "DELETE FROM " + CLUSTER_NODE_HEARTBEAT_TABLE
                     + " WHERE " + NODE_ID + "=?";
 
-    protected static final String PS_CLEAR_NODE_HEARTBEATS =
-            "DELETE FROM " + CLUSTER_NODE_HEARTBEAT_TABLE;
-
-    protected static final String PS_CLEAR_COORDINATOR_HEARTBEAT =
-            "DELETE FROM " + CLUSTER_COORDINATOR_HEARTBEAT_TABLE;
-
     /**
      * Prepared statement to get slot message ids
      */
@@ -1053,12 +1041,6 @@ public class RDBMSConstants {
             + " FROM " + MEMBERSHIP_TABLE
             + " WHERE " + NODE_ID + "=?"
                     + " ORDER BY "  + EVENT_ID;
-
-    /**
-     * Prepared statement to clear the membership event table.
-     */
-    protected static final String PS_CLEAR_ALL_MEMBERSHIP_EVENTS =
-            "DELETE FROM " + MEMBERSHIP_TABLE;
 
     /**
      * Prepared statement to slear membership change events destined to a particular member.
