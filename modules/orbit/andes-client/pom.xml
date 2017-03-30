@@ -99,7 +99,7 @@
                         <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
                         <Bundle-Name>${project.artifactId}</Bundle-Name>
                         <Export-Package>
-                            org.wso2.andes.*;-split-package:=merge-last,
+                            org.wso2.andes.*;-split-package:=merge-last;version="${project.version}",
                             org.apache.mina.*;-split-package:=merge-last,
                             org.apache.commons.lang.*;-split-package:=merge-last
                         </Export-Package>
