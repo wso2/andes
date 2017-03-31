@@ -273,6 +273,16 @@ public interface AndesContextStore extends HealthAwareStore {
             throws AndesException;
 
     /**
+     * Delete a non-overlapping slot from store.
+     *
+     * @param startMessageId start message id of slot
+     * @param endMessageId   end message id of slot
+     * @return True if slot deletion successful
+     * @throws AndesException
+     */
+    boolean deleteNonOverlappingSlot(long startMessageId, long endMessageId) throws AndesException;
+
+    /**
      * Delete a slot from store.
      *
      * @param startMessageId start message id of slot
@@ -443,6 +453,15 @@ public interface AndesContextStore extends HealthAwareStore {
     TreeSet<Slot> getAssignedSlotsByNodeId(String nodeId) throws AndesException;
 
     /**
+     * Get all overlapped slots for give node.
+     *
+     * @param nodeId id of node
+     * @return set of overlapped slot objects
+     * @throws AndesException
+     */
+    TreeSet<Slot> getOverlappedSlotsByNodeId(String nodeId) throws AndesException;
+
+    /**
      * Get all slots for a give queue.
      *
      * @param queueName name of queue
@@ -576,12 +595,6 @@ public interface AndesContextStore extends HealthAwareStore {
      */
     String getCoordinatorNodeId() throws AndesException;
 
-    /**
-     * Clear all heartbeat data present in the database. This is normally done when the cluster is restarted
-     *
-     * @throws AndesException when an error is detected while calling the store (mostly due to a DB error)
-     */
-    void clearHeartBeatData() throws AndesException;
 
     /*
      * ============================ Membership related methods =======================================
@@ -603,11 +616,6 @@ public interface AndesContextStore extends HealthAwareStore {
      * @param nodeID local node ID used to read event for current node
      */
     List<MembershipEvent> readMemberShipEvents(String nodeID) throws AndesException;
-
-    /**
-     * Method to remove all membership events from the store.
-     */
-    void clearMembershipEvents() throws AndesException;
 
     /**
      * Method to remove all membership events from the store for a particular node.
@@ -636,13 +644,6 @@ public interface AndesContextStore extends HealthAwareStore {
      * @throws AndesException
      */
     List<ClusterNotification> readClusterNotifications(String nodeID) throws AndesException;
-
-    /**
-     * Clears all cluster notifications.
-     *
-     * @throws AndesException
-     */
-    void clearClusterNotifications() throws AndesException;
 
     /**
      * Clears cluster notifications for a particular node.

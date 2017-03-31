@@ -33,7 +33,6 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -157,7 +156,7 @@ public class MessageHandler {
 
         //if no messages are in the slot range, delete the slot from coordinator. No use of it
         if (messagesReadFromStore.isEmpty()) {
-            SlotDeletionExecutor.getInstance().executeSlotDeletion(currentSlot);
+            SlotDeletionExecutor.getInstance().scheduleToDelete(currentSlot);
         }
 
         Slot trackedSlot = slotsRead.get(currentSlot.getId());
@@ -320,25 +319,24 @@ public class MessageHandler {
     }
 
     /**
-     * Delete all messages of the specified queue
+     * Removes all the messages from read buffer, deletes the slots and deletes all messages from persistent storage.
      *
-     * @return how many messages were removed from queue
-     * @throws AndesException
+     * @return the number of messages that were deleted from the store
      */
     public int purgeMessagesOfQueue() throws AndesException {
-        try {
 
-            /**
+        try {
+            /*
              * Clear all slots assigned to the Queue. This should ideally stop
              * any messages being buffered during the purge. This call clears all slot associations
              * for the queue in all nodes calling to coordinator node via Thrift protocol (could take time).
              */
-            MessagingEngine.getInstance().getSlotCoordinator().
-                    clearAllActiveSlotRelationsToQueue(queueName);
+            MessagingEngine.getInstance().getSlotCoordinator().clearAllActiveSlotRelationsToQueue(queueName);
 
-            //clear all messages read to memory and return the slots
-            clearReadButUndeliveredMessages();
+            //clear all in-memory messages
+            purgeInMemoryMessagesOfQueue();
 
+            // Delete messages from store
             int deletedMessageCount;
             if (!(DLCQueueUtils.isDeadLetterQueue(queueName))) {
                 // delete all messages for the queue
@@ -353,6 +351,19 @@ public class MessageHandler {
             // This will be a store-specific error.
             throw new AndesException("Error occurred when purging queue from store : " + queueName, e);
         }
+
+    }
+
+    /**
+     * Delete all in memory messages that are ready to be delivered.
+     *
+     * @return the number read but undelivered messages were removed from queue
+     */
+    public int purgeInMemoryMessagesOfQueue() {
+
+        //clear all messages read to memory and return the slots
+        return clearReadButUndeliveredMessages();
+
     }
 
     /**

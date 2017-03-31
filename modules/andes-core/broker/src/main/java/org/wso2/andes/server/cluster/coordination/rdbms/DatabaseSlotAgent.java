@@ -102,7 +102,7 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
      * {@inheritDoc}
      */
     @Override
-    public boolean deleteSlot(String nodeId, String queueName, long startMessageId, long endMessageId)
+    public boolean deleteNonOverlappingSlot(String nodeId, String queueName, long startMessageId, long endMessageId)
             throws AndesException {
 
         String task = "delete slot with start message id: " + startMessageId + ", end message id: " + endMessageId
@@ -120,6 +120,27 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
         return false;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean deleteSlot(String nodeId, String queueName, long startMessageId, long endMessageId) throws
+            AndesException {
+
+        String task = "delete slot with start message id: " + startMessageId + ", end message id: " + endMessageId
+                      + " for queue: " + queueName + " and node: " + nodeId;
+
+        for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
+            waitUntilStoresBecomeAvailable(task);
+            try {
+                return andesContextStore.deleteSlot(startMessageId, endMessageId);
+            } catch (AndesStoreUnavailableException e) {
+                handleFailure(attemptCount, task, e);
+
+            }
+        }
+        return false;
+    }
 
     /**
      * {@inheritDoc}
@@ -477,6 +498,25 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
         return assignedSlots;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public TreeSet<Slot> getOverlappedSlotsByNodeId(String nodeId) throws AndesException {
+        String task = "retrieve overlapped slots for node: " + nodeId;
+
+        TreeSet<Slot> overlappedSlots = new TreeSet<>();
+        for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
+            waitUntilStoresBecomeAvailable(task);
+            try {
+                overlappedSlots = andesContextStore.getOverlappedSlotsByNodeId(nodeId);
+                break;
+            } catch (AndesStoreUnavailableException e) {
+                handleFailure(attemptCount, task, e);
+            }
+        }
+        return overlappedSlots;
+    }
 
     /**
      * {@inheritDoc}

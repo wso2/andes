@@ -16,12 +16,14 @@
 package org.wso2.andes.kernel.dtx;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.dtx.XidImpl;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.DtxStore;
+import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
+import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
+import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.txn.IncorrectDtxStateException;
 import org.wso2.andes.server.txn.RollbackOnlyDtxException;
 import org.wso2.andes.server.txn.TimeoutDtxException;
@@ -31,6 +33,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -46,7 +49,7 @@ public class DtxRegistry {
     /**
      * {@link Xid} to {@link DtxBranch} mapping
      */
-    private final Map<ComparableXid, DtxBranch> branches;
+    private final Map<Xid, DtxBranch> branches;
 
     /**
      * Persistence storage used by the {@link DtxRegistry}
@@ -59,14 +62,39 @@ public class DtxRegistry {
     private ScheduledExecutorService timeoutTaskExecutor;
 
     /**
+     * Reference to the core messaging service of the broker
+     */
+    private MessagingEngine messagingEngine;
+
+    /**
+     * Node id of the server
+     */
+    private String nodeId;
+
+    /**
+     * {@link InboundEventManager} that is used to process commit/rollback events
+     */
+    private InboundEventManager eventManager;
+
+    /**
+     * Xids of branches that are not cached in branches map but are stored in database
+     */
+    private Set<XidImpl> storeOnlyXidSet;
+
+    /**
      * Default constructor
      *
      * @param dtxStore        Store used to persist data
      */
-    public DtxRegistry(DtxStore dtxStore) {
+    public DtxRegistry(DtxStore dtxStore, MessagingEngine messagingEngine, InboundEventManager eventManager)
+            throws AndesException {
         this.dtxStore = dtxStore;
         branches = new HashMap<>();
+        this.messagingEngine = messagingEngine;
+        this.eventManager = eventManager;
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("DtxTimeoutExecutor-%d").build();
+        nodeId = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
+        storeOnlyXidSet = dtxStore.getStoredXidSet(nodeId);
         timeoutTaskExecutor = Executors.newSingleThreadScheduledExecutor(namedThreadFactory);
     }
 
@@ -76,8 +104,16 @@ public class DtxRegistry {
      * @param xid {@link Xid} of the {@link DtxBranch} to be retrieved
      * @return DtxBranch
      */
-    synchronized DtxBranch getBranch(Xid xid) {
-        return branches.get(new ComparableXid(xid));
+    synchronized DtxBranch getBranch(Xid xid) throws AndesException {
+        DtxBranch dtxBranch = branches.get(xid);
+        if (dtxBranch == null && storeOnlyXidSet.contains(new XidImpl(xid))) {
+
+            dtxBranch = new DtxBranch(DtxBranch.RECOVERY_SESSION_ID, xid, this, eventManager);
+            if (!dtxBranch.recoverFromStore(nodeId)) {
+                dtxBranch = null;
+            }
+        }
+        return dtxBranch;
     }
 
     /**
@@ -87,9 +123,8 @@ public class DtxRegistry {
      * @return True if the registration was successful and wise versa
      */
     synchronized boolean registerBranch(DtxBranch branch) {
-        ComparableXid xid = new ComparableXid(branch.getXid());
-        if(!branches.containsKey(xid)) {
-            branches.put(xid, branch);
+        if(!branches.containsKey(branch.getXid())) {
+            branches.put(branch.getXid(), branch);
             return true;
         }
         return false;
@@ -100,6 +135,7 @@ public class DtxRegistry {
      * acknowledgements and published messages to a temporary database location
      *
      * @param xid {@link Xid} related to the transaction
+     * @param callback {@link DisruptorEventCallback} to be called when the prepare is done from the Disruptor end
      * @throws TimeoutDtxException Thrown when the {@link DtxBranch} has expired
      * @throws UnknownDtxBranchException Thrown when the provided {@link Xid} is not known to the broker
      * @throws IncorrectDtxStateException Thrown when invoking prepare for the {@link DtxBranch} is invalid from
@@ -107,33 +143,39 @@ public class DtxRegistry {
      * @throws AndesException   Thrown when an internal error occur
      * @throws RollbackOnlyDtxException Thrown when the branch is set to ROLLBACK_ONLY
      */
-    public synchronized void prepare(Xid xid)
+    public void prepare(Xid xid, DisruptorEventCallback callback)
             throws UnknownDtxBranchException, IncorrectDtxStateException, TimeoutDtxException, AndesException,
             RollbackOnlyDtxException {
-        DtxBranch branch = getBranch(xid);
+        DtxBranch branch;
 
-        if (branch != null) {
-            if (!branch.hasAssociatedActiveSessions()) {
-                branch.clearAssociations();
+        synchronized (this) {
+            branch = getBranch(xid);
 
-                if (branch.expired()) {
-                    unregisterBranch(branch);
-                    throw new TimeoutDtxException(xid);
-                } else if (branch.getState() == DtxBranch.State.ROLLBACK_ONLY) {
-                    throw new RollbackOnlyDtxException(xid);
-                } else if (branch.getState() != DtxBranch.State.ACTIVE) {
-                    throw new IncorrectDtxStateException("Cannot prepare a transaction in state " + branch.getState(),
-                    xid);
+            if (branch != null) {
+                if (!branch.hasAssociatedActiveSessions()) {
+                    branch.clearAssociations();
+
+                    if (branch.expired()) {
+                        unregisterBranch(branch);
+                        throw new TimeoutDtxException(xid);
+                    } else if (branch.getState() == DtxBranch.State.ROLLBACK_ONLY) {
+                        throw new RollbackOnlyDtxException(xid);
+                    } else if (branch.getState() != DtxBranch.State.ACTIVE) {
+                        throw new IncorrectDtxStateException("Cannot prepare a transaction in state " + branch.getState(),
+                        xid);
+                    } else {
+                        branch.setState(DtxBranch.State.PRE_PREPARE);
+                    }
                 } else {
-                    branch.prepare();
-                    branch.setState(DtxBranch.State.PREPARED);
+                    throw new IncorrectDtxStateException("Branch still has associated sessions", xid);
                 }
             } else {
-                throw new IncorrectDtxStateException("Branch still has associated sessions", xid);
+                throw new UnknownDtxBranchException(xid);
             }
-        } else {
-            throw new UnknownDtxBranchException(xid);
         }
+
+        PrepareCallback prepareCallback = new PrepareCallback(callback, branch);
+        branch.prepare(prepareCallback);
     }
 
     /**
@@ -143,36 +185,37 @@ public class DtxRegistry {
      * @return True if successfully removed and false otherwise
      */
     private synchronized boolean unregisterBranch(DtxBranch branch) {
-        return (branches.remove(new ComparableXid(branch.getXid())) != null);
+        return (branches.remove(branch.getXid()) != null);
     }
 
     /**
      * Persist Enqueue and Dequeue records in message store
      *
-     * @param xid            XID of the DTX branch
-     * @param enqueueRecords list of enqueue records
-     * @param dequeueRecords list of dequeue records
+     * @param branch {@link DtxBranch} that needs to be stored
      * @return Internal XID of the distributed transaction
      * @throws AndesException when database error occurs
      */
-    long storeRecords(Xid xid, List<AndesMessage> enqueueRecords, List<AndesAckData> dequeueRecords)
-            throws AndesException {
-        return dtxStore.storeDtxRecords(xid, enqueueRecords, dequeueRecords);
+    long storeRecords(DtxBranch branch) throws AndesException {
+        List<AndesPreparedMessageMetadata> dequeueRecords =
+                messagingEngine.acknowledgeOnDtxPrepare(branch.getDequeueList());
+        branch.setMessagesToRestore(dequeueRecords);
+        return dtxStore.storeDtxRecords(branch.getXid(), branch.getEnqueueList(), dequeueRecords);
+
     }
 
     /**
      * Rollback the transaction session for the provided {@link Xid}
      *
      * @param xid {@link Xid} of the branch to be rollbacked
+     * @param callback {@link DisruptorEventCallback}
      * @throws UnknownDtxBranchException thrown when an unknown xid is provided
      * @throws AndesException thrown on internal Andes core error
      * @throws TimeoutDtxException thrown when the branch is expired
      * @throws IncorrectDtxStateException if the state of the branch is invalid. For instance the branch is not prepared
      */
-    public synchronized void rollback(Xid xid)
+    public synchronized void rollback(Xid xid, DisruptorEventCallback callback)
             throws TimeoutDtxException, IncorrectDtxStateException, UnknownDtxBranchException, AndesException {
         DtxBranch branch = getBranch(xid);
-
         if (branch != null) {
             if (branch.expired()) {
                 unregisterBranch(branch);
@@ -181,24 +224,13 @@ public class DtxRegistry {
 
             if (!branch.hasAssociatedActiveSessions()) {
                 branch.clearAssociations();
-                branch.rollback();
-                branch.setState(DtxBranch.State.FORGOTTEN);
-                unregisterBranch(branch);
+                branch.rollback(new RollbackCallback(callback, branch));
             } else {
                 throw new IncorrectDtxStateException("Branch is still associates with a session", xid);
             }
         } else {
             throw new UnknownDtxBranchException(xid);
         }
-    }
-
-    /**
-     * Remove the records for given {@link Xid} from the {@link DtxStore}
-     * @param internalXid internal {@link Xid}
-     * @throws AndesException Throws when there is a storage related exception
-     */
-    void removePreparedRecords(long internalXid) throws AndesException {
-        dtxStore.removeDtxRecords(internalXid);
     }
 
     /**
@@ -214,7 +246,7 @@ public class DtxRegistry {
      * @throws RollbackOnlyDtxException Thrown when commit is invoked on a ROLLBACK_ONLY {@link DtxBranch}
      * @throws TimeoutDtxException Thrown when the respective {@link DtxBranch} relating to the {@link Xid} has expired
      */
-    public void commit(Xid xid, boolean onePhase, DisruptorEventCallback callback, AndesChannel channel)
+    public synchronized void commit(Xid xid, boolean onePhase, DisruptorEventCallback callback, AndesChannel channel)
             throws UnknownDtxBranchException, IncorrectDtxStateException, AndesException, TimeoutDtxException,
             RollbackOnlyDtxException {
 
@@ -235,9 +267,11 @@ public class DtxRegistry {
                     throw new IncorrectDtxStateException("Cannot call two-phase commit on a non-prepared branch", xid);
                 }
 
-                dtxBranch.commit(callback, channel);
                 dtxBranch.setState(DtxBranch.State.FORGOTTEN);
-                unregisterBranch(dtxBranch);
+
+                DisruptorEventCallback wrappedCallback = new CommitCallback(callback, dtxBranch);
+                dtxBranch.commit(wrappedCallback, channel);
+
             } else {
                 throw new IncorrectDtxStateException("Branch still has associated sessions", xid);
             }
@@ -262,7 +296,7 @@ public class DtxRegistry {
      * @throws IncorrectDtxStateException If the branch is in a invalid state, forgetting is not possible with
      *                                    current state
      */
-    public void forget(Xid xid) throws UnknownDtxBranchException, IncorrectDtxStateException {
+    public void forget(Xid xid) throws UnknownDtxBranchException, IncorrectDtxStateException, AndesException {
         DtxBranch branch = getBranch(xid);
         if (branch != null) {
             synchronized (branch) {
@@ -289,10 +323,10 @@ public class DtxRegistry {
      */
     public void close(long sessionId) {
 
-        for (Iterator<Map.Entry<ComparableXid, DtxBranch>> iterator = branches.entrySet().iterator();
+        for (Iterator<Map.Entry<Xid, DtxBranch>> iterator = branches.entrySet().iterator();
              iterator.hasNext(); ) {
 
-            Map.Entry<ComparableXid, DtxBranch> entry = iterator.next();
+            Map.Entry<Xid, DtxBranch> entry = iterator.next();
             DtxBranch branch = entry.getValue();
 
             if (branch.getCreatedSessionId() == sessionId &&
@@ -310,7 +344,7 @@ public class DtxRegistry {
             }
         }
     }
-     
+
     /*
      * Set the transaction timeout of the matching dtx branch
      *
@@ -318,7 +352,7 @@ public class DtxRegistry {
      * @param timeout transaction timeout value in seconds
      * @throws UnknownDtxBranchException
      */
-    public void setTimeout(Xid xid, long timeout) throws UnknownDtxBranchException {
+    public void setTimeout(Xid xid, long timeout) throws UnknownDtxBranchException, AndesException {
         DtxBranch branch = getBranch(xid);
         if (branch != null) {
             branch.setTimeout(timeout);
@@ -362,51 +396,123 @@ public class DtxRegistry {
         return preparedBranches;
     }
 
-    private static final class ComparableXid {
-        private final Xid xid;
+    /**
+     * DisruptorEventCallback implementation for dtx commit event
+     */
+    private class CommitCallback implements DisruptorEventCallback {
 
-        private ComparableXid(Xid xid) {
-            this.xid = xid;
+        /**
+         * callback given by Distributed Transaction object
+         */
+        private final DisruptorEventCallback callback;
+
+        /**
+         * Corresponding DTX branch
+         */
+        private final DtxBranch dtxBranch;
+
+        private CommitCallback(DisruptorEventCallback callback, DtxBranch dtxBranch) {
+            this.callback = callback;
+            this.dtxBranch = dtxBranch;
         }
 
         @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
+        public void execute() {
+            synchronized (DtxRegistry.this) {
+                unregisterBranch(dtxBranch);
+                storeOnlyXidSet.remove(new XidImpl(dtxBranch.getXid()));
             }
 
-            ComparableXid that = (ComparableXid) o;
-
-            return compareBytes(xid.getBranchQualifier(), that.xid.getBranchQualifier()) && compareBytes(
-                    xid.getGlobalTransactionId(), that.xid.getGlobalTransactionId());
-        }
-
-        private static boolean compareBytes(byte[] a, byte[] b) {
-            if (a.length != b.length) {
-                return false;
-            }
-            for (int i = 0; i < a.length; i++) {
-                if (a[i] != b[i]) {
-                    return false;
-                }
-            }
-            return true;
+            callback.execute();
         }
 
         @Override
-        public int hashCode() {
-            int result = 0;
-            for (int i = 0; i < xid.getGlobalTransactionId().length; i++) {
-                result = 31 * result + (int) xid.getGlobalTransactionId()[i];
-            }
-            for (int i = 0; i < xid.getBranchQualifier().length; i++) {
-                result = 31 * result + (int) xid.getBranchQualifier()[i];
+        public void onException(Exception exception) {
+            synchronized (DtxRegistry.this) {
+                dtxBranch.setState(DtxBranch.State.PREPARED);
             }
 
-            return result;
+            callback.onException(exception);
         }
     }
+
+    /**
+     * DisruptorEventCallback implementation for dtx rollback event
+     */
+    private class RollbackCallback implements DisruptorEventCallback {
+
+        /**
+         * callback given by Distributed Transaction object
+         */
+        private final DisruptorEventCallback callback;
+
+        /**
+         * Corresponding DTX branch
+         */
+        private final DtxBranch dtxBranch;
+
+        public RollbackCallback(DisruptorEventCallback callback, DtxBranch dtxBranch) {
+            this.callback = callback;
+            this.dtxBranch = dtxBranch;
+        }
+
+        @Override
+        public void execute() {
+            synchronized (DtxRegistry.this) {
+                dtxBranch.setState(DtxBranch.State.FORGOTTEN);
+                unregisterBranch(dtxBranch);
+                storeOnlyXidSet.remove(new XidImpl(dtxBranch.getXid()));
+            }
+            callback.execute();
+        }
+
+        @Override
+        public void onException(Exception exception) {
+            synchronized (DtxRegistry.this) {
+                dtxBranch.setState(DtxBranch.State.PREPARED);
+            }
+
+            callback.onException(exception);
+        }
+    }
+
+    /**
+     * DisruptorEventCallback implementation for dtx prepare event
+     */
+    private class PrepareCallback implements DisruptorEventCallback {
+
+        /**
+         * Callback given by Distributed Transaction object
+         */
+        private final DisruptorEventCallback callback;
+
+        /**
+         * Corresponding DTX branch
+         */
+        private final DtxBranch branch;
+
+        private PrepareCallback(DisruptorEventCallback callback, DtxBranch branch) {
+            this.callback = callback;
+            this.branch = branch;
+        }
+
+        @Override
+        public void execute() {
+            synchronized (DtxRegistry.this) {
+                branch.setState(DtxBranch.State.PREPARED);
+            }
+
+            callback.execute();
+        }
+
+        @Override
+        public void onException(Exception exception) {
+            synchronized (DtxRegistry.this) {
+                branch.setState(DtxBranch.State.ROLLBACK_ONLY);
+            }
+
+            callback.onException(exception);
+        }
+    }
+
 }

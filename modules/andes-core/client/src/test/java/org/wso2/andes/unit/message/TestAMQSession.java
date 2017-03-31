@@ -64,6 +64,10 @@ public class TestAMQSession extends AMQSession<BasicMessageConsumer_0_8, BasicMe
 
     }
 
+    public void sendReject(long deliveryTag, boolean reQueue) {
+
+    }
+
     public TopicSubscriber createDurableSubscriber(Topic topic, String name) throws JMSException
     {
         return null;

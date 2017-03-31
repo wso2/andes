@@ -38,7 +38,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * changes, etc. sent within the cluster be synchronized using RDBMS. If set to false, Hazelcast will be used for
      * this purpose.
      */
-    CLUSTER_EVENT_SYNC_MODE_RDBMS_ENABLED("coordination/RDBMSBasedClusterEventSynchronization/@enabled", "false",
+    CLUSTER_EVENT_SYNC_MODE_RDBMS_ENABLED("coordination/RDBMSBasedClusterEventSynchronization/@enabled", "true",
             Boolean.class),
 
     /**
@@ -393,7 +393,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * NOTE : specified in milliseconds.
      */
     PERFORMANCE_TUNING_SLOTS_MESSAGE_ACCUMULATION_TIMEOUT("performanceTuning/slots" +
-            "/messageAccumulationTimeout", "1000", Long.class, PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY),
+            "/messageAccumulationTimeout", "2000", Long.class, PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY),
 
     /**
      * Rough estimate for size of a slot. e.g. If the slot window size is 1000, given 3 nodes, it can expand up to 3000.
@@ -404,7 +404,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
     /**
      * Number of Slot Delivery Worker threads that should be started.
      */
-    PERFORMANCE_TUNING_SLOTS_WORKER_THREAD_COUNT("performanceTuning/slots/workerThreadCount", "5",
+    PERFORMANCE_TUNING_SLOTS_WORKER_THREAD_COUNT("performanceTuning/slots/deliveryThreadCount", "5",
             Integer.class),
 
     /**
@@ -431,10 +431,25 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * to deliver'
      * (- slots which have a aged more than 'messageAccumulationTimeout')
      */
-    PERFORMANCE_TUNING_SUBMIT_SLOT_TIMER_PERIOD (
-            "performanceTuning/slots/timerPeriod", "3000", Integer.class, PERFORMANCE_TUNING_SUBMIT_SLOT_TIMEOUT),
+    PERFORMANCE_TUNING_MAX_SLOT_SUBMIT_DELAY(
+            "performanceTuning/slots/maxSubmitDelay", "1000", Integer.class, PERFORMANCE_TUNING_SUBMIT_SLOT_TIMEOUT),
 
-    
+    /**
+     * Number of parallel threads to execute slot deletion task. Increasing this value will remove slots
+     * whose messages are read, delivered to consumers, acknowledged faster reducing heap memory used by server.
+     */
+    PERFORMANCE_TUNING_SLOT_DELETE_WORKER_COUNT(
+            "performanceTuning/slots/deleteThreadCount", "5",  Integer.class),
+
+    /**
+     * Max number of pending message count to delete per Slot Deleting Task. This config is used to raise a WARN
+     * when pending scheduled number of slots exceeds this limit (indicate of an  issue that can lead to
+     * message accumulation on server.
+     */
+    PERFORMANCE_TUNING_SLOT_DELETE_QUEUE_DEPTH_WARNING_THRESHOLD(
+             "performanceTuning/slots/SlotDeleteQueueDepthWarningThreshold", "1000", Integer.class),
+
+
     /**
      * Maximum number of undelivered messages that can be in memory. Increasing this value could cause out of memory
      * scenarios, but performance will be improved
@@ -600,10 +615,16 @@ public enum AndesConfiguration implements ConfigurationProperty {
     PERFORMANCE_TUNING_SAFE_DELETE_REGION_SLOT_COUNT
             ("performanceTuning/messageExpiration/safetySlotCount", "3", Integer.class),
     /**
-     * Maximum batch size (Messages) for a transaction. Exceeding this limit will result in a failure in the subsequent
-     * commit request. Default is set to 10MB. Limit is calculated considering the payload of messages.
+     * Maximum batch size (Messages) in kilobytes for a transaction. Exceeding this limit will result in a failure in
+     * the subsequent commit (or prepare) request. Default is set to 10MB. Limit is calculated considering the payload
+     * of messages.
      */
-    MAX_TRANSACTION_BATCH_SIZE ("transaction/maxBatchSizeInBytes", "10000000", Integer.class),
+    MAX_TRANSACTION_BATCH_SIZE ("transaction/maxBatchSizeInKB", "10240", Integer.class),
+
+    /**
+     * Maximum number of parallel dtx enabled channel count. Transaction requests exceeding this limit will fail.
+     */
+    MAX_PARALLEL_DISTRIBUTED_TRANSACTION_COUNT("transaction/maxParallelDtxChannels", "10", Integer.class),
 
     /**
      * Maximum wait time (in seconds) for a transactional publisher commit, rollback or close event to complete on
@@ -672,11 +693,6 @@ public enum AndesConfiguration implements ConfigurationProperty {
     RECOVERY_MESSAGES_CONCURRENT_STORAGE_QUEUE_READS("recovery/concurrentStorageQueueReads", "5", Integer.class),
 
     /**
-     * Enable RDBMS slot information store
-     */
-    SLOT_MANAGEMENT_STORAGE("slotManagement/storage", "RDBMS", String.class),
-
-    /**
      * Heartbeat interval used in the RDBMS base coordination algorithm in seconds
      * <p>
      * default value: 5
@@ -710,7 +726,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * default value: false
      * </p>
      */
-    RDBMS_BASED_COORDINATION("coordination/rdbmsBasedCoordination/@enabled", "false", Boolean.class),
+    RDBMS_BASED_COORDINATION("coordination/rdbmsBasedCoordination/@enabled", "true", Boolean.class),
 
     /**
      * Enable network partition detection ( and surrounding functionality, such

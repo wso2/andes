@@ -22,6 +22,7 @@ package org.wso2.andes.jms;
 
 import org.wso2.andes.jms.failover.FailoverExchangeMethod;
 import org.wso2.andes.jms.failover.FailoverMethod;
+import org.wso2.andes.jms.failover.FailoverOneTime;
 import org.wso2.andes.jms.failover.FailoverRoundRobinServers;
 import org.wso2.andes.jms.failover.FailoverSingleServer;
 import org.wso2.andes.jms.failover.NoFailover;
@@ -86,20 +87,19 @@ public class FailoverPolicy
             }
             else
             {
-                if (failoverMethod.equals(FailoverMethod.ROUND_ROBIN))
-                {
+                if (failoverMethod.equals(FailoverMethod.ROUND_ROBIN)) {
                     method = new FailoverRoundRobinServers(connectionDetails);
-                }
-                else if (failoverMethod.equals(FailoverMethod.FAILOVER_EXCHANGE))
-                {
+
+                } else if (failoverMethod.equals(FailoverMethod.FAILOVER_EXCHANGE)) {
                     method = new FailoverExchangeMethod(connectionDetails, conn);
-                }
-                else if (failoverMethod.equals(FailoverMethod.NO_FAILOVER))
-                {
+
+                } else if (failoverMethod.equals(FailoverMethod.NO_FAILOVER)) {
                     method = new NoFailover(connectionDetails);
-                }
-                else
-                {
+
+                } else if (failoverMethod.equals(FailoverMethod.ONE_TIME)) {
+                    method = new FailoverOneTime(connectionDetails);
+
+                } else {
                     try
                     {
                         Class[] constructorSpec = { ConnectionURL.class };

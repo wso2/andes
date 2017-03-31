@@ -414,16 +414,25 @@ public class StorageQueue {
     }
 
     /**
-     * Purge the messages in the queue. This will remove all the messages from read buffer
-     * delete the slots and delete all messages from persistent storage
+     * Purge all messages in the queue including messages in the store and slots for the queue.
      *
-     * @return how many messages were removed from persistent storage
-     * @throws AndesException
+     * @return the number if messages removed from the read buffer
      */
     public int purgeMessages() throws AndesException {
         lastPurgedTimestamp = System.currentTimeMillis();
         log.info("Purging messages of queue " + name);
         return messageHandler.purgeMessagesOfQueue();
+    }
+
+    /**
+     * Purge only in-memory messages for the queue.
+     *
+     * @return the number if messages removed from the read buffer
+     */
+    public int purgeMessagesInMemory() {
+        lastPurgedTimestamp = System.currentTimeMillis();
+        log.info("Purging in memory messages of queue " + name);
+        return messageHandler.purgeInMemoryMessagesOfQueue();
     }
 
     /**

@@ -19,7 +19,6 @@
 package org.wso2.andes.kernel.disruptor.inbound;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
@@ -27,6 +26,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.kernel.AndesAckEvent;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.DisablePubAckImpl;
@@ -35,8 +35,8 @@ import org.wso2.andes.kernel.disruptor.ConcurrentBatchEventHandler;
 import org.wso2.andes.kernel.disruptor.InboundEventHandler;
 import org.wso2.andes.kernel.disruptor.LogExceptionHandler;
 import org.wso2.andes.kernel.disruptor.compression.LZ4CompressionHelper;
+import org.wso2.andes.kernel.disruptor.waitStrategy.SleepingBlockingWaitStrategy;
 import org.wso2.andes.kernel.dtx.DtxBranch;
-import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.manager.Gauge;
@@ -48,7 +48,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.wso2.andes.configuration.enums.AndesConfiguration.MAX_TRANSACTION_BATCH_SIZE;
 import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_ACKNOWLEDGEMENT_HANDLER_BATCH_SIZE;
 import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLER_COUNT;
 import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_CONTENT_CHUNK_HANDLER_COUNT;
@@ -58,7 +57,6 @@ import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_
 import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_PARALLEL_TRANSACTION_MESSAGE_WRITERS;
 import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_PUBLISHING_BUFFER_SIZE;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.ACKNOWLEDGEMENT_EVENT;
-import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.DTX_COMMIT_EVENT;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.MESSAGE_EVENT;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.PUBLISHER_RECOVERY_EVENT;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.SAFE_ZONE_DECLARE_EVENT;
@@ -82,8 +80,7 @@ public class InboundEventManager {
     private final DisablePubAckImpl disablePubAck;
     private LZ4CompressionHelper lz4CompressionHelper;
 
-    public InboundEventManager(AndesSubscriptionManager subscriptionManager,
-                               MessagingEngine messagingEngine) {
+    public InboundEventManager(MessagingEngine messagingEngine) {
 
         Integer bufferSize = AndesConfigurationManager.readValue(
                 PERFORMANCE_TUNING_PUBLISHING_BUFFER_SIZE);
@@ -97,8 +94,6 @@ public class InboundEventManager {
                 PERFORMANCE_TUNING_ACKNOWLEDGEMENT_HANDLER_BATCH_SIZE);
         Integer transactionHandlerCount = AndesConfigurationManager.readValue(
                 PERFORMANCE_TUNING_PARALLEL_TRANSACTION_MESSAGE_WRITERS);
-        Integer transactionBatchSize = AndesConfigurationManager.readValue(
-                MAX_TRANSACTION_BATCH_SIZE);
 
         Integer dtxDbWriterCount = 1; // need to merge local and distributed transaction writing logic to the same
 
@@ -116,7 +111,7 @@ public class InboundEventManager {
                 bufferSize,
                 executorPool,
                 ProducerType.MULTI,
-                new BlockingWaitStrategy());
+                new SleepingBlockingWaitStrategy());
 
         disruptor.handleExceptionsWith(new LogExceptionHandler());
 
@@ -144,9 +139,9 @@ public class InboundEventManager {
         for (int turn = 0; turn < transactionHandlerCount; turn++) {
             batchEventHandlers[writeHandlerCount + turn] =
                     new ConcurrentBatchEventHandler(turn, transactionHandlerCount,
-                            transactionBatchSize,
+                            writerBatchSize,
                             TRANSACTION_COMMIT_EVENT,
-                            new MessageWriter(messagingEngine, transactionBatchSize));
+                            new MessageWriter(messagingEngine, writerBatchSize));
         }
 
         for (int turn = 0; turn < ackHandlerCount; turn++) {
@@ -185,6 +180,7 @@ public class InboundEventManager {
     /**
      * When a message is received from a transport it is handed over to MessagingEngine through the implementation of
      * inbound event manager. (e.g: through a disruptor ring buffer) Eventually the message will be stored
+     *
      * @param message AndesMessage
      * @param andesChannel AndesChannel
      * @param pubAckHandler PubAckHandler
@@ -193,48 +189,54 @@ public class InboundEventManager {
         // Publishers claim events in sequence
         long sequence = ringBuffer.next();
         InboundEventContainer event = ringBuffer.get(sequence);
-        event.setEventType(MESSAGE_EVENT);
-        event.setChannel(andesChannel);
-        event.addMessage(message,andesChannel);
-        event.pubAckHandler = pubAckHandler;
+        try {
+            event.setEventType(MESSAGE_EVENT);
+            event.setChannel(andesChannel);
+            event.addMessage(message, andesChannel);
+            event.pubAckHandler = pubAckHandler;
+        } finally {
+            // make the event available to EventProcessors
+            ringBuffer.publish(sequence);
 
-        // make the event available to EventProcessors
-        ringBuffer.publish(sequence);
+            //Tracing message activity
+            MessageTracer.trace(message, MessageTracer.PUBLISHED_TO_INBOUND_DISRUPTOR);
 
-        //Tracing message activity
-        MessageTracer.trace(message, MessageTracer.PUBLISHED_TO_INBOUND_DISRUPTOR);
-
-        if (log.isDebugEnabled()) {
-            log.debug("[ sequence: " + sequence + " ] Message published to disruptor.");
+            if (log.isDebugEnabled()) {
+                log.debug("[ sequence: " + sequence + " ] Message published to disruptor. Message id: "
+                          + message.getMetadata().getMessageID());
+            }
         }
     }
 
     /**
      * Acknowledgement received from clients for sent messages will be handled through this method
-     * @param ackData AndesAckData
+     *
+     * @param ackData Acknowledgement information by protocol
      */
     public void ackReceived(AndesAckData ackData) {
         //For metrics
         ackedMessageCount.getAndIncrement();
-        
+
         // Publishers claim events in sequence
         long sequence = ringBuffer.next();
         InboundEventContainer event = ringBuffer.get(sequence);
+        try {
+            event.setEventType(ACKNOWLEDGEMENT_EVENT);
+            event.ackData = new AndesAckEvent(ackData);
+        } finally {
+            // make the event available to EventProcessors
+            ringBuffer.publish(sequence);
 
-        event.setEventType(ACKNOWLEDGEMENT_EVENT);
-        event.ackData = ackData;
-        // make the event available to EventProcessors
-        ringBuffer.publish(sequence);
+            //Tracing message
+            if (MessageTracer.isEnabled()) {
+                MessageTracer.trace(ackData.getMessageId(),
+                        MessageTracer.ACK_PUBLISHED_TO_DISRUPTOR + " Channel = " + ackData.getChannelId());
+            }
 
-        //Tracing message
-        if (MessageTracer.isEnabled()) {
-            MessageTracer.trace(ackData.getAcknowledgedMessage().getMessageID(), ackData.getAcknowledgedMessage()
-                    .getDestination(), MessageTracer.ACK_PUBLISHED_TO_DISRUPTOR);
-        }
-
-        if (log.isDebugEnabled()) {
-            log.debug("[ sequence: " + sequence + " ] Message acknowledgement published to disruptor. Message id " +
-                    ackData.getAcknowledgedMessage().getMessageID());
+            if (log.isDebugEnabled()) {
+                log.debug("[ sequence: " + sequence + " ] Message acknowledgement published to disruptor. "
+                        + "Message id " + ackData.getMessageId());
+            }
         }
     }
 
@@ -318,12 +320,16 @@ public class InboundEventManager {
             eventContainer.setChannel(channel);
             eventContainer.addMessage(message, channel);
             eventContainer.pubAckHandler = disablePubAck;
-
         } finally {
             ringBuffer.publish(sequence);
+
+            //Tracing message activity
+            MessageTracer.traceTransaction(message, channel, MessageTracer
+                    .ENQUEUE_EVENT_PUBLISHED_TO_INBOUND_DISRUPTOR);
+
             if (log.isDebugEnabled()) {
                 log.debug("[ Sequence: " + sequence + " ] " + eventContainer.getEventType() +
-                        "' published to Disruptor");
+                          "' published to Disruptor");
             }
         }
     }
@@ -336,6 +342,10 @@ public class InboundEventManager {
      */
     public void requestTransactionCommitEvent(InboundTransactionEvent transactionEvent, AndesChannel channel) {
         requestTransactionEvent(transactionEvent, TRANSACTION_COMMIT_EVENT, channel);
+
+        //Tracing message activity
+        MessageTracer.traceTransaction(channel, transactionEvent.getQueuedMessages().size(), MessageTracer
+                .TRANSACTION_COMMIT_EVENT_PUBLISHED_TO_INBOUND_DISRUPTOR);
     }
 
     /**
@@ -345,6 +355,10 @@ public class InboundEventManager {
      */
     public void requestTransactionRollbackEvent(InboundTransactionEvent transactionEvent, AndesChannel channel) {
         requestTransactionEvent(transactionEvent, TRANSACTION_ROLLBACK_EVENT, channel);
+
+        //Tracing message activity
+        MessageTracer.traceTransaction(channel, transactionEvent.getQueuedMessages().size(), MessageTracer
+                .TRANSACTION_ROLLBACK_EVENT_PUBLISHED_TO_INBOUND_DISRUPTOR);
     }
 
     /**
@@ -354,6 +368,10 @@ public class InboundEventManager {
      */
     public void requestTransactionCloseEvent(InboundTransactionEvent transactionEvent, AndesChannel channel) {
         requestTransactionEvent(transactionEvent, TRANSACTION_CLOSE_EVENT, channel);
+
+        //Tracing message activity
+        MessageTracer.traceTransaction(channel, transactionEvent.getQueuedMessages().size(), MessageTracer
+                .TRANSACTION_CLOSE_EVENT_PUBLISHED_TO_INBOUND_DISRUPTOR);
     }
 
     /**
@@ -393,12 +411,13 @@ public class InboundEventManager {
      *
      * @param dtxBranch {@link DtxBranch} related to the commit request
      * @param channel {@link AndesChannel} related to the {@link DtxBranch} commit request
+     * @param type Dtx event type of {@link org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type}
      */
-    public void requestDtxCommitEvent(DtxBranch dtxBranch, AndesChannel channel) {
+    public void requestDtxEvent(DtxBranch dtxBranch, AndesChannel channel, InboundEventContainer.Type type) {
         long sequence = ringBuffer.next();
         InboundEventContainer eventContainer = ringBuffer.get(sequence);
         try {
-            eventContainer.setEventType(DTX_COMMIT_EVENT);
+            eventContainer.setEventType(type);
             eventContainer.setDtxBranch(dtxBranch);
             eventContainer.pubAckHandler = disablePubAck;
             eventContainer.setChannel(channel);

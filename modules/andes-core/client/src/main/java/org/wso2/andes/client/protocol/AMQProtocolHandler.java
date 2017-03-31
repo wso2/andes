@@ -548,6 +548,7 @@ public class AMQProtocolHandler implements ProtocolEngine
         catch (AMQException e)
         {
             propagateExceptionToFrameListeners(e);
+
             exception(e);
         }
 

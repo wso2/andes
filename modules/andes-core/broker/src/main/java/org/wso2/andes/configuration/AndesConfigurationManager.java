@@ -23,6 +23,7 @@ import java.io.FileNotFoundException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.MessageFormat;
 import java.text.ParseException;
@@ -84,7 +85,7 @@ public class AndesConfigurationManager {
     /**
      * Namespace and attribute used by secure vault to identify encrypted properties.
      */
-    private static final QName SECURE_VAULT_QNAME = new QName("http://org.wso2.securevault/configuration","secretAlias");
+    private static final QName SECURE_VAULT_QNAME = new QName("http://org.wso2.securevault/configuration", "secretAlias");
 
     /**
      * Package which contains custom classes that can be parsed by the AndesConfigurationManager.
@@ -110,8 +111,9 @@ public class AndesConfigurationManager {
      * Main file path of configuration files into which all other andes-specific config files (if any)
      * should be linked.
      */
-    private static final String ROOT_CONFIG_FILE_PATH = System.getProperty(ServerConstants.CARBON_HOME) +
-            "/repository/conf/";
+    public static final String CARBON_CONFIG_DIR_PATH = "carbon.config.dir.path";
+    public static final String CARBON_HOME = "carbon.home";
+    private static String componentsPath = System.getProperty(CARBON_CONFIG_DIR_PATH);
 
     /**
      * File name of the main configuration file.
@@ -145,7 +147,16 @@ public class AndesConfigurationManager {
      */
     public static void initialize(int portOffset) throws AndesException {
 
-        String brokerConfigFilePath = ROOT_CONFIG_FILE_PATH + ROOT_CONFIG_FILE_NAME;
+        String ROOT_CONFIG_FILE_PATH;
+        // If system property is available set conf path to that value
+        if (componentsPath != null) {
+            ROOT_CONFIG_FILE_PATH = Paths.get(componentsPath).toString();
+        } else {
+            ROOT_CONFIG_FILE_PATH = Paths.get(System.getProperty(CARBON_HOME), "repository", "conf").toString();
+        }
+
+        String brokerConfigFilePath = ROOT_CONFIG_FILE_PATH + File.separator + ROOT_CONFIG_FILE_NAME;
+
         log.info("Main andes configuration located at : " + brokerConfigFilePath);
 
         try {
@@ -273,7 +284,7 @@ public class AndesConfigurationManager {
         }
     }
 
-    
+
     /**
      * Use this method when you need to acquire a list of properties of same group.
      *
@@ -307,19 +318,17 @@ public class AndesConfigurationManager {
      * associated with a another deprecated config parameter</li>
      * <li>If user has specified deprecated configuration it will be read.
      * </ol>
-     * 
-     * @param <T>
-     *            Expected data type of the property
+     *
+     * @param <T> Expected data type of the property
      * @return Value of config in the expected data type.
-     * @throws ConfigurationException
-     *             an error
+     * @throws ConfigurationException an error
      */
     public static <T> T deriveValidConfigurationValue(ConfigurationProperty configurationProperty) throws ConfigurationException {
 
         if (compositeConfiguration.containsKey(configurationProperty.get().getKeyInFile())) {
             return (T) deriveValidConfigurationValue(configurationProperty.get().getKeyInFile(),
-                                                     configurationProperty.get().getDataType(),
-                                                     configurationProperty.get().getDefaultValue());
+                    configurationProperty.get().getDataType(),
+                    configurationProperty.get().getDefaultValue());
         } else {
 
             // Check whether a deprecated configuration associated with current
@@ -327,27 +336,27 @@ public class AndesConfigurationManager {
             // If that's true; check whether the deprecated configuration is
             // defined by the user.
             if (configurationProperty.hasDeprecatedProperty() &&
-                compositeConfiguration.containsKey(configurationProperty.getDeprecated().get().getKeyInFile())) {
+                    compositeConfiguration.containsKey(configurationProperty.getDeprecated().get().getKeyInFile())) {
                 // User is still using the old configuration parameter instead
                 // of new one. therefore a warning will be logged.
                 log.warn("configuration [" + configurationProperty.getDeprecated().get().getKeyInFile() +
-                         "] is deprecated. please use: [" +
-                         configurationProperty.get().getKeyInFile() + "]");
+                        "] is deprecated. please use: [" +
+                        configurationProperty.get().getKeyInFile() + "]");
 
                 return (T) deriveValidConfigurationValue(configurationProperty.getDeprecated().get().getKeyInFile(),
-                                                         configurationProperty.getDeprecated().get().getDataType(),
-                                                         configurationProperty.getDeprecated().get().getDefaultValue());
+                        configurationProperty.getDeprecated().get().getDataType(),
+                        configurationProperty.getDeprecated().get().getDefaultValue());
             } else {
                 // go with the default value of original configuration parameter
                 return (T) deriveValidConfigurationValue(configurationProperty.get().getKeyInFile(),
-                                                         configurationProperty.get().getDataType(),
-                                                         configurationProperty.get().getDefaultValue());
+                        configurationProperty.get().getDataType(),
+                        configurationProperty.get().getDefaultValue());
             }
 
         }
 
     }
-    
+
     /**
      * Given the data type and the value read from a config, this returns the parsed value
      * of the property.
@@ -431,7 +440,7 @@ public class AndesConfigurationManager {
 
             InetAddress host = InetAddress.getLocalHost();
             compositeConfiguration.setProperty(AndesConfiguration.TRANSPORTS_MQTT_BIND_ADDRESS.get().getKeyInFile(),
-                                               host.getHostAddress());
+                    host.getHostAddress());
         }
 
         // For AndesConfiguration.TRANSPORTS_AMQP_BIND_ADDRESS
@@ -439,7 +448,7 @@ public class AndesConfigurationManager {
 
             InetAddress host = InetAddress.getLocalHost();
             compositeConfiguration.setProperty(AndesConfiguration.TRANSPORTS_AMQP_BIND_ADDRESS.get().getKeyInFile(),
-                                               host.getHostAddress());
+                    host.getHostAddress());
         }
     }
 
@@ -476,6 +485,7 @@ public class AndesConfigurationManager {
 
     /**
      * Decrypt properties with secure vault and maintain on a separate hashmap for cross-reference.
+     *
      * @param filePath File path to the configuration file in question
      * @throws FileNotFoundException
      * @throws JaxenException
@@ -491,12 +501,12 @@ public class AndesConfigurationManager {
         //Initialize the SecretResolver providing the configuration element.
         SecretResolver secretResolver = SecretResolverFactory.create(dom, false);
 
-        AXIOMXPath xpathExpression = new AXIOMXPath ("//*[@*[local-name() = 'secretAlias']]");
+        AXIOMXPath xpathExpression = new AXIOMXPath("//*[@*[local-name() = 'secretAlias']]");
         List nodeList = xpathExpression.selectNodes(dom);
 
         for (Object o : nodeList) {
 
-            String secretAlias = ((OMElement)o).getAttributeValue(SECURE_VAULT_QNAME);
+            String secretAlias = ((OMElement) o).getAttributeValue(SECURE_VAULT_QNAME);
             String decryptedValue = "";
 
             if (secretResolver != null && secretResolver.isInitialized()) {
@@ -507,15 +517,16 @@ public class AndesConfigurationManager {
                 log.warn("Error while trying to decipher secure property with secretAlias : " + secretAlias);
             }
 
-            cipherValueMap.put(secretAlias,decryptedValue);
+            cipherValueMap.put(secretAlias, decryptedValue);
         }
 
     }
 
     /**
      * If the property is contained in the cipherValueMap, replace the raw value with that value.
+     *
      * @param keyInFile xpath expression used to extract the value from file.
-     * @param rawValue The value read from the file without any processing.
+     * @param rawValue  The value read from the file without any processing.
      * @return the decrypted value if the property was encrypted with ciphertool.
      */
     private static String overrideWithDecryptedValue(String keyInFile, String rawValue) {
@@ -531,7 +542,7 @@ public class AndesConfigurationManager {
             // The alias is inferred from the xpath of the property.
             // If the xpath = "transports/amqp/sslConnection/keyStore/password",
             // secretAlias should be "transports.amqp.sslConnection.keyStore.password"
-            String secretAlias = keyInFile.replaceAll("/",".");
+            String secretAlias = keyInFile.replaceAll("/", ".");
 
             if (cipherValueMap.containsKey(secretAlias)) {
                 return cipherValueMap.get(secretAlias);

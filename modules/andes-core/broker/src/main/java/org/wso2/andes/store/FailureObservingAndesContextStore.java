@@ -440,6 +440,19 @@ public class FailureObservingAndesContextStore extends FailureObservingStore<And
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean deleteNonOverlappingSlot(long startMessageId, long endMessageId) throws AndesException {
+        try {
+            return wrappedInstance.deleteNonOverlappingSlot(startMessageId, endMessageId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
      * Delete a slot from store
      *
      * @param startMessageId start message id of slot
@@ -754,6 +767,19 @@ public class FailureObservingAndesContextStore extends FailureObservingStore<And
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public TreeSet<Slot> getOverlappedSlotsByNodeId(String nodeId) throws AndesException {
+        try {
+            return wrappedInstance.getOverlappedSlotsByNodeId(nodeId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
      * Get all slots for a give queue
      *
      * @param queueName name of queue
@@ -968,16 +994,6 @@ public class FailureObservingAndesContextStore extends FailureObservingStore<And
         }
     }
 
-    @Override
-    public void clearHeartBeatData() throws AndesException {
-        try {
-            wrappedInstance.clearHeartBeatData();
-        } catch (AndesStoreUnavailableException exception) {
-            notifyFailures(exception);
-            throw exception;
-        }
-    }
-
     /**
      * {@inheritDoc}
      */
@@ -1009,19 +1025,6 @@ public class FailureObservingAndesContextStore extends FailureObservingStore<And
      * {@inheritDoc}
      */
     @Override
-    public void clearMembershipEvents() throws AndesException {
-        try {
-            wrappedInstance.clearMembershipEvents();
-        } catch (AndesStoreUnavailableException exception) {
-            notifyFailures(exception);
-            throw exception;
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public void clearMembershipEvents(String nodeID) throws AndesException {
         try {
             wrappedInstance.clearMembershipEvents(nodeID);
@@ -1034,6 +1037,7 @@ public class FailureObservingAndesContextStore extends FailureObservingStore<And
     /**
      * {@inheritDoc}
      */
+    @Override
     public void storeClusterNotification(List<String> clusterNodes, String originatedNode, String artifactType, String
             clusterNotificationType, String notification, String description) throws AndesException {
         try {
@@ -1048,6 +1052,7 @@ public class FailureObservingAndesContextStore extends FailureObservingStore<And
     /**
      * {@inheritDoc}.
      */
+    @Override
     public List<ClusterNotification> readClusterNotifications(String nodeID) throws AndesException {
         try {
             return wrappedInstance.readClusterNotifications(nodeID);
@@ -1060,18 +1065,7 @@ public class FailureObservingAndesContextStore extends FailureObservingStore<And
     /**
      * {@inheritDoc}
      */
-    public void clearClusterNotifications() throws AndesException {
-        try {
-            wrappedInstance.clearClusterNotifications();
-        } catch (AndesStoreUnavailableException exception) {
-            notifyFailures(exception);
-            throw exception;
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
+    @Override
     public void clearClusterNotifications(String nodeID) throws AndesException {
         try {
             wrappedInstance.clearClusterNotifications(nodeID);

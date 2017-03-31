@@ -24,6 +24,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
 import org.wso2.andes.kernel.disruptor.inbound.InboundAndesChannelEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundBindingEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundDeleteDLCMessagesEvent;
@@ -31,13 +32,14 @@ import org.wso2.andes.kernel.disruptor.inbound.InboundDeleteMessagesEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
 import org.wso2.andes.kernel.disruptor.inbound.InboundExchangeEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundKernelOpsEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundMessageRejectEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.kernel.dtx.DistributedTransaction;
 import org.wso2.andes.kernel.dtx.DtxRegistry;
-import org.wso2.andes.kernel.subscription.AndesSubscription;
+import org.wso2.andes.kernel.slot.SlotMessageCounter;
 import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.metrics.MetricsConstants;
@@ -108,13 +110,14 @@ public class Andes {
     /**
      * Interval in milliseconds above update call should trigger
      */
-    private static final int safeZoneUpdateTriggerInterval = 3000;
+    private static final int safeZoneUpdateTriggerInterval = AndesConfigurationManager.readValue(AndesConfiguration
+            .PERFORMANCE_TUNING_MAX_SLOT_SUBMIT_DELAY);
 
     /**
      * Maximum batch size for a transaction. Limit is set for content size of the batch.
      * Exceeding this limit will lead to a failure in the subsequent commit request.
      */
-    private final int MAX_TX_BATCH_SIZE;
+    private final int maxTxBatchSize;
 
     /**
      * Transaction events such as commit, rollback and close are blocking calls waiting on
@@ -127,6 +130,16 @@ public class Andes {
      * Registry object used to store distributed transaction related information
      */
     private DtxRegistry dtxRegistry;
+
+    /**
+     * Keep the list of dtx enabled channels
+     */
+    private List<Long> dtxChannelList;
+
+    /**
+     * Maximum number of parallel dtx enabled channel count
+     */
+    private final int maxParallelDtxConnections;
 
     /**
      * Instance of AndesAPI returned.
@@ -143,30 +156,29 @@ public class Andes {
     private Andes() {
         PURGE_TIMEOUT_SECONDS = AndesConfigurationManager.readValue(PERFORMANCE_TUNING_PURGED_COUNT_TIMEOUT);
         this.flowControlManager = new FlowControlManager();
-        MAX_TX_BATCH_SIZE = AndesConfigurationManager.
-                readValue(AndesConfiguration.MAX_TRANSACTION_BATCH_SIZE);
+        maxTxBatchSize = (Integer) AndesConfigurationManager.
+                readValue(AndesConfiguration.MAX_TRANSACTION_BATCH_SIZE) * 1024;
         TX_EVENT_TIMEOUT = AndesConfigurationManager.readValue(AndesConfiguration.MAX_TRANSACTION_WAIT_TIMEOUT);
+        maxParallelDtxConnections = AndesConfigurationManager.readValue(AndesConfiguration.MAX_PARALLEL_DISTRIBUTED_TRANSACTION_COUNT);
+
+        dtxChannelList = new ArrayList<Long>();
     }
 
 
     /**
      * Recover messages for the subscriber. Re-schedule sent but un-ackenowledged
      * messages back
-     * @param channelID ID of the channel recover request is received
-     * @throws AndesException
+     *
+     * @param channelID         ID of the channel recover request is received
+     * @param recoverOKCallback Callback to send recover-ok
+     * @throws AndesException in case of publishing event to the disruptor.
      */
-    public void recoverMessage(UUID channelID) throws AndesException {
-        AndesSubscription subscription  = AndesContext.getInstance().
-                getAndesSubscriptionManager().getSubscriptionByProtocolChannel(channelID);
+    public void recoverMessagesOfChannel(UUID channelID, DisruptorEventCallback recoverOKCallback)
+            throws AndesException {
 
-        // Subscription can be null if we send a recover call without subscribing. In this case we do not have
-        // to recover any messages. Therefore print a log and return.
-        if (null == subscription) {
-            log.warn("Cannot handle recover. No subscriptions found for channel " + channelID);
-            return;
-        }
-
-        subscription.recoverMessages();
+        InboundAndesChannelEvent inboundChannelEvent = new InboundAndesChannelEvent(channelID, recoverOKCallback);
+        inboundChannelEvent.prepareForChannelRecover();
+        inboundEventManager.publishStateEvent(inboundChannelEvent);
     }
 
     /**
@@ -191,13 +203,15 @@ public class Andes {
      * Start the safe zone calculation worker. The safe zone is used to decide if a slot can be safely deleted,
      * assuming all messages in the slot range has been delivered.
      */
-    public void startSafeZoneAnalysisWorker() {
+    public void startSafeZoneUpdateWorkers() {
         SafeZoneUpdateEventTriggeringTask safeZoneUpdateTask = new SafeZoneUpdateEventTriggeringTask(
                 inboundEventManager);
 
         log.info("Starting Safe Zone Calculator for slots.");
         safeZoneUpdateScheduler
                 .scheduleAtFixedRate(safeZoneUpdateTask, 5, safeZoneUpdateTriggerInterval, TimeUnit.MILLISECONDS);
+
+        SlotMessageCounter.getInstance().scheduleSubmitSlotToCoordinatorTimer();
 
     }
 
@@ -232,53 +246,11 @@ public class Andes {
     /**
      * Acknowledgement received from clients for sent messages should be notified to Andes using this method.
      *
-     * @param ackData AndesAckData
-     * @throws AndesException
+     * @param ackData Acknowledgement information by protocol
+     * @throws AndesException on an issue publishing ack event into disruptor
      */
     public void ackReceived(AndesAckData ackData) throws AndesException {
-
-        //Tracing Message
-        MessageTracer.trace(ackData.getAcknowledgedMessage().getMessageID(),
-                ackData.getAcknowledgedMessage().getDestination(), MessageTracer.ACK_RECEIVED_FROM_PROTOCOL);
-
-        //Adding metrics meter for ack rate
-        Meter ackMeter = MetricManager.meter(MetricsConstants.ACK_RECEIVE_RATE + MetricsConstants.METRICS_NAME_SEPARATOR
-                + ackData.getAcknowledgedMessage().getMessageRouterName() + MetricsConstants.METRICS_NAME_SEPARATOR
-                + ackData.getAcknowledgedMessage().getDestination(), Level.INFO);
-        ackMeter.mark();
-
-        //Adding metrics counter for ack messages
-        Counter counter = MetricManager.counter(MetricsConstants.ACK_MESSAGES + MetricsConstants.METRICS_NAME_SEPARATOR
-                + ackData.getAcknowledgedMessage().getMessageRouterName() + MetricsConstants.METRICS_NAME_SEPARATOR
-                + ackData.getAcknowledgedMessage().getDestination(), Level.INFO);
-        counter.inc();
-
-        //We call this later as this call removes the ackData.getAcknowledgedMessage() message
         inboundEventManager.ackReceived(ackData);
-    }
-
-    /**
-     * Connection Client to client is closed.
-     *
-     * @param channelID id of the closed connection
-     */
-    //TODO: review: after publishing to disruptor done nothing
-    public void clientConnectionClosed(UUID channelID) {
-        InboundAndesChannelEvent channelEvent = new InboundAndesChannelEvent(channelID);
-        channelEvent.prepareForChannelClose();
-        inboundEventManager.publishStateEvent(channelEvent);
-    }
-
-    /**
-     * Notify client connection is opened. This is for message tracking purposes on Andes side.
-     *
-     * @param channelID channelID of the client connection
-     */
-    //TODO: review: after publishing to disruptor done nothing
-    public void clientConnectionCreated(UUID channelID) {
-        InboundAndesChannelEvent channelEvent = new InboundAndesChannelEvent(channelID);
-        channelEvent.prepareForChannelOpen();
-        inboundEventManager.publishStateEvent(channelEvent);
     }
 
     /**
@@ -490,25 +462,19 @@ public class Andes {
     }
 
     /**
-     * Message is rejected.
+     * Handle message reject.
      *
-     * @param metadata  message that is rejected.
-     * @param channelID ID of the connection channel reject is received
-     * @throws AndesException
+     * @param messageId  Id of message that is rejected.
+     * @param channelID Id of the connection channel reject is received
+     * @param reQueue true if message should be re-queued to subscriber
+     * @param isMessageBeyondLastRollback  true if the message was rejected after the last rollback event.
+     * @throws AndesException on a message re-schedule issue
      */
-    public void messageRejected(DeliverableAndesMetadata metadata, UUID channelID) throws AndesException {
-        AndesSubscription subscription = AndesContext.getInstance().
-                getAndesSubscriptionManager().getSubscriptionByProtocolChannel(channelID);
-        if (subscription != null) {
-            subscription.onMessageReject(metadata.getMessageID());
-        } else {
-            log.warn("Cannot handle reject. Subscription not found for channel "
-                    + channelID + "Dropping message id= "
-                    + metadata.getMessageID());
-            metadata.markDeliveredChannelAsClosed(channelID);
-        }
-        //Tracing message activity
-        MessageTracer.trace(metadata, MessageTracer.MESSAGE_REJECTED);
+    public void messageRejected(long messageId, UUID channelID, boolean reQueue,
+                                boolean isMessageBeyondLastRollback) throws AndesException {
+        InboundMessageRejectEvent messageRejectEvent = new InboundMessageRejectEvent(messageId, channelID, reQueue);
+        messageRejectEvent.prepareToRejectMessage(isMessageBeyondLastRollback);
+        inboundEventManager.publishStateEvent(messageRejectEvent);
     }
 
     /**
@@ -770,8 +736,8 @@ public class Andes {
      * @throws AndesException
      */
     public InboundTransactionEvent newTransaction(AndesChannel channel) throws AndesException {
-        return new InboundTransactionEvent(messagingEngine, inboundEventManager, MAX_TX_BATCH_SIZE, TX_EVENT_TIMEOUT,
-                channel);
+        return new InboundTransactionEvent(messagingEngine, inboundEventManager, maxTxBatchSize, TX_EVENT_TIMEOUT,
+                                           channel);
     }
 
     /**
@@ -804,8 +770,35 @@ public class Andes {
         inboundEventManager.publishRecoveryEvent();
     }
 
-    public DistributedTransaction createDistributedTransaction(AndesChannel channel) {
-        return new DistributedTransaction(dtxRegistry, inboundEventManager, channel);
+    /**
+     * Allocate a distributed transaction object for dtx calls
+     *
+     * @param channel   channel object of the session
+     * @param sessionID session id
+     * @return created DistributeTransaction object
+     * @throws AndesException if maximum number of parallel transactions limit reached
+     */
+    public synchronized DistributedTransaction createDistributedTransaction(AndesChannel channel, long sessionID)
+            throws AndesException {
+        if (dtxChannelList.size() <= maxParallelDtxConnections) {
+            DistributedTransaction distributedTransaction = new DistributedTransaction(dtxRegistry,
+                                                                                       inboundEventManager,
+                                                                                       channel);
+            dtxChannelList.add(sessionID);
+            return distributedTransaction;
+        } else {
+            throw new AndesException("Maximum number of parallel transactions limit " + maxParallelDtxConnections
+                                             + " reached. ");
+        }
+    }
+
+    /**
+     * Consider the given distributed transaction as stale
+     *
+     * @param sessionId session id of the transaction channel
+     */
+    public synchronized void releaseDistributedTransaction(long sessionId) {
+        dtxChannelList.remove(sessionId);
     }
 
     /**
@@ -815,6 +808,34 @@ public class Andes {
      */
     public ArrayList<Xid> getPreparedDtxTransactions() {
         return dtxRegistry.getPreparedTransactions();
+    }
+
+    /**
+     * Get message IDs in dlc for a queue for a given number of messages starting from the specified id.
+     *
+     * @param sourceQueue    name of the queue
+     * @param dlcQueueName   name of the dead letter channel queue
+     * @param startMessageId starting message id
+     * @param messageLimit   maximum num of messages to return in one invocation.
+     * @return List<Long> of message IDs
+     * @throws AndesException if an error occurs while reading message IDs from database.
+     */
+    public List<Long> getNextNMessageIdsInDLCForQueue(final String sourceQueue, final String dlcQueueName,
+                                                      long startMessageId, int messageLimit) throws AndesException {
+        return MessagingEngine.getInstance().getNextNMessageIdsInDLCForQueue(sourceQueue, dlcQueueName, startMessageId, messageLimit);
+    }
+
+    /***
+     * Get message IDs in DLC starting from given startMessageId up to the given message count.
+     *
+     * @param dlcQueueName Queue name of the Dead Letter Channel
+     * @param startMessageId last message ID returned from invoking this method.
+     * @return List<Long> of message IDs moved to the DLC from the sourceQueue.
+     * @throws AndesException if an error occurs while reading messages from the database.
+     */
+    public List<Long> getNextNMessageIdsInDLC(final String dlcQueueName, long startMessageId, int messageLimit)
+            throws AndesException {
+        return MessagingEngine.getInstance().getNextNMessageIdsInDLC(dlcQueueName, startMessageId, messageLimit);
     }
 }
 

@@ -478,7 +478,7 @@ public class XAResource_0_10 implements XAResource
                 }
                 catch (XAException e)
                 {
-                    e.printStackTrace();
+                    _logger.error("XA Error ",e);
                     throw e;
                 }
             case ILLEGAL_STATE:

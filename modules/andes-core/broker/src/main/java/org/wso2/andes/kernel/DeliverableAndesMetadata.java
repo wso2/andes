@@ -191,6 +191,16 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
     }
 
     /**
+     * Rollback message delivery on the channel. It should
+     * not be recorded as a success delivery attempt.
+     *
+     * @param channelID ID of the subscriber channel delivery should be rollback
+     */
+    public void rollbackDelivery(UUID channelID) {
+        channelDeliveryInfo.get(channelID).decrementDeliveryCount();
+    }
+
+    /**
      * Mark the message as buffered. Buffered messages will be scheduled to the subscribers.
      */
     public void markAsBuffered() {
@@ -278,6 +288,16 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
     }
 
     /**
+     * Record channel recovery
+     *
+     * @param channelID ID of the channel
+     */
+    public void markAsRecoveredByClient(UUID channelID) {
+        ChannelInformation channelInformation = channelDeliveryInfo.get(channelID);
+        channelInformation.addChannelStatus(ChannelMessageStatus.RECOVERED);
+    }
+
+    /**
      * NAK has received repeatedly by channel. Mark message as permanently rejected
      * by subscriber associated with channel.
      *
@@ -320,8 +340,9 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
      */
     public boolean isPurgedOrDeletedOrExpired() {
         MessageStatus currentStatus = getLatestState();
-        return currentStatus.equals(MessageStatus.PURGED) || currentStatus.equals(MessageStatus.DELETED)
-                || currentStatus.equals(MessageStatus.EXPIRED);
+        return currentStatus.equals(MessageStatus.PURGED)
+                || currentStatus.equals(MessageStatus.EXPIRED)
+                || currentStatus.equals(MessageStatus.DELETED);
     }
 
     /**
@@ -338,6 +359,14 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
      */
     public void markAsPurgedMessage() {
         addMessageStatus(MessageStatus.PURGED);
+    }
+
+    /**
+     * Mark message as prepared to be removed. Usually Andes kernel has asynchronous processes to remove messages.
+     * Once scheduled to be removed this state is set.
+     */
+    public void markAsPreparedToDelete() {
+        addMessageStatus(MessageStatus.PREPARED_TO_DELETE);
     }
 
     /**

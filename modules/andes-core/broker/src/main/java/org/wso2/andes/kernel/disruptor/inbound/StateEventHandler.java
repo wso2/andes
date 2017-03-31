@@ -44,7 +44,6 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
     @Override
     public void onEvent(InboundEventContainer event, long sequence, boolean endOfBatch) throws Exception {
 
-
         if (log.isDebugEnabled()) {
             log.debug("[ sequence " + sequence + " ] Event received from disruptor. Event type: "
                     + event.eventInfo());
@@ -52,20 +51,24 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
 
         try {
             switch (event.getEventType()) {
-                case MESSAGE_EVENT:
-                    updateSlotsAndQueueCounts(event);
-                    // Since this is the final handler to be executed, message list needs to be cleared on message event.
-                    event.clearMessageList(event.getChannel());
-                    break;
-                case ACKNOWLEDGEMENT_EVENT:
-                    updateTrackerWithAck(event);
-                    break;
-                case SAFE_ZONE_DECLARE_EVENT:
-                    updateSlotDeleteSafeZone(event);
-                    break;
-                default:
-                    event.updateState();
-                    break;
+            case MESSAGE_EVENT:
+                updateSlotsAndQueueCounts(event);
+                // Since this is the final handler to be executed, message list needs to be cleared on message event.
+                event.clearMessageList(event.getChannel());
+                break;
+            case TRANSACTION_COMMIT_EVENT:
+                event.updateState();
+                event.clearMessageList(event.getChannel());
+                break;
+            case ACKNOWLEDGEMENT_EVENT:
+                updateTrackerWithAck(event);
+                break;
+            case SAFE_ZONE_DECLARE_EVENT:
+                updateSlotDeleteSafeZone(event);
+                break;
+            default:
+                event.updateState();
+                break;
             }
 
         } finally {
@@ -74,11 +77,10 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
             // previous iterations.
             event.clear();
         }
-
     }
 
     private void updateTrackerWithAck(InboundEventContainer event) throws AndesException {
-        DeliverableAndesMetadata acknowledgedMessage = event.ackData.getAcknowledgedMessage();
+        DeliverableAndesMetadata acknowledgedMessage = event.ackData.getMetadataReference();
         //we need both conditions to prevent multiple events seeing that message is deleted
         if (acknowledgedMessage.getLatestState().equals(MessageStatus.DELETED)
                 && event.ackData.isBaringMessageRemovable()) {

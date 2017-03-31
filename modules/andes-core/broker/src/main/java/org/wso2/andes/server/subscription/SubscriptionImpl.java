@@ -289,7 +289,8 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
 							+ " Slot = " + ((AMQMessage)entry.getMessage()).getAndesMetadataReference()
 							.getMessage().getSlot().getId()
 							+ " JMSMessageId " + ": " + entry.getMessageHeader().getMessageId()
-							+ " channel=" + getChannel().getId());
+							+ " channel=" + getChannel().getId()
+                            + "deliveryTag=" + deliveryTag);
                 }
 
                 sendToClient(entry, deliveryTag);

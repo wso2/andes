@@ -35,6 +35,7 @@ import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.ClusterNotificationAgent;
 import org.wso2.andes.server.cluster.coordination.CoordinationComponentFactory;
+import org.wso2.andes.server.queue.DLCQueueUtils;
 
 import java.util.List;
 
@@ -211,7 +212,7 @@ public class AndesContextInformationManager {
         StorageQueue queueWithEvent = queuePurgeNotification.toStorageQueue();
         StorageQueue registeredQueue = AndesContext.getInstance().getStorageQueueRegistry()
                 .getStorageQueue(queueWithEvent.getName());
-        registeredQueue.purgeMessages();
+        registeredQueue.purgeMessagesInMemory();
 
         log.info("Queue Sync [purge]: " + registeredQueue.getName());
     }
@@ -407,8 +408,6 @@ public class AndesContextInformationManager {
 
         boolean queueAlreadyBound = queueToBind.bindQueueToMessageRouter(binding.getBindingKey(), messageRouter);
         if (!queueAlreadyBound) {
-            messageRouter.addMapping(binding.getBindingKey(), queueToBind);
-
             amqpConstructStore.addBinding(binding, false);
             //add binding inside qpid
             ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterBindingAdded(binding);

@@ -424,11 +424,36 @@ public interface MessageStore extends HealthAwareStore {
      */
     DeliverableAndesMetadata getRetainedMetadata(String destination) throws AndesException;
 
+    /***
+     * Get message IDs in DLC from sourceQueue starting from given startMessageId up to the given message count.
+     *
+     * @param sourceQueueName intended destination queue of the messages
+     * @param dlcQueueName Queue name of the Dead Letter Channel
+     * @param startMessageId last message ID returned from invoking this method.
+     * @return List<Long> of message IDs moved to the DLC from the sourceQueue.
+     * @throws AndesException if an error occurs while reading messages from the database.
+     */
+    List<Long> getMessageIdsInDLCForQueue(String sourceQueueName, String dlcQueueName, long startMessageId,
+                                          int messageLimit) throws AndesException;
+
+    /***
+     * Get message IDs in DLC starting from given startMessageId up to the given message count.
+     *
+     * @param dlcQueueName Queue name of the Dead Letter Channel
+     * @param startMessageId last message ID returned from invoking this method.
+     * @return List<Long> of message IDs moved to the DLC from the sourceQueue.
+     * @throws AndesException if an error occurs while reading messages from the database.
+     */
+    List<Long> getMessageIdsInDLC(String dlcQueueName, long startMessageId, int messageLimit) throws AndesException;
+
+
     /**
      * close the message store
      */
     void close();
 
     DtxStore getDtxStore();
+
+
 
 }

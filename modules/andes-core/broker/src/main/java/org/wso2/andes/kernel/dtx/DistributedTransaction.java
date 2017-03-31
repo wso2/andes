@@ -17,6 +17,8 @@ package org.wso2.andes.kernel.dtx;
 
 import org.apache.commons.lang.StringUtils;
 import org.wso2.andes.amqp.QpidAndesBridge;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesChannel;
@@ -38,10 +40,15 @@ import javax.transaction.xa.Xid;
 public class DistributedTransaction {
 
     /**
+     * Max amount of memory allowed to be used for keeping message content per transaction
+     */
+    private final long maxTotalMessageSizeAllowed;
+
+    /**
      * Reference to the {@link DtxRegistry} which stores details related to all the active distributed transactions in
      * the broker
      */
-    private DtxRegistry dtxRegistry;
+    private final DtxRegistry dtxRegistry;
 
     /**
      * Reference to distributed transaction related branch for this specific transaction
@@ -51,12 +58,12 @@ public class DistributedTransaction {
     /**
      * Reference to event manager to push event to Disruptor
      */
-    private InboundEventManager eventManager;
+    private final InboundEventManager eventManager;
 
     /**
      * Reference to the {@link AndesChannel} related to the transaction
      */
-    private AndesChannel channel;
+    private final AndesChannel channel;
 
     /**
      * Indicate if we should fail the transaction due to an error in enqueue dequeue stages
@@ -66,12 +73,20 @@ public class DistributedTransaction {
     /**
      * Reasons for failing the transaction
      */
-    private ArrayList<String> failedReasons = new ArrayList<>();
+    private final ArrayList<String> failedReasons = new ArrayList<>();
+
+    /**
+     * Total memory consumed by content of the published messages belonging to this transaction
+     */
+    private long totalMessageSize = 0;
 
     public DistributedTransaction(DtxRegistry dtxRegistry, InboundEventManager eventManager, AndesChannel channel) {
         this.dtxRegistry = dtxRegistry;
         this.eventManager = eventManager;
         this.channel = channel;
+        //noinspection ConstantConditions
+        maxTotalMessageSizeAllowed =
+                (Integer) AndesConfigurationManager.readValue(AndesConfiguration.MAX_TRANSACTION_BATCH_SIZE) * 1024;
     }
 
     /**
@@ -87,7 +102,8 @@ public class DistributedTransaction {
      */
     public void start(long sessionID, Xid xid, boolean join, boolean resume) throws JoinAndResumeDtxException,
                                                                                     UnknownDtxBranchException,
-                                                                                    AlreadyKnownDtxException {
+                                                                                    AlreadyKnownDtxException,
+                                                                                    AndesException {
 
         if (join && resume) {
             throw new JoinAndResumeDtxException(xid);
@@ -141,7 +157,10 @@ public class DistributedTransaction {
      * @throws TimeoutDtxException Thrown when the {@link DtxBranch} has timed out
      */
     public void end(long sessionId, Xid xid, boolean fail, boolean suspend) throws SuspendAndFailDtxException,
-            UnknownDtxBranchException, NotAssociatedDtxException, TimeoutDtxException {
+                                                                                   UnknownDtxBranchException,
+                                                                                   NotAssociatedDtxException,
+                                                                                   TimeoutDtxException,
+                                                                                   AndesException {
         DtxBranch branch = dtxRegistry.getBranch(xid);
         if (suspend && fail) {
             branch.disassociateSession(sessionId);
@@ -173,7 +192,7 @@ public class DistributedTransaction {
      * is done
      *
      * @param ackList {@link List} of {@link AndesAckData}
-     * @throws AndesException
+     * @throws AndesException if internal error while calling ack received
      */
     public void dequeue(List<AndesAckData> ackList) throws AndesException {
         if (isInsideStartEnd()) {
@@ -192,7 +211,7 @@ public class DistributedTransaction {
      * @param onePhase True if this a one phase commit.
      * @param callback {@link DisruptorEventCallback} to be called when the commit is done from the Disruptor end
      * @throws UnknownDtxBranchException Thrown when the {@link Xid} is unknown
-     * @throws IncorrectDtxStateException Thrown when the state transistion of the {@link DtxBranch} is invalid
+     * @throws IncorrectDtxStateException Thrown when the state transition of the {@link DtxBranch} is invalid
      *                                    For instance invoking commit without invoking prepare for a two phase commit
      * @throws AndesException Thrown when and internal exception occur
      * @throws RollbackOnlyDtxException Thrown when commit is invoked on a ROLLBACK_ONLY {@link DtxBranch}
@@ -202,6 +221,7 @@ public class DistributedTransaction {
                                                                                           IncorrectDtxStateException,
                                                                                           AndesException,
                                                                                           RollbackOnlyDtxException, TimeoutDtxException {
+        totalMessageSize = 0;
         dtxRegistry.commit(xid, onePhase, callback, channel);
     }
 
@@ -214,7 +234,18 @@ public class DistributedTransaction {
      */
     public void enqueueMessage(AndesMessage andesMessage, AndesChannel andesChannel) {
         if (isInsideStartEnd()) {
-            branch.enqueueMessage(andesMessage);
+            totalMessageSize = totalMessageSize + andesMessage.getMetadata().getMessageContentLength();
+
+            if (totalMessageSize < maxTotalMessageSizeAllowed) {
+                branch.enqueueMessage(andesMessage);
+            } else {
+                if (!transactionFailed) {
+                    branch.clearEnqueueList();
+                    long totalMessageSizeInKB = totalMessageSize / 1024L;
+                    failTransaction("Current total message size " + totalMessageSizeInKB + " KB exceeds max total "
+                                            + "message size allowed per transaction");
+                }
+            }
         } else {
             QpidAndesBridge.messageReceived(andesMessage, andesChannel);
         }
@@ -225,6 +256,7 @@ public class DistributedTransaction {
      * acknowledgements and published messages to a temporary database location
      *
      * @param xid {@link Xid} related to the transaction
+     * @param callback {@link DisruptorEventCallback}
      * @throws TimeoutDtxException Thrown when the {@link DtxBranch} has expired
      * @throws UnknownDtxBranchException Thrown when the provided {@link Xid} is not known to the broker
      * @throws IncorrectDtxStateException Thrown when invoking prepare for the {@link DtxBranch} is invalid from
@@ -232,10 +264,10 @@ public class DistributedTransaction {
      * @throws AndesException   Thrown when an internal error occur
      * @throws RollbackOnlyDtxException Thrown when the branch is set to ROLLBACK_ONLY
      */
-    public void prepare(Xid xid) throws TimeoutDtxException, UnknownDtxBranchException,
+    public void prepare(Xid xid, DisruptorEventCallback callback) throws TimeoutDtxException, UnknownDtxBranchException,
             IncorrectDtxStateException, AndesException, RollbackOnlyDtxException {
         if (!transactionFailed) {
-            dtxRegistry.prepare(xid);
+            dtxRegistry.prepare(xid, callback);
         } else {
             DtxBranch branch = dtxRegistry.getBranch(xid);
             if (branch != null) {
@@ -253,17 +285,19 @@ public class DistributedTransaction {
     /**
      * Rollback the transaction session for the provided {@link Xid}
      *
-     * @param xid {@link Xid} to be rollbacked
+     * @param xid {@link Xid} to be rolled back
+     * @param callback {@link DisruptorEventCallback}
      * @throws UnknownDtxBranchException thrown when an unknown xid is provided
      * @throws AndesException thrown on internal Andes core error
      * @throws TimeoutDtxException thrown when the branch is expired
      * @throws IncorrectDtxStateException if the state of the branch is invalid. For instance the branch is not prepared
      */
-    public void rollback(Xid xid)
+    public void rollback(Xid xid, DisruptorEventCallback callback)
             throws UnknownDtxBranchException, AndesException, TimeoutDtxException, IncorrectDtxStateException {
+        totalMessageSize = 0;
         transactionFailed = false;
         failedReasons.clear();
-        dtxRegistry.rollback(xid);
+        dtxRegistry.rollback(xid, callback);
     }
 
     /**
@@ -305,7 +339,7 @@ public class DistributedTransaction {
      * @throws IncorrectDtxStateException If the branch is in a invalid state, forgetting is not possible with
      *                                    current state
      */
-    public void forget(Xid xid) throws UnknownDtxBranchException, IncorrectDtxStateException {
+    public void forget(Xid xid) throws UnknownDtxBranchException, IncorrectDtxStateException, AndesException {
         dtxRegistry.forget(xid);
     }
 
@@ -315,7 +349,7 @@ public class DistributedTransaction {
      * @param xid     XID of the dtx branch
      * @param timeout timeout value that should be set
      */
-    public void setTimeout(Xid xid, long timeout) throws UnknownDtxBranchException {
+    public void setTimeout(Xid xid, long timeout) throws UnknownDtxBranchException, AndesException {
         dtxRegistry.setTimeout(xid, timeout);
     }
 }

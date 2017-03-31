@@ -21,10 +21,10 @@ import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.kernel.AndesAckEvent;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
-import org.wso2.andes.kernel.AndesUtils;
 import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
 import org.wso2.andes.kernel.dtx.AlreadyKnownDtxException;
 import org.wso2.andes.kernel.dtx.DistributedTransaction;
@@ -32,14 +32,12 @@ import org.wso2.andes.kernel.dtx.JoinAndResumeDtxException;
 import org.wso2.andes.kernel.dtx.NotAssociatedDtxException;
 import org.wso2.andes.kernel.dtx.SuspendAndFailDtxException;
 import org.wso2.andes.kernel.dtx.UnknownDtxBranchException;
-import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.message.EnqueableMessage;
 import org.wso2.andes.server.queue.BaseQueue;
 import org.wso2.andes.server.queue.IncomingMessage;
 import org.wso2.andes.server.queue.QueueEntry;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
@@ -54,15 +52,21 @@ public class QpidDistributedTransaction implements ServerTransaction {
     /**
      * Class logger
      */
-    private static final Logger LOGGER = Logger.getLogger(AMQChannel.class);
+    private static final Logger LOGGER = Logger.getLogger(QpidDistributedTransaction.class);
 
     /**
      * Object used to communicate with the Andes core
      */
     private final DistributedTransaction distributedTransaction;
 
-    public QpidDistributedTransaction(AndesChannel channel) {
-        distributedTransaction = Andes.getInstance().createDistributedTransaction(channel);
+    /**
+     * Used communicate transaction creation and release
+     */
+    private final Andes andes;
+
+    public QpidDistributedTransaction(AndesChannel channel, long sessionID) throws AndesException {
+        andes = Andes.getInstance();
+        distributedTransaction = andes.createDistributedTransaction(channel, sessionID);
     }
 
         /**
@@ -97,11 +101,11 @@ public class QpidDistributedTransaction implements ServerTransaction {
         List<AndesAckData> ackList = new ArrayList<>(messages.size());
         try {
             for (QueueEntry entry : messages) {
-                ackList.add(AndesUtils.generateAndesAckMessage(channelID, entry.getMessage().getMessageNumber()));
+                ackList.add(new AndesAckData(channelID, entry.getMessage().getMessageNumber()));
             }
             distributedTransaction.dequeue(ackList);
         } catch (AndesException e) {
-            throw new AMQException("Error occurred while creating a AndesAckData ", e);
+            throw new AMQException("Error occurred while creating a AndesAckEvent ", e);
         }
     }
 
@@ -129,30 +133,21 @@ public class QpidDistributedTransaction implements ServerTransaction {
     }
 
     public void start(long sessionID, Xid xid, boolean join, boolean resume)
-            throws JoinAndResumeDtxException, UnknownDtxBranchException, AlreadyKnownDtxException {
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Starting distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
-        }
+            throws JoinAndResumeDtxException, UnknownDtxBranchException, AlreadyKnownDtxException, AndesException {
         distributedTransaction.start(sessionID, xid, join, resume);
     }
 
     public void end(long sessionID, Xid xid, boolean fail, boolean suspend)
             throws UnknownDtxBranchException, SuspendAndFailDtxException, NotAssociatedDtxException,
-            TimeoutDtxException {
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Ending distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
-        }
+                   TimeoutDtxException, AndesException {
         distributedTransaction.end(sessionID, xid, fail, suspend);
     }
 
-    public void prepare(Xid xid)
+    public void prepare(Xid xid, DisruptorEventCallback callback)
             throws TimeoutDtxException, UnknownDtxBranchException, IncorrectDtxStateException, AndesException,
             RollbackOnlyDtxException {
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Preparing distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
-        }
         try {
-            distributedTransaction.prepare(xid);
+            distributedTransaction.prepare(xid, callback);
         } finally {
             for (Action action : postTransactionActions) {
                 action.postCommit();
@@ -160,12 +155,9 @@ public class QpidDistributedTransaction implements ServerTransaction {
         }
     }
 
-    public void commit(Xid xid, boolean onePhase, DisruptorEventCallback callback) throws UnknownDtxBranchException,
-                                                                                          IncorrectDtxStateException, AndesException, TimeoutDtxException, RollbackOnlyDtxException {
-
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Committing distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
-        }
+    public void commit(Xid xid, boolean onePhase, DisruptorEventCallback callback)
+            throws UnknownDtxBranchException, IncorrectDtxStateException, AndesException, TimeoutDtxException,
+            RollbackOnlyDtxException {
         distributedTransaction.commit(xid, onePhase, callback);
     }
 
@@ -173,19 +165,17 @@ public class QpidDistributedTransaction implements ServerTransaction {
      * Rewind the transaction state to the point where transaction was started.
      *
      * @param xid
+     * @param callback
      * @throws UnknownDtxBranchException
      * @throws AndesException
      * @throws TimeoutDtxException
      * @throws IncorrectDtxStateException
      */
-    public void rollback(Xid xid)
+    public void rollback(Xid xid, DisruptorEventCallback callback)
             throws UnknownDtxBranchException, AndesException, TimeoutDtxException, IncorrectDtxStateException {
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Rolling back distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
-        }
 
         try {
-            distributedTransaction.rollback(xid);
+            distributedTransaction.rollback(xid, callback);
         } finally {
             for (Action action : postTransactionActions) {
                 action.onRollback();
@@ -194,7 +184,7 @@ public class QpidDistributedTransaction implements ServerTransaction {
     }
 
     /**
-     * Store messages published within a transaction in memory until the {@link #prepare(Xid)} is invoked
+     * Store messages published within a transaction in memory until the {@link #prepare(Xid, DisruptorEventCallback)} is invoked
      *
      * @param incomingMessage {@link IncomingMessage} to be enqueued
      * @param andesChannel {@link AndesChannel} object related to the incoming message
@@ -209,8 +199,17 @@ public class QpidDistributedTransaction implements ServerTransaction {
         }
     }
 
+    /**
+     * Release resources allocated for distributed transaction in the core
+     *
+     * @param sessionId corresponding session ID
+     */
     public void close(long sessionId) {
-        distributedTransaction.close(sessionId);
+        try {
+            distributedTransaction.close(sessionId);
+        } finally {
+            andes.releaseDistributedTransaction(sessionId);
+        }
     }
 
     /**
@@ -230,11 +229,7 @@ public class QpidDistributedTransaction implements ServerTransaction {
      * @throws IncorrectDtxStateException If the branch is in a invalid state, forgetting is not possible with
      *                                    current state
      */
-    public void forget(Xid xid) throws UnknownDtxBranchException, IncorrectDtxStateException {
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Forgetting the distributed transaction " + Arrays.toString(xid.getGlobalTransactionId()));
-        }
-
+    public void forget(Xid xid) throws UnknownDtxBranchException, IncorrectDtxStateException, AndesException {
         distributedTransaction.forget(xid);
     }
 
@@ -244,12 +239,7 @@ public class QpidDistributedTransaction implements ServerTransaction {
      * @param xid     XID of the dtx branch
      * @param timeout timeout value that should be set
      */
-    public void setTimeout(Xid xid, long timeout) throws UnknownDtxBranchException {
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Setting timeout" + timeout + "for the distributed transaction " + Arrays.toString(xid
-                                                                                                                    .getGlobalTransactionId()));
-        }
-
+    public void setTimeout(Xid xid, long timeout) throws UnknownDtxBranchException, AndesException {
         distributedTransaction.setTimeout(xid, timeout);
     }
 }

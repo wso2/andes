@@ -42,18 +42,6 @@ public class InactiveSubscriber extends DurableTopicSubscriber{
         isActive = false;
     }
 
-
-    /**
-     * Update the connection information of the subscriber. For mock subscriber
-     * this method is not supported
-     *
-     * @param connectionInfo new connection information
-     */
-    public void addConnection(SubscriberConnection connectionInfo) throws SubscriptionException {
-        throw new UnsupportedOperationException("This operation is not supported for inactive subscriber");
-    }
-
-
     /**
      * Upon closing subscription underlying connection is removed. For mock
      * subscriber there is no underlying connection

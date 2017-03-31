@@ -27,6 +27,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
+import org.wso2.andes.kernel.dtx.AndesPreparedMessageMetadata;
 import org.wso2.andes.kernel.router.AndesMessageRouter;
 import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.metrics.MetricsConstants;
@@ -36,6 +37,7 @@ import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.Meter;
 import org.wso2.carbon.metrics.manager.MetricManager;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -49,13 +51,22 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
     private static final Log log = LogFactory.getLog(MessagePreProcessor.class);
     private final MessageIDGenerator idGenerator;
 
+    private final ArrayList<AndesMessage> messageList;
+
     public MessagePreProcessor() {
         idGenerator = new MessageIDGenerator();
+        messageList = new ArrayList<>();
     }
 
     @Override
     public void onEvent(InboundEventContainer inboundEvent, long sequence, boolean endOfBatch ) throws Exception {
-        switch (inboundEvent.getEventType()) {
+        InboundEventContainer.Type eventType = inboundEvent.getEventType();
+
+        if (log.isDebugEnabled()) {
+            log.debug("[ sequence " + sequence + "] Event type " + eventType);
+        }
+
+        switch (eventType) {
             case MESSAGE_EVENT:
                 // NOTE: This is the MESSAGE_EVENT and this is the first processing event for this message
                 // published to ring. Therefore there should be exactly one message in the list.
@@ -67,7 +78,10 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                 preProcessTransaction(inboundEvent, sequence);
                 break;
             case DTX_COMMIT_EVENT:
-                preProcessDtxTransaction(inboundEvent, sequence);
+                preProcessDtxCommit(inboundEvent);
+                break;
+            case DTX_ROLLBACK_EVENT:
+                preProcessDtxRollback(inboundEvent);
                 break;
             case SAFE_ZONE_DECLARE_EVENT:
                 setSafeZoneLimit(inboundEvent, sequence);
@@ -81,25 +95,44 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                 }
                 break;
         }
-        inboundEvent.preProcessed = true;
     }
 
-    private void preProcessDtxTransaction(InboundEventContainer eventContainer, long sequence) {
+    /**
+     * Pre-process Dtx rollback messages. Acknowledged but not yet commited messages are given a new message id to be
+     * restored.
+     *
+     * @param eventContainer {@link InboundEventContainer}
+     */
+    private void preProcessDtxRollback(InboundEventContainer eventContainer) {
+
+        List<AndesPreparedMessageMetadata> dequeueList = eventContainer.getDtxBranch().getMessagesToRestore();
+        for (AndesPreparedMessageMetadata messageMetadata: dequeueList) {
+            messageMetadata.setMessageID(idGenerator.getNextId());
+        }
+    }
+
+    /**
+     * Pre process Dtx commit related incoming messages. Messages are cloned as needed for in topic scenarios
+     * @param eventContainer
+     */
+    private void preProcessDtxCommit(InboundEventContainer eventContainer) {
         // Routing information of all the messages of current transaction is updated.
         // Messages duplicated as needed.
-        Collection<AndesMessage> messageList = eventContainer.getDtxBranch().getEnqueueList();
-        for (AndesMessage message : messageList) {
-            updateRoutingInformation(eventContainer, message, sequence);
+        ArrayList<AndesMessage> clonedMessages = new ArrayList<>();
+        Collection<AndesMessage> enqueueList = eventContainer.getDtxBranch().getEnqueueList();
+
+        for (AndesMessage message : enqueueList) {
+            setMessageID(message);
+            clonedMessages.addAll(preProcessIncomingMessage(eventContainer, message));
         }
 
         // Internal message list of transaction object is updated to reflect the messages
         // actually written to DB
-        eventContainer.getDtxBranch().clearEnqueueList();
-        eventContainer.getDtxBranch().enqueueMessages(eventContainer.getMessageList());
+        eventContainer.getDtxBranch().setMessagesToStore(clonedMessages);
     }
 
     /**
-     * Pre process transaction related messages. This is
+     * Pre process transaction related messages.
      * @param eventContainer InboundEventContainer
      * @param sequence Disruptor ring sequence number.
      * @throws AndesException
@@ -114,12 +147,9 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
         }
 
         // Internal message list of transaction object is updated to reflect the messages
-        // actually written to DB
-        eventContainer.getTransactionEvent().clearQueuedMessages();;
-        eventContainer.getTransactionEvent().addMessages(eventContainer.getMessageList());
+        // to be written to DB
+        eventContainer.getTransactionEvent().setMessagesToStore(eventContainer.getMessageList());
     }
-
-
 
     /**
      * Calculate the current safe zone for this node (using the last generated message ID)
@@ -157,22 +187,32 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                     + message.getMetadata().getMessageID());
         }
 
-        preProcessIncomingMessage(event, message, andesChannel);
+        List<? extends AndesMessage> messages = preProcessIncomingMessage(event, message);
+        for (AndesMessage andesMessage: messages) {
+            event.addMessage(andesMessage, andesChannel);
+        }
     }
 
-    private void preProcessIncomingMessage(InboundEventContainer event, AndesMessage message,
-                                           AndesChannel andesChannel) {
+    /**
+     * Pre process the message and clone the message if needed on topic scenarios.
+     *
+     * @param event InboundEventContainer containing the message list
+     * @param message {@link AndesMessage}
+     * @return List of {@link AndesMessage}
+     */
+    private List<AndesMessage> preProcessIncomingMessage(InboundEventContainer event, AndesMessage message) {
 
         boolean isMessageRouted = false;
 
-        //Get storage queues bound to the message router
+        // Get storage queues bound to the message router
         String messageRouterName = message.getMetadata().getMessageRouterName();
         AndesMessageRouter messageRouter = AndesContext.getInstance().
                 getMessageRouterRegistry().getMessageRouter(messageRouterName);
 
-        //do topic matching with the routing key of the message and get a list of
-        //mating binding keys
+        // Do topic matching with the routing key of the message and get a list of
+        // mating binding keys
         Set<StorageQueue> matchingQueues = messageRouter.getMatchingStorageQueues(message);
+        messageList.clear(); // clear any previous entries
 
         boolean originalMessageConsumed = false;
 
@@ -183,7 +223,7 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
 
                 // add the topic wise cloned message to the events list. Message writers will pick that and
                 // write it.
-                event.addMessage(message);
+                messageList.add(message);
                 originalMessageConsumed = true;
 
             } else {
@@ -194,9 +234,7 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                 //updated (but internal metadata will have topic name as usual)
                 clonedMessage.getMetadata().setStorageQueueName(matchingQueue.getName());
 
-                /**
-                 * Update cloned message metadata if isCompressed set true.
-                 */
+                // Update cloned message metadata if isCompressed set true.
                 if (clonedMessage.getMetadata().isCompressed()) {
                     clonedMessage.getMetadata().updateMetadata(true);
                 }
@@ -208,14 +246,13 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
 
                 // add the topic wise cloned message to the events list. Message writers will pick that and
                 // write it.
-                event.addMessage(clonedMessage);
+                messageList.add(clonedMessage);
             }
 
             isMessageRouted = true;
         }
 
-
-        //TODO: validate this
+        // TODO: validate this
         // If retain enabled, need to store the retained message. Set the retained message
         // so the message writer will persist the retained message
         if (message.getMetadata().isRetain()) {
@@ -228,17 +265,18 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
             // Even though we drop the message pub ack needs to be sent
             event.pubAckHandler.ack(message.getMetadata());
 
-            //Adding metrics meter for ack rate
+            // Adding metrics meter for ack rate
             Meter ackMeter = MetricManager.meter(MetricsConstants.ACK_SENT_RATE
                     + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getMessageRouterName()
                     + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getDestination(), Level.INFO);
             ackMeter.mark();
 
-            // since inbound message has no routes, inbound message list will be cleared.
-            event.clearMessageList(andesChannel);
+            // Since inbound message has no routes, inbound message list will be cleared.
+            messageList.clear();
             log.info("Message routing key: " + message.getMetadata().getDestination() + " No routes in " +
                     "cluster. Ignoring Message id " + message.getMetadata().getMessageID());
         }
+        return messageList;
     }
 
     /**
@@ -252,7 +290,7 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
         AndesMessageMetadata clonedMetadata = message.getMetadata().shallowCopy(newMessageId);
         AndesMessage clonedMessage = new AndesMessage(clonedMetadata);
 
-        //Duplicate message content
+        // Duplicate message content
         List<AndesMessagePart> messageParts = message.getContentChunkList();
         for (AndesMessagePart messagePart : messageParts) {
             clonedMessage.addMessagePart(messagePart.shallowCopy(newMessageId));
@@ -269,7 +307,7 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
     private void setMessageID(AndesMessage message) {
         long messageId = idGenerator.getNextId();
 
-        //Tracing message
+        // Tracing message
         if (MessageTracer.isEnabled()) {
             MessageTracer.trace(message, MessageTracer.MESSAGE_ID_MAPPED + " id: " + messageId);
         }
@@ -310,7 +348,7 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
          *
          * @return Generated ID
          */
-        public long getNextId() {
+        long getNextId() {
 
             // id might change at runtime. Hence reading the value
             uniqueIdForNode = ClusterResourceHolder.getInstance().getClusterManager().getUniqueIdForLocalNode();

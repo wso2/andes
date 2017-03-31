@@ -19,6 +19,7 @@ import org.apache.commons.lang.SerializationUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wso2.andes.AMQException;
+import org.wso2.andes.XaJmsSession;
 import org.wso2.andes.client.failover.FailoverException;
 import org.wso2.andes.framing.BasicQosBody;
 import org.wso2.andes.framing.BasicQosOkBody;
@@ -59,13 +60,15 @@ import java.util.List;
 import javax.jms.JMSException;
 import javax.jms.QueueSession;
 import javax.jms.TopicSession;
+import javax.jms.TransactionInProgressException;
 import javax.jms.XAQueueSession;
 import javax.jms.XASession;
 import javax.jms.XATopicSession;
+import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
 
-class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession, XATopicSession {
+public class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession, XATopicSession {
 
     /**
      * Class logger
@@ -82,10 +85,26 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession,
      */
     private final XAResource_0_9_1 xaResource;
 
+    /**
+     * XAConnectionImpl used to create the session. Used to indicate Session closure.
+     */
+    private final XAConnectionImpl xaConnection;
+
+    /**
+     * Indicate if the session.close is called before
+     */
+    private boolean closeSignaled = false;
+
+    /**
+     * Indicate if underline Connection should be closed after commit or rollback
+     */
+    private boolean pendingConnectionClose = false;
+
     XASession_9_1(AMQConnection con, int channelId, int defaultPrefetchHigh, int defaultPrefetchLow)
             throws FailoverException, AMQException {
         super(con, channelId, false, Session.AUTO_ACKNOWLEDGE, defaultPrefetchHigh, defaultPrefetchLow);
 
+        xaConnection = (XAConnectionImpl) con;
         methodRegistry = (MethodRegistry_0_91) con.getProtocolHandler().getMethodRegistry();
         con.registerSession(channelId, this);
 
@@ -114,7 +133,7 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession,
 
     @Override
     public javax.jms.Session getSession() throws JMSException {
-        return this;
+        return new XaJmsSession(this);
     }
 
     @Override
@@ -131,7 +150,9 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession,
      * @throws FailoverException when a connection issue is detected
      * @throws AMQException      when an error is detected in AMQ state manager
      */
-    XaStatus startDtx(Xid xid, int flag) throws FailoverException, AMQException {
+    XaStatus startDtx(Xid xid, int flag) throws FailoverException, AMQException, XAException {
+
+        throwErrorIfClosed();
 
         DtxStartBody dtxStartBody = methodRegistry
                 .createDtxStartBody(xid.getFormatId(), xid.getGlobalTransactionId(), xid.getBranchQualifier(),
@@ -154,7 +175,10 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession,
      * @throws FailoverException when a connection issue is detected
      * @throws AMQException      when an error is detected in AMQ state manager
      */
-    public XaStatus endDtx(Xid xid, int flag) throws FailoverException, AMQException {
+    XaStatus endDtx(Xid xid, int flag) throws FailoverException, AMQException, XAException {
+
+        throwErrorIfClosed();
+
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Sending dtx.end for channel " + _channelId + ", xid " + xid);
         }
@@ -171,7 +195,10 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession,
         return XaStatus.valueOf(response.getXaResult());
     }
 
-    public XaStatus prepareDtx(Xid xid) throws FailoverException, AMQException {
+    XaStatus prepareDtx(Xid xid) throws FailoverException, AMQException, XAException {
+
+        throwErrorIfClosed();
+
         DtxPrepareBody dtxPrepareBody = methodRegistry
                 .createDtxPrepareBody(xid.getFormatId(), xid.getGlobalTransactionId(), xid.getBranchQualifier());
 
@@ -183,7 +210,10 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession,
         return XaStatus.valueOf(response.getXaResult());
     }
 
-    public XaStatus commitDtx(Xid xid, boolean onePhase) throws FailoverException, AMQException {
+    XaStatus commitDtx(Xid xid, boolean onePhase) throws FailoverException, AMQException, XAException {
+
+        throwErrorIfClosed();
+
         DtxCommitBody dtxCommitBody = methodRegistry
                 .createDtxCommitBody(xid.getFormatId(), xid.getGlobalTransactionId(), xid.getBranchQualifier(), onePhase);
 
@@ -195,7 +225,10 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession,
         return XaStatus.valueOf(response.getXaResult());
     }
 
-    public XaStatus rollbackDtx(Xid xid) throws FailoverException, AMQException {
+    XaStatus rollbackDtx(Xid xid) throws FailoverException, AMQException, XAException {
+
+        throwErrorIfClosed();
+
         DtxRollbackBody dtxRollbackBody = methodRegistry
                 .createDtxRollbackBody(xid.getFormatId(), xid.getGlobalTransactionId(), xid.getBranchQualifier());
 
@@ -215,7 +248,10 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession,
      * @throws FailoverException if failover process started during communication with server
      * @throws AMQException      if server sends back a error response
      */
-    public XaStatus forget(Xid xid) throws FailoverException, AMQException {
+    public XaStatus forget(Xid xid) throws FailoverException, AMQException, XAException {
+
+        throwErrorIfClosed();
+
         DtxForgetBody dtxForgetBody = methodRegistry
                 .createDtxForgetBody(xid.getFormatId(), xid.getGlobalTransactionId(), xid.getBranchQualifier());
 
@@ -236,7 +272,10 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession,
      * @throws FailoverException if failover process started during communication with server
      * @throws AMQException      if server sends back a error response
      */
-    public XaStatus setDtxTimeout(Xid xid, int timeout) throws FailoverException, AMQException {
+    XaStatus setDtxTimeout(Xid xid, int timeout) throws FailoverException, AMQException, XAException {
+
+        throwErrorIfClosed();
+
         DtxSetTimeoutBody dtxSetTimeoutBody = methodRegistry
                 .createDtxSetTimeoutBody(xid.getFormatId(), xid.getGlobalTransactionId(), xid.getBranchQualifier(),
                                          timeout);
@@ -256,7 +295,10 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession,
      * @throws FailoverException if failover process started during communication with server
      * @throws AMQException      if server sends back a error response
      */
-    public List<Xid> recoverDtxTransactions() throws FailoverException, AMQException {
+    List<Xid> recoverDtxTransactions() throws FailoverException, AMQException, XAException {
+
+        throwErrorIfClosed();
+
         DtxRecoverBody dtxRecoverBody = methodRegistry.createDtxRecoverBody();
 
         AMQMethodEvent amqMethodEvent = _connection._protocolHandler
@@ -293,5 +335,101 @@ class XASession_9_1 extends AMQSession_0_8 implements XASession, XAQueueSession,
     @Override
     public TopicSession getTopicSession() throws JMSException {
         return (TopicSession) getSession();
+    }
+
+    @Override
+    public boolean getTransacted() throws JMSException {
+        return true;
+    }
+
+    /**
+     * Throw {@link XAException} if the connection is closed
+     *
+     * @throws XAException if connection not active
+     */
+    private void throwErrorIfClosed() throws XAException {
+        if (isClosed()) {
+            XAException xaException = new XAException("Session is already closed");
+            xaException.errorCode = XAException.XA_RBCOMMFAIL;
+            throw xaException;
+        }
+    }
+
+    /**
+     * Throws a {@link TransactionInProgressException}, since it should
+     * not be called for an XASession object.
+     *
+     * @throws TransactionInProgressException always.
+     */
+    public void commit() throws JMSException
+    {
+        throw new TransactionInProgressException(
+                "XASession:  A direct invocation of the commit operation is prohibited!");
+    }
+
+    /**
+     * Throws a {@link TransactionInProgressException}, since it should
+     * not be called for an XASession object.
+     *
+     * @throws TransactionInProgressException always.
+     */
+    public void rollback() throws JMSException
+    {
+        throw new TransactionInProgressException(
+                "XASession: A direct invocation of the rollback operation is prohibited!");
+    }
+
+    /**
+     * Throws a {@link TransactionInProgressException}, since it should
+     * not be called for an XASession object.
+     *
+     * @throws TransactionInProgressException always.
+     */
+    public void recover() throws JMSException
+    {
+        throw new TransactionInProgressException(
+                "XASession: A direct invocation of the recover operation is prohibited!");
+    }
+
+    @Override
+    public synchronized void close() throws JMSException {
+        if (!closeSignaled) {
+            try {
+                boolean isTransactionActive = xaResource.indicateSessionClosure();
+                if (!isTransactionActive) {
+                    xaConnection.deregisterSession(this);
+                    super.close();
+                } else {
+                    LOGGER.error("XASession.close() was called before committing or rolling back");
+                }
+            } finally {
+                closeSignaled = true;
+            }
+        }
+    }
+
+    /**
+     * Indicate when the underline connection is closed
+     *
+     * @return True if there is an active transaction
+     */
+    boolean indicateConnectionClose() {
+        pendingConnectionClose = true;
+        return xaResource.isTransactionActive();
+    }
+
+    /**
+     * Called by the XA Resource when the transaction completes
+     *
+     * @throws JMSException if closing the session failed
+     */
+    void internalClose() throws JMSException {
+        xaConnection.deregisterSession(this);
+
+        if (pendingConnectionClose) {
+            xaConnection.internalClose();
+        } else {
+            super.close();
+        }
     }
 }

@@ -23,6 +23,7 @@ import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.dtx.AndesPreparedMessageMetadata;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotCoordinator;
 import org.wso2.andes.kernel.slot.SlotCoordinatorCluster;
@@ -223,25 +224,47 @@ public class MessagingEngine {
     }
 
     /**
-     * Delete messages from store. Optionally move to dead letter channel.  Delete
-     * call is blocking and then slot message count is dropped in order. Message state
-     * is updated.
+     * Delete messages from store. Message states are updated.
      *
      * @param messagesToRemove List of messages to remove
-     * @throws AndesException
+     * @throws AndesException on an DB issue
      */
     public void deleteMessages(List<DeliverableAndesMetadata> messagesToRemove) throws AndesException {
-
+        markAsPreparedToDelete(messagesToRemove);
         //delete message content along with metadata
         messageStore.deleteMessages(messagesToRemove);
         markAsDeleted(messagesToRemove);
-
     }
 
+    /**
+     * Mark message set as prepared to delete. Before delete call is done
+     * to DB store this state is set to the messages.
+     *
+     * @param messagesToRemove set of messages scheduled to delete
+     */
+    private void markAsPreparedToDelete(List<DeliverableAndesMetadata> messagesToRemove) {
+        for (DeliverableAndesMetadata message : messagesToRemove) {
+            //mark messages as deleted
+            message.markAsPreparedToDelete();
+            if(log.isDebugEnabled()) {
+                log.debug("Scheduled to delete message id= " + message.messageID);
+            }
+        }
+    }
+
+    /**
+     * Mark message set as deleted. State update is done here. Should be called after
+     * actual delete is done
+     *
+     * @param messagesToRemove  set of messages to remove
+     */
     private void markAsDeleted(List<DeliverableAndesMetadata> messagesToRemove) {
         for (DeliverableAndesMetadata message : messagesToRemove) {
             //mark messages as deleted
             message.markAsDeletedMessage();
+            if(log.isDebugEnabled()) {
+                log.debug("Deleted message id= " + message.messageID);
+            }
         }
     }
 
@@ -262,40 +285,26 @@ public class MessagingEngine {
         return storageSeparatedMessages;
     }
 
-    /**
-     * Persist changes done in the distributed transaction to DTX store
-     *
-     * @param internalXid internal XID used to identify the transaction
-     * @param enqueueList list of enqueue records
-     * @param ackDataList list of dequeue records
-     * @throws AndesException if an internal error
-     */
-    public void dtxCommit(long internalXid, List<AndesMessage> enqueueList, List<AndesAckData> ackDataList)
+    public List<AndesPreparedMessageMetadata> acknowledgeOnDtxPrepare(List<AndesAckData> ackDataList)
             throws AndesException {
 
-        List<DeliverableAndesMetadata> messagesToRemove = new ArrayList<>(ackDataList.size());
+        List<AndesPreparedMessageMetadata> messagesToRemove = new ArrayList<>(ackDataList.size());
         for (AndesAckData ack : ackDataList) {
 
+            AndesAckEvent ackEvent = new AndesAckEvent(ack);
+
+            ackEvent.setMetadataReference();
+
             // For topics message is shared. If all acknowledgements are received only we should remove message
-            boolean deleteMessage = ack.getAcknowledgedMessage().markAsAcknowledgedByChannel(ack.getChannelID());
-
-            AndesSubscription subscription = subscriptionManager.getSubscriptionByProtocolChannel(ack.getChannelID());
-
-            subscription.onMessageAck(ack.getAcknowledgedMessage().getMessageID());
+            boolean deleteMessage = ackEvent.processEvent();
 
             if (deleteMessage) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Ok to delete message id " + ack.getAcknowledgedMessage().getMessageID());
-                }
-                //it is a must to set this to event container. Otherwise, multiple event handlers will see the status
-                ack.setBaringMessageRemovable();
-                messagesToRemove.add(ack.getAcknowledgedMessage());
+                AndesPreparedMessageMetadata rollbackMessageMetadata =
+                        new AndesPreparedMessageMetadata(ackEvent.getMetadataReference());
+                messagesToRemove.add(rollbackMessageMetadata);
             }
-
         }
-        messageStore.getDtxStore().updateOnCommit(internalXid, enqueueList, messagesToRemove);
-        markAsDeleted(messagesToRemove);
-
+        return messagesToRemove;
     }
 
     /**
@@ -430,20 +439,6 @@ public class MessagingEngine {
      */
     public long getMessageCountInDLC(String dlcQueueName) throws AndesException {
         return messageStore.getMessageCountForDLCQueue(dlcQueueName);
-    }
-
-    /**
-     * Get message metadata from queue between two message id values
-     *
-     * @param queueName  queue name
-     * @param firstMsgId id of the starting id
-     * @param lastMsgID  id of the last id
-     * @return List of message metadata
-     * @throws AndesException
-     */
-    public List<DeliverableAndesMetadata> getMetaDataList(final Slot slot, final String queueName, long firstMsgId,
-            long lastMsgID) throws AndesException {
-        return messageStore.getMetadataList(slot, queueName, firstMsgId, lastMsgID);
     }
 
     /**
@@ -671,5 +666,34 @@ public class MessagingEngine {
             lastMessageId = lastAssignedSlotMessageId - messageIdDifference;
         }
         return lastMessageId;
+    }
+
+
+    /**
+     * Get message IDs from queue starting from given startMessageId up to the given message count.
+     *
+     * @param sourceQueue    name of the queue
+     * @param dlcQueueName   name of the dead letter channel queue
+     * @param startMessageId starting message id
+     * @param messageLimit   maximum num of messages to return in one invocation.
+     * @return List<Long> of message IDs
+     * @throws AndesException if an error occurs while reading message IDs from the database.
+     */
+    public List<Long> getNextNMessageIdsInDLCForQueue(final String sourceQueue, final String dlcQueueName,
+                                                      long startMessageId, int messageLimit) throws AndesException {
+        return messageStore.getMessageIdsInDLCForQueue(sourceQueue, dlcQueueName, startMessageId, messageLimit);
+    }
+
+    /***
+     * Get message IDs in DLC starting from given startMessageId up to the given message count.
+     *
+     * @param dlcQueueName Queue name of the Dead Letter Channel
+     * @param startMessageId last message ID returned from invoking this method.
+     * @return List<Long> of message IDs moved to the DLC from the sourceQueue.
+     * @throws AndesException if an error occurs while reading messages from the database.
+     */
+    public List<Long> getNextNMessageIdsInDLC(final String dlcQueueName, long startMessageId, int messageLimit)
+            throws AndesException {
+        return messageStore.getMessageIdsInDLC(dlcQueueName, startMessageId, messageLimit);
     }
 }

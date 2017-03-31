@@ -79,7 +79,6 @@ public class MQTTUtils {
         messageBody.setOffSet(0); //Here we set the offset to 0, but it will be a problem when large messages are sent
         messageBody.setData(message);
         messageBody.setMessageID(messagID);
-        messageBody.setDataLength(message.length);
         return messageBody;
     }
 

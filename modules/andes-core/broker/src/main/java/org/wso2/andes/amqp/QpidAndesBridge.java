@@ -27,6 +27,7 @@ import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.abstraction.ContentChunk;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.kernel.AndesAckEvent;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
@@ -34,19 +35,18 @@ import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.AndesUtils;
-import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.DisablePubAckImpl;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolType;
-import org.wso2.andes.kernel.QueueBrowserDeliveryWorker;
+import org.wso2.andes.kernel.QueueBrowserMessageFlusher;
 import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
+import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
 import org.wso2.andes.kernel.disruptor.inbound.InboundBindingEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundExchangeEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
-import org.wso2.andes.kernel.subscription.AndesSubscription;
 import org.wso2.andes.kernel.subscription.OutboundSubscription;
 import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.kernel.subscription.SubscriberConnection;
@@ -58,14 +58,13 @@ import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.IncomingMessage;
-import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.store.StorableMessageMetaData;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionImpl;
+import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -89,71 +88,23 @@ public class QpidAndesBridge {
     /**
      * Ignore pub acknowledgements in AMQP. AMQP doesn't have pub acks
      */
-    public static PubAckHandler pubAckHandler;
+    private static PubAckHandler pubAckHandler;
 
     /**
-     * Recover messages
+     * Recover messages of AMQP channel
      *
-     * @param messages
-     *         messages subjected to recover
-     * @param channel
-     * @throws AMQException
+     * @param channel           AMQP channel to recover messages
+     * @param recoverOKCallback Callback to send recover-ok
+     * @throws AMQException exception on recovering messages of channel
      */
-    //TODO: review and fix this method. Both qpid and andes track un-acked messages. Giving control to Andes
-    public static void recover(Collection<QueueEntry> messages, AMQChannel channel) throws AMQException {
+    public static void recoverMessagesOfChannel(AMQChannel channel,
+                                                DisruptorEventCallback recoverOKCallback) throws AMQException {
         try {
             UUID channelID = channel.getId();
-//            AndesSubscription localSubscription = AndesContext.getInstance().
-//                    getAndesSubscriptionManager().getSubscriptionByProtocolChannel(channel.getId());
-//
-//            if (null == localSubscription) {
-//                log.warn("Cannot handle recover. Subscription not found for channel " + channelID);
-//                return;
-//            }
-//
-//            ArrayList<DeliverableAndesMetadata> recoveredMetadataList = new ArrayList<>(messages.size());
-//
-//            for (QueueEntry message : messages) {
-//                ServerMessage serverMessage = message.getMessage();
-//                if (serverMessage instanceof AMQMessage) {
-//                    DeliverableAndesMetadata messageMetadata = getDeliverableAndesMetadata(localSubscription,
-//                                                                                           (AMQMessage) serverMessage);
-//
-//                    messageMetadata.markAsNackedByClient(channel.getId());
-//                    recoveredMetadataList.add(messageMetadata);
-//
-//                    if (log.isDebugEnabled()) {
-//                        log.debug("AMQP BRIDGE: recovered message id= " + messageMetadata.getMessageID() + " channel = "
-//                                  + channelID);
-//                    }
-//
-//                } else {
-//                    log.warn("Cannot recover message since server message is not AMQMessage type. Message ID: "
-//                             + serverMessage.getMessageNumber());
-//                }
-//            }
-            Andes.getInstance().recoverMessage(channelID);
+            Andes.getInstance().recoverMessagesOfChannel(channelID, recoverOKCallback);
         } catch (AndesException e) {
             throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while handling recovered message", e);
         }
-    }
-
-    /**
-     * Get matching DeliverableAndesMetadata for the serverMessage
-     *
-     * @param localSubscription
-     *         subscription used to send the message
-     * @param message
-     *         message
-     * @return DeliverableAndesMetadata
-     */
-    private static DeliverableAndesMetadata getDeliverableAndesMetadata(AndesSubscription localSubscription,
-                                                                        AMQMessage message) {
-        return localSubscription.getSubscriberConnection().getUnAckedMessage(message.getMessageId());
-    }
-
-    static {
-        pubAckHandler = new DisablePubAckImpl();
     }
 
     /**
@@ -161,6 +112,10 @@ public class QpidAndesBridge {
      * Andes. And the class doesn't store any state information
      */
     private QpidAndesBridge() {
+    }
+
+    static {
+        pubAckHandler = new DisablePubAckImpl();
     }
 
     /**
@@ -181,7 +136,7 @@ public class QpidAndesBridge {
             if(null == transactionEvent) { // not a transaction
                 Andes.getInstance().messageReceived(andesMessage, andesChannel, pubAckHandler);
             } else { // transaction event
-                transactionEvent.enqueue(andesMessage);
+                transactionEvent.preProcessEnqueue(andesMessage);
             }
 
         } catch (AndesException e) {
@@ -244,7 +199,7 @@ public class QpidAndesBridge {
             throw new AndesException("Queue cannot be null, for " + incomingMessage.getMessageNumber());
         }
 
-        AndesMessage andesMessage = new AMQPMessage(metadata);
+        AndesMessage andesMessage = new AndesMessage(metadata);
 
         // Update Andes message with all the chunk details
         int contentChunks = incomingMessage.getBodyCount();
@@ -298,7 +253,6 @@ public class QpidAndesBridge {
         part.setData(chunkData);
         part.setMessageID(messageID);
         part.setOffSet(offsetInMessage);
-        part.setDataLength(chunkData.length);
 
         return part;
     }
@@ -306,64 +260,62 @@ public class QpidAndesBridge {
     /**
      * Read a message content chunk form store
      *
-     * @param messageID       id of the message
+     * @param messageId       id of the message
      * @param offsetInMessage offset to be read
      * @param dst             buffer to be filled by content bytes
      * @return written content length
      * @throws AMQException
      */
-    public static int getMessageContentChunk(long messageID, int offsetInMessage, ByteBuffer dst) throws AMQException {
+    public static int getMessageContentChunk(long messageId, int offsetInMessage, ByteBuffer dst) throws AMQException {
         int contentLenWritten;
         try {
-            contentLenWritten = AMQPUtils.fillBufferFromContent(messageID, offsetInMessage, dst);
+            contentLenWritten = AMQPUtils.fillBufferFromContent(messageId, offsetInMessage, dst);
         } catch (AndesException e) {
             log.error("Error in getting message content", e);
-            throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error in getting message content chunk messageID " + messageID + " offset=" + offsetInMessage, e);
+            throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error in getting message content chunk messageId "
+                    + messageId + " offset=" + offsetInMessage, e);
         }
         return contentLenWritten;
     }
 
-    public static void ackReceived(UUID channelID, long messageID)
+    public static void ackReceived(UUID channelId, long messageId)
             throws AMQException {
         try {
             if (log.isDebugEnabled()) {
-                log.debug("ack received for message id= " + messageID + " channelId= " + channelID);
+                log.debug("ack received for message id= " + messageId + " channelId= " + channelId);
             }
-            //This can be different from routing key in hierarchical topic case
-            AndesAckData andesAckData = AndesUtils.generateAndesAckMessage(channelID, messageID);
-            if(null == andesAckData) {
-                return;
-            }
+            //Tracing Message
+            MessageTracer.trace(messageId, MessageTracer.ACK_RECEIVED_FROM_PROTOCOL);
+            AndesAckData andesAckData = new AndesAckData(channelId, messageId);
             Andes.getInstance().ackReceived(andesAckData);
         } catch (AndesException e) {
             log.error("Exception occurred while handling ack", e);
-            throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error in getting handling ack for " + messageID, e);
+            throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error in getting handling ack for " + messageId, e);
         }
     }
 
     /**
      * Reject message is received
+     *
      * @param message message subjected to rejection
      * @param channel channel by which reject message is received
-     * @throws AMQException
+     * @param reQueue true if message should be re-queued to subscriber
+     * @throws AMQException on a message re-schedule issue
      */
-    public static void rejectMessage(AMQMessage message, AMQChannel channel) throws AMQException {
+    public static void rejectMessage(AMQMessage message, AMQChannel channel, boolean reQueue) throws AMQException {
         try {
-            AndesSubscription localSubscription = AndesContext.getInstance().
-                    getAndesSubscriptionManager().getSubscriptionByProtocolChannel(channel.getId());
-
-            DeliverableAndesMetadata rejectedMessage = localSubscription.getSubscriberConnection()
-                    .getUnAckedMessage(message.getMessageId());
-
             channel.setLastRejectedMessageId(message.getMessageNumber());
+            boolean isMessageBeyondLastRollback = channel.isMessageBeyondLastRollback(message.getMessageNumber());
 
-            rejectedMessage.setIsBeyondLastRollbackedMessage(channel.isMessageBeyondLastRollback(message.getMessageId()));
+            log.info("Reject received id = " + message.getMessageId() + " channel id= " + channel.getChannelId()
+                    + "regueue = " + reQueue);
 
-            log.debug("AMQP BRIDGE: rejected message id= " + rejectedMessage.getMessageID()
-                    + " channel = " + channel.getId());
-
-            Andes.getInstance().messageRejected(rejectedMessage, channel.getId());
-
+            Andes.getInstance().messageRejected(message.getMessageId(), channel.getId(),
+                    reQueue, isMessageBeyondLastRollback);
+            if (log.isDebugEnabled()) {
+                log.debug("AMQP BRIDGE: rejected message id= " + message.getMessageId()
+                        + " channel = " + channel.getId() + " reQueue= " + reQueue);
+            }
         } catch (AndesException e) {
             throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while handling rejected message", e);
         }
@@ -385,9 +337,8 @@ public class QpidAndesBridge {
             }
 
             if (subscription instanceof SubscriptionImpl.BrowserSubscription) {
-                QueueBrowserDeliveryWorker deliveryWorker = new QueueBrowserDeliveryWorker(subscription, queue,
-                        ((SubscriptionImpl.BrowserSubscription) subscription).getProtocolSession());
-                deliveryWorker.send();
+                QueueBrowserMessageFlusher deliveryWorker = new QueueBrowserMessageFlusher(subscription, queue);
+                deliveryWorker.readAndSendFromMessageStore();
             } else {
                 if (log.isDebugEnabled()) {
                     log.debug("Adding Subscription " + subscription.getSubscriptionID() + " to queue " + queue.getName());
@@ -472,7 +423,7 @@ public class QpidAndesBridge {
         try {
             List<StorageQueue> queues = AndesContext.getInstance().getStorageQueueRegistry().getAllStorageQueues();
             for (StorageQueue storageQueue : queues) {
-                if (storageQueue.getName().equalsIgnoreCase(queue.getName())) {
+                if (storageQueue.getName().equals(queue.getName())) {
                     throw new AMQException("Cannot create already existing queue: " + queue.getName());
                 }
             }
@@ -692,14 +643,4 @@ public class QpidAndesBridge {
             }
         }
     }
-
-    /**
-     * Channel closed. Clear status
-     *
-     * @param channelID id of the closed channel
-     */
-    public static void channelIsClosing(UUID channelID) {
-        Andes.getInstance().clientConnectionClosed(channelID);
-    }
-
 }

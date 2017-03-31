@@ -128,12 +128,12 @@ public class AndesKernelBoot {
         syncNodeWithClusterState();
         registerMBeans();
         startThriftServer();
-        Andes.getInstance().startSafeZoneAnalysisWorker();
-        //Start slot deleting thread only if clustering is enabled.
-        //Otherwise slots assignment will not happen
-        if (AndesContext.getInstance().isClusteringEnabled()) {
-            SlotDeletionExecutor.getInstance().init();
-        }
+        Andes.getInstance().startSafeZoneUpdateWorkers();
+        int slotDeletingWorkerCount = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_SLOT_DELETE_WORKER_COUNT);
+        int maxNumberOfPendingSlotsToDelete = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_SLOT_DELETE_QUEUE_DEPTH_WARNING_THRESHOLD);
+        SlotDeletionExecutor.getInstance().init(slotDeletingWorkerCount, maxNumberOfPendingSlotsToDelete);
     }
 
     /**
@@ -154,9 +154,6 @@ public class AndesKernelBoot {
             try {
                 hazelcastAgent.acquireInitializationLock();
                 if (!hazelcastAgent.isClusterInitializedSuccessfully()) {
-                    contextStore.clearMembershipEvents();
-                    contextStore.clearHeartBeatData();
-                    clusterNotificationListenerManager.clearAllClusterNotifications();
                     clearSlotStorage();
 
                     // Initialize current node's last published ID
@@ -348,10 +345,10 @@ public class AndesKernelBoot {
         AndesContext.getInstance().setAndesContextInformationManager(contextInformationManager);
 
         //Create an inbound event manager. This will prepare inbound events to disruptor
-        InboundEventManager inboundEventManager =  new InboundEventManager(subscriptionManager, messagingEngine);
+        InboundEventManager inboundEventManager =  new InboundEventManager(messagingEngine);
         AndesContext.getInstance().setInboundEventManager(inboundEventManager);
 
-        DtxRegistry dtxRegistry = new DtxRegistry(messageStore.getDtxStore());
+        DtxRegistry dtxRegistry = new DtxRegistry(messageStore.getDtxStore(), messagingEngine, inboundEventManager);
 
         //Initialize Andes API (used by all inbound transports)
         Andes.getInstance().initialise(messagingEngine, inboundEventManager, contextInformationManager,

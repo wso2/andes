@@ -82,12 +82,12 @@ public class AndesSubscriptionFactory {
 
         if(messageRouterName.equals(AMQPUtils.TOPIC_EXCHANGE_NAME)
                 && isBoundQueueDurable) {
-            DurableTopicSubscriber durableTopicSubscriber =
-                    new DurableTopicSubscriber(subscriptionId, subscriptionIdentifier, storageQueue,
+
+            return new DurableTopicSubscriber(subscriptionId, subscriptionIdentifier, storageQueue,
                             protocol, subscriberConnection);
-            durableTopicSubscriber.addConnection(subscriberConnection);
-            return durableTopicSubscriber;
+
         } else {
+
             return new AndesSubscription(subscriptionId, storageQueue, protocol,
                     subscriberConnection);
         }

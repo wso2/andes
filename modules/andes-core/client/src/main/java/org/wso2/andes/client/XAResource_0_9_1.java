@@ -24,6 +24,7 @@ import org.wso2.andes.transport.XaStatus;
 import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.List;
+import javax.jms.JMSException;
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
@@ -34,6 +35,9 @@ class XAResource_0_9_1 implements XAResource {
      */
     private static final Logger LOGGER = LoggerFactory.getLogger(XAResource_0_9_1.class);
 
+    /**
+     * Reference to the connected XA Session
+     */
     private final XASession_9_1 session;
 
     /**
@@ -56,6 +60,11 @@ class XAResource_0_9_1 implements XAResource {
      */
     private Xid xid;
 
+    /**
+     * Indicate if underline {@link XASession_9_1} should be closed after commit or rollback
+     */
+    private boolean pendingSessionClose = false;
+
     XAResource_0_9_1(XASession_9_1 xaSession_9_1) {
         session = xaSession_9_1;
     }
@@ -77,7 +86,22 @@ class XAResource_0_9_1 implements XAResource {
             this.xid = null;
         }
 
+        closeSessionIfClosable();
+
         checkStatus(resultStatus);
+    }
+
+    /**
+     * Close the underline {@link XASession_9_1} if the session close was signaled before commit or rollback
+     */
+    private void closeSessionIfClosable() {
+        if (!session.isClosed() && pendingSessionClose) {
+            try {
+                session.internalClose();
+            } catch (JMSException e) {
+                LOGGER.error("Error while closing session after commit or rollback", e);
+            }
+        }
     }
 
     /**
@@ -273,6 +297,8 @@ class XAResource_0_9_1 implements XAResource {
             this.xid = null;
         }
 
+        closeSessionIfClosable();
+
         checkStatus(resultStatus);
     }
 
@@ -280,11 +306,20 @@ class XAResource_0_9_1 implements XAResource {
     public boolean setTransactionTimeout(int timeout) throws XAException {
         this.timeout = timeout;
 
-        if (xid != null) {
+        if (isTransactionActive()) {
             setDtxTimeoutInServer(timeout);
         }
 
         return true;
+    }
+
+    /**
+     * Indicate if transaction is active
+     *
+     * @return True if transaction is active, false otherwise
+     */
+    boolean isTransactionActive() {
+        return xid != null;
     }
 
     /**
@@ -393,5 +428,16 @@ class XAResource_0_9_1 implements XAResource {
             //A resource manager error has occured in the transaction branch.
             throw new XAException(XAException.XAER_RMERR);
         }
+    }
+
+    /**
+     * Signal session closure to the XAResource. Session is closed if the XAResource is already done (committed or
+     * rolled back). Otherwise the session will be closed after a commit or a rollback is received
+     *
+     * @throws JMSException if closing session failed
+     */
+    boolean indicateSessionClosure() throws JMSException {
+        pendingSessionClose = true;
+        return isTransactionActive();
     }
 }

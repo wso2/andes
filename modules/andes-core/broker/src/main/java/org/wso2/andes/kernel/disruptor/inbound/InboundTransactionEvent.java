@@ -117,12 +117,18 @@ public class InboundTransactionEvent implements AndesInboundStateEvent {
         this.messageQueue = queue;
     }
 
-    void addMessages(Collection<AndesMessage> messages) {
+    void setMessagesToStore(Collection<AndesMessage> messages) {
+        this.messageQueue.clear();
         this.messageQueue.addAll(messages);
     }
 
-    void clearQueuedMessages() {
-        this.messageQueue.clear();
+    /**
+     * Enqueue resized message to transaction
+     *
+     * @param message resized message
+     */
+    public void enqueueMessage(AndesMessage message) {
+        messageQueue.add(message);
     }
 
     /**
@@ -219,7 +225,7 @@ public class InboundTransactionEvent implements AndesInboundStateEvent {
      * This is a asynchronous call
      * @param message AndesMessage
      */
-    public void enqueue(AndesMessage message) {
+    public void preProcessEnqueue(AndesMessage message) {
         currentBatchSize = currentBatchSize + message.getMetadata().getMessageContentLength();
 
         if (currentBatchSize > maxBatchSize) {

@@ -81,10 +81,11 @@ public class RDBMSConstants {
     // Message Store tables
     protected static final String CONTENT_TABLE = "MB_CONTENT";
     protected static final String METADATA_TABLE = "MB_METADATA";
-    protected static final String DTX_ENQUEUE_RECORD_TABLE = "MB_DTX_PREPARED_ENQUEUE_RECORD";
-    protected static final String DTX_DEQUEUE_RECORD_TABLE = "MB_DTX_PREPARED_DEQUEUE_RECORD";
-    protected static final String DTX_ENTRY_TABLE = "MB_DTX_PREPARED_XID";
-    protected static final String DTX_CONTENT_TABLE = "MB_DTX_PREPARED_CONTENT";
+    protected static final String DTX_ENQUEUE_RECORD_TABLE = "MB_DTX_ENQUEUE_RECORD";
+    protected static final String DTX_DEQUEUE_RECORD_TABLE = "MB_DTX_DEQUEUE_RECORD";
+    protected static final String DTX_ENTRY_TABLE = "MB_DTX_XID";
+    protected static final String DTX_CONTENT_ENQUEUE_TABLE = "MB_DTX_ENQUEUE_CONTENT";
+    protected static final String DTX_CONTENT_DEQUEUE_TABLE = "MB_DTX_DEQUEUE_CONTENT";
     protected static final String QUEUES_TABLE = "MB_QUEUE_MAPPING";
     protected static final String EXPIRATION_TABLE = "MB_EXPIRATION_DATA";
     protected static final String MSG_STORE_STATUS_TABLE = "MB_MSG_STORE_STATUS";
@@ -428,12 +429,6 @@ public class RDBMSConstants {
             + " ORDER BY " + EVENT_ID;
 
     /**
-     * Prepared statement to clear all cluster notifications.
-     */
-    protected static final String PS_CLEAR_ALL_CLUSTER_NOTIFICATIONS =
-            "DELETE FROM " + CLUSTER_EVENT_TABLE;
-
-    /**
      * Prepared statement to clear cluster notifications destined to a particular member.
      */
     protected static final String PS_CLEAR_CLUSTER_NOTIFICATIONS_FOR_NODE =
@@ -595,6 +590,14 @@ public class RDBMSConstants {
     /**
      * Prepared statement to delete a slot from database
      */
+    protected static final String PS_DELETE_SLOT =
+            "DELETE FROM " + SLOT_TABLE
+            + " WHERE " + START_MESSAGE_ID + "=?"
+            + " AND " + END_MESSAGE_ID + "=?";
+
+    /**
+     * Prepared statement to delete a slot from database
+     */
     protected static final String PS_DELETE_NON_OVERLAPPING_SLOT =
             "DELETE FROM " + SLOT_TABLE
             + " WHERE " + START_MESSAGE_ID + "=?"
@@ -649,6 +652,16 @@ public class RDBMSConstants {
             + " FROM " + SLOT_TABLE
             + " WHERE " + ASSIGNED_NODE_ID + "=?"
             + " AND " + SLOT_STATE + "=" + SlotState.ASSIGNED.getCode()
+            + " ORDER BY " + SLOT_ID;
+
+    /**
+     * Prepared statement to get slots assigned to a give node
+     */
+    protected static final String PS_GET_OVERLAPPED_SLOTS_BY_NODE_ID =
+            "SELECT " + START_MESSAGE_ID + "," + END_MESSAGE_ID + "," + STORAGE_QUEUE_NAME
+            + " FROM " + SLOT_TABLE
+            + " WHERE " + ASSIGNED_NODE_ID + "=?"
+            + " AND " + SLOT_STATE + "=" + SlotState.OVERLAPPED.getCode()
             + " ORDER BY " + SLOT_ID;
 
     /**
@@ -865,12 +878,6 @@ public class RDBMSConstants {
             "DELETE FROM " + CLUSTER_NODE_HEARTBEAT_TABLE
                     + " WHERE " + NODE_ID + "=?";
 
-    protected static final String PS_CLEAR_NODE_HEARTBEATS =
-            "DELETE FROM " + CLUSTER_NODE_HEARTBEAT_TABLE;
-
-    protected static final String PS_CLEAR_COORDINATOR_HEARTBEAT =
-            "DELETE FROM " + CLUSTER_COORDINATOR_HEARTBEAT_TABLE;
-
     /**
      * Prepared statement to get slot message ids
      */
@@ -1036,12 +1043,6 @@ public class RDBMSConstants {
                     + " ORDER BY "  + EVENT_ID;
 
     /**
-     * Prepared statement to clear the membership event table.
-     */
-    protected static final String PS_CLEAR_ALL_MEMBERSHIP_EVENTS =
-            "DELETE FROM " + MEMBERSHIP_TABLE;
-
-    /**
      * Prepared statement to slear membership change events destined to a particular member.
      */
     protected static final String PS_CLEAN_MEMBERSHIP_EVENTS_FOR_NODE =
@@ -1056,16 +1057,16 @@ public class RDBMSConstants {
             = "INSERT INTO " + DTX_ENQUEUE_RECORD_TABLE + " ("
             + INTERNAL_XID + ","
             + MESSAGE_ID + ","
-            + DESTINATION_QUEUE + ","
             + METADATA + ")"
-            + " VALUES ( ?,?,?,? )";
+            + " VALUES ( ?,?,? )";
 
     protected static final String PS_INSERT_DTX_DEQUEUE_RECORD
             = "INSERT INTO " + DTX_DEQUEUE_RECORD_TABLE + " ("
             + INTERNAL_XID + ","
             + MESSAGE_ID + ","
-            + QUEUE_ID + ")"
-            + " VALUES ( ?,?,? )";
+            + QUEUE_NAME + ","
+            + METADATA + ")"
+            + " VALUES ( ?,?,?,? )";
 
     protected static final String PS_INSERT_DTX_ENTRY
             = "INSERT INTO " + DTX_ENTRY_TABLE + " ("
@@ -1075,21 +1076,78 @@ public class RDBMSConstants {
             + DTX_GLOBAL_ID + ","
             + DTX_BRANCH_ID + ")" + " VALUES ( ?,?,?,?,? )";
 
-    protected static final String PS_DELETE_DTX_ENTRY
-            = "DELETE FROM " + DTX_ENTRY_TABLE
-            + " WHERE " + INTERNAL_XID + "=?";
-
-    static final String PS_REMOVE_DTX_PREPARED_XID =
+    static final String PS_DELETE_DTX_ENTRY =
             "DELETE FROM " + DTX_ENTRY_TABLE
                     + " WHERE " + INTERNAL_XID + " =?"
                     + " AND " + NODE_ID + " =?";
 
+    static final String PS_SELECT_INTERNAL_XID =
+            "SELECT " + INTERNAL_XID
+                    + " FROM " + DTX_ENTRY_TABLE
+                    + " WHERE " + DTX_FORMAT + "=?"
+                    + " AND " + DTX_BRANCH_ID + "=?"
+                    + " AND " + DTX_GLOBAL_ID + "=?"
+                    + " AND " + NODE_ID + "=?";
+
+
+    static final String PS_SELECT_PREPARED_XID =
+            "SELECT " + DTX_FORMAT + "," + DTX_BRANCH_ID + "," + DTX_GLOBAL_ID
+                    + " FROM " + DTX_ENTRY_TABLE;
+
+    public static final String PS_SELECT_DTX_DEQUEUE_METADATA =
+            "SELECT " + MESSAGE_ID + "," + QUEUE_NAME + "," + METADATA
+                    + " FROM " + DTX_DEQUEUE_RECORD_TABLE
+                    + " WHERE " + INTERNAL_XID + "=?";
+
     // prepared statements for Message Store
-    protected static final String PS_INSERT_DTX_MESSAGE_PART =
-            "INSERT INTO " + DTX_CONTENT_TABLE + "("
+    static final String PS_INSERT_DTX_ENQUEUE_MESSAGE_PART =
+            "INSERT INTO " + DTX_CONTENT_ENQUEUE_TABLE + "("
+                    + INTERNAL_XID + ","
                     + MESSAGE_ID + ","
                     + MSG_OFFSET + ","
-                    + MESSAGE_CONTENT + ") VALUES (?, ?, ?)";
+                    + MESSAGE_CONTENT + ") VALUES (?, ?, ?, ?)";
+
+    static final String PS_INSERT_DTX_DEQUEUE_MESSAGE_PART =
+            "INSERT INTO " + DTX_CONTENT_DEQUEUE_TABLE + " ("
+                    + INTERNAL_XID + ","
+                    + MESSAGE_ID + ","
+                    + MSG_OFFSET + ","
+                    + MESSAGE_CONTENT + ") "
+                    + "SELECT ?," + MESSAGE_ID + "," + MSG_OFFSET + "," + MESSAGE_CONTENT
+                    + " FROM " + CONTENT_TABLE + " WHERE " + MESSAGE_ID + "=?";
+
+    static final String PS_INSERT_DTX_RESTORE_ACKED_MESSAGE_PART =
+            "INSERT INTO " + CONTENT_TABLE + " ("
+                    + MESSAGE_ID + ","
+                    + MSG_OFFSET + ","
+                    + MESSAGE_CONTENT + ") "
+                    + "SELECT ?," + MSG_OFFSET + "," + MESSAGE_CONTENT
+                    + " FROM " + DTX_CONTENT_DEQUEUE_TABLE + " WHERE " + MESSAGE_ID + "=?";
+
+    static final String PS_SELECT_DTX_ENQUEUED_METADATA =
+            "SELECT " + MESSAGE_ID + "," + METADATA
+                    + " FROM " + DTX_ENQUEUE_RECORD_TABLE
+                    + " WHERE " + INTERNAL_XID + "=?";
+
+    static final String PS_SELECT_DTX_ENQUEUED_CONTENT =
+            "SELECT " + MESSAGE_ID + "," + MSG_OFFSET + "," + MESSAGE_CONTENT
+                    + " FROM " + DTX_CONTENT_ENQUEUE_TABLE
+                    + " WHERE " + INTERNAL_XID + "=?";
+
+    protected static final String PS_SELECT_MESSAGE_IDS_IN_DLC_FROM_METADATA_FOR_QUEUE =
+            "SELECT " + MESSAGE_ID
+                    + " FROM " + METADATA_TABLE
+                    + " WHERE " + QUEUE_ID + "=?"
+                    + " AND " + MESSAGE_ID + ">?"
+                    + " AND " + DLC_QUEUE_ID + "=? "
+                    + " ORDER BY " + MESSAGE_ID ;
+
+    protected static final String PS_SELECT_MESSAGE_IDS_IN_DLC_FROM_METADATA =
+            "SELECT " + MESSAGE_ID
+                    + " FROM " + METADATA_TABLE
+                    + " WHERE " + MESSAGE_ID + ">?"
+                    + " AND " + DLC_QUEUE_ID + "=? "
+                    + " ORDER BY " + MESSAGE_ID ;
 
     // Message Store related jdbc tasks executed
     protected static final String TASK_STORING_MESSAGE_PARTS = "storing message parts.";
@@ -1100,8 +1158,8 @@ public class RDBMSConstants {
     protected static final String TASK_ADDING_METADATA = "adding metadata.";
     protected static final String TASK_ADDING_MESSAGE = "adding message.";
     protected static final String TASK_ADDING_MESSAGES = "adding messages";
-    protected static final String TASK_DELETING_MESSAGES = "deleting messages";
 
+    protected static final String TASK_DELETING_MESSAGES = "deleting messages";
     protected static final String TASK_MOVING_METADATA_TO_DLC = "moving message metadata to dlc.";
     protected static final String TASK_ADDING_METADATA_TO_QUEUE = "adding metadata to destination. ";
     protected static final String TASK_ADDING_METADATA_LIST_TO_QUEUE = "adding metadata list to destination. ";
@@ -1129,23 +1187,23 @@ public class RDBMSConstants {
     protected static final String TASK_CLEARING_DLC_QUEUE = "clearing dlc queue. " ;
     protected static final String TASK_RESETTING_MESSAGE_COUNTER = "Resetting message counter for queue";
     protected static final String TASK_RETRIEVING_EXPIRED_MESSAGES = "retrieving expired messages.";
-    protected static final String TASK_RETRIEVING_QUEUE_ID = "retrieving queue id for queue. ";
 
+    protected static final String TASK_RETRIEVING_QUEUE_ID = "retrieving queue id for queue. ";
     protected static final String TASK_CREATING_QUEUE = "creating queue. ";
     // Message Store related retained message jdbc tasks executed
     protected static final String TASK_STORING_RETAINED_MESSAGE = "storing retained messages.";
     protected static final String TASK_RETRIEVING_RETAINED_MESSAGE_PARTS = "retrieving retained message parts.";
-    protected static final String TASK_RETRIEVING_RETAINED_TOPICS = "retrieving all retained topics";
 
+    protected static final String TASK_RETRIEVING_RETAINED_TOPICS = "retrieving all retained topics";
     protected static final String TASK_RETRIEVING_RETAINED_TOPIC_ID = "retrieving retained  message id and topic id "
                                                                       + "for given destination.";
     // Andes Context Store related jdbc tasks executed
     protected static final String TASK_STORING_DURABLE_SUBSCRIPTION = "storing durable subscription";
     protected static final String TASK_UPDATING_DURABLE_SUBSCRIPTION = "updating durable subscription";
+
     protected static final String TASK_UPDATING_DURABLE_SUBSCRIPTIONS = "updating durable subscriptions";
 
     protected static final String TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTIONS = "retrieving all durable subscriptions. ";
-
     protected static final String TASK_CHECK_SUBSCRIPTION_EXISTENCE = "checking subscription existence";
     protected static final String TASK_REMOVING_DURABLE_SUBSCRIPTION = "removing durable subscription. ";
     protected static final String TASK_STORING_NODE_INFORMATION = "storing node information";
@@ -1170,8 +1228,8 @@ public class RDBMSConstants {
     protected static final String TASK_CHECK_QUEUE_COUNTER_EXIST = "checking queue counter exist";
     protected static final String TASK_RETRIEVING_QUEUE_COUNT = "retrieving queue count";
     protected static final String TASK_DELETING_QUEUE_COUNTER = "deleting queue counter";
-    protected static final String TASK_INCREMENTING_QUEUE_COUNT = "incrementing queue count";
 
+    protected static final String TASK_INCREMENTING_QUEUE_COUNT = "incrementing queue count";
     protected static final String TASK_DECREMENTING_QUEUE_COUNT = "decrementing queue count";
     protected static final String TASK_CREATE_SLOT = "creating slot";
     protected static final String TASK_DELETE_SLOT = "deleting slot";
@@ -1191,6 +1249,7 @@ public class RDBMSConstants {
     protected static final String TASK_DELETE_MESSAGE_ID = "deleting message ids";
     protected static final String TASK_GET_MESSAGE_IDS = "getting message ids";
     protected static final String TASK_GET_ASSIGNED_SLOTS_BY_NODE_ID = "getting assigned slots by node id";
+    protected static final String TASK_GET_OVERLAPPED_SLOTS_BY_NODE_ID = "getting assigned slots by node id";
     protected static final String TASK_GET_ALL_SLOTS_BY_QUEUE_NAME = "getting all slots by queue name";
     protected static final String TASK_GET_OVERLAPPED_SLOT = "getting overlapped slot";
     protected static final String TASK_GET_ALL_QUEUES = "getting all queues";
@@ -1203,9 +1262,13 @@ public class RDBMSConstants {
     protected static final String TASK_UPDATE_NODE_HEARTBEAT = "updating node heartbeat";
     protected static final String TASK_CREATE_NODE_HEARTBEAT = "creating node heartbeat";
     protected static final String TASK_REMOVE_COORDINATOR = "removing coordinator heartbeat";
-    protected static final String TASK_REMOVE_NODE_HEARTBEAT = "removing node heartbeat entry";
 
+    protected static final String TASK_REMOVE_NODE_HEARTBEAT = "removing node heartbeat entry";
     protected static final String TASK_MARK_NODE_NOT_NEW = "marking node as not new";
+    protected static final String TASK_RETRIEVING_NEXT_N_MESSAGE_IDS_IN_DLC_OF_QUEUE = "retrieving message ID list " +
+            "in DLC from queue. ";
+    protected static final String TASK_RETRIEVING_NEXT_N_MESSAGE_IDS_IN_DLC = "retrieving message ID list in DLC.";
+
     /**
      * Messages related to checking message store is operational.
      */
@@ -1223,4 +1286,5 @@ public class RDBMSConstants {
      */
     private RDBMSConstants() {
     }
+
 }

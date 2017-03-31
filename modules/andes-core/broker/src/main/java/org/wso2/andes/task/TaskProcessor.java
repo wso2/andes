@@ -95,7 +95,7 @@ final class TaskProcessor implements Callable<Boolean> {
                     if(null != taskHolder) {
                         id = taskHolder.getId();
                     } else {
-                        id = "";
+                        id = "null";
                     }
                     taskExceptionHandler.handleException(throwable, id);
                 } finally {

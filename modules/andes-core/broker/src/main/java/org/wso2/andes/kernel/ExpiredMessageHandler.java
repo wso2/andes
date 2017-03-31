@@ -27,6 +27,7 @@ import org.wso2.andes.tools.utils.MessageTracer;
 public class ExpiredMessageHandler extends DeliveryResponsibility {
 
     private static Log log = LogFactory.getLog(ExpiredMessageHandler.class);
+    private static Log expiryLog = LogFactory.getLog("MessageExpirationTask");
 
     /**
      * Hold the pre delivery expiry message deletion task
@@ -38,7 +39,7 @@ public class ExpiredMessageHandler extends DeliveryResponsibility {
      *
      * @param task deletion task
      */
-    public void setExpiryMessageDeletionTask(PreDeliveryExpiryMessageDeletionTask task) {
+    void setExpiryMessageDeletionTask(PreDeliveryExpiryMessageDeletionTask task) {
         this.preDeliveryExpiryMessageDeletionTask = task;
     }
 
@@ -53,11 +54,13 @@ public class ExpiredMessageHandler extends DeliveryResponsibility {
         boolean isOkayToProceed = true;
         // Check if destination entry has expired. Any expired message will not be delivered
         if (message.isExpired()) {
-            log.warn("Message is expired. Therefore, it will not be sent. : id= " + message.getMessageID());
+            if (expiryLog.isWarnEnabled()) {
+                expiryLog.warn("Message is expired. Therefore, it will not be sent. : id= " + message.getMessageID());
+            }
             // Since this message is not going to be delivered, no point in wait for ack.
             message.getSlot().decrementPendingMessageCount();
             // Add the expired messages to a list for a batch delete
-            preDeliveryExpiryMessageDeletionTask.addMessageIdToExpiredQueue(message.getMessageID());
+            preDeliveryExpiryMessageDeletionTask.addMessageIdToExpiredQueue(message);
             MessageTracer.trace(message, MessageTracer.EXPIRED_MESSAGE_DETECTED_AND_QUEUED);
             isOkayToProceed = false;
         }

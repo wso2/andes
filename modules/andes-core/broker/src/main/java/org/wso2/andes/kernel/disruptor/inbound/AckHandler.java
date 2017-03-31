@@ -21,9 +21,10 @@ package org.wso2.andes.kernel.disruptor.inbound;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.kernel.AndesAckEvent;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesUtils;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.subscription.AndesSubscription;
@@ -75,16 +76,12 @@ public class AckHandler implements StoreHealthListener {
 
     /**
      * Process the acknowledgment events and delete messages from database
-     * @param ackDataList {@link List} of {@link AndesAckData}
+     * @param ackDataList {@link List} of {@link AndesAckEvent}
      * @throws Exception
      */
-    public void processAcknowledgements(final List<AndesAckData> ackDataList) throws Exception {
+    public void processAcknowledgements(final List<AndesAckEvent> ackDataList) throws Exception {
         if (log.isTraceEnabled()) {
-            StringBuilder messageIDsString = new StringBuilder();
-            for (AndesAckData andesAckData : ackDataList) {
-                messageIDsString.append(andesAckData.getAcknowledgedMessage().getMessageID()).append(" , ");
-            }
-            log.trace(ackDataList.size() + " messages received : " + messageIDsString);
+            log.trace(ackDataList.size() + " acknowledgements received from disruptor.");
         }
         if (log.isDebugEnabled()) {
             log.debug(ackDataList.size() + " acknowledgements received from disruptor.");
@@ -103,30 +100,19 @@ public class AckHandler implements StoreHealthListener {
      * message deletion will happen only when
      * all the clients acknowledges)
      *
-     * @param ackDataList
+     * @param ackEventList
      *            inboundEvent list
      */
-    public void ackReceived(final List<AndesAckData> ackDataList) throws AndesException {
-        
-        for (AndesAckData ack : ackDataList) {
+    private void ackReceived(final List<AndesAckEvent> ackEventList) throws AndesException {
+        for (AndesAckEvent ack : ackEventList) {
 
-            // For topics message is shared. If all acknowledgements are received only we should remove message
-            boolean deleteMessage = ack.getAcknowledgedMessage().markAsAcknowledgedByChannel(ack.getChannelID());
+            ack.setMetadataReference();
 
-            AndesSubscription subscription = subscriptionManager
-                    .getSubscriptionByProtocolChannel(ack.getChannelID());
+            boolean messageRemovable = ack.processEvent();
 
-            subscription.onMessageAck(ack.getAcknowledgedMessage().getMessageID());
-
-            if (deleteMessage) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Ok to delete message id " + ack.getAcknowledgedMessage().getMessageID());
-                }
-                //it is a must to set this to event container. Otherwise, multiple event handlers will see the status
-                ack.setBaringMessageRemovable();
-                messagesToRemove.add(ack.getAcknowledgedMessage());
+            if (messageRemovable) {
+                messagesToRemove.add(ack.getMetadataReference());
             }
-            
         }
 
         /*

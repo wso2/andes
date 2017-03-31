@@ -25,6 +25,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.ProtocolMessage;
+import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
 
 import java.util.List;
 import java.util.UUID;
@@ -144,6 +145,15 @@ public class SubscriberConnection {
     }
 
     /**
+     * Get name of the protocol queue
+     *
+     * @return name of the queue set by protocol
+     */
+    public String getProtocolQueueName() {
+        return outboundSubscription.getProtocolQueueName();
+    }
+
+    /**
      * Forcefully disconnects protocol subscriber connection from server. This is initiated by a server admin using the
      * management console.
      *
@@ -163,7 +173,7 @@ public class SubscriberConnection {
      * @return true if the send is a success
      * @throws AndesException on an issue writing message to the protocol
      */
-    public boolean writeMessageToConnection(ProtocolMessage messageMetadata, AndesContent content)
+    public synchronized boolean writeMessageToConnection(ProtocolMessage messageMetadata, AndesContent content)
             throws AndesException {
 
         //It is needed to add the message reference to the tracker and increase un-ack message count BEFORE
@@ -238,6 +248,17 @@ public class SubscriberConnection {
     }
 
     /**
+     * Clear tracked sent but un-acknowledged messages. Return the messages of the same view
+     * at the moment it was cleared. While this operation is performed, no new
+     * message will be added to the list.
+     *
+     * @return list of messages tracked when cleaned up
+     */
+    public synchronized List<DeliverableAndesMetadata> clearAndReturnUnackedMessages() {
+        return outBoundMessageTracker.clearAndReturnUnackedMessages();
+    }
+
+    /**
      * Is the underlying protocol connection active and can accept
      * messages
      *
@@ -265,13 +286,13 @@ public class SubscriberConnection {
     }
 
     /**
-     * Perform on reject receive for a message
+     * Perform on reject receive for a message. This will remove message from messages tracked by the connection.
+     *
      * @param messageID id of the message acknowledged
      * @return  DeliverableAndesMetadata reference of message rejected
-     * @throws AndesException
      */
-    public DeliverableAndesMetadata onMessageReject(long messageID) throws AndesException{
-        DeliverableAndesMetadata rejectedMessage = getUnAckedMessage(messageID);
+    public DeliverableAndesMetadata onMessageReject(long messageID) {
+        DeliverableAndesMetadata rejectedMessage = outBoundMessageTracker.removeSentMessageFromTracker(messageID);
         rejectedMessage.markAsNackedByClient(protocolChannelID);
         if (log.isDebugEnabled()) {
             log.debug("Message id= " + messageID + " is rejected by connection " + this);
