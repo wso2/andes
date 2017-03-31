@@ -18,10 +18,14 @@
 package org.wso2.andes.server.handler;
 
 import org.apache.log4j.Logger;
+import org.wso2.andes.AMQChannelException;
 import org.wso2.andes.AMQException;
+import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.framing.AMQMethodBody;
 import org.wso2.andes.framing.ChannelFlowBody;
 import org.wso2.andes.framing.MethodRegistry;
+import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
+import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.state.AMQStateManager;
@@ -29,7 +33,7 @@ import org.wso2.andes.server.state.StateAwareMethodListener;
 
 public class ChannelFlowHandler implements StateAwareMethodListener<ChannelFlowBody>
 {
-    private static final Logger _logger = Logger.getLogger(ChannelFlowHandler.class);
+    private static final Logger logger = Logger.getLogger(ChannelFlowHandler.class);
 
     private static ChannelFlowHandler _instance = new ChannelFlowHandler();
 
@@ -42,23 +46,41 @@ public class ChannelFlowHandler implements StateAwareMethodListener<ChannelFlowB
     {
     }
 
-    public void methodReceived(AMQStateManager stateManager, ChannelFlowBody body, int channelId) throws AMQException
-    {
-        AMQProtocolSession session = stateManager.getProtocolSession();
+    public void methodReceived(AMQStateManager stateManager, final ChannelFlowBody body, final int channelId)
+            throws AMQException {
 
-
+        final AMQProtocolSession session = stateManager.getProtocolSession();
         AMQChannel channel = session.getChannel(channelId);
 
-        if (channel == null)
-        {
+        if (null == channel) {
             throw body.getChannelNotFoundException(channelId);
         }
 
         channel.setSuspended(!body.getActive());
-        _logger.debug("Channel.Flow for channel " + channelId + ", active=" + body.getActive());
 
-        MethodRegistry methodRegistry = session.getMethodRegistry();
-        AMQMethodBody responseBody = methodRegistry.createChannelFlowOkBody(body.getActive());
-        session.writeFrame(responseBody.generateFrame(channelId));
+        QpidAndesBridge.notifyChannelFlow(channel.getId(), body.getActive(), new DisruptorEventCallback() {
+            @Override
+            public void execute() {
+                MethodRegistry methodRegistry = session.getMethodRegistry();
+                AMQMethodBody responseBody = methodRegistry.createChannelFlowOkBody(body.getActive());
+                session.writeFrame(responseBody.generateFrame(channelId));
+            }
+
+            @Override
+            public void onException(Exception exception) {
+                logger.error("Exception occurred while processing channel flow: " + body.getActive(),
+                             exception);
+                AMQChannelException channelException = body.getChannelException(AMQConstant.INTERNAL_ERROR,
+                                                                                exception.getMessage());
+                session.writeFrame(channelException.getCloseFrame(channelId));
+                try {
+                    session.closeChannel(channelId);
+                } catch (AMQException e) {
+                    logger.error("Couldn't close channel (channel id ) " + channelId, e);
+                }
+
+            }
+        });
+        logger.info(" Channel flow: " + body.getActive() + " set for channel: " + channel.getId());
     }
 }

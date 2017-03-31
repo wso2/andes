@@ -1829,9 +1829,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
         try
         {
 
-            boolean isSuspended = isSuspended();
-
-            if (!isSuspended)
+            if (!_suspended)
             {
                 suspendChannel(true);
             }
@@ -1855,7 +1853,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
             // Set inRecovery to false before you start message flow again again.            
             _inRecovery = false; 
             
-            if (!isSuspended)
+            if (_suspended)
             {
                 suspendChannel(false);
             }
