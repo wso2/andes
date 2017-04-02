@@ -38,7 +38,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * changes, etc. sent within the cluster be synchronized using RDBMS. If set to false, Hazelcast will be used for
      * this purpose.
      */
-    CLUSTER_EVENT_SYNC_MODE_RDBMS_ENABLED("coordination/RDBMSBasedClusterEventSynchronization/@enabled", "true",
+    CLUSTER_EVENT_SYNC_MODE_RDBMS_ENABLED("coordination/rdbmsBasedClusterEventSynchronization/@enabled", "true",
             Boolean.class),
 
     /**
@@ -46,7 +46,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Setting this to a very low value could have an impact on the performance since the number of DB calls will be
      * high. Setting this to a large value increases the time taken for a cluster event to be synchronized.
      */
-    CLUSTER_EVENT_SYNC_INTERVAL("coordination/clusterEventSyncMode/RDBMS/eventSyncInterval", "1000", Integer.class),
+    CLUSTER_EVENT_SYNC_INTERVAL("coordination/rdbmsBasedClusterEventSynchronization/eventSyncInterval", "1000", Integer.class),
 
     /**
      * The host IP to be used by the Thrift server. Thrift is used to coordinate message slots between MB nodes.
