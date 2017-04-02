@@ -2555,16 +2555,19 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             preparedStatement.setString(1, nodeID);
             resultSet = preparedStatement.executeQuery();
 
+            clearMembershipEvents = connection.prepareStatement(RDBMSConstants.PS_CLEAN_MEMBERSHIP_EVENTS_FOR_EVENT_ID);
+
             while (resultSet.next()) {
                 MembershipEvent membershipEvent = new MembershipEvent(
                         MembershipEventType.getTypeFromInt(resultSet.getInt(RDBMSConstants.MEMBERSHIP_CHANGE_TYPE)),
                         resultSet.getString(RDBMSConstants.MEMBERSHIP_CHANGED_MEMBER_ID));
                 membershipEvents.add(membershipEvent);
+
+                clearMembershipEvents.setLong(1, resultSet.getLong(RDBMSConstants.EVENT_ID));
+                clearMembershipEvents.addBatch();
             }
 
-            clearMembershipEvents = connection.prepareStatement(RDBMSConstants.PS_CLEAN_MEMBERSHIP_EVENTS_FOR_NODE);
-            clearMembershipEvents.setString(1, nodeID);
-            clearMembershipEvents.executeUpdate();
+            clearMembershipEvents.executeBatch();
             connection.commit();
 
             return membershipEvents;
@@ -2647,7 +2650,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;
-        PreparedStatement clearMembershipEvents = null;
+        PreparedStatement clearClusterNotificationEvents = null;
         ResultSet resultSet = null;
         List<ClusterNotification> clusterNotifications = new ArrayList<>();
         String task = "retrieving cluster notifications destined to: " + nodeID;
@@ -2658,6 +2661,9 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             preparedStatement.setString(1, nodeID);
             resultSet = preparedStatement.executeQuery();
 
+            clearClusterNotificationEvents = connection
+                    .prepareStatement(RDBMSConstants.PS_CLEAR_CLUSTER_NOTIFICATIONS_FOR_EVENT_ID);
+
             while (resultSet.next()) {
                 ClusterNotification notification = new ClusterNotification(
                         resultSet.getString(RDBMSConstants.EVENT_DETAILS),
@@ -2666,11 +2672,12 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
                         resultSet.getString(RDBMSConstants.EVENT_DESCRIPTION),
                         resultSet.getString(RDBMSConstants.ORIGINATED_MEMBER_ID));
                 clusterNotifications.add(notification);
+
+                clearClusterNotificationEvents.setLong(1, resultSet.getLong(RDBMSConstants.EVENT_ID));
+                clearClusterNotificationEvents.addBatch();
             }
 
-            clearMembershipEvents = connection.prepareStatement(RDBMSConstants.PS_CLEAR_CLUSTER_NOTIFICATIONS_FOR_NODE);
-            clearMembershipEvents.setString(1, nodeID);
-            clearMembershipEvents.executeUpdate();
+            clearClusterNotificationEvents.executeBatch();
             connection.commit();
             return clusterNotifications;
         } catch (SQLException e) {
@@ -2678,7 +2685,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         } finally {
             close(resultSet, task);
             close(preparedStatement, task);
-            close(clearMembershipEvents, task);
+            close(clearClusterNotificationEvents, task);
             close(connection, task);
         }
     }

@@ -422,8 +422,8 @@ public class RDBMSConstants {
      * Prepared statement to select cluster notification destined to a particular member.
      */
     protected static final String PS_SELECT_CLUSTER_NOTIFICATION_FOR_NODE =
-            "SELECT " + ORIGINATED_MEMBER_ID + ", " + EVENT_ARTIFACT + ","
-                    + EVENT_TYPE + ", " + EVENT_DETAILS + "," + EVENT_DESCRIPTION
+            "SELECT " + EVENT_ID + "," + ORIGINATED_MEMBER_ID + "," + EVENT_ARTIFACT + ","
+                    + EVENT_TYPE + "," + EVENT_DETAILS + "," + EVENT_DESCRIPTION
             + " FROM " + CLUSTER_EVENT_TABLE
             + " WHERE " + DESTINED_MEMBER_ID + "=?"
             + " ORDER BY " + EVENT_ID;
@@ -434,6 +434,10 @@ public class RDBMSConstants {
     protected static final String PS_CLEAR_CLUSTER_NOTIFICATIONS_FOR_NODE =
             "DELETE FROM " + CLUSTER_EVENT_TABLE
             + " WHERE " + DESTINED_MEMBER_ID + "=?";
+
+    protected static final String PS_CLEAR_CLUSTER_NOTIFICATIONS_FOR_EVENT_ID =
+            "DELETE FROM " + CLUSTER_EVENT_TABLE
+                    + " WHERE " + EVENT_ID + "=?";
 
     protected static final String PS_SELECT_ALL_NODE_INFO =
             "SELECT " + NODE_ID + "," + NODE_INFO
@@ -1037,7 +1041,7 @@ public class RDBMSConstants {
      * Prepared statement to select membership change event destined to a particular member.
      */
     protected static final String PS_SELECT_MEMBERSHIP_EVENT =
-            "SELECT " + MEMBERSHIP_CHANGE_TYPE + ", " + MEMBERSHIP_CHANGED_MEMBER_ID
+            "SELECT " + EVENT_ID + "," + MEMBERSHIP_CHANGE_TYPE + "," + MEMBERSHIP_CHANGED_MEMBER_ID
             + " FROM " + MEMBERSHIP_TABLE
             + " WHERE " + NODE_ID + "=?"
                     + " ORDER BY "  + EVENT_ID;
@@ -1048,6 +1052,10 @@ public class RDBMSConstants {
     protected static final String PS_CLEAN_MEMBERSHIP_EVENTS_FOR_NODE =
             "DELETE FROM " + MEMBERSHIP_TABLE
             + " WHERE " + NODE_ID + "=?";
+
+    protected static final String PS_CLEAN_MEMBERSHIP_EVENTS_FOR_EVENT_ID =
+            "DELETE FROM " + MEMBERSHIP_TABLE
+                    + " WHERE " + EVENT_ID + "=?";
 
     /*
      * =============== DTX related prepared statements
