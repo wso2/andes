@@ -23,6 +23,9 @@ import org.wso2.andes.AMQException;
 import org.wso2.andes.jms.ConnectionURL;
 
 import java.util.ArrayList;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import javax.jms.IllegalStateException;
 import javax.jms.JMSException;
 import javax.jms.XAConnection;
@@ -43,21 +46,39 @@ public class XAConnectionImpl extends AMQConnection implements XAConnection, XAQ
     private static final Logger LOGGER = LoggerFactory.getLogger(XAConnectionImpl.class);
 
     /**
+     * After this delay(in seconds), the connection will be closed even if a commit or rollback is not received. This
+     * is done to avoid stale connections to broker.
+     */
+    private static final int CONNECTION_CLOSE_TIMEOUT = 60;
+
+    /**
      * Keep track of active XA sessions
      */
     private final ArrayList<XASession_9_1> xaSessions = new ArrayList<>();
+
+    /**
+     * Executor service used to schedule connection close task.
+     */
+    private final ScheduledExecutorService scheduledExecutor;
 
     /**
      * Indicate if the connection.close is called before
      */
     private boolean connectionCloseSignaled = false;
 
+    /**
+     * Hold the future object of the scheduled close task
+     */
+    private ScheduledFuture<?> connectionCloseFuture;
+
     //-- constructor
     /**
      * Create a XAConnection from a connectionURL
      */
-    XAConnectionImpl(ConnectionURL connectionURL, SSLConfiguration sslConfig) throws AMQException {
+    XAConnectionImpl(ConnectionURL connectionURL, SSLConfiguration sslConfig,
+            ScheduledExecutorService scheduledExecutor) throws AMQException {
         super(connectionURL, sslConfig);
+        this.scheduledExecutor = scheduledExecutor;
     }
 
     //-- interface XAConnection
@@ -65,7 +86,7 @@ public class XAConnectionImpl extends AMQConnection implements XAConnection, XAQ
      * Creates an XASession.
      *
      * @return A newly created XASession.
-     * @throws JMSException If the XAConnectiono fails to create an XASession due to
+     * @throws JMSException If the XAConnection fails to create an XASession due to
      *                      some internal error.
      */
     public synchronized XASession createXASession() throws JMSException {
@@ -124,10 +145,31 @@ public class XAConnectionImpl extends AMQConnection implements XAConnection, XAQ
                 super.close();
             } else {
                 LOGGER.error("XAConnection.close() was called before committing or rolling back");
+                connectionCloseFuture = scheduledExecutor.schedule(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            LOGGER.error("Closing XAConnection after waiting " + CONNECTION_CLOSE_TIMEOUT
+                                                 + " seconds for a commit or rollback");
+                            closePhysicalConnection();
+                        } catch (JMSException e) {
+                            LOGGER.error("Error occurred while closing the XAConnection after close timeout");
+                        }
+                    }
+                }, CONNECTION_CLOSE_TIMEOUT, TimeUnit.SECONDS);
             }
 
             connectionCloseSignaled = true;
         }
+    }
+
+    /**
+     * Close the underline socket connection
+     *
+     * @throws JMSException if failed to close the socket connection
+     */
+    private void closePhysicalConnection() throws JMSException {
+        super.close();
     }
 
     /**
@@ -145,9 +187,35 @@ public class XAConnectionImpl extends AMQConnection implements XAConnection, XAQ
      *
      * @throws JMSException if there was an error closing the physical connection
      */
-    synchronized void internalClose() throws JMSException {
+    void internalClose() throws JMSException {
+        boolean closeSuccessful = closeIfNoActiveSessions();
+        if (closeSuccessful) {
+            removeScheduledClose();
+        }
+    }
+
+    /**
+     * Closes the physical connection if there are no active sessions
+     *
+     * @return true if physical connection is closed, false otherwise
+     * @throws JMSException if there was an closing the connection
+     */
+    private synchronized boolean closeIfNoActiveSessions() throws JMSException {
         if (xaSessions.isEmpty()) {
-            super.close();
+            closePhysicalConnection();
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * Remove the scheduled connection close task
+     */
+    private synchronized void removeScheduledClose() {
+        if (connectionCloseFuture != null) {
+            connectionCloseFuture.cancel(true);
+            connectionCloseFuture = null;
         }
     }
 }

@@ -29,9 +29,6 @@ import org.wso2.andes.jms.ConnectionURL;
 import org.wso2.andes.url.AMQBindingURL;
 import org.wso2.andes.url.URLSyntaxException;
 
-import javax.jms.*;
-import javax.naming.*;
-import javax.naming.spi.ObjectFactory;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.InetAddress;
@@ -40,6 +37,8 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Hashtable;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import javax.jms.ConnectionFactory;
 import javax.jms.JMSException;
 import javax.jms.JMSSecurityException;
@@ -80,6 +79,11 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
 
     private ConnectionListener connectionListener = null;
     private ThreadLocal<Boolean> removeBURL = new ThreadLocal<Boolean>();
+
+    /**
+     * Scheduled executor share by the XAConnectionImpl objects
+     */
+    private ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
 
     private static final Logger log = LoggerFactory.getLogger(AMQConnectionFactory.class);
 
@@ -587,7 +591,7 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
     {
         try
         {
-            return new XAConnectionImpl(_connectionDetails, _sslConfig);
+            return new XAConnectionImpl(_connectionDetails, _sslConfig, scheduledExecutor);
         }
         catch (Exception e)
         {
