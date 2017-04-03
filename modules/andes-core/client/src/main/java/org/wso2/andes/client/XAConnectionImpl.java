@@ -49,7 +49,7 @@ public class XAConnectionImpl extends AMQConnection implements XAConnection, XAQ
      * After this delay(in seconds), the connection will be closed even if a commit or rollback is not received. This
      * is done to avoid stale connections to broker.
      */
-    private static final int CONNECTION_CLOSE_TIMEOUT = 60;
+    private int connectionCloseTimeout = 60;
 
     /**
      * Keep track of active XA sessions
@@ -78,6 +78,7 @@ public class XAConnectionImpl extends AMQConnection implements XAConnection, XAQ
     XAConnectionImpl(ConnectionURL connectionURL, SSLConfiguration sslConfig,
             ScheduledExecutorService scheduledExecutor) throws AMQException {
         super(connectionURL, sslConfig);
+        this.connectionCloseTimeout = Integer.parseInt(System.getProperty("XaConnectionCloseWaitTimeOut", "60"));
         this.scheduledExecutor = scheduledExecutor;
     }
 
@@ -149,14 +150,14 @@ public class XAConnectionImpl extends AMQConnection implements XAConnection, XAQ
                     @Override
                     public void run() {
                         try {
-                            LOGGER.error("Closing XAConnection after waiting " + CONNECTION_CLOSE_TIMEOUT
+                            LOGGER.error("Closing XAConnection after waiting " + connectionCloseTimeout
                                                  + " seconds for a commit or rollback");
                             closePhysicalConnection();
                         } catch (JMSException e) {
                             LOGGER.error("Error occurred while closing the XAConnection after close timeout");
                         }
                     }
-                }, CONNECTION_CLOSE_TIMEOUT, TimeUnit.SECONDS);
+                }, connectionCloseTimeout, TimeUnit.SECONDS);
             }
 
             connectionCloseSignaled = true;
