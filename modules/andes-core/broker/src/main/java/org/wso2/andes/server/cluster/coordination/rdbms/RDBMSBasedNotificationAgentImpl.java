@@ -77,7 +77,8 @@ public class RDBMSBasedNotificationAgentImpl implements ClusterNotificationAgent
                 localNodeID);
 
         if (log.isDebugEnabled()) {
-            log.debug("Sending GOSSIP: " + clusterNotification.getEncodedObjectAsString());
+            log.debug("Sending router change GOSSIP: " + changeType + " - "
+                    + clusterNotification.getEncodedObjectAsString());
         }
         publishNotificationToDB(clusterNotification);
     }
@@ -96,7 +97,8 @@ public class RDBMSBasedNotificationAgentImpl implements ClusterNotificationAgent
                 localNodeID);
 
         if (log.isDebugEnabled()) {
-            log.debug("Sending GOSSIP: " + clusterNotification.getEncodedObjectAsString());
+            log.debug("Sending queue change GOSSIP: " + changeType + " - "
+                    + clusterNotification.getEncodedObjectAsString());
         }
         publishNotificationToDB(clusterNotification);
     }
@@ -115,7 +117,8 @@ public class RDBMSBasedNotificationAgentImpl implements ClusterNotificationAgent
                 localNodeID);
 
         if (log.isDebugEnabled()) {
-            log.debug("GOSSIP: " + clusterNotification.getEncodedObjectAsString());
+            log.debug("Sending binding change GOSSIP: " + changeType + " - "
+                    + clusterNotification.getEncodedObjectAsString());
         }
         publishNotificationToDB(clusterNotification);
     }
@@ -134,7 +137,8 @@ public class RDBMSBasedNotificationAgentImpl implements ClusterNotificationAgent
                 localNodeID);
 
         if (log.isDebugEnabled()) {
-            log.debug("Sending GOSSIP: " + clusterNotification.getEncodedObjectAsString());
+            log.debug("Sending subscription change GOSSIP: " + changeType + " - "
+                    + clusterNotification.getEncodedObjectAsString());
         }
         publishNotificationToDB(clusterNotification);
     }

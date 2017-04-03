@@ -82,7 +82,8 @@ public class HazelcastBasedNotificationAgentImpl implements ClusterNotificationA
                 localNodeID);
 
         if (log.isDebugEnabled()) {
-            log.debug("Sending GOSSIP: " + clusterNotification.getEncodedObjectAsString());
+            log.debug("Sending router change GOSSIP: " + changeType + " - "
+                    + clusterNotification.getEncodedObjectAsString());
         }
         try {
             clusterNotificationChannel.publish(clusterNotification);
@@ -113,7 +114,8 @@ public class HazelcastBasedNotificationAgentImpl implements ClusterNotificationA
                 localNodeID);
 
         if (log.isDebugEnabled()) {
-            log.debug("Sending GOSSIP: " + clusterNotification.getEncodedObjectAsString());
+            log.debug("Sending queue change GOSSIP: " + changeType + " - "
+                    + clusterNotification.getEncodedObjectAsString());
         }
         try {
             clusterNotificationChannel.publish(clusterNotification);
@@ -139,7 +141,8 @@ public class HazelcastBasedNotificationAgentImpl implements ClusterNotificationA
                 localNodeID);
 
         if (log.isDebugEnabled()) {
-            log.debug("GOSSIP: " + clusterNotification.getEncodedObjectAsString());
+            log.debug("Sending binding change GOSSIP: " + changeType + " - "
+                    + clusterNotification.getEncodedObjectAsString());
         }
         try {
             clusterNotificationChannel.publish(clusterNotification);
@@ -169,7 +172,8 @@ public class HazelcastBasedNotificationAgentImpl implements ClusterNotificationA
 
         //check hazelcast instance active because hazelcast bundle get deactivated before notification send
         if (log.isDebugEnabled()) {
-            log.debug("Sending GOSSIP: " + clusterNotification.getEncodedObjectAsString());
+            log.debug("Sending subscription change GOSSIP: " + changeType + " - "
+                    + clusterNotification.getEncodedObjectAsString());
         }
         try {
             clusterNotificationChannel.publish(clusterNotification);
