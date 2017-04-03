@@ -1136,9 +1136,11 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
             messagesToRemove.add(metadata);
             // Update Andes message with all the chunk details
-            List<AndesMessagePart> messageParts = messageContent.get(messageId);
-            for (AndesMessagePart messagePart : messageParts) {
-                andesMessage.addMessagePart(messagePart);
+            if(!messageContent.isEmpty()) {
+                List<AndesMessagePart> messageParts = messageContent.get(messageId);
+                for (AndesMessagePart messagePart : messageParts) {
+                    andesMessage.addMessagePart(messagePart);
+                }
             }
 
             // Handover message to Andes. This will generate a new message ID and store it
