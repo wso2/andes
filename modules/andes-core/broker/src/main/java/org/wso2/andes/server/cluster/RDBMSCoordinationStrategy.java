@@ -566,6 +566,7 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
         private void cancelStateExpirationTask() {
             if (scheduledFuture != null) {
                 scheduledFuture.cancel(true);
+                scheduledFuture = null;
             }
         }
 
