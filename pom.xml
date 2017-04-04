@@ -645,6 +645,7 @@
         <gs-collections-api.version>7.0.3</gs-collections-api.version>
         <gs-collections.version>7.0.3</gs-collections.version>
         <org.apache.commons.pool.version>2.4.2</org.apache.commons.pool.version>
+        <commons-lang.imp.pkg.version>[2.6, 3.0)</commons-lang.imp.pkg.version>
 
     </properties>
 
