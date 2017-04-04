@@ -21,6 +21,7 @@ import static org.apache.log4j.xml.QpidLog4JConfigurator.LOCK;
 
 import java.io.File;
 import java.io.IOException;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -366,7 +367,7 @@ public class LoggingManagementMBean extends AMQManagedObject implements LoggingM
             DOMSource source = new DOMSource(doc);
 
             File tmp;
-            Random r = new Random();
+            Random r = new SecureRandom();
             do
             {
                 tmp = new File(log4jConfigFile.getPath() + r.nextInt() + ".tmp");

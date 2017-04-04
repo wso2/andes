@@ -33,6 +33,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.security.Principal;
+import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -373,7 +374,7 @@ public class PlainPasswordFilePrincipalDatabase implements PrincipalDatabase
             BufferedReader reader = null;
             PrintStream writer = null;
             
-            Random r = new Random();
+            Random r = new SecureRandom();
             File tmp;
             do
             {
