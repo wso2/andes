@@ -101,9 +101,9 @@
                         <Export-Package>
                             org.wso2.andes.*;-split-package:=merge-last;version="${project.version}",
                             org.apache.mina.*;-split-package:=merge-last,
-                            org.apache.commons.lang.*;-split-package:=merge-last
                         </Export-Package>
                         <Import-Package>
+                            org.apache.commons.lang.*;version="${commons-lang.imp.pkg.version}",
                             org.slf4j.*;version="1.6.1",
                             org.apache.commons.logging.*,
                             org.wso2.securevault.*,
