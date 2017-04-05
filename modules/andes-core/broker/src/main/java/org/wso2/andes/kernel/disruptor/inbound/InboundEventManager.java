@@ -229,8 +229,7 @@ public class InboundEventManager {
 
             //Tracing message
             if (MessageTracer.isEnabled()) {
-                MessageTracer.trace(ackData.getMessageId(),
-                        MessageTracer.ACK_PUBLISHED_TO_DISRUPTOR + " Channel = " + ackData.getChannelId());
+                MessageTracer.traceAck(ackData, MessageTracer.ACK_PUBLISHED_TO_DISRUPTOR );
             }
 
             if (log.isDebugEnabled()) {

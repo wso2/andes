@@ -235,22 +235,20 @@ public class AMQPLocalSubscription implements OutboundSubscription {
     private void sendMessage(QueueEntry queueEntry) throws AndesException {
 
         String msgHeaderStringID = (String) queueEntry.getMessageHeader().getHeader("msgID");
-        Long messageID = queueEntry.getMessage().getMessageNumber();
+        long messageID = queueEntry.getMessage().getMessageNumber();
 
         try {
 
             if (amqpSubscription instanceof SubscriptionImpl.AckSubscription) {
 
-                MessageTracer.trace(messageID, "",
-                                    "Sending message " + msgHeaderStringID
-                                            + "-to "
-                                            + "channel " + getChannelID());
+                MessageTracer.trace(messageID, queueEntry.getMessage().getRoutingKey(), getChannelID(),
+                        MessageTracer.SENDING_MESSAGE_TO_SUBSCRIBER);
                 amqpSubscription.send(queueEntry);
 
             } else if (amqpSubscription instanceof SubscriptionImpl.NoAckSubscription) {
 
-                MessageTracer.trace(messageID, "", "Sending message "
-                        + msgHeaderStringID + "-to channel " + getChannelID());
+                MessageTracer.trace(messageID, queueEntry.getMessage().getRoutingKey(), getChannelID(),
+                        MessageTracer.SENDING_MESSAGE_TO_SUBSCRIBER);
 
                 amqpSubscription.send(queueEntry);
 
@@ -261,7 +259,7 @@ public class AMQPLocalSubscription implements OutboundSubscription {
 
             } else {
                 throw new AndesException("Error occurred while delivering message. Unexpected Subscription type for "
-                        + "message with ID : " + msgHeaderStringID);
+                        + "message with ID : " + messageID);
             }
         } catch (AMQException e) {
             // The error is not logged here since this will be caught safely higher up in the execution plan :

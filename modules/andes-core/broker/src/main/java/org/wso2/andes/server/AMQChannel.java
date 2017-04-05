@@ -94,6 +94,7 @@ import org.wso2.andes.server.txn.TimeoutDtxException;
 import org.wso2.andes.server.virtualhost.AMQChannelMBean;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.store.StoredAMQPMessage;
+import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -485,6 +486,11 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                         final IncomingMessage incomingMessage = _currentMessage;
 
                         if (isAttachedToADistributedTransaction()) {
+                            if (MessageTracer.isEnabled()) {
+                                MessageTracer.trace(incomingMessage.getRoutingKey(), getId(),
+                                                    andesChannel.getIdentifier(),
+                                                    MessageTracer.DTX_MESSAGE_RECEIVED_TO_AMQ_CHANNEL);
+                            }
                             ((QpidDistributedTransaction)_transaction).enqueueMessage(incomingMessage, andesChannel);
                         } else {
                             try {
@@ -503,7 +509,11 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                                     _logger.debug("Message id " + incomingMessage.getMessageNumber() + " received from "
                                             + "channel " + getId());
                                 }
-
+                                if (MessageTracer.isEnabled()) {
+                                    MessageTracer.trace(incomingMessage.getRoutingKey(), getId(),
+                                            andesChannel.getIdentifier(),
+                                            MessageTracer.MESSAGE_RECEIVED_TO_AMQ_CHANNEL);
+                                }
                                 QpidAndesBridge
                                         .messageReceived(incomingMessage, andesChannel, andesTransactionEvent);
 
@@ -1058,6 +1068,13 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                     QpidAndesBridge.ackReceived(this.getId(), entry.getMessage().getMessageNumber());
                 }
             }
+            if (MessageTracer.isEnabled()) {
+                for (QueueEntry queueEntry: ackedMessages) {
+                    MessageTracer.trace(queueEntry.getMessage().getRoutingKey(), getId(), andesChannel.getIdentifier(),
+                            isAttachedToADistributedTransaction(), deliveryTag, multiple,
+                            MessageTracer.ACK_RECEIVED_TO_AMQ_CHANNEL);
+                }
+            }
             updateTransactionalActivity();
         } finally {
             isMessagesAcksProcessing = false;
@@ -1399,6 +1416,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             _logger.debug(
                     "Starting distributed transaction with GID : " + Arrays.toString(xid.getGlobalTransactionId()));
         }
+        MessageTracer.trace(xid, getId(), "dtx.start received to AMQChannel");
         distributedTransaction.start(_session.getSessionID(), xid,join, resume);
     }
 
@@ -1410,6 +1428,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         if (_logger.isDebugEnabled()) {
             _logger.debug("Ending distributed transaction with GID : " + Arrays.toString(xid.getGlobalTransactionId()));
         }
+        MessageTracer.trace(xid, getId(), "dtx.end received to AMQChannel");
         distributedTransaction.end(_session.getSessionID(), xid,fail, suspend);
     }
 
@@ -1422,6 +1441,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             _logger.debug(
                     "Preparing distributed transaction with GID : " + Arrays.toString(xid.getGlobalTransactionId()));
         }
+        MessageTracer.trace(xid, getId(), "dtx.prepare received to AMQChannel");
         distributedTransaction.prepare(xid, callback);
     }
 
@@ -1434,6 +1454,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             _logger.debug("Committing distributed transaction with GID : " + Arrays.toString(xid.getGlobalTransactionId
                     ()));
         }
+        MessageTracer.trace(xid, getId(), "dtx.commit received to AMQChannel");
         distributedTransaction.commit(xid, onePhase, callback);
     }
 
@@ -1446,6 +1467,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             _logger.debug(
                     "Rolling back distributed transaction with GID : " + Arrays.toString(xid.getGlobalTransactionId()));
         }
+        MessageTracer.trace(xid, getId(), "dtx.rollback received to AMQChannel");
         distributedTransaction.rollback(xid, callback);
     }
 
@@ -1466,6 +1488,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             _logger.debug("Forgetting the distributed transaction with GID : " + Arrays.toString(xid.getGlobalTransactionId()));
         }
         distributedTransaction.forget(xid);
+        MessageTracer.trace(xid, getId(), "dtx.forget received to AMQChannel");
     }
 
     /**

@@ -16,15 +16,16 @@
 package org.wso2.andes.kernel.dtx;
 
 import org.apache.log4j.Logger;
+import org.wso2.andes.api.Message;
 import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
-import org.wso2.andes.kernel.disruptor.inbound.AndesInboundStateEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer;
 import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
 import org.wso2.andes.kernel.slot.SlotMessageCounter;
+import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -419,7 +420,22 @@ public class DtxBranch {
      */
     public void prepare(DisruptorEventCallback callback) {
         updateSlotCommand = new DtxPrepareCommand(callback);
+        traceMessageList(enqueueList, MessageTracer.PUBLISHING_DTX_PREPARE_ENQUEUE_RECORDS_TO_DISRUPTOR);
+        traceAckData(dequeueList, MessageTracer.PUBLISHING_DTX_PREPARE_DEQUEUE_RECORDS_TO_DISRUPTOR);
         eventManager.requestDtxEvent(this, null, InboundEventContainer.Type.DTX_PREPARE_EVENT);
+    }
+
+    /**
+     * Trace acknowledgement
+     * @param dequeueList list of {@link AndesAckData}
+     * @param description description of the message trace incident
+     */
+    private void traceAckData(List<AndesAckData> dequeueList, String description) {
+        if (MessageTracer.isEnabled()) {
+            for (AndesAckData ackData : dequeueList) {
+                MessageTracer.trace(ackData, xid, state, description);
+            }
+        }
     }
 
     /**
@@ -429,6 +445,7 @@ public class DtxBranch {
      */
     public void writeToDbOnCommit() throws AndesException {
         dtxRegistry.getStore().updateOnCommit(internalXid, enqueueList);
+        traceMessageList(enqueueList, MessageTracer.DTX_MESSAGE_WRITTEN_TO_DB);
     }
 
     /**
@@ -453,6 +470,7 @@ public class DtxBranch {
         try {
 
             SlotMessageCounter.getInstance().recordMetadataCountInSlot(messageList);
+            traceMessageList(messageList, MessageTracer.DTX_RECORD_METADATA_COUNT_IN_SLOT);
             enqueueList.clear();
             dequeueList.clear();
             callback.execute();
@@ -475,6 +493,25 @@ public class DtxBranch {
      */
     public void writeToDbOnRollback() throws AndesException {
         dtxRegistry.getStore().updateOnRollback(internalXid, preparedDequeueMessages);
+        if (MessageTracer.isEnabled()) {
+            for (AndesPreparedMessageMetadata preparedMessageMetadata : preparedDequeueMessages) {
+                MessageTracer.trace(preparedMessageMetadata, xid, state, MessageTracer.DTX_ROLLBACK_DEQUEUED_RECORDS);
+            }
+        }
+    }
+
+    /**
+     * Trace message list
+     *
+     * @param messageList {@link AndesMessage} list
+     * @param description description of the trace incident
+     */
+    private void traceMessageList(List<AndesMessage> messageList, String description) {
+        if (MessageTracer.isEnabled()) {
+            for (AndesMessage message: messageList) {
+                MessageTracer.trace(message.getMetadata(), xid, state, description);
+            }
+        }
     }
 
     /**

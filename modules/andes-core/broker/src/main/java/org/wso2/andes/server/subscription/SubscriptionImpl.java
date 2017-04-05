@@ -49,6 +49,7 @@ import org.wso2.andes.server.output.ProtocolOutputConverter;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.QueueEntry;
+import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.Map;
 import java.util.UUID;
@@ -207,7 +208,10 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
             synchronized (getChannel())
             {
                 long deliveryTag = getChannel().getNextDeliveryTag();
-
+                if (MessageTracer.isEnabled()) {
+                    MessageTracer.trace(entry.getMessage().getMessageNumber(), deliveryTag,
+                            MessageTracer.SENDING_MESSAGE_TO_SUBSCRIBER);
+                }
                 sendToClient(entry, deliveryTag);
 
             }
@@ -264,16 +268,17 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
 
                 long deliveryTag = getChannel().getNextDeliveryTag();
 
-                /*
-                  This method will record that this message is delivered in AMQChannel level
-                  Re-queueing and ack handling will be affected by this.
-                 */
+                if (MessageTracer.isEnabled()) {
+                    MessageTracer.trace(entry.getMessage().getMessageNumber(), deliveryTag,
+                            MessageTracer.SENDING_MESSAGE_TO_SUBSCRIBER);
+                }
+
+                //  This method will record that this message is delivered in AMQChannel level
+                //  Re-queueing and ack handling will be affected by this.
                 recordMessageDelivery(entry, deliveryTag);
 
-                /*
-                 no point of trying to deliver if channel is closed ReQueue the message to
-                 be resent when channel is available
-                 */
+                // no point of trying to deliver if channel is closed ReQueue the message to
+                // be resent when channel is available
                 if (getChannel().isClosing()) {
                     if (log.isDebugEnabled()) {
                         log.debug("channel getting closed therefore, not trying to deliver : "
