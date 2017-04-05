@@ -474,17 +474,26 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
         for (Map.Entry<UUID, ChannelInformation> channelInfoEntry : channelDeliveryInfo.entrySet()) {
             ChannelMessageStatus messageStatus = channelInfoEntry.getValue().getLatestMessageStatus();
 
-            //if channel is closed ignore it from considering
-            if (null != messageStatus && messageStatus.equals(ChannelMessageStatus.CLOSED)) {
-                continue;
-            }
-            //if message is rejected by client repeatedly ignore it from considering
-            if (null != messageStatus && messageStatus.equals(ChannelMessageStatus.CLIENT_REJECTED)) {
-                continue;
-            }
-            if (null == messageStatus || !messageStatus.equals(ChannelMessageStatus.ACKED)) {
+            if (null == messageStatus) {
                 isAcked = false;
                 break;
+            } else {
+                //if channel is closed ignore it from considering
+                if (messageStatus.equals(ChannelMessageStatus.CLOSED)) {
+                    continue;
+                }
+                //if message is rejected by client repeatedly ignore it from considering
+                if (messageStatus.equals(ChannelMessageStatus.CLIENT_REJECTED)) {
+                    continue;
+                }
+                //the message could be recovered by one client and acknowledged by another, hence needs to be ignored
+                if (messageStatus.equals(ChannelMessageStatus.RECOVERED)) {
+                    continue;
+                }
+                if (!messageStatus.equals(ChannelMessageStatus.ACKED)) {
+                    isAcked = false;
+                    break;
+                }
             }
         }
         if (channelDeliveryInfo.isEmpty()) {
