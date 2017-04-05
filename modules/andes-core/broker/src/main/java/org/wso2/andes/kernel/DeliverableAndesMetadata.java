@@ -482,6 +482,10 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
             if (null != messageStatus && messageStatus.equals(ChannelMessageStatus.CLIENT_REJECTED)) {
                 continue;
             }
+            //the message could be recovered by one client and acknowledged by another, hence needs to be ignored
+            if (null != messageStatus && messageStatus.equals(ChannelMessageStatus.RECOVERED)) {
+                continue;
+            }
             if (null == messageStatus || !messageStatus.equals(ChannelMessageStatus.ACKED)) {
                 isAcked = false;
                 break;

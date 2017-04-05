@@ -50,13 +50,12 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
         int sentMessageCount = 0;
         Iterator<DeliverableAndesMetadata> iterator = messages.iterator();
 
-        /**
-         * get all relevant type of subscriptions.
-         * For durable topic subscriptions this should return queue subscription
-         * bound to unique queue based on subscription id
+        /*
+          get all relevant types of subscriptions that are not suspended. For durable topic subscriptions
+          this should return queue subscription bound to unique queue based on subscription id.
          */
         List<org.wso2.andes.kernel.subscription.AndesSubscription> subscriptions4Queue =
-                storageQueue.getBoundSubscriptions();
+                storageQueue.getBoundUnSuspendedSubscriptions();
 
         List<org.wso2.andes.kernel.subscription.AndesSubscription> currentSubscriptions
                 = new ArrayList<>(subscriptions4Queue);

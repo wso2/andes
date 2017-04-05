@@ -49,13 +49,12 @@ public class SlowestSubscriberTopicMessageDeliveryImpl implements MessageDeliver
         Iterator<DeliverableAndesMetadata> iterator = messages.iterator();
         List<DeliverableAndesMetadata> droppedTopicMessagesList = new ArrayList<>();
 
-        /**
-         * get all relevant type of subscriptions. This call does NOT
-         * return hierarchical subscriptions for the destination. There
-         * are duplicated messages for each different subscribed destination.
+        /*
+          get all relevant type of subscriptions that are not suspended. This call does NOT return hierarchical
+          subscriptions for the destination. There are duplicated messages for each different subscribed destination.
          */
         List<org.wso2.andes.kernel.subscription.AndesSubscription> subscriptions4Queue =
-                storageQueue.getBoundSubscriptions();
+                storageQueue.getBoundUnSuspendedSubscriptions();
 
         List<org.wso2.andes.kernel.subscription.AndesSubscription> currentSubscriptions =
                 Collections.unmodifiableList(subscriptions4Queue);
