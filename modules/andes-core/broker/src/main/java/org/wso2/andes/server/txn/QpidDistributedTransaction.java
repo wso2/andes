@@ -21,7 +21,6 @@ import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesAckData;
-import org.wso2.andes.kernel.AndesAckEvent;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
@@ -64,7 +63,7 @@ public class QpidDistributedTransaction implements ServerTransaction {
      */
     private final Andes andes;
 
-    public QpidDistributedTransaction(AndesChannel channel, long sessionID) throws AndesException {
+    public QpidDistributedTransaction(AndesChannel channel, UUID sessionID) throws AndesException {
         andes = Andes.getInstance();
         distributedTransaction = andes.createDistributedTransaction(channel, sessionID);
     }
@@ -132,12 +131,12 @@ public class QpidDistributedTransaction implements ServerTransaction {
         throw new IllegalStateException("Cannot call tx.rollback() on a distributed transaction");
     }
 
-    public void start(long sessionID, Xid xid, boolean join, boolean resume)
+    public void start(UUID sessionID, Xid xid, boolean join, boolean resume)
             throws JoinAndResumeDtxException, UnknownDtxBranchException, AlreadyKnownDtxException, AndesException {
         distributedTransaction.start(sessionID, xid, join, resume);
     }
 
-    public void end(long sessionID, Xid xid, boolean fail, boolean suspend)
+    public void end(UUID sessionID, Xid xid, boolean fail, boolean suspend)
             throws UnknownDtxBranchException, SuspendAndFailDtxException, NotAssociatedDtxException,
                    TimeoutDtxException, AndesException {
         distributedTransaction.end(sessionID, xid, fail, suspend);
@@ -204,7 +203,7 @@ public class QpidDistributedTransaction implements ServerTransaction {
      *
      * @param sessionId corresponding session ID
      */
-    public void close(long sessionId) {
+    public void close(UUID sessionId) {
         try {
             distributedTransaction.close(sessionId);
         } finally {

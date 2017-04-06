@@ -16,7 +16,6 @@
 package org.wso2.andes.kernel.dtx;
 
 import org.apache.log4j.Logger;
-import org.wso2.andes.api.Message;
 import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
@@ -33,6 +32,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ScheduledFuture;
 import javax.transaction.xa.Xid;
 
@@ -54,7 +54,7 @@ public class DtxBranch {
     /**
      * Session Id of a session that is recovered from storage
      */
-    public static final int RECOVERY_SESSION_ID = -1;
+    public static final UUID RECOVERY_SESSION_ID = UUID.randomUUID();
 
     /**
      * XID used to identify the dtx branch by external parties
@@ -69,7 +69,7 @@ public class DtxBranch {
     /**
      * List of associated sessions to this branch
      */
-    private Map<Long, State> associatedSessions = new HashMap<>();
+    private Map<UUID, State> associatedSessions = new HashMap<>();
 
     /**
      * Event manager used to publish commit event
@@ -124,7 +124,7 @@ public class DtxBranch {
     /**
      * Session id of the session which created the branch
      */
-    private long createdSessionId;
+    private UUID createdSessionId;
 
     /**
      * Reference to the specific command that needs to be executed when updateState method is invoked by the
@@ -134,17 +134,16 @@ public class DtxBranch {
 
     /**
      * Default constructor
-     *
-     * @param sessionID    session ID of originating session
+     *  @param sessionId    session ID of originating session
      * @param xid          XID used to identify the dtx branch by external parties
      * @param dtxRegistry  registry used to keep dtx branch related information
      * @param eventManager event manager used to publish commit event
      */
-    DtxBranch(long sessionID, Xid xid, DtxRegistry dtxRegistry, InboundEventManager eventManager) {
+    DtxBranch(UUID sessionId, Xid xid, DtxRegistry dtxRegistry, InboundEventManager eventManager) {
         this.xid = xid;
         this.dtxRegistry = dtxRegistry;
         this.eventManager = eventManager;
-        this.createdSessionId = sessionID;
+        this.createdSessionId = sessionId;
     }
 
     /**
@@ -199,7 +198,7 @@ public class DtxBranch {
      * @param sessionID session identifier of the session
      * @return True if a new entry, False otherwise
      */
-    boolean associateSession(long sessionID) {
+    boolean associateSession(UUID sessionID) {
         return associatedSessions.put(sessionID, State.ACTIVE) != null;
     }
 
@@ -209,19 +208,19 @@ public class DtxBranch {
      * @param sessionID session identifier of the session
      * @return True if there is a matching entry, False otherwise
      */
-    boolean disassociateSession(long sessionID) {
+    boolean disassociateSession(UUID sessionID) {
         return associatedSessions.remove(sessionID) != null;
     }
 
     /**
      * Resume a session if it is suspended
      *
-     * @param sessionID session identifier of the session
+     * @param sessionId session identifier of the session
      * @return True if there is a matching suspended entry
      */
-    boolean resumeSession(long sessionID) {
-        if (associatedSessions.containsKey(sessionID) && associatedSessions.get(sessionID) == State.SUSPENDED) {
-            associatedSessions.put(sessionID, State.ACTIVE);
+    boolean resumeSession(UUID sessionId) {
+        if (associatedSessions.containsKey(sessionId) && associatedSessions.get(sessionId) == State.SUSPENDED) {
+            associatedSessions.put(sessionId, State.ACTIVE);
             return true;
         }
         return false;
@@ -233,7 +232,7 @@ public class DtxBranch {
      * @param sessionId session identifier of the session
      * @return True is the session is associated with the branch
      */
-    boolean isAssociated(long sessionId) {
+    boolean isAssociated(UUID sessionId) {
         return associatedSessions.containsKey(sessionId);
     }
 
@@ -241,7 +240,7 @@ public class DtxBranch {
      * Id of the session which created the branch
      * @return session id
      */
-    long getCreatedSessionId() {
+    UUID getCreatedSessionId() {
         return createdSessionId;
     }
 
@@ -251,7 +250,7 @@ public class DtxBranch {
      * @param sessionId session identifier of the session
      * @return True if a matching active sessions if found, False otherwise
      */
-    boolean suspendSession(long sessionId) {
+    boolean suspendSession(UUID sessionId) {
         State state = associatedSessions.get(sessionId);
         if (null != state && state == State.ACTIVE) {
             associatedSessions.put(sessionId, State.SUSPENDED);

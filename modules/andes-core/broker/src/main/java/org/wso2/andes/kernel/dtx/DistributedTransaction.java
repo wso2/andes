@@ -33,6 +33,7 @@ import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import javax.transaction.xa.Xid;
 
 /**
@@ -101,7 +102,7 @@ public class DistributedTransaction {
      * @throws UnknownDtxBranchException Thrown when the provided {@link Xid} is not known when the join flag is set
      * @throws AlreadyKnownDtxException Thrown when the provided {@link Xid} already exist and the join flag is not set
      */
-    public void start(long sessionID, Xid xid, boolean join, boolean resume) throws JoinAndResumeDtxException,
+    public void start(UUID sessionID, Xid xid, boolean join, boolean resume) throws JoinAndResumeDtxException,
                                                                                     UnknownDtxBranchException,
                                                                                     AlreadyKnownDtxException,
                                                                                     AndesException {
@@ -157,7 +158,7 @@ public class DistributedTransaction {
      *                                   sessionId
      * @throws TimeoutDtxException Thrown when the {@link DtxBranch} has timed out
      */
-    public void end(long sessionId, Xid xid, boolean fail, boolean suspend) throws SuspendAndFailDtxException,
+    public void end(UUID sessionId, Xid xid, boolean fail, boolean suspend) throws SuspendAndFailDtxException,
                                                                                    UnknownDtxBranchException,
                                                                                    NotAssociatedDtxException,
                                                                                    TimeoutDtxException,
@@ -310,7 +311,7 @@ public class DistributedTransaction {
      *
      * @param sessionId server session Id for the connected channel
      */
-    public void close(long sessionId) {
+    public void close(UUID sessionId) {
         dtxRegistry.close(sessionId);
     }
 
