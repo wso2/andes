@@ -27,7 +27,6 @@ import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.abstraction.ContentChunk;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesAckData;
-import org.wso2.andes.kernel.AndesAckEvent;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
@@ -285,8 +284,8 @@ public class QpidAndesBridge {
                 log.debug("ack received for message id= " + messageId + " channelId= " + channelId);
             }
             //Tracing Message
-            MessageTracer.trace(messageId, MessageTracer.ACK_RECEIVED_FROM_PROTOCOL);
             AndesAckData andesAckData = new AndesAckData(channelId, messageId);
+            MessageTracer.traceAck(andesAckData, MessageTracer.ACK_RECEIVED_FROM_PROTOCOL);
             Andes.getInstance().ackReceived(andesAckData);
         } catch (AndesException e) {
             log.error("Exception occurred while handling ack", e);

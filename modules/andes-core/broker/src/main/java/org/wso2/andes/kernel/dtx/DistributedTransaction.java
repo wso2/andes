@@ -29,6 +29,7 @@ import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
 import org.wso2.andes.server.txn.IncorrectDtxStateException;
 import org.wso2.andes.server.txn.RollbackOnlyDtxException;
 import org.wso2.andes.server.txn.TimeoutDtxException;
+import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -238,6 +239,10 @@ public class DistributedTransaction {
 
             if (totalMessageSize < maxTotalMessageSizeAllowed) {
                 branch.enqueueMessage(andesMessage);
+                if (MessageTracer.isEnabled()) {
+                    MessageTracer.trace(andesMessage.getMetadata(), branch.getXid(),
+                                        branch.getState(), MessageTracer.ENQUEUED_DTX_MESSAGE);
+                }
             } else {
                 if (!transactionFailed) {
                     branch.clearEnqueueList();
