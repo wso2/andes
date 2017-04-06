@@ -19,6 +19,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.wso2.andes.dtx.XidImpl;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.DtxStore;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
@@ -27,6 +28,7 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.txn.IncorrectDtxStateException;
 import org.wso2.andes.server.txn.RollbackOnlyDtxException;
 import org.wso2.andes.server.txn.TimeoutDtxException;
+import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -199,8 +201,18 @@ public class DtxRegistry {
         List<AndesPreparedMessageMetadata> dequeueRecords =
                 messagingEngine.acknowledgeOnDtxPrepare(branch.getDequeueList());
         branch.setMessagesToRestore(dequeueRecords);
-        return dtxStore.storeDtxRecords(branch.getXid(), branch.getEnqueueList(), dequeueRecords);
-
+        long internalXid = dtxStore.storeDtxRecords(branch.getXid(), branch.getEnqueueList(), dequeueRecords);
+        if (MessageTracer.isEnabled()) {
+            for (AndesMessage message : branch.getEnqueueList()) {
+                MessageTracer.trace(message.getMetadata(), branch.getXid(), branch.getState(),
+                        MessageTracer.STORED_PREPARED_ENQUEUE_RECORDS_TO_DB);
+            }
+            for (AndesPreparedMessageMetadata preparedMessageMetadata: dequeueRecords) {
+                MessageTracer.trace(preparedMessageMetadata, branch.getXid(), branch.getState(),
+                        MessageTracer.MOVE_PREPARED_DEQUEUE_RECORDS_TO_DB);
+            }
+        }
+        return internalXid;
     }
 
     /**

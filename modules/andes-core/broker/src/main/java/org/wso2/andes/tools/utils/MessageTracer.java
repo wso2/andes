@@ -21,9 +21,17 @@ package org.wso2.andes.tools.utils;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.DeliverableAndesMetadata;
+import org.wso2.andes.kernel.dtx.AndesPreparedMessageMetadata;
+import org.wso2.andes.kernel.dtx.DtxBranch;
+import org.wso2.andes.kernel.slot.Slot;
+
+import java.util.UUID;
+import javax.transaction.xa.Xid;
 
 /**
  * Purpose of this class is to log message activities
@@ -31,8 +39,23 @@ import org.wso2.andes.kernel.AndesMessageMetadata;
 public class MessageTracer {
 
     private static Log log = LogFactory.getLog(MessageTracer.class);
+    public static final String REACHED_ANDES_CORE = "reached Andes core";
+    public static final String ENQUEUED_DTX_MESSAGE = "dtx message enqueued";
+    public static final String PUBLISHING_DTX_PREPARE_ENQUEUE_RECORDS_TO_DISRUPTOR =
+            "submitting dtx prepare enqueue records to inbound disruptor";
+    public static final String PUBLISHING_DTX_PREPARE_DEQUEUE_RECORDS_TO_DISRUPTOR =
+            "submitting dtx prepare dequeue records to inbound disruptor";
+    public static final String DTX_MESSAGE_WRITTEN_TO_DB = "message written to database on dtx.commit";
+    public static final String DTX_ROLLBACK_DEQUEUED_RECORDS = "message restored on dtx.rollback with a new message id";
+    public static final String STORED_PREPARED_ENQUEUE_RECORDS_TO_DB = "stored prepared incoming messages to dtx store";
+    public static final String MOVE_PREPARED_DEQUEUE_RECORDS_TO_DB =
+            "moved acknowledged messages to dtx store from message store";
+    public static final String SENDING_MESSAGE_TO_SUBSCRIBER = "sending message to subscriber";
+    public static final String DTX_RECORD_METADATA_COUNT_IN_SLOT = "slot information updated for message on dtx.commit";
+    public static final String MESSAGE_RECEIVED_TO_AMQ_CHANNEL = " message received to AMQChannel";
+    public static final String DTX_MESSAGE_RECEIVED_TO_AMQ_CHANNEL = "dtx message received to AMQChannel";
+    public static final String ACK_RECEIVED_TO_AMQ_CHANNEL = "acknowledgment received to AMQChannel";
 
-    public static final String REACHED_ANDES_CORE = "reached andes core";
     public static final String PUBLISHED_TO_INBOUND_DISRUPTOR = "messaging event submitted to inbound disruptor";
     public static final String ENQUEUE_EVENT_PUBLISHED_TO_INBOUND_DISRUPTOR = "enqueue event submitted to inbound "
                                                                               + "disruptor";
@@ -82,35 +105,27 @@ public class MessageTracer {
      */
     public static void trace(long messageId, String destination, String description) {
         if (log.isTraceEnabled()) {
-	        StringBuilder messageContent = new StringBuilder();
-	        messageContent.append("Message { Destination: ");
-	        messageContent.append(destination);
+            TraceBuilder traceBuilder = new TraceBuilder(TraceBuilder.MESSAGE_TRACE);
+            traceBuilder.setDestination(destination);
             if (messageId > 0) { // Check if andes message id is assigned, else ignore
-                messageContent.append(" , Id: ");
-	            messageContent.append(messageId);
+                traceBuilder.setMessageId(messageId);
             }
-            messageContent.append(" } ");
-	        messageContent.append(description);
-            log.trace(messageContent.toString());
+            log.trace(traceBuilder.toString(description));
         }
     }
 
     /**
-     * Trace log on message activity. Accepts message Id and a description
+     * Trace Acknowledgment messages
      *
-     * @param messageId Id of the message
+     * @param ackData {@link AndesAckData}
      * @param description Description to place in log on message activity
      */
-    public static void trace(long messageId, String description) {
+    public static void traceAck(AndesAckData ackData, String description) {
         if (log.isTraceEnabled()) {
-            StringBuilder messageContent = new StringBuilder();
-            if (messageId > 0) { // Check if andes message id is assigned, else ignore
-                messageContent.append("Id: ");
-                messageContent.append(messageId);
-                messageContent.append(", ");
-            }
-            messageContent.append(description);
-            log.trace(messageContent.toString());
+            TraceBuilder traceBuilder = new TraceBuilder(TraceBuilder.ACKNOWLEDGMENT_TRACE);
+            traceBuilder.setMessageId(ackData.getMessageId())
+                    .setChannelId(ackData.getChannelId());
+            log.trace(traceBuilder.toString(description));
         }
     }
 
@@ -153,20 +168,14 @@ public class MessageTracer {
      */
     private static void traceTransaction(long messageId, String destination, String channelId, String description) {
         if (log.isTraceEnabled()) {
-            StringBuilder messageContent = new StringBuilder();
-            messageContent.append("Message { Destination: ");
-            messageContent.append(destination);
+            TraceBuilder traceBuilder = new TraceBuilder(TraceBuilder.MESSAGE_TRACE);
+            traceBuilder.setDestination(destination);
             // Check if andes message id is assigned, else ignore
             if (messageId > 0) {
-                messageContent.append(" , Id: ");
-                messageContent.append(messageId);
+                traceBuilder.setMessageId(messageId);
             }
-            messageContent.append(" , ChannelId: ");
-            messageContent.append(channelId);
-
-            messageContent.append(" } ");
-            messageContent.append(description);
-            log.trace(messageContent.toString());
+            traceBuilder.setChannelIdentifier(channelId);
+            log.trace(traceBuilder.toString(description));
         }
     }
 
@@ -180,11 +189,9 @@ public class MessageTracer {
      */
     public static void traceTransaction(AndesChannel channel, int size, String description) {
         if (log.isTraceEnabled()) {
-            String messageContent = "Transaction { "
-                                    + " ChannelID: " + channel.getIdentifier()
-                                    + " , BatchSize: " + size
-                                    + "} " + description;
-            log.trace(messageContent);
+            TraceBuilder traceBuilder = new TraceBuilder(TraceBuilder.TX_TRACE);
+            traceBuilder.setChannelIdentifier(channel.getIdentifier()).setTxBatchSize(size);
+            log.trace(traceBuilder.toString(description));
         }
     }
 
@@ -201,4 +208,370 @@ public class MessageTracer {
                 channel.getIdentifier(), description);
     }
 
+    /**
+     * Trace dtx messages coming into the {@link org.wso2.andes.server.AMQChannel}
+     *
+     * @param xid {{@link Xid}}
+     * @param channelId {@link org.wso2.andes.server.AMQChannel} Id
+     * @param description description of the trace incident
+     */
+    public static void trace(Xid xid, UUID channelId, String description) {
+        if (log.isTraceEnabled()) {
+            TraceBuilder traceBuilder = new TraceBuilder(TraceBuilder.DTX_TRACE);
+            traceBuilder.setXid(xid).setChannelId(channelId);
+            log.trace(traceBuilder.toString(description));
+        }
+    }
+
+    /**
+     * Trace {@link AndesMessage} for a distributed transaction
+
+     * @param metadata {@link AndesMessageMetadata} relevant to the message
+     * @param xid {@link Xid}
+     * @param state {@link org.wso2.andes.kernel.dtx.DtxBranch.State} of the {@link DtxBranch}
+     * @param description description of the message trace incident
+     */
+    public static void trace(AndesMessageMetadata metadata, Xid xid, DtxBranch.State state, String description) {
+        if (log.isTraceEnabled()) {
+            TraceBuilder traceBuilder = new TraceBuilder(TraceBuilder.MESSAGE_TRACE);
+            traceBuilder.setMessageId(metadata.getMessageID())
+                    .setDestination(metadata.getDestination())
+                    .setXid(xid)
+                    .setBranchState(state);
+            log.trace(traceBuilder.toString(description));
+        }
+    }
+
+    /**
+     * Trace acknowledgment event for a distributed transaction
+     *
+     * @param ackData {@link AndesAckData}
+     * @param xid {@link Xid}
+     * @param state {@link org.wso2.andes.kernel.dtx.DtxBranch.State} of the {@link DtxBranch}
+     * @param description description of the message trace incident
+     */
+    public static void trace(AndesAckData ackData, Xid xid, DtxBranch.State state, String description) {
+        if (log.isTraceEnabled()) {
+            TraceBuilder traceBuilder = new TraceBuilder(TraceBuilder.ACKNOWLEDGMENT_TRACE);
+            traceBuilder.setMessageId(ackData.getMessageId())
+                    .setBranchState(state)
+                    .setChannelId(ackData.getChannelId())
+                    .setXid(xid);
+            log.trace(traceBuilder.toString(description));
+        }
+    }
+
+    /**
+     * Trace {@link AndesPreparedMessageMetadata} which is used to rollback acknowledged messages
+     *
+     * @param preparedMessageMetadata {@link AndesPreparedMessageMetadata}
+     * @param xid {@link Xid}
+     * @param state {@link org.wso2.andes.kernel.dtx.DtxBranch.State} of the {@link DtxBranch}
+     * @param description description of the message trace incident
+     */
+    public static void trace(AndesPreparedMessageMetadata preparedMessageMetadata, Xid xid, DtxBranch.State state,
+                             String description) {
+        if (log.isTraceEnabled()) {
+            TraceBuilder traceBuilder = new TraceBuilder(TraceBuilder.MESSAGE_TRACE);
+            traceBuilder.setMessageId(preparedMessageMetadata.getMessageID())
+                    .setOldMessageId(preparedMessageMetadata.getOldMessageId())
+                    .setXid(xid)
+                    .setDestination(preparedMessageMetadata.getDestination())
+                    .setBranchState(state);
+            log.trace(traceBuilder.toString(description));
+        }
+    }
+
+    /**
+     * General purpose message trace with a simple description
+     * @param description description of the message trace incident
+     */
+    public static void trace(String description) {
+        log.trace(description);
+    }
+
+    /**
+     * Trace message with routing key and channel id
+     *
+     * @param messageId message id
+     * @param routingKey routing key of the message
+     * @param channelId {@link UUID} channel id
+     * @param description description of the message trace incident
+     */
+    public static void trace(long messageId, String routingKey, UUID channelId, String description) {
+        if (log.isTraceEnabled()) {
+            TraceBuilder traceBuilder = new TraceBuilder(TraceBuilder.MESSAGE_TRACE);
+            traceBuilder.setMessageId(messageId).setDestination(routingKey).setChannelId(channelId);
+            log.trace(traceBuilder.toString(description));
+        }
+    }
+
+    /**
+     * Trace a message without message id.
+     * @param destination destination of the message. (Routing key)
+     * @param channelId {@link org.wso2.andes.server.AMQChannel} id
+     * @param channelIdentifier {@link AndesChannel} identifier
+     * @param description description of the message trace incident
+     */
+    public static void trace(String destination, UUID channelId, String channelIdentifier, String description) {
+        if (log.isTraceEnabled()) {
+            TraceBuilder traceBuilder = new TraceBuilder(TraceBuilder.MESSAGE_TRACE);
+            traceBuilder.setDestination(destination).setChannelId(channelId).setChannelIdentifier(channelIdentifier);
+            log.trace(traceBuilder.toString(description));
+        }
+    }
+
+    /**
+     * Trace a message in delivery
+     *
+     * @param messageId message id
+     * @param deliveryTag delivery tag of the message
+     * @param description description of the message trace incident
+     */
+    public static void trace(long messageId, long deliveryTag, String description) {
+        if (log.isTraceEnabled()) {
+            TraceBuilder traceBuilder = new TraceBuilder(TraceBuilder.MESSAGE_TRACE);
+            traceBuilder.setMessageId(messageId).setDeliveryTag(deliveryTag);
+            log.trace(traceBuilder.toString(description));
+        }
+    }
+
+    /**
+     * Trace acknowledgment
+     *
+     * @param destination routing key of the acknowledgment
+     * @param channelId Channel id as a {@link UUID}
+     * @param channelIdentifier channel identifier. IP and port
+     * @param isDtx true if distributed transaction
+     * @param deliveryTag delivery tag
+     * @param isMultiple Ack multiple messages or not (AMQP specific)
+     * @param description description of the message trace incident
+     */
+    public static void trace(String destination, UUID channelId, String channelIdentifier,
+                             boolean isDtx, long deliveryTag, boolean isMultiple, String description) {
+        if (log.isTraceEnabled()) {
+            TraceBuilder traceBuilder = new TraceBuilder(TraceBuilder.ACKNOWLEDGMENT_TRACE);
+            traceBuilder.setDestination(destination)
+                    .setDeliveryTag(deliveryTag)
+                    .setChannelId(channelId)
+                    .setChannelIdentifier(channelIdentifier)
+                    .setDeliveryTag(deliveryTag)
+                    .setAckMultiple(isMultiple)
+                    .setIsDtx(isDtx);
+            log.trace(traceBuilder.toString(description));
+        }
+    }
+
+    /**
+     * Trace deliverable message
+     * @param metadata {@link DeliverableAndesMetadata}
+     * @param slot {@link Slot}
+     * @param description description of the message trace incident
+     */
+    public static void trace(DeliverableAndesMetadata metadata, Slot slot, String description) {
+        if (log.isTraceEnabled()) {
+            TraceBuilder traceBuilder = new TraceBuilder(TraceBuilder.MESSAGE_TRACE);
+            traceBuilder.setDestination(metadata.getDestination())
+                    .setMessageId(metadata.getMessageID())
+                    .setSlotId(slot.getId());
+            log.trace(traceBuilder.toString(description));
+        }
+    }
+
+    /**
+     * Builder to create a standard trace message
+     */
+    private static class TraceBuilder {
+
+        /**
+         * Data Fields
+         */
+        private static final String TX_BATCH_SIZE = "txBatchSize: ";
+        private static final String MESSAGE_ID = "id: ";
+        private static final String OLD_MESSAGE_ID = "oldId: ";
+        private static final String DESTINATION = "destination: ";
+        private static final String DELIVERY_TAG = "deliveryTag: ";
+        private static final String CHANNEL_ID = "channelId: ";
+        private static final String CHANNEL_IDENTIFIER = "channelIdentifier: ";
+        private static final String XID = "xid: ";
+        private static final String DTX_BRANCH_STATE = "branchState: ";
+        private static final String ACK_MULTIPLE = "ackMultiple: ";
+        private static final String IS_DTX = "isDtx: ";
+        private static final String SLOT_ID = "slotId: ";
+
+        /**
+         * Prefixes
+         */
+        static final String MESSAGE_TRACE = "Message { ";
+        static final String ACKNOWLEDGMENT_TRACE = "Ack { ";
+        static final String DTX_TRACE = "Dtx { ";
+        static final String TX_TRACE = "Transaction { ";
+
+        /**
+         * Field separator
+         */
+        private static final String FIELD_SEPARATOR = " , ";
+
+        /**
+         * String builder for trace message
+         */
+        private StringBuilder messageContent;
+
+        /**
+         * Create a trace builder class
+         *
+         * @param traceHeader type of trace message
+         */
+        TraceBuilder(String traceHeader) {
+            this.messageContent = new StringBuilder();
+            messageContent.append(traceHeader);
+        }
+
+        /**
+         * Set message id to the trace
+         *
+         * @param id Message id
+         * @return TraceBuilder
+         */
+        TraceBuilder setMessageId(long id) {
+            messageContent.append(FIELD_SEPARATOR).append(MESSAGE_ID).append(id);
+            return this;
+        }
+
+        /**
+         * Set the previous message id of the message. Needed when restoring message
+         *
+         * @param oldId Old message id
+         * @return TraceBuilder
+         */
+        TraceBuilder setOldMessageId(long oldId) {
+            messageContent.append(FIELD_SEPARATOR).append(OLD_MESSAGE_ID).append(oldId);
+            return this;
+        }
+
+        /**
+         * Set destination queue or topic of the message
+         *
+         * @param destination destination (Routing key)
+         * @return TraceBuilder
+         */
+        TraceBuilder setDestination(String destination) {
+            messageContent.append(FIELD_SEPARATOR).append(DESTINATION).append(destination);
+            return this;
+        }
+
+        /**
+         * Set delivery tag of the delivery message or acknowledgement
+         *
+         * @param deliveryTag delivery tag
+         * @return TraceBuilder
+         */
+        TraceBuilder setDeliveryTag(long deliveryTag) {
+            messageContent.append(FIELD_SEPARATOR).append(DELIVERY_TAG).append(deliveryTag);
+            return this;
+        }
+
+        /**
+         * Set Channel Id
+         *
+         * @param channelId Channel id as a {@link UUID}
+         * @return TraceBuilder
+         */
+        TraceBuilder setChannelId(UUID channelId) {
+            messageContent.append(FIELD_SEPARATOR).append(CHANNEL_ID).append(channelId);
+            return this;
+        }
+
+        /**
+         * Set channel identifier, which contains IP and port of the channel
+         *
+         * @param channelIdentifier String containing the IP and port. {@link AndesChannel} identifier
+         * @return TraceBuilder
+         */
+        TraceBuilder setChannelIdentifier(String channelIdentifier) {
+            messageContent.append(FIELD_SEPARATOR).append(CHANNEL_IDENTIFIER).append(channelIdentifier);
+            return this;
+        }
+
+        /**
+         * Set Dtx {@link Xid}
+         *
+         * @param xid {@link Xid}
+         * @return TraceBuilder
+         */
+        TraceBuilder setXid(Xid xid) {
+            messageContent.append(FIELD_SEPARATOR).append(XID).append(xid);
+            return this;
+        }
+
+        /**
+         * Set the dtx branch state
+         *
+         * @param state {@link org.wso2.andes.kernel.dtx.DtxBranch.State}
+         * @return TraceBuilder
+         */
+        TraceBuilder setBranchState(DtxBranch.State state) {
+            messageContent.append(FIELD_SEPARATOR).append(DTX_BRANCH_STATE).append(state);
+            return this;
+        }
+
+        /**
+         * Set the boolean of the received acknowledgement mode. Ack multiple messages or not (AMQP specific)
+         *
+         * @param ackMultiple acknowledge multiple messages
+         * @return TraceBuilder
+         */
+        TraceBuilder setAckMultiple(boolean ackMultiple) {
+            messageContent.append(FIELD_SEPARATOR).append(ACK_MULTIPLE).append(ackMultiple);
+            return this;
+        }
+
+        /**
+         * Set whether the this is specific to dtx or not
+         *
+         * @param isDtx true if this is related to dtx
+         * @return TraceBuilder
+         */
+        TraceBuilder setIsDtx(boolean isDtx) {
+            messageContent.append(FIELD_SEPARATOR).append(IS_DTX).append(isDtx);
+            return this;
+        }
+
+        /**
+         * set local transaction batch size
+         *
+         * @param txBatchSize transaction batch size
+         * @return TraceBuilder
+         */
+        TraceBuilder setTxBatchSize(int txBatchSize) {
+            messageContent.append(FIELD_SEPARATOR).append(TX_BATCH_SIZE).append(txBatchSize);
+            return this;
+        }
+
+        /**
+         * Set the slot id
+         *
+         * @param slotId slot id
+         * @return TraceBuilder
+         */
+        TraceBuilder setSlotId(String slotId) {
+            messageContent.append(FIELD_SEPARATOR).append(SLOT_ID).append(slotId);
+            return this;
+        }
+
+        @Override
+        public String toString() {
+            return messageContent.append(" } ").toString();
+        }
+
+        /**
+         * Get the {@link String} representation of the trace with the description
+         *
+         * @param description description of the trace incident
+         * @return String
+         */
+        String toString(String description) {
+            return messageContent.append(" } ").append(description).toString();
+        }
+    }
 }

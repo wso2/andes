@@ -307,12 +307,12 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
     private void setMessageID(AndesMessage message) {
         long messageId = idGenerator.getNextId();
 
+        message.getMetadata().setMessageID(messageId);
+
         // Tracing message
         if (MessageTracer.isEnabled()) {
-            MessageTracer.trace(message, MessageTracer.MESSAGE_ID_MAPPED + " id: " + messageId);
+            MessageTracer.trace(messageId, message.getMetadata().getDestination(), MessageTracer.MESSAGE_ID_MAPPED);
         }
-
-        message.getMetadata().setMessageID(messageId);
 
         for (AndesMessagePart messagePart: message.getContentChunkList()) {
             messagePart.setMessageID(messageId);
