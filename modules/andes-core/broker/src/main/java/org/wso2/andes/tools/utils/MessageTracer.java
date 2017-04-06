@@ -28,10 +28,10 @@ import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.dtx.AndesPreparedMessageMetadata;
 import org.wso2.andes.kernel.dtx.DtxBranch;
-
-import javax.transaction.xa.Xid;
-import java.util.UUID;
 import org.wso2.andes.kernel.slot.Slot;
+
+import java.util.UUID;
+import javax.transaction.xa.Xid;
 
 /**
  * Purpose of this class is to log message activities
@@ -383,7 +383,10 @@ public class MessageTracer {
      */
     private static class TraceBuilder {
 
-        private static final String TX_BATCH_SIZE = "txBatchSize" ;
+        /**
+         * Data Fields
+         */
+        private static final String TX_BATCH_SIZE = "txBatchSize: ";
         private static final String MESSAGE_ID = "id: ";
         private static final String OLD_MESSAGE_ID = "oldId: ";
         private static final String DESTINATION = "destination: ";
@@ -396,72 +399,53 @@ public class MessageTracer {
         private static final String IS_DTX = "isDtx: ";
         private static final String SLOT_ID = "slotId: ";
 
+        /**
+         * Prefixes
+         */
         static final String MESSAGE_TRACE = "Message { ";
         static final String ACKNOWLEDGMENT_TRACE = "Ack { ";
         static final String DTX_TRACE = "Dtx { ";
         static final String TX_TRACE = "Transaction { ";
 
-        private final String traceHeader;
+        /**
+         * Field separator
+         */
+        private static final String FIELD_SEPARATOR = " , ";
 
+        /**
+         * String builder for trace message
+         */
         private StringBuilder messageContent;
 
         /**
          * Create a trace builder class
+         *
          * @param traceHeader type of trace message
          */
         TraceBuilder(String traceHeader) {
             this.messageContent = new StringBuilder();
-            this.traceHeader = traceHeader;
-        }
-
-        /**
-         * Check whether the trace header is added
-         * @return true if trace header is already present
-         */
-        private boolean containTraceHeader() {
-            return messageContent.length() != 0;
-        }
-
-        /**
-         * Add the trace header
-         */
-        private void addTraceHeader() {
             messageContent.append(traceHeader);
         }
 
         /**
-         * Check if the trace header is added. If not added, add the
-         * trace header
-         */
-        private void checkAndAddTraceHeader() {
-            if (containTraceHeader()) {
-                messageContent.append(" , ");
-            } else {
-                addTraceHeader();
-            }
-        }
-
-        /**
          * Set message id to the trace
+         *
          * @param id Message id
          * @return TraceBuilder
          */
         TraceBuilder setMessageId(long id) {
-            checkAndAddTraceHeader();
-            messageContent.append(MESSAGE_ID);
-            messageContent.append(id);
+            messageContent.append(FIELD_SEPARATOR).append(MESSAGE_ID).append(id);
             return this;
         }
 
         /**
          * Set the previous message id of the message. Needed when restoring message
+         *
          * @param oldId Old message id
          * @return TraceBuilder
          */
         TraceBuilder setOldMessageId(long oldId) {
-            checkAndAddTraceHeader();
-            messageContent.append(OLD_MESSAGE_ID);
-            messageContent.append(oldId);
+            messageContent.append(FIELD_SEPARATOR).append(OLD_MESSAGE_ID).append(oldId);
             return this;
         }
 
@@ -472,133 +456,122 @@ public class MessageTracer {
          * @return TraceBuilder
          */
         TraceBuilder setDestination(String destination) {
-            checkAndAddTraceHeader();
-            messageContent.append(DESTINATION);
-            messageContent.append(destination);
+            messageContent.append(FIELD_SEPARATOR).append(DESTINATION).append(destination);
             return this;
         }
 
         /**
          * Set delivery tag of the delivery message or acknowledgement
+         *
          * @param deliveryTag delivery tag
          * @return TraceBuilder
          */
         TraceBuilder setDeliveryTag(long deliveryTag) {
-            checkAndAddTraceHeader();
-            messageContent.append(DELIVERY_TAG);
-            messageContent.append(deliveryTag);
+            messageContent.append(FIELD_SEPARATOR).append(DELIVERY_TAG).append(deliveryTag);
             return this;
         }
 
         /**
          * Set Channel Id
+         *
          * @param channelId Channel id as a {@link UUID}
          * @return TraceBuilder
          */
         TraceBuilder setChannelId(UUID channelId) {
-            checkAndAddTraceHeader();
-            messageContent.append(CHANNEL_ID);
-            messageContent.append(channelId);
+            messageContent.append(FIELD_SEPARATOR).append(CHANNEL_ID).append(channelId);
             return this;
         }
 
         /**
          * Set channel identifier, which contains IP and port of the channel
+         *
          * @param channelIdentifier String containing the IP and port. {@link AndesChannel} identifier
          * @return TraceBuilder
          */
         TraceBuilder setChannelIdentifier(String channelIdentifier) {
-            checkAndAddTraceHeader();
-            messageContent.append(CHANNEL_IDENTIFIER);
-            messageContent.append(channelIdentifier);
+            messageContent.append(FIELD_SEPARATOR).append(CHANNEL_IDENTIFIER).append(channelIdentifier);
             return this;
         }
 
         /**
          * Set Dtx {@link Xid}
+         *
          * @param xid {@link Xid}
          * @return TraceBuilder
          */
         TraceBuilder setXid(Xid xid) {
-            checkAndAddTraceHeader();
-            messageContent.append(XID);
-            messageContent.append(xid);
+            messageContent.append(FIELD_SEPARATOR).append(XID).append(xid);
             return this;
         }
 
         /**
          * Set the dtx branch state
+         *
          * @param state {@link org.wso2.andes.kernel.dtx.DtxBranch.State}
          * @return TraceBuilder
          */
         TraceBuilder setBranchState(DtxBranch.State state) {
-            checkAndAddTraceHeader();
-            messageContent.append(DTX_BRANCH_STATE);
-            messageContent.append(state);
+            messageContent.append(FIELD_SEPARATOR).append(DTX_BRANCH_STATE).append(state);
             return this;
         }
 
         /**
          * Set the boolean of the received acknowledgement mode. Ack multiple messages or not (AMQP specific)
+         *
          * @param ackMultiple acknowledge multiple messages
          * @return TraceBuilder
          */
         TraceBuilder setAckMultiple(boolean ackMultiple) {
-            checkAndAddTraceHeader();
-            messageContent.append(ACK_MULTIPLE);
-            messageContent.append(ackMultiple);
+            messageContent.append(FIELD_SEPARATOR).append(ACK_MULTIPLE).append(ackMultiple);
             return this;
         }
 
         /**
          * Set whether the this is specific to dtx or not
+         *
          * @param isDtx true if this is related to dtx
          * @return TraceBuilder
          */
         TraceBuilder setIsDtx(boolean isDtx) {
-            checkAndAddTraceHeader();
-            messageContent.append(IS_DTX);
-            messageContent.append(isDtx);
+            messageContent.append(FIELD_SEPARATOR).append(IS_DTX).append(isDtx);
             return this;
         }
 
         /**
          * set local transaction batch size
+         *
          * @param txBatchSize transaction batch size
          * @return TraceBuilder
          */
         TraceBuilder setTxBatchSize(int txBatchSize) {
-            checkAndAddTraceHeader();
-            messageContent.append(TX_BATCH_SIZE);
-            messageContent.append(txBatchSize);
+            messageContent.append(FIELD_SEPARATOR).append(TX_BATCH_SIZE).append(txBatchSize);
             return this;
         }
 
         /**
          * Set the slot id
+         *
          * @param slotId slot id
          * @return TraceBuilder
          */
         TraceBuilder setSlotId(String slotId) {
-            checkAndAddTraceHeader();
-            messageContent.append(SLOT_ID);
-            messageContent.append(slotId);
+            messageContent.append(FIELD_SEPARATOR).append(SLOT_ID).append(slotId);
             return this;
         }
 
+        @Override
         public String toString() {
-            return messageContent.toString();
+            return messageContent.append(" } ").toString();
         }
 
         /**
          * Get the {@link String} representation of the trace with the description
+         *
          * @param description description of the trace incident
          * @return String
          */
         String toString(String description) {
-            messageContent.append(" } ");
-            messageContent.append(description);
-            return messageContent.toString();
+            return messageContent.append(" } ").append(description).toString();
         }
     }
 }
