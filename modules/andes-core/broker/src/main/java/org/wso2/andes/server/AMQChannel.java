@@ -316,7 +316,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
      * Sets this channels to be part of a distributed transaction
      */
     public void setDtxTransactional() throws AndesException {
-        _transaction = new QpidDistributedTransaction(andesChannel, _session.getSessionID());
+        _transaction = new QpidDistributedTransaction(andesChannel, getId());
     }
 
     public boolean isTransactional()
@@ -742,7 +742,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             }
 
             if (isAttachedToADistributedTransaction()) {
-                ((QpidDistributedTransaction) _transaction).close(_session.getSessionID());
+                ((QpidDistributedTransaction) _transaction).close(getId());
             }
 
             if (null != andesTransactionEvent) {
@@ -1417,7 +1417,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                     "Starting distributed transaction with GID : " + Arrays.toString(xid.getGlobalTransactionId()));
         }
         MessageTracer.trace(xid, getId(), "dtx.start received to AMQChannel");
-        distributedTransaction.start(_session.getSessionID(), xid,join, resume);
+        distributedTransaction.start(getId(), xid,join, resume);
     }
 
     public void endDtxTransaction(Xid xid, boolean fail, boolean suspend)
@@ -1429,7 +1429,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             _logger.debug("Ending distributed transaction with GID : " + Arrays.toString(xid.getGlobalTransactionId()));
         }
         MessageTracer.trace(xid, getId(), "dtx.end received to AMQChannel");
-        distributedTransaction.end(_session.getSessionID(), xid,fail, suspend);
+        distributedTransaction.end(getId(), xid,fail, suspend);
     }
 
     public void prepareDtxTransaction(Xid xid, DisruptorEventCallback callback)

@@ -134,7 +134,7 @@ public class Andes {
     /**
      * Keep the list of dtx enabled channels
      */
-    private List<Long> dtxChannelList;
+    private List<UUID> dtxChannelList;
 
     /**
      * Maximum number of parallel dtx enabled channel count
@@ -161,7 +161,7 @@ public class Andes {
         TX_EVENT_TIMEOUT = AndesConfigurationManager.readValue(AndesConfiguration.MAX_TRANSACTION_WAIT_TIMEOUT);
         maxParallelDtxConnections = AndesConfigurationManager.readValue(AndesConfiguration.MAX_PARALLEL_DISTRIBUTED_TRANSACTION_COUNT);
 
-        dtxChannelList = new ArrayList<Long>();
+        dtxChannelList = new ArrayList<>();
     }
 
 
@@ -778,7 +778,7 @@ public class Andes {
      * @return created DistributeTransaction object
      * @throws AndesException if maximum number of parallel transactions limit reached
      */
-    public synchronized DistributedTransaction createDistributedTransaction(AndesChannel channel, long sessionID)
+    public synchronized DistributedTransaction createDistributedTransaction(AndesChannel channel, UUID sessionID)
             throws AndesException {
         if (dtxChannelList.size() <= maxParallelDtxConnections) {
             DistributedTransaction distributedTransaction = new DistributedTransaction(dtxRegistry,
@@ -797,7 +797,7 @@ public class Andes {
      *
      * @param sessionId session id of the transaction channel
      */
-    public synchronized void releaseDistributedTransaction(long sessionId) {
+    public synchronized void releaseDistributedTransaction(UUID sessionId) {
         dtxChannelList.remove(sessionId);
     }
 

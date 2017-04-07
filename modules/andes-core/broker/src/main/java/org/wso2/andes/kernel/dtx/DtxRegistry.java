@@ -36,6 +36,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -333,7 +334,7 @@ public class DtxRegistry {
      *
      * @param sessionId sessionId of the closing transactional session
      */
-    public void close(long sessionId) {
+    public void close(UUID sessionId) {
 
         for (Iterator<Map.Entry<Xid, DtxBranch>> iterator = branches.entrySet().iterator();
              iterator.hasNext(); ) {
