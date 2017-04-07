@@ -61,6 +61,7 @@ import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.PUBLISHER_RECOVERY_EVENT;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.SAFE_ZONE_DECLARE_EVENT;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.STATE_CHANGE_EVENT;
+import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.MESSAGE_RECOVERY_EVENT;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.TRANSACTION_CLOSE_EVENT;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.TRANSACTION_COMMIT_EVENT;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.TRANSACTION_ENQUEUE_EVENT;
@@ -290,6 +291,27 @@ public class InboundEventManager {
         InboundEventContainer event = ringBuffer.get(sequence);
         try {
             event.setEventType(PUBLISHER_RECOVERY_EVENT);
+        } finally {
+            // make the event available to EventProcessors
+            ringBuffer.publish(sequence);
+            if (log.isDebugEnabled()) {
+                log.debug("[ Sequence: " + sequence + " ] " + event.getEventType() + "' published to Disruptor");
+            }
+        }
+    }
+
+    /**
+     * Publish an event to recover messages that were delivered to a given channel.
+     *
+     * @param recoveryEvent event containing required information regarding the event
+     */
+    public void publishMessageRecoveryEvent(InboundMessageRecoveryEvent recoveryEvent) {
+        // Publishers claim events in sequence
+        long sequence = ringBuffer.next();
+        InboundEventContainer event = ringBuffer.get(sequence);
+        try {
+            event.setEventType(MESSAGE_RECOVERY_EVENT);
+            event.setMessageRecoveryEvent(recoveryEvent);
         } finally {
             // make the event available to EventProcessors
             ringBuffer.publish(sequence);

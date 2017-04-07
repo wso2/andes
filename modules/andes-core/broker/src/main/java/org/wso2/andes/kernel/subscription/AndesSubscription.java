@@ -31,7 +31,6 @@ import org.wso2.andes.kernel.MessageFlusher;
 import org.wso2.andes.kernel.MessageStatus;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolType;
-import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.tools.utils.MessageTracer;
@@ -99,6 +98,16 @@ public class AndesSubscription {
         this.subscriberConnection = subscriberConnection;
         this.isActive = true;
 
+    }
+
+    /**
+     * Clones the subscription object with a clone of it's underlying connection with reset suspend/resume states
+     *
+     * @return a clone of the subscription that is not suspended or obsolete
+     */
+    public AndesSubscription cloneAndResetSubscription() {
+        return new AndesSubscription(subscriptionId, storageQueue, protocolType,
+                subscriberConnection.createFreshClone());
     }
 
     /**
@@ -237,7 +246,8 @@ public class AndesSubscription {
      * @throws AndesException on a message re-schedule issue
      * @return DeliverableAndesMetadata reference of rejected message
      */
-    public DeliverableAndesMetadata onMessageReject(long messageID, boolean reQueue) throws AndesException {
+    public synchronized DeliverableAndesMetadata onMessageReject(long messageID, boolean reQueue)
+            throws AndesException {
         DeliverableAndesMetadata rejectedMessage = subscriberConnection.onMessageReject(messageID);
         //Adding metrics meter for ack rate
         Meter ackMeter = MetricManager.meter(MetricsConstants.REJECT_RECEIVE_RATE
@@ -269,44 +279,70 @@ public class AndesSubscription {
     }
 
     /**
-     * Recover messages of the subscriber. This call put back
-     * all sent but un-acknowledged messages back to the queue it is bound.
-     *
-     * @param recoverOKCallback disruptor callback for recover-ok
+     * Recover messages of the subscriber. Buffers all sent but un-acknowledged messages back to the queue it is bound.
      */
-    public void recoverMessages(DisruptorEventCallback recoverOKCallback) throws AndesException {
+    public synchronized void recoverMessages() throws AndesException {
 
-        List<DeliverableAndesMetadata> unAckedMessages;
+        //stop message delivery to the channel
+        prepareRecover();
 
         synchronized (subscriberConnection) {
-            unAckedMessages = subscriberConnection.clearAndReturnUnackedMessages();
-            recoverOKCallback.execute();
-        }
+            List<DeliverableAndesMetadata> unAckedMessages = subscriberConnection.clearAndReturnUnackedMessages();
 
-        if (isDurable()) {     //add un-acknowledged messages back to queue
-            Iterator<DeliverableAndesMetadata> unAckedMessageIterator = unAckedMessages.iterator();
-            while (unAckedMessageIterator.hasNext()) {
-                DeliverableAndesMetadata unAckedMessage = unAckedMessageIterator.next();
-                if (log.isDebugEnabled()) {
-                    log.debug("Recovered message id= " + unAckedMessage.getMessageID() + " channel = "
-                            + subscriberConnection.getProtocolChannelID());
+            if (isDurable()) {     //add un-acknowledged messages back to queue
+                Iterator<DeliverableAndesMetadata> unAckedMessageIterator = unAckedMessages.iterator();
+                while (unAckedMessageIterator.hasNext()) {
+                    DeliverableAndesMetadata unAckedMessage = unAckedMessageIterator.next();
+                    if (log.isDebugEnabled()) {
+                        log.debug("Recovered message id= " + unAckedMessage.getMessageID() + " channel = "
+                                  + subscriberConnection.getProtocolChannelID());
+                    }
+                    unAckedMessage.markAsRecoveredByClient(subscriberConnection.getProtocolChannelID());
+                    unAckedMessage.rollbackDelivery(subscriberConnection.getProtocolChannelID());
+                    storageQueue.bufferMessageForDelivery(unAckedMessage);
+                    unAckedMessageIterator.remove();
                 }
-                unAckedMessage.markAsRecoveredByClient(subscriberConnection.getProtocolChannelID());
-                unAckedMessage.rollbackDelivery(subscriberConnection.getProtocolChannelID());
-                storageQueue.bufferMessageForDelivery(unAckedMessage);
-                unAckedMessageIterator.remove();
-            }
-        } else {    //reschedule messages back to subscriber
-            for (DeliverableAndesMetadata unAckedMessage : unAckedMessages) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Recovered message id= " + unAckedMessage.getMessageID() + " channel = "
-                            + subscriberConnection.getProtocolChannelID());
+            } else {    //reschedule messages back to subscriber
+                for (DeliverableAndesMetadata unAckedMessage : unAckedMessages) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("Recovered message id= " + unAckedMessage.getMessageID() + " channel = "
+                                  + subscriberConnection.getProtocolChannelID());
+                    }
+                    unAckedMessage.markAsRecoveredByClient(subscriberConnection.getProtocolChannelID());
+                    unAckedMessage.rollbackDelivery(subscriberConnection.getProtocolChannelID());
+                    reDeliverMessage(unAckedMessage);
                 }
-                unAckedMessage.markAsRecoveredByClient(subscriberConnection.getProtocolChannelID());
-                unAckedMessage.rollbackDelivery(subscriberConnection.getProtocolChannelID());
-                reDeliverMessage(unAckedMessage);
             }
         }
+    }
+
+    /**
+     * Removes a message that is buffered to be scheduled given the message id.
+     *
+     * @param messageId id of the message to be removed from the buffer
+     */
+    public void removeMessageFromBuffer(long messageId) {
+        storageQueue.removeMessageFromBuffer(messageId);
+    }
+
+    /**
+     * Prepare the broker to recover messages. This mainly stops messages being delivered to the subscription from
+     * which the recovery request was received.
+     */
+    private void prepareRecover() {
+        //stop message delivery through the connection
+        subscriberConnection.setObsolete();
+
+        //replace the existing subscriber from a new subscriber inorder to invalidate messages that are buffered but
+        // are not yet delivered.
+        AndesSubscription replacingSubscription = cloneAndResetSubscription();
+        //suspend the subscription since we do not need messages to be scheduled for it yet.
+        replacingSubscription.getSubscriberConnection().setSuspended(true);
+
+        //remove all references from the existing subscirption and point those to the new subscription
+        storageQueue.replaceBoundSub(this, replacingSubscription);
+        AndesContext.getInstance().getAndesSubscriptionManager().replaceSubscription(this,
+                replacingSubscription);
     }
 
     /**
@@ -568,5 +604,4 @@ public class AndesSubscription {
                 + ",isActive=" + Boolean.toString(isActive)
                 + ",subscriberConnection=" + encodedConnectionInfo;
     }
-
 }

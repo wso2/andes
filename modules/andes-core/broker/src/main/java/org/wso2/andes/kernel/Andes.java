@@ -25,8 +25,9 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
-import org.wso2.andes.kernel.disruptor.inbound.InboundAndesChannelEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundMessageRecoveryEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundBindingEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundChannelFlowEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundDeleteDLCMessagesEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundDeleteMessagesEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
@@ -176,9 +177,8 @@ public class Andes {
     public void recoverMessagesOfChannel(UUID channelID, DisruptorEventCallback recoverOKCallback)
             throws AndesException {
 
-        InboundAndesChannelEvent inboundChannelEvent = new InboundAndesChannelEvent(channelID, recoverOKCallback);
-        inboundChannelEvent.prepareForChannelRecover();
-        inboundEventManager.publishStateEvent(inboundChannelEvent);
+        InboundMessageRecoveryEvent recoveryEvent = new InboundMessageRecoveryEvent(channelID, recoverOKCallback);
+        inboundEventManager.publishMessageRecoveryEvent(recoveryEvent);
     }
 
     /**
@@ -836,6 +836,21 @@ public class Andes {
     public List<Long> getNextNMessageIdsInDLC(final String dlcQueueName, long startMessageId, int messageLimit)
             throws AndesException {
         return MessagingEngine.getInstance().getNextNMessageIdsInDLC(dlcQueueName, startMessageId, messageLimit);
+    }
+
+    /**
+     * Publishes a channel suspend/resume event to the disruptor.
+     *
+     * @param channelId           the channel id from which the request was received
+     * @param active              whether the channel should be suspended/resumed. If set to true, channel will be
+     *                            resumed and vis versa
+     * @param channelFlowCallback the call back to be registered to send the response
+     */
+    public void notifySubscriptionFlow(UUID channelId, boolean active, DisruptorEventCallback channelFlowCallback) {
+
+        InboundChannelFlowEvent inboundChannelFlowEvent = new InboundChannelFlowEvent(channelId, active,
+                channelFlowCallback);
+        inboundEventManager.publishStateEvent(inboundChannelFlowEvent);
     }
 }
 

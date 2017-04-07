@@ -20,6 +20,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.ProtocolMessage;
+import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -130,7 +131,7 @@ public class OutBoundMessageTracker {
      * @param messageData message to add
      */
     public synchronized void addMessageToSendingTracker(ProtocolMessage messageData) {
-        messageSendingTracker.putIfAbsent(messageData.getMessageID(), messageData.getMessage());
+        messageSendingTracker.put(messageData.getMessageID(), messageData.getMessage());
     }
 
 }

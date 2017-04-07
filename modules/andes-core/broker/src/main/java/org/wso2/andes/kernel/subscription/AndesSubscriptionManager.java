@@ -19,6 +19,7 @@ import com.googlecode.cqengine.query.Query;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.python.antlr.op.And;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextInformationManager;
@@ -145,8 +146,25 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
         FailureObservingStoreManager.registerStoreHealthListener(this);
     }
 
+    /**
+     * Adds subscription to the subscription registry.
+     *
+     * @param subscriptionToAdd instance of {@link AndesSubscription} object to be added
+     */
     public void registerSubscription(AndesSubscription subscriptionToAdd) {
         subscriptionRegistry.registerSubscription(subscriptionToAdd);
+    }
+
+    /**
+     * Removes subscription from the subscription registry.
+     *
+     * @param replacedSubscription  instance of {@link AndesSubscription} object to be replaced
+     * @param replacingSubscription instance of {@link AndesSubscription} object that is
+     *                              replacing the existing one
+     */
+    void replaceSubscription(AndesSubscription replacedSubscription, AndesSubscription replacingSubscription) {
+        subscriptionRegistry.removeSubscription(replacedSubscription);
+        subscriptionRegistry.registerSubscription(replacingSubscription);
     }
 
     public void addLocalSubscription(InboundSubscriptionEvent subscriptionRequest) throws AndesException {
@@ -1071,4 +1089,25 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
         log.info("Store became operational.");
         storeUnavailable = false;
     }
+
+    /**
+     * Suspend/resume message delivery for a subscription identified by the given channel id.
+     *
+     * @param channelId id of the channel to be resumed
+     * @param active    whether the message flow is suspended/resumed. if set to true, the channel is suspended.
+     */
+    public void notifySubscriptionFlow(UUID channelId, boolean active) {
+        AndesSubscription subscription = getSubscriptionByProtocolChannel(channelId);
+        boolean suspend = !active;
+        if (null != subscription) {
+            subscription.getSubscriberConnection().setSuspended(suspend);
+        } else {
+            if (log.isDebugEnabled()) {
+                log.debug("Suspend: " + suspend + " request will be ignored since no subscription could be found for "
+                          + "channel: " + channelId);
+            }
+        }
+    }
+
+
 }

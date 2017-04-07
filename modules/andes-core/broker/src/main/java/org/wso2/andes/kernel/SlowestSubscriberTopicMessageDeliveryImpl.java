@@ -49,10 +49,9 @@ public class SlowestSubscriberTopicMessageDeliveryImpl implements MessageDeliver
         Iterator<DeliverableAndesMetadata> iterator = messages.iterator();
         List<DeliverableAndesMetadata> droppedTopicMessagesList = new ArrayList<>();
 
-        /**
-         * get all relevant type of subscriptions. This call does NOT
-         * return hierarchical subscriptions for the destination. There
-         * are duplicated messages for each different subscribed destination.
+        /*
+          get all relevant type of subscriptions that are not suspended. This call does NOT return hierarchical
+          subscriptions for the destination. There are duplicated messages for each different subscribed destination.
          */
         List<org.wso2.andes.kernel.subscription.AndesSubscription> subscriptions4Queue =
                 storageQueue.getBoundSubscriptions();
@@ -71,6 +70,9 @@ public class SlowestSubscriberTopicMessageDeliveryImpl implements MessageDeliver
 
                 for (AndesSubscription subscription : currentSubscriptions) {
 
+                    if (subscription.getSubscriberConnection().isSuspended()) {
+                        continue;
+                    }
                     /*
                      * If this is a topic message, remove all durable topic subscriptions here
                      * because durable topic subscriptions will get messages via queue path.
@@ -106,7 +108,8 @@ public class SlowestSubscriberTopicMessageDeliveryImpl implements MessageDeliver
                  */
                 boolean allTopicSubscriptionsHasRoom = true;
                 for (AndesSubscription subscription : subscriptionsToDeliver) {
-                    if (!subscription.getSubscriberConnection().hasRoomToAcceptMessages()) {
+                    if (!subscription.getSubscriberConnection().hasRoomToAcceptMessages()
+                        || subscription.getSubscriberConnection().isSuspended()) {
                         allTopicSubscriptionsHasRoom = false;
                         break;
                     }
@@ -116,10 +119,10 @@ public class SlowestSubscriberTopicMessageDeliveryImpl implements MessageDeliver
                     message.markAsScheduledToDeliver(subscriptionsToDeliver);
 
                     //schedule message to all subscribers
+                    iterator.remove();
                     for (AndesSubscription localSubscription : subscriptionsToDeliver) {
                         MessageFlusher.getInstance().deliverMessageAsynchronously(localSubscription, message);
                     }
-                    iterator.remove();
                     if (log.isDebugEnabled()) {
                         log.debug("Removing Scheduled to send message from buffer. MsgId= " + message.getMessageID());
                     }
