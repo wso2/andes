@@ -335,7 +335,8 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
     protected void preApplicationProcessing(AbstractJMSMessage jmsMsg) throws JMSException
     {
         if ((_session.getAcknowledgeMode() == Session.PER_MESSAGE_ACKNOWLEDGE)
-            || (_session.getAcknowledgeMode() == Session.CLIENT_ACKNOWLEDGE))
+            || (_session.getAcknowledgeMode() == Session.CLIENT_ACKNOWLEDGE)
+            || (_session.getAcknowledgeMode() == Session.AUTO_ACKNOWLEDGE))
         {
             _session.addUnacknowledgedMessage(jmsMsg.getDeliveryTag());
         }
