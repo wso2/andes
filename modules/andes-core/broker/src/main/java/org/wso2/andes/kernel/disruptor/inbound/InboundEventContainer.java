@@ -309,6 +309,7 @@ public class InboundEventContainer {
         freshContent.set(true);
         dtxBranch = null;
         error = null;
+        recoverEvent = null;
     }
 
     /**
