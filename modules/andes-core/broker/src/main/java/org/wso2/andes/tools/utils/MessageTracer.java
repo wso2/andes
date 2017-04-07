@@ -381,6 +381,22 @@ public class MessageTracer {
     }
 
     /**
+     * Trace deliverable message
+     *
+     * @param messageId     message ID
+     * @param deliveryCount delivery count
+     * @param channelId     channel ID
+     * @param description   description of the message trace incident
+     */
+    public static void trace(long messageId, int deliveryCount, UUID channelId, String description) {
+        if (log.isTraceEnabled()) {
+            TraceBuilder traceBuilder = new TraceBuilder(TraceBuilder.MESSAGE_TRACE);
+            traceBuilder.setMessageId(messageId).setChannelId(channelId).setDeliveryCount(deliveryCount);
+            log.trace(traceBuilder.toString(description));
+        }
+    }
+
+    /**
      * Builder to create a standard trace message
      */
     private static class TraceBuilder {
@@ -400,6 +416,7 @@ public class MessageTracer {
         private static final String ACK_MULTIPLE = "ackMultiple: ";
         private static final String IS_DTX = "isDtx: ";
         private static final String SLOT_ID = "slotId: ";
+        private static final String DELIVERY_COUNT = "deliveryCount: ";
 
         /**
          * Prefixes
@@ -568,6 +585,17 @@ public class MessageTracer {
          */
         TraceBuilder setSlotId(String slotId) {
             fields.add(SLOT_ID + slotId);
+            return this;
+        }
+
+        /**
+         * Set the delivery count
+         *
+         * @param deliveryCount delivery count
+         * @return TraceBuilder
+         */
+        TraceBuilder setDeliveryCount(int deliveryCount) {
+            fields.add(DELIVERY_COUNT + deliveryCount);
             return this;
         }
 

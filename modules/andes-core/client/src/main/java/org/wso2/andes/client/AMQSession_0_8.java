@@ -126,21 +126,23 @@ public class AMQSession_0_8 extends AMQSession<BasicMessageConsumer_0_8, BasicMe
 
     public void acknowledgeMessage(long deliveryTag, boolean multiple)
     {
-        BasicAckBody body = getMethodRegistry().createBasicAckBody(deliveryTag, multiple);
+        if (_unacknowledgedMessageTags.contains(deliveryTag)) {
+            BasicAckBody body = getMethodRegistry().createBasicAckBody(deliveryTag, multiple);
 
-        final AMQFrame ackFrame = body.generateFrame(_channelId);
+            final AMQFrame ackFrame = body.generateFrame(_channelId);
 
-        if (_logger.isDebugEnabled())
-        {
-            _logger.debug("Sending ack for delivery tag " + deliveryTag + " on channel " + _channelId);
+            if (_logger.isDebugEnabled())
+            {
+                _logger.debug("Sending ack for delivery tag " + deliveryTag + " on channel " + _channelId);
+            }
+
+            getProtocolHandler().writeFrame(ackFrame);
+            _unacknowledgedMessageTags.remove(deliveryTag);
+            ackWaitTimeOutTrackingMap.remove(deliveryTag);
+            if(_logger.isDebugEnabled()) {
+                _logger.debug("Sending ack for delivery tag " + deliveryTag + " on channel " + _channelId + " remaining unacked count is " +_unacknowledgedMessageTags.size());
+            }
         }
-
-        getProtocolHandler().writeFrame(ackFrame);
-        _unacknowledgedMessageTags.remove(deliveryTag);
-        ackWaitTimeOutTrackingMap.remove(deliveryTag);
-         if(_logger.isDebugEnabled()) {
-             _logger.debug("Sending ack for delivery tag " + deliveryTag + " on channel " + _channelId + " remaining unacked count is " +_unacknowledgedMessageTags.size());
-         }
     }
 
     public void sendQueueBind(final AMQShortString queueName, final AMQShortString routingKey, final FieldTable arguments,
@@ -263,7 +265,8 @@ public class AMQSession_0_8 extends AMQSession<BasicMessageConsumer_0_8, BasicMe
     {
         if ((_acknowledgeMode == PER_MESSAGE_ACKNOWLEDGE)
             || (_acknowledgeMode == CLIENT_ACKNOWLEDGE)
-            || (_acknowledgeMode == SESSION_TRANSACTED))
+            || (_acknowledgeMode == SESSION_TRANSACTED)
+            || (_acknowledgeMode == AUTO_ACKNOWLEDGE))
         {
             sendReject(deliveryTag, requeue);
         }
