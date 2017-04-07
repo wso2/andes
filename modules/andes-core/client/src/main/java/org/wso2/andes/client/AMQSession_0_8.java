@@ -126,7 +126,7 @@ public class AMQSession_0_8 extends AMQSession<BasicMessageConsumer_0_8, BasicMe
 
     public void acknowledgeMessage(long deliveryTag, boolean multiple)
     {
-        if (_unacknowledgedMessageTags.contains(deliveryTag)) {
+        if (_acknowledgeMode != AUTO_ACKNOWLEDGE || _unacknowledgedMessageTags.contains(deliveryTag)) {
             BasicAckBody body = getMethodRegistry().createBasicAckBody(deliveryTag, multiple);
 
             final AMQFrame ackFrame = body.generateFrame(_channelId);
