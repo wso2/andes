@@ -19,6 +19,7 @@
 package org.wso2.andes.tools.utils;
 
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesAckData;
@@ -30,6 +31,7 @@ import org.wso2.andes.kernel.dtx.AndesPreparedMessageMetadata;
 import org.wso2.andes.kernel.dtx.DtxBranch;
 import org.wso2.andes.kernel.slot.Slot;
 
+import java.util.ArrayList;
 import java.util.UUID;
 import javax.transaction.xa.Xid;
 
@@ -413,18 +415,28 @@ public class MessageTracer {
         private static final String FIELD_SEPARATOR = " , ";
 
         /**
-         * String builder for trace message
+         * Used at the end of the trace message
          */
-        private StringBuilder messageContent;
+        static final String POSTFIX = " } ";
+
+        /**
+         * Hold the list of field items
+         */
+        private final ArrayList<String> fields;
+
+        /**
+         * Prefix to be used in a trace message
+         */
+        private final String messagePrefix;
 
         /**
          * Create a trace builder class
          *
-         * @param traceHeader type of trace message
+         * @param messagePrefix type of trace message
          */
-        TraceBuilder(String traceHeader) {
-            this.messageContent = new StringBuilder();
-            messageContent.append(traceHeader);
+        TraceBuilder(String messagePrefix) {
+            this.messagePrefix = messagePrefix;
+            fields = new ArrayList<>();
         }
 
         /**
@@ -434,7 +446,7 @@ public class MessageTracer {
          * @return TraceBuilder
          */
         TraceBuilder setMessageId(long id) {
-            messageContent.append(FIELD_SEPARATOR).append(MESSAGE_ID).append(id);
+            fields.add(MESSAGE_ID + id);
             return this;
         }
 
@@ -445,7 +457,7 @@ public class MessageTracer {
          * @return TraceBuilder
          */
         TraceBuilder setOldMessageId(long oldId) {
-            messageContent.append(FIELD_SEPARATOR).append(OLD_MESSAGE_ID).append(oldId);
+            fields.add(OLD_MESSAGE_ID + oldId);
             return this;
         }
 
@@ -456,7 +468,7 @@ public class MessageTracer {
          * @return TraceBuilder
          */
         TraceBuilder setDestination(String destination) {
-            messageContent.append(FIELD_SEPARATOR).append(DESTINATION).append(destination);
+            fields.add(DESTINATION + destination);
             return this;
         }
 
@@ -467,7 +479,7 @@ public class MessageTracer {
          * @return TraceBuilder
          */
         TraceBuilder setDeliveryTag(long deliveryTag) {
-            messageContent.append(FIELD_SEPARATOR).append(DELIVERY_TAG).append(deliveryTag);
+            fields.add(DELIVERY_TAG + deliveryTag);
             return this;
         }
 
@@ -478,7 +490,7 @@ public class MessageTracer {
          * @return TraceBuilder
          */
         TraceBuilder setChannelId(UUID channelId) {
-            messageContent.append(FIELD_SEPARATOR).append(CHANNEL_ID).append(channelId);
+            fields.add(CHANNEL_ID + channelId);
             return this;
         }
 
@@ -489,7 +501,7 @@ public class MessageTracer {
          * @return TraceBuilder
          */
         TraceBuilder setChannelIdentifier(String channelIdentifier) {
-            messageContent.append(FIELD_SEPARATOR).append(CHANNEL_IDENTIFIER).append(channelIdentifier);
+            fields.add(CHANNEL_IDENTIFIER + channelIdentifier);
             return this;
         }
 
@@ -500,7 +512,7 @@ public class MessageTracer {
          * @return TraceBuilder
          */
         TraceBuilder setXid(Xid xid) {
-            messageContent.append(FIELD_SEPARATOR).append(XID).append(xid);
+            fields.add(XID + xid);
             return this;
         }
 
@@ -511,7 +523,7 @@ public class MessageTracer {
          * @return TraceBuilder
          */
         TraceBuilder setBranchState(DtxBranch.State state) {
-            messageContent.append(FIELD_SEPARATOR).append(DTX_BRANCH_STATE).append(state);
+            fields.add(DTX_BRANCH_STATE + state);
             return this;
         }
 
@@ -522,7 +534,7 @@ public class MessageTracer {
          * @return TraceBuilder
          */
         TraceBuilder setAckMultiple(boolean ackMultiple) {
-            messageContent.append(FIELD_SEPARATOR).append(ACK_MULTIPLE).append(ackMultiple);
+            fields.add(ACK_MULTIPLE + ackMultiple);
             return this;
         }
 
@@ -533,7 +545,7 @@ public class MessageTracer {
          * @return TraceBuilder
          */
         TraceBuilder setIsDtx(boolean isDtx) {
-            messageContent.append(FIELD_SEPARATOR).append(IS_DTX).append(isDtx);
+            fields.add(IS_DTX + isDtx);
             return this;
         }
 
@@ -544,7 +556,7 @@ public class MessageTracer {
          * @return TraceBuilder
          */
         TraceBuilder setTxBatchSize(int txBatchSize) {
-            messageContent.append(FIELD_SEPARATOR).append(TX_BATCH_SIZE).append(txBatchSize);
+            fields.add(TX_BATCH_SIZE + txBatchSize);
             return this;
         }
 
@@ -555,13 +567,13 @@ public class MessageTracer {
          * @return TraceBuilder
          */
         TraceBuilder setSlotId(String slotId) {
-            messageContent.append(FIELD_SEPARATOR).append(SLOT_ID).append(slotId);
+            fields.add(SLOT_ID + slotId);
             return this;
         }
 
         @Override
         public String toString() {
-            return messageContent.append(" } ").toString();
+            return getTraceMessage(POSTFIX);
         }
 
         /**
@@ -571,7 +583,18 @@ public class MessageTracer {
          * @return String
          */
         String toString(String description) {
-            return messageContent.append(" } ").append(description).toString();
+            return getTraceMessage(POSTFIX + description);
+        }
+
+        /**
+         * Generate the string by adding prefix, field separators and postfix
+         *
+         * @param postfix postfix to be used in the trace message
+         * @return generated trace message
+         */
+        private String getTraceMessage(String postfix) {
+            String fieldString = StringUtils.join(fields, FIELD_SEPARATOR);
+            return messagePrefix + fieldString + postfix;
         }
     }
 }
