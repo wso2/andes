@@ -81,6 +81,8 @@ public class ChannelFlowHandler implements StateAwareMethodListener<ChannelFlowB
 
             }
         });
-        logger.info(" Channel flow: " + body.getActive() + " set for channel: " + channel.getId());
+        if (logger.isDebugEnabled()) {
+            logger.debug(" Channel flow: " + body.getActive() + " set for channel: " + channel.getId());
+        }
     }
 }

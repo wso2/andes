@@ -105,7 +105,7 @@ public class AndesSubscription {
      *
      * @return a clone of the subscription that is not suspended or obsolete
      */
-    public AndesSubscription cloneAndResetSubscription() {
+    private AndesSubscription cloneAndResetSubscription() {
         return new AndesSubscription(subscriptionId, storageQueue, protocolType,
                 subscriberConnection.createFreshClone());
     }
@@ -246,7 +246,7 @@ public class AndesSubscription {
      * @throws AndesException on a message re-schedule issue
      * @return DeliverableAndesMetadata reference of rejected message
      */
-    public synchronized DeliverableAndesMetadata onMessageReject(long messageID, boolean reQueue)
+    public DeliverableAndesMetadata onMessageReject(long messageID, boolean reQueue)
             throws AndesException {
         DeliverableAndesMetadata rejectedMessage = subscriberConnection.onMessageReject(messageID);
         //Adding metrics meter for ack rate
@@ -281,7 +281,7 @@ public class AndesSubscription {
     /**
      * Recover messages of the subscriber. Buffers all sent but un-acknowledged messages back to the queue it is bound.
      */
-    public synchronized void recoverMessages() throws AndesException {
+    public void recoverMessages() throws AndesException {
 
         //stop message delivery to the channel
         prepareRecover();
@@ -314,15 +314,6 @@ public class AndesSubscription {
                 }
             }
         }
-    }
-
-    /**
-     * Removes a message that is buffered to be scheduled given the message id.
-     *
-     * @param messageId id of the message to be removed from the buffer
-     */
-    public void removeMessageFromBuffer(long messageId) {
-        storageQueue.removeMessageFromBuffer(messageId);
     }
 
     /**
