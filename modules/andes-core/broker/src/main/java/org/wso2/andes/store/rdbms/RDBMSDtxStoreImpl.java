@@ -377,7 +377,6 @@ public class RDBMSDtxStoreImpl implements DtxStore {
                         true
                 );
                 AndesMessage andesMessage = new AndesMessage(metadata);
-                branch.enqueueMessage(andesMessage);
                 messageMap.put(metadata.getMessageID(), andesMessage);
             }
             retrieveContentPS.setLong(1, internalXid);
