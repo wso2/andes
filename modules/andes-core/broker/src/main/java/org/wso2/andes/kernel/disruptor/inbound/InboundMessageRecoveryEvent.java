@@ -74,7 +74,6 @@ public class InboundMessageRecoveryEvent implements AndesInboundStateEvent {
     @Override
     public void updateState() throws AndesException {
 
-        log.info("Recovery event received for channel: " + channelID);
         AndesSubscription subscription = AndesContext.getInstance().
                 getAndesSubscriptionManager().getSubscriptionByProtocolChannel(channelID);
 

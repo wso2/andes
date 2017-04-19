@@ -91,13 +91,35 @@ public class SubscriberConnection {
     }
 
     /**
+     * Create a subscriber connection to deliver messages in Andes kernel using the properties of an existing
+     * subscriber connection.
+     *
+     * @param connectedIP            IP address of subscriber host machine
+     * @param connectedNode          Node ID of node subscriber connection is created
+     * @param protocolChannelID      ID of protocol channel of the connection
+     * @param outboundSubscription   Protocol specific subscriber
+     * @param outBoundMessageTracker the message tracker to be used
+     */
+    private SubscriberConnection(String connectedIP, String connectedNode, UUID protocolChannelID,
+            OutboundSubscription outboundSubscription, OutBoundMessageTracker outBoundMessageTracker) {
+        this.connectedIP = connectedIP;
+        this.connectedNode = connectedNode;
+        this.protocolChannelID = protocolChannelID;
+        this.outBoundMessageTracker = outBoundMessageTracker;
+        this.outboundSubscription = outboundSubscription;
+        obsolete = new AtomicBoolean(false);
+        suspended = false;
+    }
+
+    /**
      * Create a fresh clone of the connection. Upon creation, this will reset all the suspend/obsolete states as a
      * fresh subscriber connection.
      *
      * @return a clone of the subscriber connection with reset suspend/obsolete states
      */
-    public SubscriberConnection createFreshClone() {
-        return new SubscriberConnection(connectedIP, connectedNode, protocolChannelID, outboundSubscription);
+    SubscriberConnection createFreshClone() {
+        return new SubscriberConnection(connectedIP, connectedNode, protocolChannelID, outboundSubscription,
+                outBoundMessageTracker);
     }
 
     /**

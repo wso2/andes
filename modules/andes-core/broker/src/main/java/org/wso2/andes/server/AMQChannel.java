@@ -299,6 +299,10 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
      */
     public void resendRecoveredMessages(DisruptorEventCallback recoverOKCallback) {
         try {
+
+            //messages should be removed from the unacknowledged map upfront
+            _unacknowledgedMessageMap.clear();
+
             QpidAndesBridge.recoverMessagesOfChannel(this, recoverOKCallback);
         } catch (AMQException e) {
             _logger.error("Error while resending recovered messages.", e);

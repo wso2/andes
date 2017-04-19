@@ -632,7 +632,9 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
         if (subIterator.hasNext()) {
             return subIterator.next();
         } else {
-            log.warn("No subscription found for channel ID " + channelID);
+            if (log.isDebugEnabled()) {
+                log.debug("No subscription found for channel ID " + channelID);
+            }
             return null;
         }
     }

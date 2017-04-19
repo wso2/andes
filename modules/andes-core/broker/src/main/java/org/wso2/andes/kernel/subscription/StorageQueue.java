@@ -339,8 +339,7 @@ public class StorageQueue {
      * @param newSubscription      replacing subscription
      */
     void replaceBoundSub(AndesSubscription existingSubscription, AndesSubscription newSubscription) {
-        boundedSubscriptions.remove(existingSubscription);
-        boundedSubscriptions.add(newSubscription);
+        boundedSubscriptions.set(boundedSubscriptions.indexOf(existingSubscription), newSubscription);
     }
 
     /**
