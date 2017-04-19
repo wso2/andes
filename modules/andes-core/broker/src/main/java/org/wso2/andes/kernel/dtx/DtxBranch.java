@@ -264,7 +264,7 @@ public class DtxBranch {
      * Enqueue a single message to the branch
      * @param andesMessage enqueue record
      */
-    public void enqueueMessage(AndesMessage andesMessage) {
+    public synchronized void enqueueMessage(AndesMessage andesMessage) {
         enqueueList.add(andesMessage);
     }
 

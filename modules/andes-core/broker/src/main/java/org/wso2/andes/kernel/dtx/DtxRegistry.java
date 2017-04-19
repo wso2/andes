@@ -334,7 +334,7 @@ public class DtxRegistry {
      *
      * @param sessionId sessionId of the closing transactional session
      */
-    public void close(UUID sessionId) {
+    public synchronized void close(UUID sessionId) {
 
         for (Iterator<Map.Entry<Xid, DtxBranch>> iterator = branches.entrySet().iterator();
              iterator.hasNext(); ) {
