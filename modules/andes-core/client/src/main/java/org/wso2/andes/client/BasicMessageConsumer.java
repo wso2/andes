@@ -630,11 +630,7 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
                         // If the session is open or we are in the process
                         // of closing the session then send a cance
                         // no point otherwise as the connection will be gone
-                        if (!_session.isClosed() || _session.isClosing())
-                        {
-                            if(null != _session._dispatcher) {
-                                _session._dispatcher.rejectPending(this);
-                            }
+                        if (!_session.isClosed() || _session.isClosing()) {
                             sendCancel();
                             cleanupQueue();
                         }
