@@ -33,13 +33,6 @@
     <name>Andes</name>
     <description>Andes, Distributed message broker engine</description>
 
-    <scm>
-        <connection>scm:https://github.com/wso2/andes.git</connection>
-        <developerConnection>scm:git:https://github.com/wso2/andes.git</developerConnection>
-        <url>https://github.com/wso2/andes.git</url>
-        <tag>v3.2.19</tag>
-    </scm>
-
     <modules>
         <module>modules/andes-core</module>
         <module>modules/orbit/andes</module>
@@ -499,18 +492,6 @@
             <!-- surefire plugin configuration -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-release-plugin</artifactId>
-                <configuration>
-                    <preparationGoals>clean install</preparationGoals>
-                    <autoVersionSubmodules>true</autoVersionSubmodules>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-deploy-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>2.4.3</version>
                 <configuration>
@@ -555,7 +536,6 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <carbon.kernel.version>4.4.16</carbon.kernel.version>
-        <project.scm.id>wso2-scm-server</project.scm.id>
         <!--This fixed version value is used to version intermediate ant artifacts which are installed only
         to local maven repo by maven-install-plugin. Those artifacts will be dependencies of the orbit bundle
         which exports the packages from the artifacts with the correct version value. Reason this was set to
