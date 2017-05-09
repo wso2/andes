@@ -31,12 +31,9 @@ import org.wso2.andes.url.URLSyntaxException;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Hashtable;
-import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import javax.jms.ConnectionFactory;
@@ -285,19 +282,6 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
         _virtualPath = path;
     }
 
-    public static String getUniqueClientID()
-    {
-        try
-        {
-            InetAddress addr = InetAddress.getLocalHost();
-            return addr.getHostName() + System.currentTimeMillis();
-        }
-        catch (UnknownHostException e)
-        {
-            return "UnknownHost" + UUID.randomUUID();
-        }
-    }
-
     public Connection createConnection() throws JMSException
     {
 
@@ -344,10 +328,6 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
         {
             if (_connectionDetails != null)
             {
-                if (_connectionDetails.getClientName() == null || _connectionDetails.getClientName().equals(""))
-                {
-                    _connectionDetails.setClientName(getUniqueClientID());
-                }
 
                 // if connection needs to be encrypted using SSL, ConnectionURL must have ssl=true enabled. We first check that  option
                 // here and if 'ssl=true' SSLConfiguration is generated.
@@ -370,7 +350,8 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
             }
             else
             {
-                AMQConnection amqConnection = new AMQConnection(_host, _port, _defaultUsername, _defaultPassword, getUniqueClientID(), _virtualPath);
+                AMQConnection amqConnection = new AMQConnection(_host, _port, _defaultUsername, _defaultPassword, null,
+                                                                _virtualPath);
                 amqConnection.setConnectionListener(connectionListener);
                 return amqConnection;
             }
@@ -418,15 +399,7 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
             {
                 _connectionDetails.setUsername(userName);
                 _connectionDetails.setPassword(password);
-                
-                if (id != null && !id.equals(""))
-                {
-                    _connectionDetails.setClientName(id);
-                } 
-                else if (_connectionDetails.getClientName() == null || _connectionDetails.getClientName().equals(""))
-                {
-                    _connectionDetails.setClientName(getUniqueClientID());
-                }
+                _connectionDetails.setClientName(id);
 
                 AMQConnection amqConnection = new AMQConnection(_connectionDetails, _sslConfig);
                 if (logger.isDebugEnabled()) {
@@ -438,7 +411,7 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
             }
             else
             {
-                AMQConnection amqConnection = new AMQConnection(_host, _port, userName, password, (id != null ? id : getUniqueClientID()), _virtualPath);
+                AMQConnection amqConnection = new AMQConnection(_host, _port, userName, password, id, _virtualPath);
                 amqConnection.setConnectionListener(connectionListener);
                 return amqConnection;
             }
@@ -620,11 +593,6 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
         {
             _connectionDetails.setUsername(username);
             _connectionDetails.setPassword(password);
-
-            if (_connectionDetails.getClientName() == null || _connectionDetails.getClientName().equals(""))
-            {
-                _connectionDetails.setClientName(getUniqueClientID());
-            }
         }
         else
         {
