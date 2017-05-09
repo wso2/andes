@@ -21,16 +21,15 @@ package org.wso2.andes.client.url;
  */
 
 
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.StringTokenizer;
-
 import org.wso2.andes.client.AMQBrokerDetails;
-import org.wso2.andes.client.AMQConnectionFactory;
 import org.wso2.andes.client.AMQConnectionURL;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.url.URLHelper;
 import org.wso2.andes.url.URLSyntaxException;
+
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.StringTokenizer;
 
 public class URLParser
 {
@@ -63,18 +62,6 @@ public class URLParser
                 if (tmp != null && tmp.indexOf('@') < tmp.length()-1)
                 {                   
                     _url.setClientName(tmp.substring(tmp.indexOf('@')+1,tmp.length()));
-                }
-                else
-                {
-                    String uid = AMQConnectionFactory.getUniqueClientID();
-                    if (uid == null)
-                    {
-                        throw URLHelper.parseError(-1, "Client Name not specified", fullURL);
-                    }
-                    else
-                    {
-                        _url.setClientName(uid);
-                    }
                 }
 
             }            
