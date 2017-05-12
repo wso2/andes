@@ -59,10 +59,6 @@ import org.wso2.andes.server.queue.QueueRegistry;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostImpl;
 import org.wso2.andes.transport.codec.BBDecoder;
-import javax.jms.JMSException;
-import javax.jms.MessageEOFException;
-import javax.jms.MessageFormatException;
-import javax.jms.MessageNotReadableException;
 import javax.management.JMException;
 import javax.management.MBeanException;
 import javax.management.NotCompliantMBeanException;
@@ -567,28 +563,18 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      * @throws CharacterCodingException
      */
     private String extractStreamMessageContent(ByteBuffer wrapMsgContent, String encoding)
-            throws CharacterCodingException {
+            throws CharacterCodingException, AndesException {
         String wholeMsg;
         boolean eofReached = false;
         StringBuilder messageContentBuilder = new StringBuilder();
 
         while (!eofReached) {
-
-            try {
-                Object obj = readObject(wrapMsgContent, encoding);
-                // obj could be null if the wire type is AbstractBytesTypedMessage.NULL_STRING_TYPE
-                if (null != obj) {
-                    messageContentBuilder.append(obj.toString()).append(", ");
-                }
-            } catch (MessageEOFException ex) {
-                eofReached = true;
-            } catch (MessageNotReadableException e) {
-                eofReached = true;
-            } catch (MessageFormatException e) {
-                eofReached = true;
-            } catch (JMSException e) {
-                eofReached = true;
+            Object obj = readObject(wrapMsgContent, encoding);
+            // obj could be null if the wire type is AbstractBytesTypedMessage.NULL_STRING_TYPE
+            if (null != obj) {
+                messageContentBuilder.append(obj.toString()).append(", ");
             }
+
         }
 
         wholeMsg = StringEscapeUtils.escapeHtml(messageContentBuilder.toString());
@@ -640,11 +626,10 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      * @param wrapMsgContent ByteBuffer which contains data
      * @param encoding       message encoding
      * @return Object extracted from ByteBuffer
-     * @throws JMSException
      * @throws CharacterCodingException
      */
     private Object readObject(ByteBuffer wrapMsgContent, String encoding)
-            throws JMSException, CharacterCodingException {
+            throws AndesException, CharacterCodingException {
         int position = wrapMsgContent.position();
         checkAvailable(1, wrapMsgContent);
         byte wireType = wrapMsgContent.get();
@@ -732,11 +717,11 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      * Check that there is at least a certain number of bytes available to read
      *
      * @param length the number of bytes
-     * @throws javax.jms.MessageEOFException if there are less than len bytes available to read
+     * @throws  if there are less than len bytes available to read
      */
-    private void checkAvailable(int length, ByteBuffer byteBuffer) throws MessageEOFException {
+    private void checkAvailable(int length, ByteBuffer byteBuffer) throws AndesException {
         if (byteBuffer.remaining() < length) {
-            throw new MessageEOFException("Unable to read " + length + " bytes");
+            throw new AndesException("Unable to read " + length + " bytes");
         }
     }
 
@@ -1083,7 +1068,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             content[0] = summaryMsg;
             content[1] = wholeMsg;
             return content;
-        } catch (CharacterCodingException exception) {
+        } catch (CharacterCodingException | AndesException exception) {
             throw new MBeanException(exception, "Error occurred in browse queue.");
         }
     }

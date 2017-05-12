@@ -43,12 +43,7 @@ import org.wso2.andes.kernel.dtx.DtxRegistry;
 import org.wso2.andes.kernel.slot.SlotMessageCounter;
 import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.kernel.subscription.StorageQueue;
-import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.tools.utils.MessageTracer;
-import org.wso2.carbon.metrics.manager.Counter;
-import org.wso2.carbon.metrics.manager.Level;
-import org.wso2.carbon.metrics.manager.Meter;
-import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -92,6 +87,7 @@ public class Andes {
      * Andes context related information manager. Exchanges, Queues and Bindings.
      */
     private AndesContextInformationManager contextInformationManager;
+
     /**
      * handle all message related functions.
      */
@@ -231,16 +227,16 @@ public class Andes {
         inboundEventManager.messageReceived(message, andesChannel, pubAckHandler);
 
         //Adding metrics meter for message rate
-        Meter messageMeter = MetricManager.meter(MetricsConstants.MSG_RECEIVE_RATE
-                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getMessageRouterName()
-                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getDestination(), Level.INFO);
-        messageMeter.mark();
+//        Meter messageMeter = MetricManager.meter(MetricsConstants.MSG_RECEIVE_RATE
+//                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getMessageRouterName()
+//                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getDestination(), Level.INFO);
+//        messageMeter.mark();
 
         //Adding metrics counter for enqueue messages
-        Counter counter = MetricManager.counter(MetricsConstants.ENQUEUE_MESSAGES
-                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getMessageRouterName()
-                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getDestination(), Level.INFO);
-        counter.inc();
+//        Counter counter = MetricManager.counter(MetricsConstants.ENQUEUE_MESSAGES
+//                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getMessageRouterName()
+//                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getDestination(), Level.INFO);
+//        counter.inc();
     }
 
     /**

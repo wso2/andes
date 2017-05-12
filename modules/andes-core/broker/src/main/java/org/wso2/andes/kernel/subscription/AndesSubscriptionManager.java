@@ -19,7 +19,6 @@ import com.googlecode.cqengine.query.Query;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.python.antlr.op.And;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextInformationManager;
@@ -28,12 +27,10 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.ClusterNotificationListener;
 import org.wso2.andes.kernel.DestinationType;
 import org.wso2.andes.kernel.ProtocolType;
-import org.wso2.andes.kernel.SubscriptionListener;
 import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionSyncEvent;
 import org.wso2.andes.kernel.registry.StorageQueueRegistry;
 import org.wso2.andes.kernel.registry.SubscriptionRegistry;
-import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.ClusterNotificationAgent;
@@ -43,9 +40,6 @@ import org.wso2.andes.store.AndesStoreUnavailableException;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
-import org.wso2.carbon.metrics.manager.Gauge;
-import org.wso2.carbon.metrics.manager.Level;
-import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -139,9 +133,9 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
         }
 
         //Add subscribers gauge to metrics manager
-        MetricManager.gauge(MetricsConstants.QUEUE_SUBSCRIBERS, Level.INFO, new QueueSubscriberGauge());
-        //Add topic gauge to metrics manager
-        MetricManager.gauge(MetricsConstants.TOPIC_SUBSCRIBERS, Level.INFO, new TopicSubscriberGauge());
+//        MetricManager.gauge(MetricsConstants.QUEUE_SUBSCRIBERS, Level.INFO, new QueueSubscriberGauge());
+//        Add topic gauge to metrics manager
+//        MetricManager.gauge(MetricsConstants.TOPIC_SUBSCRIBERS, Level.INFO, new TopicSubscriberGauge());
 
         FailureObservingStoreManager.registerStoreHealthListener(this);
     }
@@ -1011,35 +1005,37 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
 
     }
 
-    /**
-     * Gauge will return total number of queue subscriptions for current node.
-     */
-    private class QueueSubscriberGauge implements Gauge<Integer> {
-        @Override
-        public Integer getValue() {
-            int count = 0;
-            for (AndesSubscription ignored : getAllLocalSubscriptionsByMessageRouter(ProtocolType.AMQP, AMQPUtils
-                    .DIRECT_EXCHANGE_NAME)) {
-                count = count + 1;
-            }
-            return count;
-        }
-    }
+//        TODO: Metrics revamp
+//    /**
+//     * Gauge will return total number of queue subscriptions for current node.
+//     */
+//    private class QueueSubscriberGauge implements Gauge<Integer> {
+//        @Override
+//        public Integer getValue() {
+//            int count = 0;
+//            for (AndesSubscription ignored : getAllLocalSubscriptionsByMessageRouter(ProtocolType.AMQP, AMQPUtils
+//                    .DIRECT_EXCHANGE_NAME)) {
+//                count = count + 1;
+//            }
+//            return count;
+//        }
+//    }
 
+//        TODO: Metrics revamp
     /**
      * Gauge will return total number of topic subscriptions current node.
      */
-    private class TopicSubscriberGauge implements Gauge {
-        @Override
-        public Integer getValue() {
-            int count = 0;
-            for (AndesSubscription ignored : getAllLocalSubscriptionsByMessageRouter(ProtocolType.AMQP, AMQPUtils
-                    .TOPIC_EXCHANGE_NAME)) {
-                count = count + 1;
-            }
-            return count;
-        }
-    }
+//    private class TopicSubscriberGauge implements Gauge {
+//        @Override
+//        public Integer getValue() {
+//            int count = 0;
+//            for (AndesSubscription ignored : getAllLocalSubscriptionsByMessageRouter(ProtocolType.AMQP, AMQPUtils
+//                    .TOPIC_EXCHANGE_NAME)) {
+//                count = count + 1;
+//            }
+//            return count;
+//        }
+//    }
 
 
     /**

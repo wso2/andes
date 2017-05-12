@@ -52,8 +52,6 @@ import org.wso2.andes.store.FailureObservingAndesContextStore;
 import org.wso2.andes.store.FailureObservingMessageStore;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.thrift.MBThriftServer;
-import org.wso2.carbon.context.CarbonContext;
-import org.wso2.carbon.user.api.UserStoreException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -595,13 +593,13 @@ public class AndesKernelBoot {
      * Create a DEAD_LETTER_CHANNEL for the super tenant.
      */
     public static void createSuperTenantDLC() throws AndesException {
-        CarbonContext carbonContext = CarbonContext.getThreadLocalCarbonContext();
-        try {
-            String adminUserName = carbonContext.getUserRealm().getRealmConfiguration().getAdminUserName();
-            DLCQueueUtils.createDLCQueue(carbonContext.getTenantDomain(), adminUserName);
-        } catch (UserStoreException e) {
-            throw new AndesException("Error getting super tenant username", e);
-        }
+//        CarbonContext carbonContext = CarbonContext.getThreadLocalCarbonContext();
+//        try {
+//            String adminUserName = carbonContext.getUserRealm().getRealmConfiguration().getAdminUserName();
+//            DLCQueueUtils.createDLCQueue(carbonContext.getTenantDomain(), adminUserName);
+//        } catch (UserStoreException e) {
+//            throw new AndesException("Error getting super tenant username", e);
+//        }
     }
 
     public static boolean isKernelShuttingDown() {

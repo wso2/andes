@@ -31,11 +31,7 @@ import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.kernel.disruptor.waitStrategy.SleepingBlockingWaitStrategy;
 import org.wso2.andes.kernel.subscription.AndesSubscription;
-import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.tools.utils.MessageTracer;
-import org.wso2.carbon.metrics.manager.Gauge;
-import org.wso2.carbon.metrics.manager.Level;
-import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -126,7 +122,7 @@ public class DisruptorBasedFlusher {
         ringBuffer = disruptor.getRingBuffer();
 
         //Will add the gauge listener to periodically calculate the outbound messages in the ring
-        MetricManager.gauge(MetricsConstants.DISRUPTOR_OUTBOUND_RING, Level.INFO, new OutBoundRingGauge());
+//        MetricManager.gauge(MetricsConstants.DISRUPTOR_OUTBOUND_RING, Level.INFO, new OutBoundRingGauge());
     }
 
     /**
@@ -165,16 +161,17 @@ public class DisruptorBasedFlusher {
         }
     }
 
+//        TODO: Metrics revamp
     /**
      * Utility class used to gauge ring size.
      *
      */
-    private class OutBoundRingGauge implements Gauge<Long> {
-        @Override
-        public Long getValue() {
-            //The total ring size will be reduced from the remaining ring size
-            return ringBuffer.getBufferSize() - ringBuffer.remainingCapacity();
-        }
-    }
+//    private class OutBoundRingGauge implements Gauge<Long> {
+//        @Override
+//        public Long getValue() {
+//            //The total ring size will be reduced from the remaining ring size
+//            return ringBuffer.getBufferSize() - ringBuffer.remainingCapacity();
+//        }
+//    }
 }
 

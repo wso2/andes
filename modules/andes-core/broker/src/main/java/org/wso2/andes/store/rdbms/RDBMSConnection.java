@@ -29,6 +29,7 @@ import javax.naming.NamingException;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
+import org.wso2.andes.server.ClusterResourceHolder;
 
 /**
  * JDBC connection class. Connection is made using the jndi lookup name provided and connection
@@ -49,16 +50,15 @@ public class RDBMSConnection extends DurableStoreConnection {
         String dataSourceUserName   = "";
         try {
             // try to get the lookup name. If error empty string will be returned
-            jndiLookupName = connectionProperties.getProperty(RDBMSConstants.PROP_JNDI_LOOKUP_NAME);
-            datasource = InitialContext.doLookup(jndiLookupName);
+            datasource = ClusterResourceHolder.getInstance().getDatasource();
 
-            if (datasource instanceof org.apache.tomcat.jdbc.pool.DataSource) {
-                org.apache.tomcat.jdbc.pool.DataSource tcDataSource =
-                        (org.apache.tomcat.jdbc.pool.DataSource) datasource;
-                if (StringUtils.isNotBlank(tcDataSource.getUsername())) {
-                    dataSourceUserName = tcDataSource.getUsername();
-                }
-            }
+//            if (datasource instanceof org.apache.tomcat.jdbc.pool.DataSource) {
+//                org.apache.tomcat.jdbc.pool.DataSource tcDataSource =
+//                        (org.apache.tomcat.jdbc.pool.DataSource) datasource;
+//                if (StringUtils.isNotBlank(tcDataSource.getUsername())) {
+//                    dataSourceUserName = tcDataSource.getUsername();
+//                }
+//            }
 
             connection = datasource.getConnection();
             logger.info("JDBC connection established with jndi config " + jndiLookupName);
@@ -67,9 +67,6 @@ public class RDBMSConnection extends DurableStoreConnection {
                                      jndiLookupName + ". data source username : " +
                                      dataSourceUserName + ". SQL Error message : " +
                                      e.getMessage(), e);
-        } catch (NamingException e) {
-            throw new AndesException("Couldn't look up jndi entry for " +
-                                     "\"" + jndiLookupName + "\"", e);
         } finally {
             String task = "Initialising database";
             close(connection, task);

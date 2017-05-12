@@ -23,14 +23,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.cluster.error.detection.NetworkPartitionListener;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
-import org.wso2.carbon.metrics.manager.Gauge;
-import org.wso2.carbon.metrics.manager.Level;
-import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.ArrayList;
 import java.util.concurrent.Executors;
@@ -141,7 +137,7 @@ public class FlowControlManager  implements StoreHealthListener, NetworkPartitio
         executor = Executors.newSingleThreadScheduledExecutor(namedThreadFactory);
 
         //Will start the gauge
-        MetricManager.gauge(MetricsConstants.ACTIVE_CHANNELS, Level.INFO, new ChannelGauge());
+//        MetricManager.gauge(MetricsConstants.ACTIVE_CHANNELS, Level.INFO, new ChannelGauge());
     }
 
     /**
@@ -451,15 +447,16 @@ public class FlowControlManager  implements StoreHealthListener, NetworkPartitio
         unblockListenersOnErrorBasedFlowControl();
 
     }
-    
+
+    // TODO: Metrics revamp
     /**
      * This will get current number of channels.
      */
-    private class ChannelGauge implements Gauge<Integer> {
-        @Override
-        public Integer getValue() {
-            return channels.size();
-        }
-    }
+//    private class ChannelGauge implements Gauge<Integer> {
+//        @Override
+//        public Integer getValue() {
+//            return channels.size();
+//        }
+//    }
 
 }

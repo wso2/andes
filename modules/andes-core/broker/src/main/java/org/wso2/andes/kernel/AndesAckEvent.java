@@ -21,12 +21,7 @@ package org.wso2.andes.kernel;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.subscription.AndesSubscription;
-import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.tools.utils.MessageTracer;
-import org.wso2.carbon.metrics.manager.Counter;
-import org.wso2.carbon.metrics.manager.Level;
-import org.wso2.carbon.metrics.manager.Meter;
-import org.wso2.carbon.metrics.manager.MetricManager;
 
 /**
  * Wrapper class of message acknowledgment data publish to disruptor
@@ -135,16 +130,16 @@ public class AndesAckEvent {
                 metadataReference.getDestination(), MessageTracer.ACK_MESSAGE_REFERENCE_SET_BY_DISRUPTOR);
 
         //Adding metrics meter for ack rate
-        Meter ackMeter = MetricManager.meter(MetricsConstants.ACK_RECEIVE_RATE
-                + MetricsConstants.METRICS_NAME_SEPARATOR
-                + metadataReference.getMessageRouterName() + MetricsConstants.METRICS_NAME_SEPARATOR
-                + metadataReference.getDestination(), Level.INFO);
-        ackMeter.mark();
+//        Meter ackMeter = MetricManager.meter(MetricsConstants.ACK_RECEIVE_RATE
+//                + MetricsConstants.METRICS_NAME_SEPARATOR
+//                + metadataReference.getMessageRouterName() + MetricsConstants.METRICS_NAME_SEPARATOR
+//                + metadataReference.getDestination(), Level.INFO);
+//        ackMeter.mark();
 
         //Adding metrics counter for ack messages
-        Counter counter = MetricManager.counter(MetricsConstants.ACK_MESSAGES + MetricsConstants.METRICS_NAME_SEPARATOR
-                + metadataReference.getMessageRouterName() + MetricsConstants.METRICS_NAME_SEPARATOR
-                + metadataReference.getDestination(), Level.INFO);
-        counter.inc();
+//        Counter counter = MetricManager.counter(MetricsConstants.ACK_MESSAGES + MetricsConstants.METRICS_NAME_SEPARATOR
+//                + metadataReference.getMessageRouterName() + MetricsConstants.METRICS_NAME_SEPARATOR
+//                + metadataReference.getDestination(), Level.INFO);
+//        counter.inc();
     }
 }

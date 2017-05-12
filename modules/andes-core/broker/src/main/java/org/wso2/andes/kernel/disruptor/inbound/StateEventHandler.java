@@ -26,11 +26,7 @@ import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.MessageStatus;
 import org.wso2.andes.kernel.slot.SlotMessageCounter;
-import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.tools.utils.MessageTracer;
-import org.wso2.carbon.metrics.manager.Level;
-import org.wso2.carbon.metrics.manager.Meter;
-import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.List;
 
@@ -115,10 +111,10 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
             MessageTracer.trace(message, MessageTracer.SLOT_INFO_UPDATED);
 
             //Adding metrics meter for ack rate
-            Meter ackMeter = MetricManager.meter(MetricsConstants.ACK_SENT_RATE
-                    + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getMessageRouterName()
-                    + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getDestination(), Level.INFO);
-            ackMeter.mark();
+//            Meter ackMeter = MetricManager.meter(MetricsConstants.ACK_SENT_RATE
+//                    + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getMessageRouterName()
+//                    + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getDestination(), Level.INFO);
+//            ackMeter.mark();
         }
 
         //We need to ack only once since, one publisher - multiple topics

@@ -30,12 +30,8 @@ import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.dtx.AndesPreparedMessageMetadata;
 import org.wso2.andes.kernel.router.AndesMessageRouter;
 import org.wso2.andes.kernel.subscription.StorageQueue;
-import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.tools.utils.MessageTracer;
-import org.wso2.carbon.metrics.manager.Level;
-import org.wso2.carbon.metrics.manager.Meter;
-import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -266,10 +262,10 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
             event.pubAckHandler.ack(message.getMetadata());
 
             // Adding metrics meter for ack rate
-            Meter ackMeter = MetricManager.meter(MetricsConstants.ACK_SENT_RATE
-                    + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getMessageRouterName()
-                    + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getDestination(), Level.INFO);
-            ackMeter.mark();
+//            Meter ackMeter = MetricManager.meter(MetricsConstants.ACK_SENT_RATE
+//                    + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getMessageRouterName()
+//                    + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getDestination(), Level.INFO);
+//            ackMeter.mark();
 
             // Since inbound message has no routes, inbound message list will be cleared.
             messageList.clear();

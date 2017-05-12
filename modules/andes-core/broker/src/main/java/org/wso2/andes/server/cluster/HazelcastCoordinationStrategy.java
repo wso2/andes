@@ -22,6 +22,7 @@ import com.hazelcast.core.MemberAttributeEvent;
 import com.hazelcast.core.MembershipEvent;
 import com.hazelcast.core.MembershipListener;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.slot.SlotCoordinationConstants;
@@ -34,12 +35,12 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.apache.catalina.ha.session.DeltaRequest.log;
-
 /**
  * In this strategy the oldest member is elected as the coordinator
  */
 public class HazelcastCoordinationStrategy implements CoordinationStrategy, MembershipListener {
+
+    private static final Logger log = Logger.getLogger(HazelcastCoordinationStrategy.class);
     /**
      * Used to query if current node is the oldest one
      */

@@ -218,7 +218,7 @@ public class Main {
 
         //Will start the MQTT Broker
         //todo need to startup with the broker options inclusive
-        startMQTTBroker(options);
+//        startMQTTBroker(options);
     }
 
     protected void shutdown(final int status) {

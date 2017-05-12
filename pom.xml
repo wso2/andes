@@ -22,7 +22,7 @@
     <parent>
         <groupId>org.wso2</groupId>
         <artifactId>wso2</artifactId>
-        <version>1</version>
+        <version>5</version>
     </parent>
 
     <modelVersion>4.0.0</modelVersion>
@@ -405,7 +405,7 @@
             <!--Carbon Metrics-->
             <dependency>
                 <groupId>org.wso2.carbon.metrics</groupId>
-                <artifactId>org.wso2.carbon.metrics.manager</artifactId>
+                <artifactId>org.wso2.carbon.metrics.core</artifactId>
                 <version>${org.wso2.carbon.metrics.manager.version}</version>
             </dependency>
             <!--Thrift Dependency-->
@@ -450,12 +450,12 @@
                 <version>${gson.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.eclipse.osgi</groupId>
+                <groupId>org.wso2.eclipse.osgi</groupId>
                 <artifactId>org.eclipse.osgi</artifactId>
                 <version>${org.eclipse.osgi.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.eclipse.osgi</groupId>
+                <groupId>org.wso2.eclipse.osgi</groupId>
                 <artifactId>org.eclipse.osgi.services</artifactId>
                 <version>${org.eclipse.osgi.services.version}</version>
             </dependency>
@@ -549,12 +549,46 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>${maven.checkstyleplugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>validate</id>
+                        <phase>validate</phase>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>findbugs-maven-plugin</artifactId>
+                <version>${maven.findbugsplugin.version}</version>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>analyze-compile</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <carbon.kernel.version>4.4.16</carbon.kernel.version>
+        <carbon.kernel.version>5.2.0-m3</carbon.kernel.version>
         <project.scm.id>wso2-scm-server</project.scm.id>
         <!--This fixed version value is used to version intermediate ant artifacts which are installed only
         to local maven repo by maven-install-plugin. Those artifacts will be dependencies of the orbit bundle
@@ -572,8 +606,8 @@
         <derby.version>10.4.2.0</derby.version>
         <version.commons.logging>1.1.1</version.commons.logging>
         <mina.core.version>1.1.7</mina.core.version>
-        <org.eclipse.osgi.version>3.9.1.v20140110-1610</org.eclipse.osgi.version>
-        <org.eclipse.osgi.services.version>3.3.100.v20130513-1956</org.eclipse.osgi.services.version>
+        <org.eclipse.osgi.version>3.10.2.v20150203-1939</org.eclipse.osgi.version>
+        <org.eclipse.osgi.services.version>3.4.0.v20140312-2051</org.eclipse.osgi.services.version>
         <jython-standalone.version>2.5.2</jython-standalone.version>
         <bnd.version>0.0.384</bnd.version>
         <icu4j.version>3.8</icu4j.version>
@@ -631,7 +665,7 @@
         <hawtdb.version>1.6</hawtdb.version>
         <hawtbuf.version>1.9</hawtbuf.version>
         <hazelcast.version>3.5.0.wso2v1</hazelcast.version>
-        <org.wso2.carbon.metrics.manager.version>1.2.3</org.wso2.carbon.metrics.manager.version>
+        <org.wso2.carbon.metrics.manager.version>2.1.0</org.wso2.carbon.metrics.manager.version>
         <libthrift.version>0.9.2.wso2v1</libthrift.version>
         <h2.version>1.2.140</h2.version>
         <naming-factory.version>5.5.15</naming-factory.version>

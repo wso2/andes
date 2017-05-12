@@ -31,11 +31,10 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import javax.mail.event.StoreListener;
 
 /**
  * 
- * This class keeps track of all the {@link StoreListener}s and notifies when
+ * This class keeps track of all the {@link StoreHealthListener}s and notifies when
  * store becomes (non-)operational.
  * 
  */

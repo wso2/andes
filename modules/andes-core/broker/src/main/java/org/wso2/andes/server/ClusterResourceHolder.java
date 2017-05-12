@@ -17,6 +17,7 @@
  */
 package org.wso2.andes.server;
 
+import javax.sql.DataSource;
 import org.wso2.andes.kernel.AndesRecoveryTask;
 import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.server.cluster.ClusterManager;
@@ -58,6 +59,7 @@ public class ClusterResourceHolder {
      * holds cluster manager
      */
     private ClusterManager clusterManager;
+    private DataSource datasource;
 
     private ClusterResourceHolder() {
 
@@ -116,5 +118,13 @@ public class ClusterResourceHolder {
 
     public void setAndesRecoveryTask(AndesRecoveryTask andesRecoveryTask) {
         this.andesRecoveryTask = andesRecoveryTask;
+    }
+
+    public void setDatasource(DataSource datasource) {
+        this.datasource = datasource;
+    }
+
+    public DataSource getDatasource() {
+        return datasource;
     }
 }
