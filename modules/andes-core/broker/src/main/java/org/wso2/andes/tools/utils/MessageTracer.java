@@ -29,7 +29,6 @@ import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.dtx.AndesPreparedMessageMetadata;
 import org.wso2.andes.kernel.dtx.DtxBranch;
-import org.wso2.andes.kernel.slot.Slot;
 
 import java.util.ArrayList;
 import java.util.UUID;
@@ -60,25 +59,25 @@ public class MessageTracer {
 
     public static final String PUBLISHED_TO_INBOUND_DISRUPTOR = "messaging event submitted to inbound disruptor";
     public static final String ENQUEUE_EVENT_PUBLISHED_TO_INBOUND_DISRUPTOR = "enqueue event submitted to inbound "
-                                                                              + "disruptor";
+            + "disruptor";
     public static final String MESSAGE_ID_MAPPED = "mapped to andes message";
     public static final String MESSAGE_CLONED = "cloned with message id";
     public static final String TRANSACTION_COMMIT_EVENT_PUBLISHED_TO_INBOUND_DISRUPTOR = "transaction commit event "
-                                                                                         + "submitted to inbound "
-                                                                                         + "disruptor";
+            + "submitted to inbound "
+            + "disruptor";
     public static final String TRANSACTION_ROLLBACK_EVENT_PUBLISHED_TO_INBOUND_DISRUPTOR = "transaction rollback "
-                                                                                           + "event submitted to inbound "
-                                                                                           + "disruptor";
+            + "event submitted to inbound "
+            + "disruptor";
     public static final String TRANSACTION_CLOSE_EVENT_PUBLISHED_TO_INBOUND_DISRUPTOR = "transaction close "
-                                                                                           + "event submitted to inbound "
-                                                                                           + "disruptor";
+            + "event submitted to inbound "
+            + "disruptor";
     public static final String CONTENT_WRITTEN_TO_DB = "content written to database";
     public static final String SLOT_INFO_UPDATED = "slot information updated";
     public static final String PUBLISHED_TO_OUTBOUND_DISRUPTOR = "submitted to outbound disruptor";
     public static final String METADATA_READ_FROM_DB = "metadata read from database";
     public static final String METADATA_BUFFERED_FOR_DELIVERY = "metadata buffered for delivery";
     public static final String CONTENT_READ = "content read from database";
-    public static final String DISPATCHED_TO_PROTOCOL ="dispatched to protocol level for delivery";
+    public static final String DISPATCHED_TO_PROTOCOL = "dispatched to protocol level for delivery";
     public static final String MESSAGE_REJECTED = "message rejected";
     public static final String MESSAGE_REQUEUED_SUBSCRIBER = "message re-queued to subscriber";
     public static final String MOVED_TO_DLC = "message moved to DLC";
@@ -101,7 +100,8 @@ public class MessageTracer {
     /**
      * This method will print debug logs for message activities. This will accept parameters for
      * message id, destination name and activity message
-     * @param messageId Andes message id
+     *
+     * @param messageId   Andes message id
      * @param destination destination name
      * @param description message activity
      */
@@ -119,7 +119,7 @@ public class MessageTracer {
     /**
      * Trace Acknowledgment messages
      *
-     * @param ackData {@link AndesAckData}
+     * @param ackData     {@link AndesAckData}
      * @param description Description to place in log on message activity
      */
     public static void traceAck(AndesAckData ackData, String description) {
@@ -132,30 +132,33 @@ public class MessageTracer {
     }
 
     /**
-	 * This method will print debug logs for message activities. This will accept andes message as
-	 * a parameter
-	 * @param message Andes message
-	 * @param description Message activity
-	 */
+     * This method will print debug logs for message activities. This will accept andes message as
+     * a parameter
+     *
+     * @param message     Andes message
+     * @param description Message activity
+     */
     public static void trace(AndesMessage message, String description) {
         trace(message.getMetadata().getMessageID(), message.getMetadata().getDestination(), description);
     }
 
-	/**
-	 * This method will print debug logs for message activities. This will accept metadata as
-	 * a parameter
-	 * @param metadata andes metadata object
-	 * @param description message activity
-	 */
+    /**
+     * This method will print debug logs for message activities. This will accept metadata as
+     * a parameter
+     *
+     * @param metadata    andes metadata object
+     * @param description message activity
+     */
     public static void trace(AndesMessageMetadata metadata, String description) {
         trace(metadata.getMessageID(), metadata.getDestination(), description);
     }
 
     /**
-	 * This method will check if trace logs are enabled. This method can be used when performing
-	 * operations inside trace() method parameters
-	 * @return Status of MessageTracer
-	 */
+     * This method will check if trace logs are enabled. This method can be used when performing
+     * operations inside trace() method parameters
+     *
+     * @return Status of MessageTracer
+     */
     public static boolean isEnabled() {
         return log.isTraceEnabled();
     }
@@ -166,7 +169,7 @@ public class MessageTracer {
      * @param messageId   the id of the message
      * @param destination the destination for which the message is bound
      * @param channelId   the identifier of the channel from the message was originated. Used to track the transaction
-     * @param description     messaging activity
+     * @param description messaging activity
      */
     private static void traceTransaction(long messageId, String destination, String channelId, String description) {
         if (log.isTraceEnabled()) {
@@ -185,8 +188,8 @@ public class MessageTracer {
      * This method will trace a transaction given the channel for which the transaction belongs to, the
      * number of messages in the transaction and a predefined description of the operation that is being done.
      *
-     * @param channel the channel from the message was originated. Used to track the transaction
-     * @param size    number of messages in the transaction
+     * @param channel     the channel from the message was originated. Used to track the transaction
+     * @param size        number of messages in the transaction
      * @param description messaging activity
      */
     public static void traceTransaction(AndesChannel channel, int size, String description) {
@@ -201,8 +204,8 @@ public class MessageTracer {
      * This method will trace a message in a transaction given the message and the channel from which the
      * message is received and a predefined message.
      *
-     * @param message the andes message to trace
-     * @param channel the channel from the message was originated. Used to track the transaction
+     * @param message     the andes message to trace
+     * @param channel     the channel from the message was originated. Used to track the transaction
      * @param description messaging activity
      */
     public static void traceTransaction(AndesMessage message, AndesChannel channel, String description) {
@@ -213,8 +216,8 @@ public class MessageTracer {
     /**
      * Trace dtx messages coming into the {@link org.wso2.andes.server.AMQChannel}
      *
-     * @param xid {{@link Xid}}
-     * @param channelId {@link org.wso2.andes.server.AMQChannel} Id
+     * @param xid         {{@link Xid}}
+     * @param channelId   {@link org.wso2.andes.server.AMQChannel} Id
      * @param description description of the trace incident
      */
     public static void trace(Xid xid, UUID channelId, String description) {
@@ -227,10 +230,10 @@ public class MessageTracer {
 
     /**
      * Trace {@link AndesMessage} for a distributed transaction
-
-     * @param metadata {@link AndesMessageMetadata} relevant to the message
-     * @param xid {@link Xid}
-     * @param state {@link org.wso2.andes.kernel.dtx.DtxBranch.State} of the {@link DtxBranch}
+     *
+     * @param metadata    {@link AndesMessageMetadata} relevant to the message
+     * @param xid         {@link Xid}
+     * @param state       {@link org.wso2.andes.kernel.dtx.DtxBranch.State} of the {@link DtxBranch}
      * @param description description of the message trace incident
      */
     public static void trace(AndesMessageMetadata metadata, Xid xid, DtxBranch.State state, String description) {
@@ -247,9 +250,9 @@ public class MessageTracer {
     /**
      * Trace acknowledgment event for a distributed transaction
      *
-     * @param ackData {@link AndesAckData}
-     * @param xid {@link Xid}
-     * @param state {@link org.wso2.andes.kernel.dtx.DtxBranch.State} of the {@link DtxBranch}
+     * @param ackData     {@link AndesAckData}
+     * @param xid         {@link Xid}
+     * @param state       {@link org.wso2.andes.kernel.dtx.DtxBranch.State} of the {@link DtxBranch}
      * @param description description of the message trace incident
      */
     public static void trace(AndesAckData ackData, Xid xid, DtxBranch.State state, String description) {
@@ -267,9 +270,9 @@ public class MessageTracer {
      * Trace {@link AndesPreparedMessageMetadata} which is used to rollback acknowledged messages
      *
      * @param preparedMessageMetadata {@link AndesPreparedMessageMetadata}
-     * @param xid {@link Xid}
-     * @param state {@link org.wso2.andes.kernel.dtx.DtxBranch.State} of the {@link DtxBranch}
-     * @param description description of the message trace incident
+     * @param xid                     {@link Xid}
+     * @param state                   {@link org.wso2.andes.kernel.dtx.DtxBranch.State} of the {@link DtxBranch}
+     * @param description             description of the message trace incident
      */
     public static void trace(AndesPreparedMessageMetadata preparedMessageMetadata, Xid xid, DtxBranch.State state,
                              String description) {
@@ -286,6 +289,7 @@ public class MessageTracer {
 
     /**
      * General purpose message trace with a simple description
+     *
      * @param description description of the message trace incident
      */
     public static void trace(String description) {
@@ -295,9 +299,9 @@ public class MessageTracer {
     /**
      * Trace message with routing key and channel id
      *
-     * @param messageId message id
-     * @param routingKey routing key of the message
-     * @param channelId {@link UUID} channel id
+     * @param messageId   message id
+     * @param routingKey  routing key of the message
+     * @param channelId   {@link UUID} channel id
      * @param description description of the message trace incident
      */
     public static void trace(long messageId, String routingKey, UUID channelId, String description) {
@@ -310,10 +314,11 @@ public class MessageTracer {
 
     /**
      * Trace a message without message id.
-     * @param destination destination of the message. (Routing key)
-     * @param channelId {@link org.wso2.andes.server.AMQChannel} id
+     *
+     * @param destination       destination of the message. (Routing key)
+     * @param channelId         {@link org.wso2.andes.server.AMQChannel} id
      * @param channelIdentifier {@link AndesChannel} identifier
-     * @param description description of the message trace incident
+     * @param description       description of the message trace incident
      */
     public static void trace(String destination, UUID channelId, String channelIdentifier, String description) {
         if (log.isTraceEnabled()) {
@@ -326,7 +331,7 @@ public class MessageTracer {
     /**
      * Trace a message in delivery
      *
-     * @param messageId message id
+     * @param messageId   message id
      * @param deliveryTag delivery tag of the message
      * @param description description of the message trace incident
      */
@@ -341,13 +346,13 @@ public class MessageTracer {
     /**
      * Trace acknowledgment
      *
-     * @param destination routing key of the acknowledgment
-     * @param channelId Channel id as a {@link UUID}
+     * @param destination       routing key of the acknowledgment
+     * @param channelId         Channel id as a {@link UUID}
      * @param channelIdentifier channel identifier. IP and port
-     * @param isDtx true if distributed transaction
-     * @param deliveryTag delivery tag
-     * @param isMultiple Ack multiple messages or not (AMQP specific)
-     * @param description description of the message trace incident
+     * @param isDtx             true if distributed transaction
+     * @param deliveryTag       delivery tag
+     * @param isMultiple        Ack multiple messages or not (AMQP specific)
+     * @param description       description of the message trace incident
      */
     public static void trace(String destination, UUID channelId, String channelIdentifier,
                              boolean isDtx, long deliveryTag, boolean isMultiple, String description) {
@@ -366,16 +371,15 @@ public class MessageTracer {
 
     /**
      * Trace deliverable message
-     * @param metadata {@link DeliverableAndesMetadata}
-     * @param slot {@link Slot}
+     *
+     * @param metadata    {@link DeliverableAndesMetadata}
      * @param description description of the message trace incident
      */
-    public static void trace(DeliverableAndesMetadata metadata, Slot slot, String description) {
+    public static void trace(DeliverableAndesMetadata metadata, String description) {
         if (log.isTraceEnabled()) {
             TraceBuilder traceBuilder = new TraceBuilder(TraceBuilder.MESSAGE_TRACE);
             traceBuilder.setDestination(metadata.getDestination())
-                    .setMessageId(metadata.getMessageID())
-                    .setSlotId(slot.getId());
+                    .setMessageId(metadata.getMessageID());
             log.trace(traceBuilder.toString(description));
         }
     }

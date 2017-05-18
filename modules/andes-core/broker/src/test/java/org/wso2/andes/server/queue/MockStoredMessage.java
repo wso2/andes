@@ -20,17 +20,15 @@
 */
 package org.wso2.andes.server.queue;
 
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.slot.Slot;
-import org.wso2.andes.server.store.MessageStore;
-import org.wso2.andes.server.store.TransactionLog;
-import org.wso2.andes.server.store.StoredMessage;
-import org.wso2.andes.server.message.MessageMetaData;
-import org.wso2.andes.framing.ContentHeaderBody;
-import org.wso2.andes.framing.BasicContentHeaderProperties;
-import org.wso2.andes.framing.abstraction.MessagePublishInfo;
-
 import java.nio.ByteBuffer;
+import org.wso2.andes.framing.BasicContentHeaderProperties;
+import org.wso2.andes.framing.ContentHeaderBody;
+import org.wso2.andes.framing.abstraction.MessagePublishInfo;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.server.message.MessageMetaData;
+import org.wso2.andes.server.store.MessageStore;
+import org.wso2.andes.server.store.StoredMessage;
+import org.wso2.andes.server.store.TransactionLog;
 
 public class MockStoredMessage implements StoredMessage<MessageMetaData>
 {
@@ -99,16 +97,5 @@ public class MockStoredMessage implements StoredMessage<MessageMetaData>
 
     public void setExchange(String exchange) {
         //To change body of implemented methods use File | Settings | File Templates.
-    }
-
-    @Override
-    public Slot getSlot() {
-        return null;
-    }
-
-    @Override
-    public void setSlot(Slot slot) {
-        //this method will not be used by instances of this class. This is only to set slot
-        // in  AMQP messages
     }
 }

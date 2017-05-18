@@ -20,6 +20,9 @@ package org.wso2.andes.store;
 
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
@@ -30,13 +33,7 @@ import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.DtxStore;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
-import org.wso2.andes.kernel.slot.RecoverySlotCreator;
-import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.tools.utils.MessageTracer;
-
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
 
 /**
  * Implementation of {@link MessageStore} which observes failures such as
@@ -200,10 +197,10 @@ public class FailureObservingMessageStore extends FailureObservingStore<MessageS
      * {@inheritDoc}
      */
     @Override
-    public List<DeliverableAndesMetadata> getMetadataList(Slot slot, String storageQueueName, long firstMsgId,
+    public List<DeliverableAndesMetadata> getMetadataList(String storageQueueName, long firstMsgId,
             long lastMsgID) throws AndesException {
         try {
-            return wrappedInstance.getMetadataList(slot, storageQueueName, firstMsgId, lastMsgID);
+            return wrappedInstance.getMetadataList(storageQueueName, firstMsgId, lastMsgID);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -226,24 +223,11 @@ public class FailureObservingMessageStore extends FailureObservingStore<MessageS
     /**
      * {@inheritDoc}
      */
-    public int recoverSlotsForQueue(final String storageQueueName, long firstMsgId, int count,
-                                    RecoverySlotCreator.CallBack callBack) throws AndesException {
-        try {
-            return wrappedInstance.recoverSlotsForQueue(storageQueueName,firstMsgId,count,callBack);
-        } catch (AndesStoreUnavailableException exception) {
-            notifyFailures(exception);
-            throw exception;
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(String storageQueueName, long firstMsgId,
-            int count) throws AndesException {
+    public List<AndesMessageMetadata> getMetadataList(String storageQueueName, long firstMsgId,
+            int fetchSize) throws AndesException {
         try {
-            return wrappedInstance.getNextNMessageMetadataFromQueue(storageQueueName, firstMsgId, count);
+            return wrappedInstance.getMetadataList(storageQueueName, firstMsgId, fetchSize);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

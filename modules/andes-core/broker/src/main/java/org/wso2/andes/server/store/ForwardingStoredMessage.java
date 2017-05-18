@@ -18,17 +18,14 @@
 
 package org.wso2.andes.server.store;
 
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.slot.Slot;
-
 import java.nio.ByteBuffer;
+import org.wso2.andes.kernel.AndesException;
 
 /**
  * A StoredMessage which forwards all its method calls to another StoredMessage. Subclasses should override one or more
  * methods to modify the behavior of the backing StoredMessage as desired per the decorator pattern.
  *
- * @param <E>
- *         StorableMessageMetaData Type
+ * @param <E> StorableMessageMetaData Type
  */
 public class ForwardingStoredMessage<E extends StorableMessageMetaData> implements StoredMessage<E> {
     private final StoredMessage<E> s;
@@ -77,13 +74,4 @@ public class ForwardingStoredMessage<E extends StorableMessageMetaData> implemen
         s.setExchange(exchange);
     }
 
-    @Override
-    public Slot getSlot() {
-        return s.getSlot();
-    }
-
-    @Override
-    public void setSlot(Slot slot) {
-        s.setSlot(slot);
-    }
 }

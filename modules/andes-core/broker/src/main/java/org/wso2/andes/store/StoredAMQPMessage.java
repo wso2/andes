@@ -18,17 +18,15 @@
 
 package org.wso2.andes.store;
 
+import java.nio.ByteBuffer;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.server.store.StorableMessageMetaData;
 import org.wso2.andes.server.store.StoredMessage;
 import org.wso2.andes.server.store.TransactionLog;
-
-import java.nio.ByteBuffer;
 
 public class StoredAMQPMessage implements StoredMessage {
 
@@ -38,8 +36,6 @@ public class StoredAMQPMessage implements StoredMessage {
     private StorableMessageMetaData metaData;
     private String channelID;
     private String exchange;
-    private Slot slot;
-
 
     /**
      * Create a stored message combining metadata and message ID
@@ -123,14 +119,6 @@ public class StoredAMQPMessage implements StoredMessage {
 
     public String getExchange() {
         return exchange;
-    }
-
-    public Slot getSlot() {
-        return slot;
-    }
-
-    public void setSlot(Slot slot){
-        this.slot = slot;
     }
 
 }

@@ -20,14 +20,11 @@ package org.wso2.andes.kernel;
 
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
-import org.wso2.andes.configuration.util.ConfigurationProperties;
-import org.wso2.andes.kernel.slot.RecoverySlotCreator;
-import org.wso2.andes.kernel.slot.Slot;
-import org.wso2.andes.store.HealthAwareStore;
-
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import org.wso2.andes.configuration.util.ConfigurationProperties;
+import org.wso2.andes.store.HealthAwareStore;
 
 /**
  * Message meta data and content storing related data base types specific logic is abstracted out
@@ -43,7 +40,7 @@ public interface MessageStore extends HealthAwareStore {
      * @throws AndesException
      */
     DurableStoreConnection initializeMessageStore(AndesContextStore contextStore,
-            ConfigurationProperties connectionProperties) throws AndesException;
+                                                  ConfigurationProperties connectionProperties) throws AndesException;
 
     /**
      * store a message content chunk set
@@ -136,8 +133,8 @@ public interface MessageStore extends HealthAwareStore {
      * @return list of metadata
      * @throws AndesException
      */
-    List<DeliverableAndesMetadata> getMetadataList(Slot slot, final String storageQueueName, long firstMsgId,
-            long lastMsgID) throws AndesException;
+    List<DeliverableAndesMetadata> getMetadataList(final String storageQueueName, long firstMsgId,
+                                                   long lastMsgID) throws AndesException;
 
     /**
      * Get number of messages in the queue within the message id range
@@ -160,21 +157,8 @@ public interface MessageStore extends HealthAwareStore {
      * @return list of metadata
      * @throws AndesException
      */
-    List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String storageQueueName, long firstMsgId,
-            int count) throws AndesException;
-
-    /**
-     * Recover slots for given queue. Will update slot message ids during startup.
-     *
-     * @param storageQueueName storage queue name
-     * @param firstMsgId first message id
-     * @param messageLimitPerSlot slot size
-     * @param callBack callBack for slot creator
-     * @return total number of recovered message count
-     * @throws AndesException
-     */
-    int recoverSlotsForQueue(final String storageQueueName, long firstMsgId, int messageLimitPerSlot,
-                             RecoverySlotCreator.CallBack callBack) throws AndesException;
+    List<AndesMessageMetadata> getMetadataList(final String storageQueueName, long firstMsgId,
+                                               int count) throws AndesException;
 
     /**
      * Retrieve a metadata list from dead letter channel for a specific queue specifying a starting message id and a
@@ -188,7 +172,8 @@ public interface MessageStore extends HealthAwareStore {
      * @throws AndesException
      */
     List<AndesMessageMetadata> getNextNMessageMetadataForQueueFromDLC(final String storageQueueName,
-            String dlcQueueName, long firstMsgId, int count) throws AndesException;
+                                                                      String dlcQueueName, long firstMsgId, int count)
+            throws AndesException;
 
     /**
      * Retrieve a metadata list from dead letter channel specifying a starting message id and a count
@@ -221,7 +206,7 @@ public interface MessageStore extends HealthAwareStore {
     void deleteMessages(Collection<? extends AndesMessageMetadata> messagesToRemove) throws AndesException;
 
     /**
-     *  Delete a set of messages based on their message ids
+     * Delete a set of messages based on their message ids
      *
      * @param messagesToRemove list of message ids of messages that need to be removed
      * @throws AndesException
@@ -240,7 +225,7 @@ public interface MessageStore extends HealthAwareStore {
      * get expired messages from store
      *
      * @param lowerBoundMessageID starting message Id of deletion safe zone
-     * @param  queueName Queue name
+     * @param queueName           Queue name
      * @return List of expired message Ids
      * @throws AndesException
      */
@@ -248,6 +233,7 @@ public interface MessageStore extends HealthAwareStore {
 
     /**
      * get expired messages from DLC
+     *
      * @return List of expired message Ids
      * @throws AndesException
      */
@@ -446,14 +432,12 @@ public interface MessageStore extends HealthAwareStore {
      */
     List<Long> getMessageIdsInDLC(String dlcQueueName, long startMessageId, int messageLimit) throws AndesException;
 
-
     /**
      * close the message store
      */
     void close();
 
     DtxStore getDtxStore();
-
 
 
 }

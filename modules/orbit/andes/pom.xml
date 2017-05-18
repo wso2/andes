@@ -129,10 +129,6 @@
             <groupId>commons-jxpath</groupId>
             <artifactId>commons-jxpath</artifactId>
         </dependency>
-        <dependency>
-            <groupId>libthrift.wso2</groupId>
-            <artifactId>libthrift</artifactId>
-        </dependency>
     </dependencies>
 
     <properties>
@@ -143,7 +139,6 @@
         <import.package>
             !org.wso2.andes.*,
             !org.apache.derby.*,
-            org.apache.thrift.*;version="[0.9.wso2v1,1.0)",
             org.apache.commons.cli.*;version="1.2",
             org.apache.commons.lang.*;version="2.3",
             org.apache.commons.logging.*,

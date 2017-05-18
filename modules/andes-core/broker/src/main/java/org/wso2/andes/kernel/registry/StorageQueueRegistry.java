@@ -18,7 +18,6 @@ package org.wso2.andes.kernel.registry;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.subscription.StorageQueue;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -104,16 +103,4 @@ public class StorageQueueRegistry {
         return new ArrayList<>(storageQueueMap.keySet());
     }
 
-
-    /**
-     * Dump all message status of the slots owned by this slot delivery worker
-     *
-     * @param fileToWrite file to dump
-     * @throws AndesException
-     */
-    public void dumpAllSlotInformationToFile(File fileToWrite) throws AndesException {
-        for (StorageQueue storageQueue : storageQueueMap.values()) {
-            storageQueue.dumpAllSlotInformationToFile(fileToWrite);
-        }
-    }
 }

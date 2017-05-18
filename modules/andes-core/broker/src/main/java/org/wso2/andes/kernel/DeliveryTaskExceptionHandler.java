@@ -16,20 +16,21 @@
  * under the License.
  */
 
-package org.wso2.andes.kernel.slot;
+package org.wso2.andes.kernel;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.task.TaskExceptionHandler;
 
 /**
- * Listener interface to listen to network connection disruptions with the coordinator.
+ * Exception handler implementation for tasks
  */
-public interface CoordinatorConnectionListener {
+final class DeliveryTaskExceptionHandler implements TaskExceptionHandler {
 
-    /**
-     * Triggered when the connection to the coordinator is lost
-     */
-    void onCoordinatorDisconnect();
+    private static Log log = LogFactory.getLog(DeliveryTaskExceptionHandler.class);
 
-    /**
-     * Triggered when the connection to the coordinator is re-established
-     */
-    void onCoordinatorReconnect();
+    @Override
+    public void handleException(Throwable throwable, String taskId) {
+        log.error("Error occurred while processing task. Task id " + taskId, throwable);
+    }
 }

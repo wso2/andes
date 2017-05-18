@@ -15,6 +15,10 @@
 
 package org.wso2.andes.kernel.subscription;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -27,13 +31,6 @@ import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.MessageHandler;
 import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.router.AndesMessageRouter;
-import org.wso2.andes.kernel.slot.Slot;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
 
 /**
  * Storage queue represents the bounded queue for subscription. A subscription
@@ -234,6 +231,7 @@ public class StorageQueue {
      * Check if queue is bound to given message router by the given binding key
      * @param bindingKey key to bind
      * @param router message router to bind
+     *
      * @return true if queue is already bound
      */
     public boolean checkIfBound(String bindingKey, AndesMessageRouter router) {
@@ -321,8 +319,6 @@ public class StorageQueue {
         boundedSubscriptions.remove(subscription);
         if (boundedSubscriptions.isEmpty()) {
             if (isDurable) {
-                //return slots back to coordinator
-                messageHandler.releaseAllSlots();
                 messageHandler.clearReadButUndeliveredMessages();
             }
 
@@ -363,10 +359,17 @@ public class StorageQueue {
     /**
      * Read messages from persistent storage for delivery
      *
-     * @param messageSlot message slot whose messages should be read
+     * @return number of messages loaded
      */
-    public void loadMessagesForDelivery(Slot messageSlot) throws AndesException {
-        messageHandler.bufferMessages(messageSlot);
+    public int bufferMessagesForDelivery() throws AndesException {
+        if (!isBufferFull()) {
+            return messageHandler.bufferMessages();
+        } else {
+            if (log.isDebugEnabled()) {
+                log.debug("The queue " + name + " has no room to buffer messages. ");
+            }
+            return 0;
+        }
     }
 
     /**
@@ -398,26 +401,15 @@ public class StorageQueue {
         return messageHandler.getReadButUndeliveredMessages();
     }
 
-    //TODO: is there a workaround to remove this call?
-
-    /**
-     * Delete a specific message slot that is read by the queue
-     *
-     * @param slotToDelete slot to delete
-     */
-    public void deleteSlot(Slot slotToDelete) {
-        messageHandler.deleteSlot(slotToDelete);
-    }
-
     /**
      * Check if storage queue read message buffer is not reached
      * the limit. This should be checked before calling
      * loadMessagesForDelivery(Slot messageSlot)
      *
-     * @return true if buffer has space
+     * @return true if buffer is full
      */
-    public boolean checkForReadMessageBufferLimit() {
-        return messageHandler.messageBufferHasRoom();
+    public boolean isBufferFull() {
+        return messageHandler.isBufferFull();
     }
 
 
@@ -454,16 +446,6 @@ public class StorageQueue {
     }
 
     /**
-     * Dump all message status of the slots read to this storage queue
-     *
-     * @param fileToWrite File to write information
-     * @throws AndesException
-     */
-    public void dumpAllSlotInformationToFile(File fileToWrite) throws AndesException {
-        messageHandler.dumpAllSlotInformationToFile(fileToWrite, name);
-    }
-
-    /**
      * Get message count for queue
      *
      * @return message count of the queue
@@ -472,7 +454,6 @@ public class StorageQueue {
     public long getMessageCount() throws AndesException {
         return messageHandler.getMessageCountForQueue();
     }
-
 
     public boolean equals(Object o) {
         if (o instanceof StorageQueue) {
@@ -485,9 +466,7 @@ public class StorageQueue {
     }
 
     public int hashCode() {
-        return new HashCodeBuilder(17, 31).
-                append(name).
-                toHashCode();
+        return new HashCodeBuilder(17, 31).append(name).toHashCode();
     }
 
 }
