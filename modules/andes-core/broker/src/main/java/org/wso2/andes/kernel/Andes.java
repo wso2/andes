@@ -20,12 +20,19 @@ package org.wso2.andes.kernel;
 
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import javax.transaction.xa.Xid;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
-import org.wso2.andes.kernel.disruptor.inbound.InboundMessageRecoveryEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundBindingEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundChannelFlowEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundDeleteDLCMessagesEvent;
@@ -33,6 +40,7 @@ import org.wso2.andes.kernel.disruptor.inbound.InboundDeleteMessagesEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
 import org.wso2.andes.kernel.disruptor.inbound.InboundExchangeEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundKernelOpsEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundMessageRecoveryEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundMessageRejectEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
@@ -40,21 +48,9 @@ import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.kernel.dtx.DistributedTransaction;
 import org.wso2.andes.kernel.dtx.DtxRegistry;
-import org.wso2.andes.kernel.slot.SlotMessageCounter;
 import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.tools.utils.MessageTracer;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import javax.transaction.xa.Xid;
 
 import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_PURGED_COUNT_TIMEOUT;
 
@@ -97,18 +93,6 @@ public class Andes {
      * Manages all subscription related events.
      */
     private AndesSubscriptionManager subscriptionManager;
-
-    /**
-     * Scheduler for periodically trigger Slot Deletion Safe Zone
-     * update events.
-     */
-    private final ScheduledExecutorService safeZoneUpdateScheduler = Executors.newScheduledThreadPool(1);
-
-    /**
-     * Interval in milliseconds above update call should trigger
-     */
-    private static final int safeZoneUpdateTriggerInterval = AndesConfigurationManager.readValue(AndesConfiguration
-            .PERFORMANCE_TUNING_MAX_SLOT_SUBMIT_DELAY);
 
     /**
      * Maximum batch size for a transaction. Limit is set for content size of the batch.
@@ -193,22 +177,6 @@ public class Andes {
         this.dtxRegistry = dtxRegistry;
 
         log.info("Andes API initialised.");
-    }
-
-    /**
-     * Start the safe zone calculation worker. The safe zone is used to decide if a slot can be safely deleted,
-     * assuming all messages in the slot range has been delivered.
-     */
-    public void startSafeZoneUpdateWorkers() {
-        SafeZoneUpdateEventTriggeringTask safeZoneUpdateTask = new SafeZoneUpdateEventTriggeringTask(
-                inboundEventManager);
-
-        log.info("Starting Safe Zone Calculator for slots.");
-        safeZoneUpdateScheduler
-                .scheduleAtFixedRate(safeZoneUpdateTask, 5, safeZoneUpdateTriggerInterval, TimeUnit.MILLISECONDS);
-
-        SlotMessageCounter.getInstance().scheduleSubmitSlotToCoordinatorTimer();
-
     }
 
     /**
@@ -303,7 +271,7 @@ public class Andes {
      * Notify client connection is closed from protocol level.
      * State related to connection will be updated within Andes.
      */
-    public void startMessageDelivery() {
+    void startMessageDelivery() {
         InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
         kernelOpsEvent.prepareForStartMessageDelivery(messagingEngine);
         inboundEventManager.publishStateEvent(kernelOpsEvent);
@@ -312,7 +280,7 @@ public class Andes {
     /**
      * Stop message delivery.
      */
-    public void stopMessageDelivery() {
+    void stopMessageDelivery() {
         InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
         kernelOpsEvent.prepareForStopMessageDelivery(messagingEngine);
         inboundEventManager.publishStateEvent(kernelOpsEvent);
@@ -623,16 +591,6 @@ public class Andes {
     }
 
     /**
-     * Return last assigned message id of slot for given queue.
-     *
-     * @param queueName name of destination queue
-     * @return last assign message id
-     */
-    public long getLastAssignedSlotMessageId(String queueName) throws AndesException {
-        return MessagingEngine.getInstance().getLastAssignedSlotMessageId(queueName);
-    }
-
-    /**
      * Generate a new message ID. The return id will be always unique
      * even for different message broker nodes
      *
@@ -756,14 +714,6 @@ public class Andes {
      */
     public AndesContent getRetainedMessageContent(AndesMessageMetadata metadata) throws AndesException {
         return MessagingEngine.getInstance().getRetainedMessageContent(metadata);
-    }
-
-    /**
-     * On a member left event trigger recovery event. This will trigger a mock submit slot event to coordinator for all
-     * the queues and topics. This is to avoid any lost submit slot events from left member node
-     */
-    public void triggerRecoveryEvent() {
-        inboundEventManager.publishRecoveryEvent();
     }
 
     /**

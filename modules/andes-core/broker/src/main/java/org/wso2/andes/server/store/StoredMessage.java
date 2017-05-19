@@ -17,10 +17,8 @@
  */
 package org.wso2.andes.server.store;
 
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.slot.Slot;
-
 import java.nio.ByteBuffer;
+import org.wso2.andes.kernel.AndesException;
 
 public interface StoredMessage<M extends StorableMessageMetaData>
 {
@@ -40,7 +38,4 @@ public interface StoredMessage<M extends StorableMessageMetaData>
 
     void setExchange(String exchange);
 
-    Slot getSlot();
-
-    void setSlot(Slot slot);
 }

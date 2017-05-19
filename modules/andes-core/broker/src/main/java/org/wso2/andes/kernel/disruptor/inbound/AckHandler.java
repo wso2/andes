@@ -24,10 +24,8 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesAckEvent;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesUtils;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.kernel.subscription.AndesSubscription;
 import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.store.AndesTransactionRollbackException;
 import org.wso2.andes.store.FailureObservingStoreManager;
@@ -52,7 +50,7 @@ public class AckHandler implements StoreHealthListener {
     /**
      * Maximum number to retries to delete messages from message store
      */
-    private static final int MAX_MESSAGE_DELETION_COUNT = 5;
+    private static final int MAX_DELETION_RETRY_COUNT = 5;
 
     /**
      * Indicates and provides a barrier if messages stores become offline.
@@ -100,8 +98,7 @@ public class AckHandler implements StoreHealthListener {
      * message deletion will happen only when
      * all the clients acknowledges)
      *
-     * @param ackEventList
-     *            inboundEvent list
+     * @param ackEventList inboundEvent list
      */
     private void ackReceived(final List<AndesAckEvent> ackEventList) throws AndesException {
         for (AndesAckEvent ack : ackEventList) {
@@ -127,11 +124,10 @@ public class AckHandler implements StoreHealthListener {
      * Delete acknowledged messages from message store. Deletion is retried if it failed due to a
      * AndesTransactionRollbackException.
      *
-     * @param numberOfRetriesBefore
-     *         number of recursive calls
+     * @param currentRetryCount number of recursive calls
      * @throws AndesException
      */
-    private void deleteMessagesFromStore(int numberOfRetriesBefore) throws AndesException {
+    private void deleteMessagesFromStore(int currentRetryCount) throws AndesException {
         try {
             messagingEngine.deleteMessages(messagesToRemove);
 
@@ -144,13 +140,13 @@ public class AckHandler implements StoreHealthListener {
             }
             messagesToRemove.clear();
         } catch (AndesTransactionRollbackException txRollback) {
-            if (numberOfRetriesBefore <= MAX_MESSAGE_DELETION_COUNT) {
+            if (currentRetryCount <= MAX_DELETION_RETRY_COUNT) {
 
                 log.warn("unable to delete messages (" + messagesToRemove.size()
                          + "), due to transaction roll back. Operation will be attempted again", txRollback);
-                deleteMessagesFromStore(numberOfRetriesBefore + 1);
+                deleteMessagesFromStore(currentRetryCount + 1);
             } else {
-                throw new AndesException("Unable to delete acked messages, in final attempt " + numberOfRetriesBefore
+                throw new AndesException("Unable to delete acked messages, in final attempt " + currentRetryCount
                                          + ". This might lead to message duplication.");
             }
         } catch (AndesException ex) {

@@ -65,14 +65,6 @@ public interface ClusterAgent {
     boolean isCoordinator();
 
     /**
-     * Return the socket address of the coordinator Node. This socket address can be used to communicate with the
-     * coordinator node using thrift.
-     *
-     * @return Socket address of the coordinator thrift server if present, null otherwise
-     */
-    InetSocketAddress getThriftAddressOfCoordinator();
-
-    /**
      * Start listening to cluster events
      *
      * @param manager

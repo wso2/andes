@@ -22,6 +22,11 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
 import com.hazelcast.core.IdGenerator;
 import com.hazelcast.core.Member;
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -34,12 +39,6 @@ import org.wso2.andes.server.cluster.error.detection.DisabledNetworkPartitionDet
 import org.wso2.andes.server.cluster.error.detection.HazelcastBasedNetworkPartitionDetector;
 import org.wso2.andes.server.cluster.error.detection.NetworkPartitionDetector;
 import org.wso2.andes.server.cluster.error.detection.NetworkPartitionListener;
-
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Hazelcast based cluster agent implementation
@@ -104,14 +103,7 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
             networkPartitionDetector = new DisabledNetworkPartitionDetector();
         }
 
-        boolean isRDBMBasedCoordinationEnabled = AndesConfigurationManager.readValue(
-                AndesConfiguration.RDBMS_BASED_COORDINATION);
-
-        if (isRDBMBasedCoordinationEnabled) {
-            coordinationStrategy = new RDBMSCoordinationStrategy();
-        } else {
-            coordinationStrategy = new HazelcastCoordinationStrategy(hazelcastInstance);
-        }
+        coordinationStrategy = new RDBMSCoordinationStrategy();
     }
 
     /**
@@ -166,14 +158,6 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
     @Override
     public boolean isCoordinator() {
         return coordinationStrategy.isCoordinator();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public InetSocketAddress getThriftAddressOfCoordinator() {
-        return coordinationStrategy.getThriftAddressOfCoordinator();
     }
 
     /**

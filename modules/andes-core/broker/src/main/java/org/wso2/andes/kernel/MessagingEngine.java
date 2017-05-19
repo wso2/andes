@@ -20,31 +20,19 @@ package org.wso2.andes.kernel;
 
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
-import org.apache.log4j.Logger;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.dtx.AndesPreparedMessageMetadata;
-import org.wso2.andes.kernel.slot.Slot;
-import org.wso2.andes.kernel.slot.SlotCoordinator;
-import org.wso2.andes.kernel.slot.SlotCoordinatorCluster;
-import org.wso2.andes.kernel.slot.SlotCoordinatorStandalone;
-import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
-import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
-import org.wso2.andes.kernel.slot.SlotManagerStandalone;
-import org.wso2.andes.kernel.slot.SlotMessageCounter;
-import org.wso2.andes.kernel.subscription.AndesSubscription;
-import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
-import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
-import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerator;
-import org.wso2.andes.server.queue.DLCQueueUtils;
-import org.wso2.andes.tools.utils.MessageTracer;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.log4j.Logger;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.dtx.AndesPreparedMessageMetadata;
+import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
+import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerator;
+import org.wso2.andes.server.queue.DLCQueueUtils;
+import org.wso2.andes.tools.utils.MessageTracer;
 
 /**
  * This class will handle all message related functions of WSO2 Message Broker
@@ -71,18 +59,10 @@ public class MessagingEngine {
      */
     private MessageStore messageStore;
 
-
-    /**
-     * Slot coordinator who is responsible of coordinating with the SlotManager
-     */
-    private SlotCoordinator slotCoordinator;
-
     /**
      * Expiry manager which is responsible for update DLC info in db tables
      */
     private MessageExpiryManager messageExpiryManager;
-
-    private AndesSubscriptionManager subscriptionManager;
 
     /**
      * private constructor for singleton pattern
@@ -111,28 +91,16 @@ public class MessagingEngine {
      * storing strategy will be set according to the configurations by calling this.
      *
      * @param messageStore MessageStore
-     * @param subscriptionManager
      * @throws AndesException
      */
-    public void initialise(MessageStore messageStore, MessageExpiryManager messageExpiryManager,
-                           AndesSubscriptionManager subscriptionManager)
+    public void initialise(MessageStore messageStore, MessageExpiryManager messageExpiryManager)
             throws AndesException {
 
         configureMessageIDGenerator();
 
         this.messageStore = messageStore;
         this.messageExpiryManager = messageExpiryManager;
-        this.subscriptionManager = subscriptionManager;
 
-
-        /*
-        Initialize the SlotCoordinator
-         */
-        if (AndesContext.getInstance().isClusteringEnabled()) {
-            slotCoordinator = new SlotCoordinatorCluster();
-        } else {
-            slotCoordinator = new SlotCoordinatorStandalone();
-        }
     }
 
     /**
@@ -197,7 +165,6 @@ public class MessagingEngine {
         // Increment count by 1 in DLC and decrement by 1 in original queue
 
         messageToRemove.markAsDLCMessage();
-        messageToRemove.getSlot().decrementPendingMessageCount();
 
         //Tracing message activity
         MessageTracer.trace(messageToRemove.getMessageID(), destinationQueueName, MessageTracer.MOVED_TO_DLC);
@@ -333,7 +300,6 @@ public class MessagingEngine {
         //mark the messages as DLC messages
         for (DeliverableAndesMetadata message : messagesToMove) {
             message.markAsDLCMessage();
-            message.getSlot().decrementPendingMessageCount();
         }
     }
 
@@ -453,7 +419,7 @@ public class MessagingEngine {
      */
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName, long firstMsgId,
             int count) throws AndesException {
-        return messageStore.getNextNMessageMetadataFromQueue(queueName, firstMsgId, count);
+        return messageStore.getMetadataList(queueName, firstMsgId, count);
     }
 
     /**
@@ -560,7 +526,7 @@ public class MessagingEngine {
     public void startMessageDelivery() {
         log.info("Starting SlotDelivery Workers.");
         //Start all slotDeliveryWorkers
-        SlotDeliveryWorkerManager.getInstance().startMessageDelivery();
+        MessageDeliveryManager.getInstance().startMessageDelivery();
         log.info("Start Disruptor writing messages to store.");
     }
 
@@ -571,8 +537,7 @@ public class MessagingEngine {
 
         log.info("Stopping SlotDelivery Worker.");
         //Stop all slotDeliveryWorkers
-        SlotDeliveryWorkerManager.getInstance().stopMessageDelivery();
-        SlotMessageCounter.getInstance().stop();
+        MessageDeliveryManager.getInstance().stopMessageDelivery();
         //Stop delivery disruptor
         MessageFlusher.getInstance().stopMessageFlusher();
     }
@@ -591,10 +556,6 @@ public class MessagingEngine {
 
     public void completePendingStoreOperations() {
         messageStore.close();
-    }
-
-    public SlotCoordinator getSlotCoordinator() {
-        return slotCoordinator;
     }
 
     /**
@@ -644,30 +605,6 @@ public class MessagingEngine {
 
         return new RetainedContent(retainedContentParts, contentSize, messageID);
     }
-
-    /**
-     * Return last assign message id of slot for given queue
-     *
-     * @param queueName name of destination queue
-     * @return last assign message id
-     */
-    public long getLastAssignedSlotMessageId(String queueName) throws AndesException {
-        long lastMessageId = 0;
-        long messageIdDifference = 1024 * 256 * 5000;
-        Long lastAssignedSlotMessageId;
-        if (ClusterResourceHolder.getInstance().getClusterManager().isClusteringEnabled()) {
-            lastAssignedSlotMessageId = SlotManagerClusterMode.getInstance()
-                    .getLastAssignedSlotMessageIdInClusterMode(queueName);
-        } else {
-            lastAssignedSlotMessageId = SlotManagerStandalone.getInstance()
-                    .getLastAssignedSlotMessageIdInStandaloneMode(queueName);
-        }
-        if (lastAssignedSlotMessageId != null) {
-            lastMessageId = lastAssignedSlotMessageId - messageIdDifference;
-        }
-        return lastMessageId;
-    }
-
 
     /**
      * Get message IDs from queue starting from given startMessageId up to the given message count.

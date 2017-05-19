@@ -20,11 +20,9 @@
  */
 package org.wso2.andes.server.store;
 
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.slot.Slot;
-
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.wso2.andes.kernel.AndesException;
 
 /**
  * Adds some extra methods to the memory message store for testing purposes.
@@ -97,17 +95,6 @@ public class TestMemoryMessageStore extends MemoryMessageStore
 
         public void setExchange(String exchange) {
             //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        @Override
-        public Slot getSlot() {
-            return null;
-        }
-
-        @Override
-        public void setSlot(Slot slot) {
-            //this method will not be used by instances of this class. This is only to set slot
-            // in  AMQP messages
         }
     }
     
