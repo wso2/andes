@@ -17,16 +17,20 @@
  */
 package org.wso2.andes.mqtt;
 
+import java.nio.ByteBuffer;
+import java.util.UUID;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.wso2.QOSLevel;
-import org.wso2.andes.kernel.*;
-import org.wso2.andes.mqtt.utils.MQTTUtils;
+import org.wso2.andes.kernel.AndesContent;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.ConcurrentTrackingList;
+import org.wso2.andes.kernel.DeliverableAndesMetadata;
+import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.kernel.subscription.OutboundSubscription;
+import org.wso2.andes.mqtt.utils.MQTTUtils;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
-
-import java.nio.ByteBuffer;
-import java.util.UUID;
 
 
 /**
@@ -169,7 +173,7 @@ public class MQTTLocalSubscription implements OutboundSubscription {
     public boolean sendMessageToSubscriber(ProtocolMessage protocolMessage, AndesContent content)
             throws AndesException {
 
-        boolean sendSuccess;
+        boolean sendSuccess = false;
 
         DeliverableAndesMetadata messageMetadata = protocolMessage.getMessage();
 
@@ -181,27 +185,27 @@ public class MQTTLocalSubscription implements OutboundSubscription {
         ByteBuffer message = MQTTUtils.getContentFromMetaInformation(content);
         //Will publish the message to the respective queue
         if (null != mqqtServerChannel) {
-            try {
-
-                //TODO:review - instead of getSubscribedDestination() used message destination
-                mqqtServerChannel.distributeMessageToSubscriber(wildcardDestination, message,
-                        messageMetadata.getMessageID(), messageMetadata.getQosLevel(),
-                        messageMetadata.isPersistent(), getMqttSubscriptionID(),
-                        getSubscriberQOS(), messageMetadata);
-
-                //We will indicate the ack to the kernel at this stage
-                //For MQTT QOS 0 we do not get ack from subscriber, hence will be implicitly creating an ack
-                if (QOSLevel.AT_MOST_ONCE.getValue() == getSubscriberQOS() ||
-                        QOSLevel.AT_MOST_ONCE.getValue() == messageMetadata.getQosLevel()) {
-                    mqqtServerChannel.implicitAck(messageMetadata.getMessageID(), getChannelID());
-                }
-                sendSuccess = true;
-            } catch (MQTTException e) {
-                final String error = "Error occurred while delivering message to the subscriber for message :" +
-                        messageMetadata.getMessageID();
-                log.error(error, e);
-                throw new AndesException(error, e);
-            }
+//            try {
+//
+//                //TODO:review - instead of getSubscribedDestination() used message destination
+//                mqqtServerChannel.distributeMessageToSubscriber(wildcardDestination, message,
+//                        messageMetadata.getMessageID(), messageMetadata.getQosLevel(),
+//                        messageMetadata.isPersistent(), getMqttSubscriptionID(),
+//                        getSubscriberQOS(), messageMetadata);
+//
+//                //We will indicate the ack to the kernel at this stage
+//                //For MQTT QOS 0 we do not get ack from subscriber, hence will be implicitly creating an ack
+//                if (QOSLevel.AT_MOST_ONCE.getValue() == getSubscriberQOS() ||
+//                        QOSLevel.AT_MOST_ONCE.getValue() == messageMetadata.getQosLevel()) {
+//                    mqqtServerChannel.implicitAck(messageMetadata.getMessageID(), getChannelID());
+//                }
+//                sendSuccess = true;
+//            } catch (MQTTException e) {
+//                final String error = "Error occurred while delivering message to the subscriber for message :" +
+//                        messageMetadata.getMessageID();
+//                log.error(error, e);
+//                throw new AndesException(error, e);
+//            }
         } else {
             sendSuccess = false;
         }

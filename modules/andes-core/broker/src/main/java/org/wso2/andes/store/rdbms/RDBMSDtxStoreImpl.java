@@ -122,8 +122,8 @@ public class RDBMSDtxStoreImpl implements DtxStore {
 
                 storeDequeueRecordMetadataPS.setLong(1, internalXid);
                 storeDequeueRecordMetadataPS.setLong(2, messageMetadata.getMessageID());
-                storeDequeueRecordMetadataPS.setString(3, messageMetadata.getStorageQueueName());
-                storeDequeueRecordMetadataPS.setBytes(4, messageMetadata.getMetadata());
+                storeDequeueRecordMetadataPS.setString(3, messageMetadata.getStorageDestination());
+                storeDequeueRecordMetadataPS.setBytes(4, messageMetadata.getBytes());
                 storeDequeueRecordMetadataPS.addBatch();
 
                 backupDequeueMessagesPS.setLong(1, internalXid);
@@ -163,7 +163,7 @@ public class RDBMSDtxStoreImpl implements DtxStore {
                 AndesMessageMetadata metadata = message.getMetadata();
                 storeMetadataPS.setLong(1, internalXid);
                 storeMetadataPS.setLong(2, temporaryMessageId);
-                storeMetadataPS.setBytes(3, metadata.getMetadata());
+                storeMetadataPS.setBytes(3, metadata.getBytes());
                 storeMetadataPS.addBatch();
 
                 for (AndesMessagePart messagePart : message.getContentChunkList()) {
@@ -332,12 +332,7 @@ public class RDBMSDtxStoreImpl implements DtxStore {
 
             List<AndesPreparedMessageMetadata> dtxMetadataList = new ArrayList<>();
             while (resultSet.next()) {
-                AndesMessageMetadata metadata = new AndesMessageMetadata(
-                        resultSet.getLong(RDBMSConstants.MESSAGE_ID),
-                        resultSet.getBytes(RDBMSConstants.METADATA),
-                        true
-                        );
-                metadata.setStorageQueueName(resultSet.getString(RDBMSConstants.QUEUE_NAME));
+                AndesMessageMetadata metadata = new AndesMessageMetadata(resultSet.getBytes(RDBMSConstants.METADATA));
                 AndesPreparedMessageMetadata dtxMetadata = new AndesPreparedMessageMetadata(metadata);
                 dtxMetadataList.add(dtxMetadata);
             }
@@ -371,11 +366,8 @@ public class RDBMSDtxStoreImpl implements DtxStore {
             metadataResultSet = retrieveMetadataPS.executeQuery();
             Map<Long, AndesMessage> messageMap = new HashMap<>();
             while (metadataResultSet.next()) {
-                AndesMessageMetadata metadata = new AndesMessageMetadata(
-                        metadataResultSet.getLong(RDBMSConstants.MESSAGE_ID),
-                        metadataResultSet.getBytes(RDBMSConstants.METADATA),
-                        true
-                );
+                AndesMessageMetadata metadata =
+                        new AndesMessageMetadata(metadataResultSet.getBytes(RDBMSConstants.METADATA));
                 AndesMessage andesMessage = new AndesMessage(metadata);
                 messageMap.put(metadata.getMessageID(), andesMessage);
             }
@@ -464,8 +456,8 @@ public class RDBMSDtxStoreImpl implements DtxStore {
             for (AndesPreparedMessageMetadata metadata : messagesToRestore) {
                 storeMetadataPS.setLong(1, metadata.getMessageID());
                 storeMetadataPS.setLong(2,
-                                        rdbmsMessageStore.getCachedQueueID( metadata.getStorageQueueName()));
-                storeMetadataPS.setBytes(3, metadata.getMetadata());
+                                        rdbmsMessageStore.getCachedQueueID( metadata.getStorageDestination()));
+                storeMetadataPS.setBytes(3, metadata.getBytes());
                 storeMetadataPS.addBatch();
 
                 restoreContentPS.setLong(1, metadata.getMessageID());

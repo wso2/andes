@@ -364,16 +364,19 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      * @param destinationQueueName The Dead Letter Queue Name for the tenant
      */
     @Override
-    public void deleteMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "andesMetadataIDs",
-                                                                           description = "ID of the Messages to Be DELETED") long[] andesMetadataIDs,
+    public void deleteMessagesFromDeadLetterQueue(
+            @MBeanOperationParameter(name = "andesMetadataIDs",
+                                     description = "ID of the Messages to Be DELETED") long[] andesMetadataIDs,
             @MBeanOperationParameter(name = "destinationQueueName",
-                                     description = "The Dead Letter Queue Name for the selected tenant") String destinationQueueName) {
+                                     description = "The Dead Letter Queue Name for the selected tenant")
+                                     String destinationQueueName) {
 
         List<AndesMessageMetadata> messageMetadataList = new ArrayList<>(andesMetadataIDs.length);
 
         for (long andesMetadataID : andesMetadataIDs) {
-            AndesMessageMetadata messageToRemove = new AndesMessageMetadata(andesMetadataID, null, false);
-            messageToRemove.setStorageQueueName(destinationQueueName);
+            AndesMessageMetadata messageToRemove =
+                    new AndesMessageMetadata(andesMetadataID, destinationQueueName, ProtocolType.AMQP);
+            messageToRemove.setStorageDestination(destinationQueueName);
             messageToRemove.setDestination(destinationQueueName);
             messageMetadataList.add(messageToRemove);
         }
@@ -1111,9 +1114,9 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
                 // Set the new destination queue
                 metadata.setDestination(targetQueue);
-                metadata.setStorageQueueName(targetQueue);
-                metadata.setMessageRouterName(newStorageQueue.getMessageRouter().getName());
-                metadata.updateMetadata(targetQueue, newStorageQueue.getMessageRouter().getName());
+                metadata.setStorageDestination(targetQueue);
+//                metadata.setMessageRouterName(newStorageQueue.getMessageRouter().getName());
+//                metadata.updateMetadata(targetQueue, newStorageQueue.getMessageRouter().getName());
             }
 
             AndesMessageMetadata clonedMetadata = metadata.shallowCopy(metadata.getMessageID());

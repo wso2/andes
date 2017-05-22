@@ -96,21 +96,21 @@ public class MQTTMessageRouter extends AndesMessageRouter {
     @Override
     public Set<StorageQueue> getMatchingStorageQueues(AndesMessage incomingMessage) {
         String messageRoutingKey = incomingMessage.getMetadata().getDestination();
-        int qosLevel = incomingMessage.getMetadata().getQosLevel();
+//        int qosLevel = incomingMessage.getMetadata().getQosLevel();
         Set<StorageQueue> matchingQueues = topicMatcher.getMatchingStorageQueues(messageRoutingKey);
-        /*
-         * QOS level 0 messages should not be persisted for subscribers with clean session = false who are inactive
-         * at the moment
-         */
-        if(0 == qosLevel) {
-            Iterator<StorageQueue> queueIterator = matchingQueues.iterator();
-            while (queueIterator.hasNext()) {
-                StorageQueue matchingQueue = queueIterator.next();
-                if (matchingQueue.isDurable() && matchingQueue.getBoundSubscriptions().isEmpty()) {
-                    queueIterator.remove();
-                }
-            }
-        }
+//        /*
+//         * QOS level 0 messages should not be persisted for subscribers with clean session = false who are inactive
+//         * at the moment
+//         */
+//        if(0 == qosLevel) {
+//            Iterator<StorageQueue> queueIterator = matchingQueues.iterator();
+//            while (queueIterator.hasNext()) {
+//                StorageQueue matchingQueue = queueIterator.next();
+//                if (matchingQueue.isDurable() && matchingQueue.getBoundSubscriptions().isEmpty()) {
+//                    queueIterator.remove();
+//                }
+//            }
+//        }
         return matchingQueues;
     }
 

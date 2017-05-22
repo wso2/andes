@@ -19,6 +19,7 @@ package org.wso2.andes.amqp;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
@@ -27,6 +28,7 @@ import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.AndesUtils;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolMessage;
+import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.disruptor.inbound.InboundBindingEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundExchangeEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
@@ -152,12 +154,7 @@ public class AMQPUtils {
      * @return StorableMessageMetaData
      */
     public static StorableMessageMetaData convertAndesMetadataToAMQMetadata(AndesMessageMetadata andesMessageMetadata) {
-        byte[] dataAsBytes = andesMessageMetadata.getMetadata();
-        ByteBuffer buf = ByteBuffer.wrap(dataAsBytes);
-        buf.position(1);
-        buf = buf.slice();
-        MessageMetaDataType type = MessageMetaDataType.values()[dataAsBytes[0]];
-        return type.getFactory().createMetaData(buf);
+        return MessageMetaData.FACTORY.createMetaData(andesMessageMetadata);
     }
 
     /**
@@ -169,19 +166,18 @@ public class AMQPUtils {
      */
     public static AndesMessageMetadata convertAMQMessageToAndesMetadata(AMQMessage amqMessage) {
         MessageMetaData amqMetadata = amqMessage.getMessageMetaData();
-        String queue = amqMetadata.getMessagePublishInfo().getRoutingKey().toString();
+        String destination = amqMetadata.getMessagePublishInfo().getRoutingKey().toString();
 
-        final int bodySize = 1 + amqMetadata.getStorableSize();
-        byte[] underlying = new byte[bodySize];
-        underlying[0] = (byte) amqMetadata.getType().ordinal();
-        java.nio.ByteBuffer buf = java.nio.ByteBuffer.wrap(underlying);
-        buf.position(1);
-        buf = buf.slice();
-        amqMetadata.writeToBuffer(0, buf);
-        AndesMessageMetadata metadata = new AndesMessageMetadata(amqMessage.getMessageId(),underlying,true);
+        final int bodySize = amqMetadata.getStorableSize();
+        ByteBuffer byteBuffer = ByteBuffer.allocate(bodySize);
+        amqMetadata.writeToBuffer(0, byteBuffer);
+
+        AndesMessageMetadata metadata = new AndesMessageMetadata(destination, ProtocolType.AMQP);
+        metadata.setExpirationTime(amqMessage.getExpiration());
+        metadata.setMessageRouterName(amqMessage.getMessagePublishInfo().getExchange().toString());
         metadata.setArrivalTime(amqMessage.getArrivalTime());
         metadata.setMessageContentLength(amqMetadata.getContentSize());
-
+        metadata.setProtocolMetadata(byteBuffer.array());
         return metadata;
     }
 
@@ -344,7 +340,7 @@ public class AMQPUtils {
                 queueOwner,
                 queue.isExclusive());
 
-        return new InboundBindingEvent(queueInformation,exchangeName,routingKey.toString());
+        return new InboundBindingEvent(queueInformation, exchangeName, routingKey.toString());
     }
 
     /**

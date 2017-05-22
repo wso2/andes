@@ -27,6 +27,7 @@ import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
+import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.MQTTMessageContext;
 import org.wso2.andes.mqtt.MQTTPublisherChannel;
@@ -124,17 +125,17 @@ public class MQTTUtils {
                                                             MQTTPublisherChannel publisher, boolean isCompressed) {
         long receivedTime = System.currentTimeMillis();
 
-        AndesMessageMetadata messageHeader = new AndesMessageMetadata();
+        AndesMessageMetadata messageHeader = new AndesMessageMetadata(messageID, topic, ProtocolType.MQTT);
         messageHeader.setMessageID(messageID);
-        messageHeader.setTopic(true);
-        messageHeader.setMessageRouterName(MQTT_EXCHANGE_NAME);
+//        messageHeader.setTopic(true);
+//        messageHeader.setMessageRouterName(MQTT_EXCHANGE_NAME);
         messageHeader.setDestination(topic);
         messageHeader.setPersistent(true);
         messageHeader.setRetain(retain);
         messageHeader.setMessageContentLength(messageContentLength);
-        messageHeader.setStorageQueueName(topic);
-        messageHeader.setMetaDataType(MessageMetaDataType.META_DATA_MQTT);
-        messageHeader.setQosLevel(qosLevel);
+        messageHeader.setStorageDestination(topic);
+//        messageHeader.setMetaDataType(MessageMetaDataType.META_DATA_MQTT);
+//        messageHeader.setQosLevel(qosLevel);
         messageHeader.setCompressed(isCompressed);
         // message arrival time set to mb node's system time.
         messageHeader.setArrivalTime(receivedTime);
@@ -143,11 +144,11 @@ public class MQTTUtils {
                     + " and retain flag set to " + retain + " was created");
         }
 
-        byte[] andesMetaData = encodeMetaInfo(MQTT_META_INFO, messageHeader.getMessageID(), receivedTime,
-                messageHeader.isTopic(), qosLevel, messageHeader.getDestination(), messageHeader.isPersistent(),
-                messageContentLength, isCompressed);
+//        byte[] andesMetaData = encodeMetaInfo(MQTT_META_INFO, messageHeader.getMessageID(), receivedTime,
+//                messageHeader.isTopic(), qosLevel, messageHeader.getDestination(), messageHeader.isPersistent(),
+//                messageContentLength, isCompressed);
 
-        messageHeader.setMetadata(andesMetaData);
+//        messageHeader.setMetadata(andesMetaData);
         return messageHeader;
     }
 

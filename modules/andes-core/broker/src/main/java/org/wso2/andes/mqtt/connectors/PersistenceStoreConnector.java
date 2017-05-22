@@ -134,9 +134,9 @@ public class PersistenceStoreConnector implements MQTTConnector {
                     publisher, messageContext.isCompressed());
 
             // Add properties to be used for publisher acks
-            messageHeader.addProperty(MQTTUtils.CLIENT_ID, messageContext.getPublisherID());
-            messageHeader.addProperty(MQTTUtils.MESSAGE_ID, messageContext.getMqttLocalMessageID());
-            messageHeader.addProperty(MQTTUtils.QOSLEVEL, messageContext.getQosLevel().getValue());
+            messageHeader.addTemporaryProperty(MQTTUtils.CLIENT_ID, messageContext.getPublisherID());
+            messageHeader.addTemporaryProperty(MQTTUtils.MESSAGE_ID, messageContext.getMqttLocalMessageID());
+            messageHeader.addTemporaryProperty(MQTTUtils.QOSLEVEL, messageContext.getQosLevel().getValue());
 
             // Publish to Andes core
             AndesMessage andesMessage = new MQTTMessage(messageHeader);
@@ -241,9 +241,9 @@ public class PersistenceStoreConnector implements MQTTConnector {
                 message.position(bytesPosition);
                 metadata.setRetain(true);
 
-                MQTTopicManager.getInstance().distributeMessageToSubscriber(topic,message,metadata.getMessageID(),
-                                                                            metadata.getQosLevel(), metadata.isRetain(),
-                                                                            subscriptionID, qos.getValue(), metadata);
+//                MQTTopicManager.getInstance().distributeMessageToSubscriber(topic,message,metadata.getMessageID(),
+//                                                                            metadata.getQosLevel(), metadata.isRetain(),
+//                                                                            subscriptionID, qos.getValue(), metadata);
 
                 // keep retain message identification in a set to handle acks.
                 // After sending a retain message, this will stored until ack received from subscriber.
@@ -252,11 +252,11 @@ public class PersistenceStoreConnector implements MQTTConnector {
         } catch (AndesException e) {
             final String message = "Error occurred while fetching MQTT retained metadata/content for topic " + topic;
             log.error(message, e);
-        } catch (MQTTException e) {
+        } /*catch (MQTTException e) {
             String message = "Error occurred while sending retained messages to new subscription.";
             log.error(message, e);
             throw e;
-        }
+        }*/
     }
 
 

@@ -927,9 +927,9 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
 
     @Override
     public void ack(AndesMessageMetadata metadata) {
-        int qos = (Integer)metadata.getProperty(MQTTUtils.QOSLEVEL);
-        String clientID = (String)metadata.getProperty(MQTTUtils.CLIENT_ID);
-        int messageID = (Integer) metadata.getProperty(MQTTUtils.MESSAGE_ID);
+        int qos = (Integer)metadata.getTemporaryProperty(MQTTUtils.QOSLEVEL);
+        String clientID = (String)metadata.getTemporaryProperty(MQTTUtils.CLIENT_ID);
+        int messageID = (Integer) metadata.getTemporaryProperty(MQTTUtils.MESSAGE_ID);
 
         if(qos == AbstractMessage.QOSType.EXACTLY_ONCE.ordinal()) {
             sendPubComp(clientID, messageID);

@@ -183,7 +183,7 @@ public class MessageHandler {
 
         if (!messagesRead.isEmpty()) {
             DeliverableAndesMetadata metadata = messagesRead.get(messagesRead.size()-1);
-            lastBufferedMessageId = metadata.messageID;
+            lastBufferedMessageId = metadata.getMessageID();
         }
 
         if (log.isDebugEnabled()) {

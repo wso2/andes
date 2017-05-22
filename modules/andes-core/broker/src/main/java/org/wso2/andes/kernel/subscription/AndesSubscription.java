@@ -345,7 +345,7 @@ public class AndesSubscription {
                             + subscriberConnection.getProtocolChannelID());
                 }
 
-                MessageTracer.trace(unAckedMessage.getMessageID(), unAckedMessage.getStorageQueueName(),
+                MessageTracer.trace(unAckedMessage.getMessageID(), unAckedMessage.getStorageDestination(),
                         "rebuffering message due to subscription left");
 
                 UUID protocolChannelID = getSubscriberConnection().getProtocolChannelID();

@@ -17,13 +17,13 @@
  */
 package org.wso2.andes.mqtt;
 
-import org.wso2.andes.mqtt.utils.MQTTUtils;
-import org.wso2.andes.server.store.MessageMetaDataType;
-import org.wso2.andes.server.store.StorableMessageMetaData;
-
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.mqtt.utils.MQTTUtils;
+import org.wso2.andes.server.store.MessageMetaDataType;
+import org.wso2.andes.server.store.StorableMessageMetaData;
 
 /**
  * Represents the meta data object which should represent the MQTT header information which is exchanged
@@ -75,7 +75,7 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
 
     @Override
     public MessageMetaDataType getType() {
-        return MessageMetaDataType.META_DATA_MQTT;
+        return null; // MQTT is not supported from core
     }
 
     @Override
@@ -161,13 +161,13 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
         }
 
         /**
-         * The values will be extracted from the bytestream and will be decoded         
-         * @param buf the bytes stream the data contains
+         * The values will be extracted from the bytestream and will be decoded
+         * @param metadata the bytes stream the data contains
          * @return meta data object
          */
         @Override
-        public MQTTMessageMetaData createMetaData(ByteBuffer buf) {
-            Map<String, String> decodedValues = decodeMetaData(buf);
+        public MQTTMessageMetaData createMetaData(AndesMessageMetadata metadata) {
+            Map<String, String> decodedValues = decodeMetaData(ByteBuffer.wrap(metadata.getBytes()));
             Long messageID = Long.parseLong(decodedValues.get("MessageID"));
             //TODO intoduce a static class for this
             boolean isTopic = Boolean.parseBoolean(decodedValues.get("Topic"));

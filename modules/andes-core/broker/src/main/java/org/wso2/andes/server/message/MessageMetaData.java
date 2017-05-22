@@ -23,6 +23,7 @@ import org.wso2.andes.framing.EncodingUtils;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.framing.abstraction.MessagePublishInfo;
+import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.server.store.StorableMessageMetaData;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.AMQException;
@@ -237,11 +238,12 @@ public class MessageMetaData implements StorableMessageMetaData
     {
 
 
-        public MessageMetaData createMetaData(ByteBuffer buf)
+        public MessageMetaData createMetaData(AndesMessageMetadata messageMetadata)
         {
             try
             {
-                org.apache.mina.common.ByteBuffer minaSrc = org.apache.mina.common.ByteBuffer.wrap(buf);
+                byte[] metadata = messageMetadata.getProtocolMetadata();
+                org.apache.mina.common.ByteBuffer minaSrc = org.apache.mina.common.ByteBuffer.wrap(metadata);
                 int size = EncodingUtils.readInteger(minaSrc);
                 ContentHeaderBody chb = ContentHeaderBody.createFromBuffer(minaSrc, size);
                 final AMQShortString exchange = EncodingUtils.readAMQShortString(minaSrc);

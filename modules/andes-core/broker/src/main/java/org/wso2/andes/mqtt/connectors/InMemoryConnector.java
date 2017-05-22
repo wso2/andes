@@ -24,6 +24,7 @@ import org.dna.mqtt.wso2.QOSLevel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
+import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.MQTTException;
@@ -156,12 +157,12 @@ public class InMemoryConnector implements MQTTConnector {
                 //We allow only QoS 0 messages to be exchanged in-memory
                 int memoryQoSLevel = 0;
                 MQTTopicManager.getInstance().distributeMessageToSubscriber(topic, messages, messageID,
-                        memoryQoSLevel, retain, subChannel, memoryQoSLevel,new DeliverableAndesMetadata(0L,
-                                null,false));
+                        memoryQoSLevel, retain, subChannel, memoryQoSLevel,
+                        new DeliverableAndesMetadata(messages.array()));
                 if (log.isDebugEnabled()) {
                     log.debug("Message " + messageID + " Delivered to subscription " + subChannel + " to topic " + topic);
                 }
-            } catch (MQTTException e) {
+            } catch (MQTTException | AndesException e) {
                 String message = "Error occurred while sending the message to subscriber";
                 log.error(message, e);
                 //We do not throw the exception any further, the process should not hand here
@@ -178,10 +179,10 @@ public class InMemoryConnector implements MQTTConnector {
      * @param ackHandler     the acknowledgment handler
      */
     private void sendPublisherAck(int publishedQoS, int localMessageID, String clientID, PubAckHandler ackHandler) {
-        AndesMessageMetadata metaData = new AndesMessageMetadata();
-        metaData.addProperty(MQTTUtils.QOSLEVEL, publishedQoS);
-        metaData.addProperty(MQTTUtils.CLIENT_ID, clientID);
-        metaData.addProperty(MQTTUtils.MESSAGE_ID, localMessageID);
+        AndesMessageMetadata metaData = new AndesMessageMetadata(null, ProtocolType.MQTT);
+        metaData.addTemporaryProperty(MQTTUtils.QOSLEVEL, publishedQoS);
+        metaData.addTemporaryProperty(MQTTUtils.CLIENT_ID, clientID);
+        metaData.addTemporaryProperty(MQTTUtils.MESSAGE_ID, localMessageID);
         ackHandler.ack(metaData);
         if (log.isDebugEnabled()) {
             log.debug("Publisher ack sent to " + clientID + " for message id " + localMessageID);
