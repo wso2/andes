@@ -63,10 +63,11 @@ public class LZ4ContentCompressionStrategy implements ContentCompressionStrategy
 
         if (originalContentLength > lz4CompressionHelper.getContentCompressionThreshold()) {
             // Compress message
-            AndesMessagePart compressedMessagePart = lz4CompressionHelper.getCompressedMessage(partList, originalContentLength);
+            AndesMessagePart compressedMessagePart =
+                    lz4CompressionHelper.getCompressedMessage(partList, originalContentLength);
 
             // Update metadata to indicate the message is a compressed one
-            metadata.updateMetadata(true);
+            metadata.setCompressed(true);
             message.setMetadata(metadata);
 
             contentLength = compressedMessagePart.getDataLength();

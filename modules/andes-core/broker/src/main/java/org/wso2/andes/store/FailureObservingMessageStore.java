@@ -290,7 +290,7 @@ public class FailureObservingMessageStore extends FailureObservingStore<MessageS
             if (MessageTracer.isEnabled()) {
                 for (AndesMessageMetadata message : messagesToRemove) {
                     MessageTracer.trace(message.getMessageID(),
-                                        message.getStorageQueueName(), MessageTracer.MESSAGE_DELETED);
+                                        message.getStorageDestination(), MessageTracer.MESSAGE_DELETED);
                 }
             }
 

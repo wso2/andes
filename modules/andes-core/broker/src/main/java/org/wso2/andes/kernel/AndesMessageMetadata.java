@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -11,25 +11,34 @@
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
+ * KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations
  * under the License.
  */
 
 package org.wso2.andes.kernel;
 
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.server.message.MessageMetaData;
-import org.wso2.andes.server.store.MessageMetaDataType;
-import org.wso2.andes.server.store.StorableMessageMetaData;
 
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * <p>
+ * Andes core representation of message metadata. This contains the metadata fields of a message required for
+ * routing.
+ * </p>
+ * <p>
+ * <p>
+ * In addition protocol specific metadata can be stored as well (encoded in a byte stream).
+ * {@link AndesEncodingUtil} can be used to encode metadata to a byte stream
+ *
+ * @see #setProtocolMetadata(byte[])
+ * @see #getProtocolMetadata()
+ * </p>
+ */
 public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
 
     private static Log log = LogFactory.getLog(AndesMessageMetadata.class);
@@ -37,29 +46,32 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
     /**
      * Unique identifier of the message
      */
-    long messageID;
+    private long messageID;
+
     /**
-     * AMQ metadata of the message
+     * Content length of the message in bytes
      */
-    byte[] metadata;
+    private int messageContentLength;
+
     /**
      * The timestamp at which the message is set to expire.
      */
-    long expirationTime;
-    /**
-     * true if the message is addressed to a topic exchange.
-     */
-    boolean isTopic;
-
-    /**
-     * Name of the exchange message is addressed to
-     */
-    String messageRouterName;
+    private long expirationTime;
 
     /**
      * The timestamp at which the message arrived at the first gates of the broker.
      */
-    long arrivalTime;
+    private long arrivalTime;
+
+    /**
+     * Denotes if the content is compressed or not
+     */
+    private boolean isCompressed;
+
+    /**
+     * {@link ProtocolType} of the metadata
+     */
+    private ProtocolType protocolType;
 
     /**
      * Destination (routing key) of message
@@ -67,72 +79,209 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
     private String destination;
 
     /**
-     * Queue name in store in which message
-     * should be saved
+     * This destination name is used when persisting the messages
      */
-    private String storageQueueName;
+    private String storageDestination;
 
     /**
-     * True if the message is sent with JMS persistent mode.
+     * Protocol specific metadata. This part is not decoded by the core
+     */
+    private byte[] protocolMetadata;
+
+    /**
+     * Whether the message should be persisted or not
      */
     private boolean isPersistent;
 
-    private int messageContentLength;
+    private String messageRouterName;
 
-    /**
-     * The meta data type which specify which protocol this meta data belongs to``
-     */
-    private MessageMetaDataType metaDataType;
-
-    private boolean isCompressed;
+    private boolean isTopic;
 
     /**
      * Properties that are not directly relevant to Andes but to protocols can be stored
      * in this map. But non of the data is persisted
      */
-    private Map<String, Object> propertyMap;
+    private Map<String, Object> temporaryPropertiesMap;
 
-    public AndesMessageMetadata() {
-        propertyMap = new HashMap<>();
+    /**
+     * <p>
+     * Create {@link AndesMessageMetadata} object
+     * </p>
+     *
+     * @param messageId    message id that is used by Andes core
+     * @param destination  destination of the message
+     * @param protocolType protocol type of the metadata
+     */
+    public AndesMessageMetadata(long messageId, String destination, ProtocolType protocolType) {
+        setMessageID(messageId);
+        setProtocolType(protocolType);
+        setDestination(destination);
+        setStorageDestination(destination);
+        this.isCompressed = false;
+        temporaryPropertiesMap = new ConcurrentHashMap<>();
     }
 
-    public AndesMessageMetadata(long messageID, byte[] metadata, boolean parse) {
-        super();
-        propertyMap = new HashMap<>();
-        this.messageID = messageID;
-        this.metadata = metadata;
-        if (parse) {
-            parseMetaData();
+    /**
+     * <p>
+     * Create {@link AndesMessageMetadata} object
+     * </p>
+     *
+     * @param destination  destination of the message
+     * @param protocolType {@link ProtocolType} of the message
+     */
+    public AndesMessageMetadata(String destination, ProtocolType protocolType) {
+        this(0L, destination, protocolType);
+    }
+
+    /**
+     * Create {@link AndesMessageMetadata} object from an encoded metadata byte array
+     *
+     * @param metadata encoded byte array
+     */
+    public AndesMessageMetadata(byte[] metadata) {
+        decode(metadata);
+        temporaryPropertiesMap = new ConcurrentHashMap<>();
+    }
+
+    /**
+     * <p>
+     * Return the encoded byte representation of metadata
+     * </p>
+     *
+     * @return byte array
+     */
+    public byte[] getBytes() {
+        return encode().array();
+    }
+
+    /**
+     * Get the byte length of the encoded metadata
+     *
+     * @return length in bytes
+     */
+    private int getStorableSize() {
+
+        return AndesEncodingUtil.getEncodedLongLength() + // message id
+                AndesEncodingUtil.getEncodedIntLength() + //  message content length
+                AndesEncodingUtil.getEncodedLongLength() + // message expiration time
+                AndesEncodingUtil.getEncodedLongLength() + // arrival time
+                AndesEncodingUtil.getEncodedBooleanLength() + // is topic
+                AndesEncodingUtil.getEncodedBooleanLength() + // is compressed
+                AndesEncodingUtil.getEncodedBooleanLength() + // is persistent
+                AndesEncodingUtil.getEncodedStringLength(protocolType.toString()) +
+                AndesEncodingUtil.getEncodedStringLength(destination) +
+                AndesEncodingUtil.getEncodedStringLength(storageDestination) +
+                AndesEncodingUtil.getEncodedStringLength(messageRouterName) +
+                getProtocolMetadata().length; // protocol related metadata
+
+    }
+
+    /**
+     * Encode {@link AndesMessageMetadata} variables into a byte array
+     *
+     * @return {@link ByteBuffer} that wraps the byte array
+     */
+    private ByteBuffer encode() {
+        ByteBuffer byteBuffer = ByteBuffer.allocate(getStorableSize());
+        AndesEncodingUtil.putLong(byteBuffer, getMessageID());
+        AndesEncodingUtil.putInt(byteBuffer, getMessageContentLength());
+        AndesEncodingUtil.putLong(byteBuffer, getExpirationTime());
+        AndesEncodingUtil.putLong(byteBuffer, getArrivalTime());
+
+        // TODO: need to optimise boolean encoding (store in single byte using bit masks)
+        AndesEncodingUtil.putBoolean(byteBuffer, isTopic());
+        AndesEncodingUtil.putBoolean(byteBuffer, isCompressed());
+        AndesEncodingUtil.putBoolean(byteBuffer, isPersistent());
+
+        AndesEncodingUtil.putString(byteBuffer, protocolType.toString());
+        AndesEncodingUtil.putString(byteBuffer, getDestination());
+        AndesEncodingUtil.putString(byteBuffer, getStorageDestination());
+        AndesEncodingUtil.putString(byteBuffer, getMessageRouterName());
+        byteBuffer.put(getProtocolMetadata());
+        if (log.isDebugEnabled()) {
+            log.debug("Message encoded " + this);
         }
-
+        return byteBuffer;
     }
 
+    /**
+     * Decode the given byte array and populate the variable in {@link AndesMessageMetadata}
+     *
+     * @param src encoded byte array
+     */
+    private void decode(byte[] src) {
+        ByteBuffer byteBuffer = ByteBuffer.wrap(src);
+        setMessageID(AndesEncodingUtil.getEncodedLong(byteBuffer));
+        setMessageContentLength(AndesEncodingUtil.getEncodedInt(byteBuffer));
+        setExpirationTime(AndesEncodingUtil.getEncodedLong(byteBuffer));
+        setArrivalTime(AndesEncodingUtil.getEncodedLong(byteBuffer));
+        setTopic(AndesEncodingUtil.getBoolean(byteBuffer));
+        setCompressed(AndesEncodingUtil.getBoolean(byteBuffer));
+        setPersistent(AndesEncodingUtil.getBoolean(byteBuffer));
+        setProtocolType(ProtocolType.valueOf(AndesEncodingUtil.getString(byteBuffer)));
+        setDestination(AndesEncodingUtil.getString(byteBuffer));
+        setStorageDestination(AndesEncodingUtil.getString(byteBuffer));
+        setMessageRouterName(AndesEncodingUtil.getString(byteBuffer));
+        byte[] metadata = new byte[byteBuffer.remaining()];
+        byteBuffer.get(metadata);
+        setProtocolMetadata(metadata);
+        if (log.isDebugEnabled()) {
+            log.debug("Message decoded " + this);
+        }
+    }
+
+    /**
+     * <p>
+     * Unique message id generated by Andes core. Not relevant to any protocol
+     * </p>
+     *
+     * @return unque message id
+     */
     public long getMessageID() {
         return messageID;
     }
 
+    public boolean isTopic() {
+        return isTopic;
+    }
+
+    public void setTopic(boolean isTopic) {
+        this.isTopic = isTopic;
+    }
+
+    /**
+     * <p>
+     * Set a unique message id for the core. Message id's are generated and set to messages from
+     * {@link org.wso2.andes.kernel.disruptor.inbound.MessagePreProcessor}
+     * </p>
+     *
+     * @param messageID unique message id
+     */
     public void setMessageID(long messageID) {
         this.messageID = messageID;
     }
 
-    public byte[] getMetadata() {
-        return metadata;
-    }
-
-    public void setMetadata(byte[] metadata) {
-        this.metadata = metadata;
-    }
-
+    /**
+     * <p>
+     * Get expiration time
+     * </p>
+     *
+     * @return expiration time in milliseconds
+     */
     public long getExpirationTime() {
         return expirationTime;
     }
 
+    /**
+     * <p>
+     * The timestamp at which the message is set to expire. Message won't be delivered to subscribers after the
+     * expiration time
+     * </p>
+     *
+     * @param expirationTime time in milliseconds
+     */
     public void setExpirationTime(long expirationTime) {
         this.expirationTime = expirationTime;
-    }
-
-    public boolean isTopic() {
-        return isTopic;
     }
 
     public String getMessageRouterName() {
@@ -143,121 +292,156 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         this.messageRouterName = messageRouterName;
     }
 
-    public void setTopic(boolean isTopic) {
-        this.isTopic = isTopic;
-    }
-
     /**
-     * Get the routing key of the message. This is set
-     * when parsing metadata.
+     * <p>
+     * Destination (routing key) of message
+     * </p>
      *
-     * @return routing key of the message
+     * @return destination
      */
     public String getDestination() {
         return destination;
     }
 
     /**
-     * Set the routing key of the message. If you
-     * need to override the value set by parsing metadata
-     * this method should be used.
+     * <p>
+     * set the destination (routing key) of the message
+     * </p>
      *
-     * @param destination routing key to set
+     * @param destination destination of the message
      */
     public void setDestination(String destination) {
         this.destination = destination;
     }
 
     /**
-     * Get the name of storage queue message is saved to. When messages
-     * are read from persistent storage and deliver this is used.
+     * <p>
+     * This destination name is used when persisting the messages
+     * </p>
      *
-     * @return name of storage queue message is persisted to
+     * @return storage destination
      */
-    public String getStorageQueueName() {
-        return storageQueueName;
+    public String getStorageDestination() {
+        return storageDestination;
     }
 
     /**
-     * Set name of the storage queue this message is saved to
+     * <p>
+     * The destination name used when persisting the messages
+     * </p>
      *
-     * @param storageQueueName name of storage queue
+     * @param storageDestination storage destination of the message
      */
-    public void setStorageQueueName(String storageQueueName) {
-        this.storageQueueName = storageQueueName;
+    public void setStorageDestination(String storageDestination) {
+        this.storageDestination = storageDestination;
     }
 
-    public boolean isPersistent() {
-        return isPersistent;
-    }
-
-    public void setPersistent(boolean persistent) {
-        isPersistent = persistent;
-    }
-
+    /**
+     * <p>
+     * The timestamp at which the message arrived at Andes
+     * </p>
+     *
+     * @return arrival time in milliseconds
+     */
     public long getArrivalTime() {
         return arrivalTime;
     }
 
+    /**
+     * <p>
+     * Set the timestamp at which the message arrived at Andes.
+     * </p>
+     *
+     * @param arrivalTime message arrival time (to broker) in milliseconds
+     */
     public void setArrivalTime(long arrivalTime) {
         this.arrivalTime = arrivalTime;
     }
 
     /**
+     * <p>
      * Create a clone, with new message ID
+     * </p>
      *
      * @param messageId message id
      * @return returns AndesMessageMetadata
      */
     public AndesMessageMetadata shallowCopy(long messageId) {
-        AndesMessageMetadata clone = new AndesMessageMetadata();
-        clone.messageID = messageId;
-        clone.metadata = metadata;
+        AndesMessageMetadata clone = new AndesMessageMetadata(messageId, destination, protocolType);
         clone.expirationTime = expirationTime;
-        clone.isTopic = isTopic;
-        clone.messageRouterName = messageRouterName;
-        clone.destination = destination;
-        clone.storageQueueName = storageQueueName;
-        clone.isPersistent = isPersistent;
+        clone.storageDestination = storageDestination;
         clone.arrivalTime = arrivalTime;
-        clone.metaDataType = metaDataType;
-        clone.propertyMap = propertyMap;
         clone.messageContentLength = messageContentLength;
         clone.isCompressed = isCompressed;
+        clone.isPersistent = isPersistent;
+        clone.protocolMetadata = protocolMetadata;
+        clone.temporaryPropertiesMap = temporaryPropertiesMap;
+        clone.messageRouterName = messageRouterName;
+        clone.isTopic = isTopic;
         return clone;
     }
 
-
     /**
-     * Update metadata of message, after a change of the routing key and the exchange of a message. This will change
-     * AMQP bytes representing metadata. Routing key and exchange name will be set to the given values.
+     * <p>
+     * Add a property that is not directly relevant to Andes. The properties are not persistent. Lost when the
+     * object is gc'ed. This is just a place holder for transient data. Properties are not encoded into the
+     * metadata byte array. For instance data can be kept until a message is put to inbound disruptor and pub ack
+     * is received from it.
+     * </p>
+     * <p>
+     * <p>
+     * The properties can be accessed concurrently
+     * </p>
      *
-     * @param newDestination  new routing key to set
-     * @param newExchangeName new exchange name to set
+     * @param key   String Key
+     * @param value Object. Value of the property
      */
-    public void updateMetadata(String newDestination, String newExchangeName) {
-        this.metadata = createNewMetadata(this.metadata, newDestination, newExchangeName);
-        this.destination = newDestination;
-        if (log.isDebugEnabled()) {
-            log.debug("updated andes message metadata id= " + messageID + " new destination = " + newDestination);
-        }
+    public void addTemporaryProperty(String key, Object value) {
+        temporaryPropertiesMap.put(key, value);
     }
 
     /**
-     * Update metadata of message, after a change of the compression state of the message. This will change AMQP bytes
-     * representing metadata. IsCompressed will be set to the given value.
+     * Returns the property for the given key
+     * <p>
+     * Properties can be accessed concurrently
      *
-     * @param isCompressedMessage new value to indicate if the message is compressed or not
+     * @param key String
+     * @return value of the property. Null if not found
      */
-    public void updateMetadata(boolean isCompressedMessage) {
-        this.metadata = createNewMetadata(this.metadata, isCompressedMessage);
-        this.isCompressed = isCompressedMessage;
-        if (log.isDebugEnabled()) {
-            log.debug("updated andes message metadata id = " + messageID + ", compression state of the message is " +
-                    isCompressedMessage);
-        }
+    public Object getTemporaryProperty(String key) {
+        return temporaryPropertiesMap.get(key);
     }
 
+    /**
+     * <p>
+     * Whether the message is persisted or not
+     * </p>
+     *
+     * @return message persisted if true
+     */
+    public boolean isPersistent() {
+        return isPersistent;
+    }
+
+    /**
+     * <p>
+     * Set message persistence flag
+     * </p>
+     *
+     * @param persistent true if need to be persisted
+     */
+    public void setPersistent(boolean persistent) {
+        isPersistent = persistent;
+    }
+
+    /**
+     * <p>
+     * Check whether the message is expired.
+     * </p>
+     *
+     * @return true if expired and vice versa
+     * @see #setExpirationTime(long)
+     */
     public boolean isExpired() {
         if (expirationTime != 0L) {
             long now = System.currentTimeMillis();
@@ -266,89 +450,53 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         return false;
     }
 
-    private void parseMetaData() {
-        ByteBuffer buf = ByteBuffer.wrap(metadata);
-        buf.position(1);
-        buf = buf.slice();
-        MessageMetaDataType type = MessageMetaDataType.values()[metadata[0]];
-        metaDataType = type;
-        StorableMessageMetaData mdt = type.getFactory()
-                .createMetaData(buf);
-        //todo need to discuss on making the flow more generic
-        if (type.equals(MessageMetaDataType.META_DATA_0_10) || type.equals(MessageMetaDataType.META_DATA_0_8)) {
-            this.isPersistent = ((MessageMetaData) mdt).isPersistent();
-            this.expirationTime = ((MessageMetaData) mdt).getMessageHeader().getExpiration();
-            this.arrivalTime = ((MessageMetaData) mdt).getArrivalTime();
-            this.destination = ((MessageMetaData) mdt).getMessagePublishInfo().getRoutingKey().toString();
-            this.messageContentLength = ((MessageMetaData) mdt).getContentSize();
-            this.isTopic = ((MessageMetaData) mdt).getMessagePublishInfo().getExchange().equals(AMQPUtils
-                    .TOPIC_EXCHANGE_NAME);
-            this.messageRouterName = ((MessageMetaData) mdt).getMessagePublishInfo().getExchange().toString();
-            this.isCompressed = ((MessageMetaData) mdt).isCompressed();
-        }
-
-    }
-
     /**
-     * Create a copy of updated metadata, for durable topic subscriptions
+     * <p>
+     * Retrieve content length of the message
+     * </p>
      *
-     * @param originalMetadata source metadata that needs to be copied
-     * @param routingKey       routing key of the message
-     * @param exchangeName     exchange of the message
-     * @return copy of the metadata as a byte array
+     * @return content length in bytes
      */
-    private byte[] createNewMetadata(byte[] originalMetadata, String routingKey, String exchangeName) {
-        ByteBuffer buf = ByteBuffer.wrap(originalMetadata);
-        buf.position(1);
-        buf = buf.slice();
-        MessageMetaDataType type = MessageMetaDataType.values()[originalMetadata[0]];
-        metaDataType = type;
-        StorableMessageMetaData originalMessageMetadata = type.getFactory().createMetaData(buf);
-
-        byte[] underlying;
-        underlying = AMQPMetaDataHandler.constructMetadata(routingKey, buf, originalMessageMetadata, exchangeName);
-
-        return underlying;
-    }
-
-    /**
-     * Create a copy of metadata
-     *
-     * @param originalMetadata          source metadata that needs to be copied
-     * @param isCompressed Value to indicate if the message is compressed or not
-     * @return copy of the metadata as a byte array
-     */
-    private byte[] createNewMetadata(byte[] originalMetadata, boolean isCompressed) {
-        ByteBuffer buf = ByteBuffer.wrap(originalMetadata);
-        buf.position(1);
-        buf = buf.slice();
-        MessageMetaDataType type = MessageMetaDataType.values()[originalMetadata[0]];
-        metaDataType = type;
-        StorableMessageMetaData originalMessageMetadata = type.getFactory().createMetaData(buf);
-
-        byte[] underlying;
-        //TODO need to implement factory pattern here
-        underlying = AMQPMetaDataHandler.constructMetadata(buf, originalMessageMetadata, isCompressed);
-
-        return underlying;
-    }
-
     public int getMessageContentLength() {
         return messageContentLength;
     }
 
-    public void setMessageContentLength(int messageContentLength){
+    /**
+     * <p>
+     * Set message content length
+     * </p>
+     *
+     * @param messageContentLength content length in bytes
+     */
+    public void setMessageContentLength(int messageContentLength) {
         this.messageContentLength = messageContentLength;
     }
 
+    /**
+     * <p>
+     * Whether the content is compressed or not by Andes core
+     * </p>
+     *
+     * @return true if compressed and vice versa
+     */
     public boolean isCompressed() {
         return isCompressed;
     }
 
+    /**
+     * <p>
+     * If set to true message content will be compressed before persisting when publishing a message to Andes core
+     * </p>
+     *
+     * @param isCompressed message is compressed if true
+     */
     public void setCompressed(boolean isCompressed) {
         this.isCompressed = isCompressed;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public int compareTo(AndesMessageMetadata other) {
         if (this.getMessageID() == other.getMessageID()) {
@@ -358,55 +506,70 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         }
     }
 
-    public MessageMetaDataType getMetaDataType() {
-        return metaDataType;
-    }
-
-    public void setMetaDataType(MessageMetaDataType metaDataType) {
-        this.metaDataType = metaDataType;
+    /**
+     * <p>
+     * {@link ProtocolType} of the metadata
+     * </p>
+     *
+     * @return {@link ProtocolType}
+     */
+    public ProtocolType getProtocolType() {
+        return protocolType;
     }
 
     /**
-     * Add a property that is not directly relevant to Andes. The properties are not persistent. Lost when the object is
-     * deleted
-     * @param key String Key
-     * @param value Object. Value of the property
+     * <p>
+     * protocol type of the message (eg: AMQP, MQTT)
+     * </p>
+     *
+     * @param protocolType {@link ProtocolType}
      */
-    public void addProperty(String key, Object value) {
-        propertyMap.put(key, value);
+    public void setProtocolType(ProtocolType protocolType) {
+        this.protocolType = protocolType;
     }
 
     /**
-     * Returns the property for the given
-     * @param key String
-     * @return value of the property. Null if not found
+     * <p>
+     * Protocol related metadata
+     * </p>
+     *
+     * @return protocol metadata returned as a byte array
      */
-    public Object getProperty(String key) {
-        return propertyMap.get(key);
+    public byte[] getProtocolMetadata() {
+        return protocolMetadata;
     }
 
+    /**
+     * <p>
+     * Protocol related metadata can be encoded into a byte stream and set to {@link AndesMessageMetadata} using
+     * this method.
+     * </p>
+     * <p>
+     * Andes core won't be processing this metadata field. But will be persisted if the andes metadata is
+     * persisted. {@link AndesEncodingUtil} can be used to encode/decode the values
+     * </p>
+     *
+     * @param protocolMetadata encoded protocol specific metadata
+     */
+    public void setProtocolMetadata(byte[] protocolMetadata) {
+        this.protocolMetadata = protocolMetadata;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof AndesMessageMetadata)) {
-            return false;
-        }
-        AndesMessageMetadata andesMessageMetadata = (AndesMessageMetadata) o;
-        return getMessageID() == andesMessageMetadata.getMessageID();
+    public String toString() {
+        return "AndesMessageMetadata{" +
+                "messageID=" + messageID +
+                ", messageContentLength=" + messageContentLength +
+                ", expirationTime=" + expirationTime +
+                ", arrivalTime=" + arrivalTime +
+                ", isCompressed=" + isCompressed +
+                ", protocolType=" + protocolType +
+                ", destination='" + destination + '\'' +
+                ", storageDestination='" + storageDestination + '\'' +
+                ", isPersistent=" + isPersistent +
+                '}';
     }
-
-    @Override
-    public int hashCode() {
-        return (int) (getMessageID() ^ (getMessageID() >>> 32));
-    }
-
-    /**
-     * True if the expiration time is defined for the message.
-     */
-    public boolean isExpirationDefined() {
-        return 0L < expirationTime;
-    }
-
 }

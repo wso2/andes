@@ -247,7 +247,7 @@ public class AMQMessage implements ServerMessage
 
     }
 
-    public MessagePublishInfo getMessagePublishInfo() throws AMQException
+    public MessagePublishInfo getMessagePublishInfo()
     {
         return getMessageMetaData().getMessagePublishInfo();
     }

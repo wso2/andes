@@ -214,7 +214,7 @@ public class MessagingEngine {
             //mark messages as deleted
             message.markAsPreparedToDelete();
             if(log.isDebugEnabled()) {
-                log.debug("Scheduled to delete message id= " + message.messageID);
+                log.debug("Scheduled to delete message id= " + message.getMessageID());
             }
         }
     }
@@ -230,7 +230,7 @@ public class MessagingEngine {
             //mark messages as deleted
             message.markAsDeletedMessage();
             if(log.isDebugEnabled()) {
-                log.debug("Deleted message id= " + message.messageID);
+                log.debug("Deleted message id= " + message.getMessageID());
             }
         }
     }
@@ -242,12 +242,12 @@ public class MessagingEngine {
 
         for (DeliverableAndesMetadata message : messagesToRemove) {
             List<AndesMessageMetadata> messagesOfStorageQueue = storageSeparatedMessages
-                    .get(message.getStorageQueueName());
+                    .get(message.getStorageDestination());
             if (null == messagesOfStorageQueue) {
                 messagesOfStorageQueue = new ArrayList<>();
             }
             messagesOfStorageQueue.add(message);
-            storageSeparatedMessages.put(message.getStorageQueueName(), messagesOfStorageQueue);
+            storageSeparatedMessages.put(message.getStorageDestination(), messagesOfStorageQueue);
         }
         return storageSeparatedMessages;
     }
@@ -308,12 +308,12 @@ public class MessagingEngine {
 
         for (AndesMessageMetadata message : messagesToMove) {
             List<AndesMessageMetadata> messagesOfStorageQueue = storageSeparatedMessages
-                    .get(message.getStorageQueueName());
+                    .get(message.getStorageDestination());
             if (null == messagesOfStorageQueue) {
                 messagesOfStorageQueue = new ArrayList<>();
             }
             messagesOfStorageQueue.add(message);
-            storageSeparatedMessages.put(message.getStorageQueueName(), messagesOfStorageQueue);
+            storageSeparatedMessages.put(message.getStorageDestination(), messagesOfStorageQueue);
         }
         for (Map.Entry<String, List<AndesMessageMetadata>> entry : storageSeparatedMessages.entrySet()) {
             //move messages to dead letter channel

@@ -175,7 +175,7 @@ public class DLCQueueUtils {
         Long messageID = amqMessage.getMessageNumber();
         String storageQueue = amqMessage.getRoutingKey();
         AndesMessageMetadata messageToMove = AMQPUtils.convertAMQMessageToAndesMetadata(amqMessage);
-        messageToMove.setStorageQueueName(storageQueue);
+        messageToMove.setStorageDestination(storageQueue);
 
         List<AndesMessageMetadata> messageToMoveToDLC = new ArrayList<>();
         messageToMoveToDLC.add(messageToMove);

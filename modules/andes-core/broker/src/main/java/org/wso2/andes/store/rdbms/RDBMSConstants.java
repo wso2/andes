@@ -268,7 +268,7 @@ public class RDBMSConstants {
 
     // TODO: MySQL syntax. Updated RDBMS queries optimized for each database
     protected static final String PS_SELECT_METADATA_RANGE_FROM_QUEUE =
-            "SELECT " + MESSAGE_ID + "," + METADATA
+            "SELECT " + METADATA
             + " FROM " + METADATA_TABLE
             + " WHERE " + QUEUE_ID + "=?"
             + " AND " + DLC_QUEUE_ID + "=-1"
@@ -285,7 +285,7 @@ public class RDBMSConstants {
             + " ORDER BY " + MESSAGE_ID;
 
     protected static final String PS_SELECT_METADATA_FROM_QUEUE =
-            "SELECT " + MESSAGE_ID + "," + METADATA
+            "SELECT " + METADATA
             + " FROM " + METADATA_TABLE
             + " WHERE " + MESSAGE_ID + ">?"
             + " AND " + QUEUE_ID + "=?"
@@ -302,7 +302,7 @@ public class RDBMSConstants {
             + " ORDER BY " + MESSAGE_ID;
 
     protected static final String PS_SELECT_METADATA_IN_DLC_FOR_QUEUE =
-            "SELECT " + MESSAGE_ID + "," + METADATA
+            "SELECT " + METADATA
             + " FROM " + METADATA_TABLE
             + " WHERE " + MESSAGE_ID + ">?"
             + " AND " + QUEUE_ID + "=?"
@@ -310,7 +310,7 @@ public class RDBMSConstants {
             + " ORDER BY " + MESSAGE_ID;
 
     protected static final String PS_SELECT_METADATA_IN_DLC =
-            "SELECT " + MESSAGE_ID + "," + METADATA
+            "SELECT " + METADATA
             + " FROM " + METADATA_TABLE
             + " WHERE " + MESSAGE_ID + ">?"
             + " AND " + DLC_QUEUE_ID + "=?"
@@ -841,7 +841,7 @@ public class RDBMSConstants {
      * Prepared statement to select retained message metadata for a given topic id
      */
     protected static final String PS_SELECT_RETAINED_METADATA =
-            "SELECT " + MESSAGE_ID + ", " + METADATA
+            "SELECT " + METADATA
             + " FROM " + RETAINED_METADATA_TABLE
             + " WHERE " + TOPIC_ID + "=?";
 
@@ -964,7 +964,7 @@ public class RDBMSConstants {
                     + " FROM " + DTX_ENTRY_TABLE;
 
     public static final String PS_SELECT_DTX_DEQUEUE_METADATA =
-            "SELECT " + MESSAGE_ID + "," + QUEUE_NAME + "," + METADATA
+            "SELECT " + METADATA
                     + " FROM " + DTX_DEQUEUE_RECORD_TABLE
                     + " WHERE " + INTERNAL_XID + "=?";
 
@@ -994,7 +994,7 @@ public class RDBMSConstants {
                     + " FROM " + DTX_CONTENT_DEQUEUE_TABLE + " WHERE " + MESSAGE_ID + "=?";
 
     static final String PS_SELECT_DTX_ENQUEUED_METADATA =
-            "SELECT " + MESSAGE_ID + "," + METADATA
+            "SELECT " + METADATA
                     + " FROM " + DTX_ENQUEUE_RECORD_TABLE
                     + " WHERE " + INTERNAL_XID + "=?";
 

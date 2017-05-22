@@ -409,17 +409,9 @@ public class Show extends AbstractCommand
                 userid.add(useridSS == null ? "null" : useridSS.toString());
 
                 MessagePublishInfo info = null;
-                try
-                {
-                    if(msg instanceof AMQMessage)
-                    {
-                        info = ((AMQMessage)msg).getMessagePublishInfo();
-                    }
 
-                }
-                catch (AMQException e)
-                {
-                    //ignore
+                if (msg instanceof AMQMessage) {
+                    info = ((AMQMessage) msg).getMessagePublishInfo();
                 }
 
                 if (info != null)
