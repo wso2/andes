@@ -64,7 +64,12 @@ public class AndesSubscription {
     private ProtocolType protocolType;
 
     /**
-     * Is subscription active
+     * The cursor of the subscription in the queue.
+     */
+    private long cursor = 0;
+
+    /**
+     * Is subscription active.
      */
     protected boolean isActive;
 
@@ -296,6 +301,7 @@ public class AndesSubscription {
                     unAckedMessage.rollbackDelivery(subscriberConnection.getProtocolChannelID());
                     storageQueue.bufferMessageForDelivery(unAckedMessage);
                     unAckedMessageIterator.remove();
+                    resetCursors();
                 }
             } else {    //reschedule messages back to subscriber
                 for (DeliverableAndesMetadata unAckedMessage : unAckedMessages) {
@@ -352,6 +358,7 @@ public class AndesSubscription {
                 unAckedMessage.markAsNackedByClient(subscriberConnection.getProtocolChannelID());
                 unAckedMessage.markDeliveredChannelAsClosed(protocolChannelID);
                 storageQueue.bufferMessageForDelivery(unAckedMessage);
+                resetCursors();
             }
         } else {    // removed messages acked by all
             List<DeliverableAndesMetadata> messagesToRemove = new ArrayList<>();
@@ -589,5 +596,29 @@ public class AndesSubscription {
                 + ",protocolType=" + protocolType.toString()
                 + ",isActive=" + Boolean.toString(isActive)
                 + ",subscriberConnection=" + encodedConnectionInfo;
+    }
+
+    /**
+     * @return cursor of the subscription
+     */
+    public synchronized long getCursor() {
+        return cursor;
+    }
+
+    /**
+     * @param cursor cursor of the subscription.
+     */
+    public synchronized void setCursor(long cursor) {
+        this.cursor = cursor;
+    }
+
+    /**
+     * Resets the cursors of all the subscriptions bound to the queue same queue as this subscription to 0
+     */
+    private void resetCursors(){
+        List<AndesSubscription> subscriptions4Queue = storageQueue.getBoundSubscriptions();
+        for (AndesSubscription subscription : subscriptions4Queue) {
+            subscription.setCursor(0);
+        }
     }
 }

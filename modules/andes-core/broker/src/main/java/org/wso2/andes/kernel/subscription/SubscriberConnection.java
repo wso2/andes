@@ -318,6 +318,16 @@ public class SubscriberConnection {
     }
 
     /**
+     * Check if the message referenced by the messageId is unacked
+     *
+     * @param messageId ID of the message
+     * @return true if message referenced by messageId is unacked and false if it is not
+     */
+    public boolean isUnacked(long messageId) {
+        return outBoundMessageTracker.isUnacked(messageId);
+    }
+
+    /**
      * Get all sent but not acknowledged messages to connection
      *
      * @return list of messages

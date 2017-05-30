@@ -114,6 +114,15 @@ public class OutBoundMessageTracker {
     }
 
     /**
+     * Check if the message referenced by the messageId is unacked
+     *
+     * @param messageId ID of the message
+     * @return true if message referenced by messageId is unacked and false if it is not
+     */
+    public boolean isUnacked(long messageId) {
+        return messageSendingTracker.containsKey(messageId);
+    }
+    /**
      * Clear tracked sent but un-acknowledged messages. Return the messages in the same view.
      * While this operation is performed, no new message will be added to the list.
      *

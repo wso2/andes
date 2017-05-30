@@ -19,6 +19,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.SortedMap;
+
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -395,9 +398,9 @@ public class StorageQueue {
      * Get messages for delivery. This call returns the messages that are buffered
      * for delivery (read by slots - loadMessagesForDelivery())
      *
-     * @return Collection of messages
+     * @return Map of messages
      */
-    public Collection<DeliverableAndesMetadata> getMessagesForDelivery() {
+    public Map<Long, DeliverableAndesMetadata> getMessagesForDelivery() {
         return messageHandler.getReadButUndeliveredMessages();
     }
 
@@ -453,6 +456,15 @@ public class StorageQueue {
      */
     public long getMessageCount() throws AndesException {
         return messageHandler.getMessageCountForQueue();
+    }
+
+    /**
+     * Set the lastBufferedMessageId in the {@link MessageHandler}. This enable having a separate circular buffer.
+     *
+     * @param lastBufferedMessageId last buffered message id in {@link MessageHandler}.
+     */
+    public void setLastBufferedMessageId(long lastBufferedMessageId) {
+        messageHandler.setLastBufferedMessageId(lastBufferedMessageId);
     }
 
     public boolean equals(Object o) {

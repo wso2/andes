@@ -15,14 +15,11 @@
 
 package org.wso2.andes.kernel;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import java.util.Collection;
+
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -200,8 +197,8 @@ public class MessageHandler {
      *
      * @return Collection with DeliverableAndesMetadata
      */
-    public Collection<DeliverableAndesMetadata> getReadButUndeliveredMessages() {
-        return readButUndeliveredMessages.values();
+    public Map<Long, DeliverableAndesMetadata> getReadButUndeliveredMessages() {
+        return readButUndeliveredMessages;
     }
 
     /**
@@ -303,5 +300,14 @@ public class MessageHandler {
             messageCount = messageStore.getMessageCountForDLCQueue(storageQueueName);
         }
         return messageCount;
+    }
+
+    /**
+     * set the lastBufferedMessageId. This enable having a separate circular buffer.
+     *
+     * @param lastBufferedMessageId last buffered message id.
+     */
+    public void setLastBufferedMessageId(long lastBufferedMessageId) {
+        this.lastBufferedMessageId = lastBufferedMessageId;
     }
 }
