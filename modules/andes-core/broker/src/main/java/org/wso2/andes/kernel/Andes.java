@@ -22,14 +22,20 @@ import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import javax.transaction.xa.Xid;
+
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
@@ -48,6 +54,7 @@ import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.kernel.dtx.DistributedTransaction;
 import org.wso2.andes.kernel.dtx.DtxRegistry;
+import org.wso2.andes.kernel.router.AndesMessageRouter;
 import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.tools.utils.MessageTracer;
@@ -798,5 +805,117 @@ public class Andes {
                 channelFlowCallback);
         inboundEventManager.publishStateEvent(inboundChannelFlowEvent);
     }
+
+
+    /**
+     * Gets the supported protocol types by the broker.
+     *
+     * @return A set of protocol types.
+     */
+    public Set<ProtocolType> getSupportedProtocols() {
+        Set<ProtocolType> protocolTypes = new HashSet<>();
+        protocolTypes.add(ProtocolType.AMQP);
+        return protocolTypes;
+    }
+
+    /**
+     * Whether clustering is enabled in the broker.
+     *
+     * @return true if clustering enabled, else false.
+     */
+    public boolean isClusteringEnabled() {
+        return AndesContext.getInstance().isClusteringEnabled();
+    }
+
+    /**
+     * Gets broker related information.
+     *
+     * @return A map with property key and property value.
+     */
+    public Map<String, String> getBrokerDetails() {
+        Map<String, String> details = new HashMap<>();
+        details.put("Supported Protocols", StringUtils.join(getSupportedProtocols(), ','));
+        return details;
+    }
+
+    /**
+     * Method to say hello to check status of the andes core
+     *
+     * @return hello
+     */
+    public String getName() {
+        return "Andes";
+    }
+
+    /**
+     * Check whether there is a queue already exists under the same name
+     *
+     * @param queueName name of the queue
+     * @return true if the queue already exists false otherwise
+     */
+    public boolean isQueueExists(String queueName) {
+        try {
+            List<String> queuesList = AndesContext.getInstance().
+                    getStorageQueueRegistry().getAllStorageQueueNames();
+            return queuesList.contains(queueName);
+        } catch (Exception e) {
+            throw new RuntimeException("Error in accessing destination queues", e);
+        }
+    }
+
+    /**
+     * Get all destination either queue/topic
+     *
+     * @param protocolType    Protocol type of the queues
+     * @param destinationType Destination type of the queues
+     * @return
+     */
+    public List<String> getAllQueueNames(ProtocolType protocolType, DestinationType destinationType) {
+        // At the moment this will support only for amqp topics and queues
+        String routerName = (DestinationType.QUEUE.equals(destinationType) ?
+                AMQPUtils.DIRECT_EXCHANGE_NAME :
+                AMQPUtils.TOPIC_EXCHANGE_NAME);
+        AndesMessageRouter andesMessageRouter = AndesContext.getInstance().getMessageRouterRegistry()
+                .getMessageRouter(routerName);
+        List<String> queueNameList = andesMessageRouter.getNamesOfAllQueuesBound();
+        return queueNameList;
+    }
+
+    /**
+     * Get information on a provided destination
+     *
+     * @param protocolType    Protocol type of the queues
+     * @param destinationType Destination type of the queues
+     * @return
+     */
+    public List<String> getAllQueueNames(ProtocolType protocolType, DestinationType destinationType, String destination) {
+        // At the moment this will support only for amqp topics and queues
+        String routerName = (DestinationType.QUEUE.equals(destinationType) ?
+                AMQPUtils.DIRECT_EXCHANGE_NAME :
+                AMQPUtils.TOPIC_EXCHANGE_NAME);
+        AndesMessageRouter andesMessageRouter = AndesContext.getInstance().getMessageRouterRegistry()
+                .getMessageRouter(routerName);
+        List<String> queueNameList = andesMessageRouter.getNamesOfAllQueuesBound();
+        return queueNameList;
+    }
+
+    /**
+     * Get all Queues
+     *
+     * @param protocolType    Protocol type of the queues
+     * @param destinationType Destination type of the queues
+     * @return
+     */
+    public List<StorageQueue> getAllQueues(ProtocolType protocolType, DestinationType destinationType) {
+        // At the moment this will support only for amqp topics and queues
+        String routerName = (DestinationType.QUEUE.equals(destinationType) ?
+                AMQPUtils.DIRECT_EXCHANGE_NAME :
+                AMQPUtils.TOPIC_EXCHANGE_NAME);
+        AndesMessageRouter andesMessageRouter = AndesContext.getInstance().getMessageRouterRegistry()
+                .getMessageRouter(routerName);
+        List<StorageQueue> queueNameList = andesMessageRouter.getAllBoundQueues();
+        return queueNameList;
+    }
+
 }
 
