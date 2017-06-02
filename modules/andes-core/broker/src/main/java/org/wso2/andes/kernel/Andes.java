@@ -20,12 +20,25 @@ package org.wso2.andes.kernel;
 
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import javax.transaction.xa.Xid;
+
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
-import org.wso2.andes.kernel.disruptor.inbound.InboundMessageRecoveryEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundBindingEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundChannelFlowEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundDeleteDLCMessagesEvent;
@@ -33,6 +46,7 @@ import org.wso2.andes.kernel.disruptor.inbound.InboundDeleteMessagesEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
 import org.wso2.andes.kernel.disruptor.inbound.InboundExchangeEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundKernelOpsEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundMessageRecoveryEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundMessageRejectEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
@@ -40,26 +54,10 @@ import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.kernel.dtx.DistributedTransaction;
 import org.wso2.andes.kernel.dtx.DtxRegistry;
-import org.wso2.andes.kernel.slot.SlotMessageCounter;
+import org.wso2.andes.kernel.router.AndesMessageRouter;
 import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.kernel.subscription.StorageQueue;
-import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.tools.utils.MessageTracer;
-import org.wso2.carbon.metrics.manager.Counter;
-import org.wso2.carbon.metrics.manager.Level;
-import org.wso2.carbon.metrics.manager.Meter;
-import org.wso2.carbon.metrics.manager.MetricManager;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import javax.transaction.xa.Xid;
 
 import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_PURGED_COUNT_TIMEOUT;
 
@@ -92,6 +90,7 @@ public class Andes {
      * Andes context related information manager. Exchanges, Queues and Bindings.
      */
     private AndesContextInformationManager contextInformationManager;
+
     /**
      * handle all message related functions.
      */
@@ -101,18 +100,6 @@ public class Andes {
      * Manages all subscription related events.
      */
     private AndesSubscriptionManager subscriptionManager;
-
-    /**
-     * Scheduler for periodically trigger Slot Deletion Safe Zone
-     * update events.
-     */
-    private final ScheduledExecutorService safeZoneUpdateScheduler = Executors.newScheduledThreadPool(1);
-
-    /**
-     * Interval in milliseconds above update call should trigger
-     */
-    private static final int safeZoneUpdateTriggerInterval = AndesConfigurationManager.readValue(AndesConfiguration
-            .PERFORMANCE_TUNING_MAX_SLOT_SUBMIT_DELAY);
 
     /**
      * Maximum batch size for a transaction. Limit is set for content size of the batch.
@@ -200,22 +187,6 @@ public class Andes {
     }
 
     /**
-     * Start the safe zone calculation worker. The safe zone is used to decide if a slot can be safely deleted,
-     * assuming all messages in the slot range has been delivered.
-     */
-    public void startSafeZoneUpdateWorkers() {
-        SafeZoneUpdateEventTriggeringTask safeZoneUpdateTask = new SafeZoneUpdateEventTriggeringTask(
-                inboundEventManager);
-
-        log.info("Starting Safe Zone Calculator for slots.");
-        safeZoneUpdateScheduler
-                .scheduleAtFixedRate(safeZoneUpdateTask, 5, safeZoneUpdateTriggerInterval, TimeUnit.MILLISECONDS);
-
-        SlotMessageCounter.getInstance().scheduleSubmitSlotToCoordinatorTimer();
-
-    }
-
-    /**
      * When a message is received from a transport it should be converted to an AndesMessage and handed over to Andes
      * for delivery through this method.
      *
@@ -231,16 +202,16 @@ public class Andes {
         inboundEventManager.messageReceived(message, andesChannel, pubAckHandler);
 
         //Adding metrics meter for message rate
-        Meter messageMeter = MetricManager.meter(MetricsConstants.MSG_RECEIVE_RATE
-                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getMessageRouterName()
-                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getDestination(), Level.INFO);
-        messageMeter.mark();
+//        Meter messageMeter = MetricManager.meter(MetricsConstants.MSG_RECEIVE_RATE
+//                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getMessageRouterName()
+//                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getDestination(), Level.INFO);
+//        messageMeter.mark();
 
         //Adding metrics counter for enqueue messages
-        Counter counter = MetricManager.counter(MetricsConstants.ENQUEUE_MESSAGES
-                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getMessageRouterName()
-                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getDestination(), Level.INFO);
-        counter.inc();
+//        Counter counter = MetricManager.counter(MetricsConstants.ENQUEUE_MESSAGES
+//                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getMessageRouterName()
+//                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getDestination(), Level.INFO);
+//        counter.inc();
     }
 
     /**
@@ -307,7 +278,7 @@ public class Andes {
      * Notify client connection is closed from protocol level.
      * State related to connection will be updated within Andes.
      */
-    public void startMessageDelivery() {
+    void startMessageDelivery() {
         InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
         kernelOpsEvent.prepareForStartMessageDelivery(messagingEngine);
         inboundEventManager.publishStateEvent(kernelOpsEvent);
@@ -316,7 +287,7 @@ public class Andes {
     /**
      * Stop message delivery.
      */
-    public void stopMessageDelivery() {
+    void stopMessageDelivery() {
         InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
         kernelOpsEvent.prepareForStopMessageDelivery(messagingEngine);
         inboundEventManager.publishStateEvent(kernelOpsEvent);
@@ -627,16 +598,6 @@ public class Andes {
     }
 
     /**
-     * Return last assigned message id of slot for given queue.
-     *
-     * @param queueName name of destination queue
-     * @return last assign message id
-     */
-    public long getLastAssignedSlotMessageId(String queueName) throws AndesException {
-        return MessagingEngine.getInstance().getLastAssignedSlotMessageId(queueName);
-    }
-
-    /**
      * Generate a new message ID. The return id will be always unique
      * even for different message broker nodes
      *
@@ -763,14 +724,6 @@ public class Andes {
     }
 
     /**
-     * On a member left event trigger recovery event. This will trigger a mock submit slot event to coordinator for all
-     * the queues and topics. This is to avoid any lost submit slot events from left member node
-     */
-    public void triggerRecoveryEvent() {
-        inboundEventManager.publishRecoveryEvent();
-    }
-
-    /**
      * Allocate a distributed transaction object for dtx calls
      *
      * @param channel   channel object of the session
@@ -852,5 +805,117 @@ public class Andes {
                 channelFlowCallback);
         inboundEventManager.publishStateEvent(inboundChannelFlowEvent);
     }
+
+
+    /**
+     * Gets the supported protocol types by the broker.
+     *
+     * @return A set of protocol types.
+     */
+    public Set<ProtocolType> getSupportedProtocols() {
+        Set<ProtocolType> protocolTypes = new HashSet<>();
+        protocolTypes.add(ProtocolType.AMQP);
+        return protocolTypes;
+    }
+
+    /**
+     * Whether clustering is enabled in the broker.
+     *
+     * @return true if clustering enabled, else false.
+     */
+    public boolean isClusteringEnabled() {
+        return AndesContext.getInstance().isClusteringEnabled();
+    }
+
+    /**
+     * Gets broker related information.
+     *
+     * @return A map with property key and property value.
+     */
+    public Map<String, String> getBrokerDetails() {
+        Map<String, String> details = new HashMap<>();
+        details.put("Supported Protocols", StringUtils.join(getSupportedProtocols(), ','));
+        return details;
+    }
+
+    /**
+     * Method to say hello to check status of the andes core
+     *
+     * @return hello
+     */
+    public String getName() {
+        return "Andes";
+    }
+
+    /**
+     * Check whether there is a queue already exists under the same name
+     *
+     * @param queueName name of the queue
+     * @return true if the queue already exists false otherwise
+     */
+    public boolean isQueueExists(String queueName) {
+        try {
+            List<String> queuesList = AndesContext.getInstance().
+                    getStorageQueueRegistry().getAllStorageQueueNames();
+            return queuesList.contains(queueName);
+        } catch (Exception e) {
+            throw new RuntimeException("Error in accessing destination queues", e);
+        }
+    }
+
+    /**
+     * Get all destination either queue/topic
+     *
+     * @param protocolType    Protocol type of the queues
+     * @param destinationType Destination type of the queues
+     * @return
+     */
+    public List<String> getAllQueueNames(ProtocolType protocolType, DestinationType destinationType) {
+        // At the moment this will support only for amqp topics and queues
+        String routerName = (DestinationType.QUEUE.equals(destinationType) ?
+                AMQPUtils.DIRECT_EXCHANGE_NAME :
+                AMQPUtils.TOPIC_EXCHANGE_NAME);
+        AndesMessageRouter andesMessageRouter = AndesContext.getInstance().getMessageRouterRegistry()
+                .getMessageRouter(routerName);
+        List<String> queueNameList = andesMessageRouter.getNamesOfAllQueuesBound();
+        return queueNameList;
+    }
+
+    /**
+     * Get information on a provided destination
+     *
+     * @param protocolType    Protocol type of the queues
+     * @param destinationType Destination type of the queues
+     * @return
+     */
+    public List<String> getAllQueueNames(ProtocolType protocolType, DestinationType destinationType, String destination) {
+        // At the moment this will support only for amqp topics and queues
+        String routerName = (DestinationType.QUEUE.equals(destinationType) ?
+                AMQPUtils.DIRECT_EXCHANGE_NAME :
+                AMQPUtils.TOPIC_EXCHANGE_NAME);
+        AndesMessageRouter andesMessageRouter = AndesContext.getInstance().getMessageRouterRegistry()
+                .getMessageRouter(routerName);
+        List<String> queueNameList = andesMessageRouter.getNamesOfAllQueuesBound();
+        return queueNameList;
+    }
+
+    /**
+     * Get all Queues
+     *
+     * @param protocolType    Protocol type of the queues
+     * @param destinationType Destination type of the queues
+     * @return
+     */
+    public List<StorageQueue> getAllQueues(ProtocolType protocolType, DestinationType destinationType) {
+        // At the moment this will support only for amqp topics and queues
+        String routerName = (DestinationType.QUEUE.equals(destinationType) ?
+                AMQPUtils.DIRECT_EXCHANGE_NAME :
+                AMQPUtils.TOPIC_EXCHANGE_NAME);
+        AndesMessageRouter andesMessageRouter = AndesContext.getInstance().getMessageRouterRegistry()
+                .getMessageRouter(routerName);
+        List<StorageQueue> queueNameList = andesMessageRouter.getAllBoundQueues();
+        return queueNameList;
+    }
+
 }
 

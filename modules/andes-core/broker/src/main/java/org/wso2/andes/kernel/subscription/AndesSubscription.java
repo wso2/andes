@@ -31,13 +31,8 @@ import org.wso2.andes.kernel.MessageFlusher;
 import org.wso2.andes.kernel.MessageStatus;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolType;
-import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.tools.utils.MessageTracer;
-import org.wso2.carbon.metrics.manager.Counter;
-import org.wso2.carbon.metrics.manager.Level;
-import org.wso2.carbon.metrics.manager.Meter;
-import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -250,16 +245,16 @@ public class AndesSubscription {
             throws AndesException {
         DeliverableAndesMetadata rejectedMessage = subscriberConnection.onMessageReject(messageID);
         //Adding metrics meter for ack rate
-        Meter ackMeter = MetricManager.meter(MetricsConstants.REJECT_RECEIVE_RATE
-                + MetricsConstants.METRICS_NAME_SEPARATOR + rejectedMessage.getMessageRouterName()
-                + MetricsConstants.METRICS_NAME_SEPARATOR + rejectedMessage.getDestination(), Level.INFO);
-        ackMeter.mark();
+//        Meter ackMeter = MetricManager.meter(MetricsConstants.REJECT_RECEIVE_RATE
+//                + MetricsConstants.METRICS_NAME_SEPARATOR + rejectedMessage.getMessageRouterName()
+//                + MetricsConstants.METRICS_NAME_SEPARATOR + rejectedMessage.getDestination(), Level.INFO);
+//        ackMeter.mark();
 
         //Adding metrics counter for reject messages
-        Counter counter = MetricManager.counter(MetricsConstants.REJECT_MESSAGES
-                + MetricsConstants.METRICS_NAME_SEPARATOR + rejectedMessage.getMessageRouterName()
-                + MetricsConstants.METRICS_NAME_SEPARATOR + rejectedMessage.getDestination(), Level.INFO);
-        counter.inc();
+//        Counter counter = MetricManager.counter(MetricsConstants.REJECT_MESSAGES
+//                + MetricsConstants.METRICS_NAME_SEPARATOR + rejectedMessage.getMessageRouterName()
+//                + MetricsConstants.METRICS_NAME_SEPARATOR + rejectedMessage.getDestination(), Level.INFO);
+//        counter.inc();
         if(reQueue) {
             if(log.isDebugEnabled()) {
                 log.debug("Message rejected id= " + rejectedMessage.getMessageID() + " reQueue= true");

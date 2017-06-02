@@ -30,12 +30,8 @@ import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.dtx.AndesPreparedMessageMetadata;
 import org.wso2.andes.kernel.router.AndesMessageRouter;
 import org.wso2.andes.kernel.subscription.StorageQueue;
-import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.tools.utils.MessageTracer;
-import org.wso2.carbon.metrics.manager.Level;
-import org.wso2.carbon.metrics.manager.Meter;
-import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -82,12 +78,6 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                 break;
             case DTX_ROLLBACK_EVENT:
                 preProcessDtxRollback(inboundEvent);
-                break;
-            case SAFE_ZONE_DECLARE_EVENT:
-                setSafeZoneLimit(inboundEvent, sequence);
-                break;
-            case PUBLISHER_RECOVERY_EVENT:
-                inboundEvent.setRecoveryEventMessageId(idGenerator.getNextId());
                 break;
             default:
                 if (log.isDebugEnabled()) {
@@ -149,19 +139,6 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
         // Internal message list of transaction object is updated to reflect the messages
         // to be written to DB
         eventContainer.getTransactionEvent().setMessagesToStore(eventContainer.getMessageList());
-    }
-
-    /**
-     * Calculate the current safe zone for this node (using the last generated message ID)
-     * @param event event
-     * @param sequence position of the event at the event ring buffer
-     */
-    private void setSafeZoneLimit(InboundEventContainer event, long sequence) {
-        long safeZoneLimit = idGenerator.getNextId();
-        event.setSafeZoneLimit(safeZoneLimit);
-        if(log.isDebugEnabled()){
-            log.debug("[ Sequence " + sequence + " ] Pre processing message. Setting the Safe Zone " + safeZoneLimit);
-        }
     }
 
     /**
@@ -266,10 +243,10 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
             event.pubAckHandler.ack(message.getMetadata());
 
             // Adding metrics meter for ack rate
-            Meter ackMeter = MetricManager.meter(MetricsConstants.ACK_SENT_RATE
-                    + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getMessageRouterName()
-                    + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getDestination(), Level.INFO);
-            ackMeter.mark();
+//            Meter ackMeter = MetricManager.meter(MetricsConstants.ACK_SENT_RATE
+//                    + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getMessageRouterName()
+//                    + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getDestination(), Level.INFO);
+//            ackMeter.mark();
 
             // Since inbound message has no routes, inbound message list will be cleared.
             messageList.clear();

@@ -19,12 +19,6 @@
 package org.wso2.andes.kernel;
 
 import com.gs.collections.impl.map.mutable.ConcurrentHashMap;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.slot.Slot;
-import org.wso2.andes.kernel.subscription.*;
-import org.wso2.andes.tools.utils.MessageTracer;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -32,6 +26,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.subscription.AndesSubscription;
+import org.wso2.andes.tools.utils.MessageTracer;
 
 /**
  * This class represents the message metadata and all the delivery aspects of it to the subscribers (outbound path).
@@ -47,10 +45,6 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
      * State transition of the message
      */
     private List<MessageStatus> messageStatus;
-    /**
-     * Parent slot of message.
-     */
-    private Slot slot;
 
     /**
      * Time stamp message is read from the store
@@ -72,9 +66,8 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
 
     private static Log log = LogFactory.getLog(DeliverableAndesMetadata.class);
 
-    public DeliverableAndesMetadata(Slot slot, long messageID, byte[] metadata, boolean parse) {
+    public DeliverableAndesMetadata(long messageID, byte[] metadata, boolean parse) {
         super(messageID, metadata, parse);
-        this.slot = slot;
         this.timeMessageIsRead = System.currentTimeMillis();
         this.channelDeliveryInfo = new ConcurrentHashMap<>();
         this.messageStatus = Collections.synchronizedList(new ArrayList<MessageStatus>());
@@ -90,16 +83,6 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
      */
     public ProtocolMessage generateProtocolDeliverableMessage(UUID channelID) {
         return new ProtocolMessage(this, channelID);
-    }
-
-    /**
-     * Change the belonging slot to a new one. Used when the current slot is overlapping with a slot tracked in the
-     * {@link org.wso2.andes.kernel.slot.MessageDeliveryTask}.
-     *
-     * @param slot New Slot
-     */
-    public void changeSlot(Slot slot) {
-        this.slot = slot;
     }
 
     /**
@@ -119,10 +102,6 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
         } else {
             return false;
         }
-    }
-
-    public Slot getSlot() {
-        return slot;
     }
 
     /**
@@ -536,8 +515,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
                 messageStatus.add(state);
             } else {
                 log.warn(
-                        "Invalid message state transition suggested: " + state + " Message ID: " + messageID + "slot = "
-                                + slot.getId());
+                        "Invalid message state transition suggested: " + state + " Message ID: " + messageID);
             }
         } else {
             isValidTransition = messageStatus.get(messageStatus.size() - 1).isValidNextTransition(state);
@@ -545,7 +523,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
                 messageStatus.add(state);
             } else {
                 log.warn("Invalid message state transition from " + messageStatus.get(messageStatus.size() - 1)
-                        + " suggested: " + state + " Message ID: " + messageID + " slot = " + slot.getId()
+                        + " suggested: " + state + " Message ID: " + messageID
                         + " Message Status History >> " + messageStatus);
             }
         }
@@ -584,9 +562,6 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
         information.append("Message status ");
         information.append(getStatusHistoryAsString());
         information.append(',');
-        information.append("Slot Info {");
-        information.append(slot.toString());
-        information.append("},");
         information.append("Timestamp ");
         information.append(Long.toString(timeMessageIsRead));
         information.append(',');
@@ -594,10 +569,10 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
         information.append(Long.toString(expirationTime));
         information.append(',');
         information.append("Channels sent ");
-        String deliveries = "";
+        StringBuilder deliveries = new StringBuilder();
         for (UUID channelID : getAllDeliveredChannels()) {
-            deliveries = deliveries + channelID + " : " + channelDeliveryInfo.get(channelID)
-                    .getMessageStatusHistoryForChannelAsString() + " | ";
+            deliveries.append(channelID).append(" : ").append(channelDeliveryInfo.get(channelID)
+                    .getMessageStatusHistoryForChannelAsString()).append(" | ");
         }
         information.append(deliveries);
         information.append('\n');
@@ -643,8 +618,8 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
                     messageStatusesForChannel.add(state);
                 } else {
                     log.warn(
-                            "Invalid channel message state transition suggested: " + state + " Message ID: " + messageID
-                                    + " Slot = " + slot.getId() + " Message Status History >> " + messageStatus);
+                            "Invalid channel message state transition suggested: " + state +
+                                    " Message ID: " + messageID + " Message Status History >> " + messageStatus);
                 }
             } else {
                 isValidTransition = messageStatusesForChannel.
@@ -655,8 +630,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
                 } else {
                     log.warn("Invalid channel message state transition from " + messageStatusesForChannel
                             .get(messageStatusesForChannel.size() - 1) + " suggested: " + state + " Message ID: "
-                            + messageID + " Slot = " + slot.getId() + " Channel Status History >> "
-                            + messageStatusesForChannel);
+                            + messageID + " Channel Status History >> " + messageStatusesForChannel);
                 }
             }
 

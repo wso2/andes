@@ -16,17 +16,13 @@
  * under the License.
  */
 
-package org.wso2.andes.kernel.slot;
+package org.wso2.andes.kernel;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.AndesContext;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.MessageFlusher;
-import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.server.cluster.error.detection.NetworkPartitionListener;
 import org.wso2.andes.store.FailureObservingStoreManager;
@@ -39,10 +35,9 @@ import java.util.concurrent.ThreadFactory;
 /**
  * This class is responsible of allocating SloDeliveryWorker threads to each queue
  */
-public final class SlotDeliveryWorkerManager implements StoreHealthListener, NetworkPartitionListener,
-        CoordinatorConnectionListener {
+public final class MessageDeliveryManager implements StoreHealthListener, NetworkPartitionListener {
 
-    private static Log log = LogFactory.getLog(SlotDeliveryWorkerManager.class);
+    private static Log log = LogFactory.getLog(MessageDeliveryManager.class);
 
     /**
      * Delay for waiting for an idle task
@@ -52,11 +47,11 @@ public final class SlotDeliveryWorkerManager implements StoreHealthListener, Net
     /**
      * Slot Delivery Worker Manager instance
      */
-    private static SlotDeliveryWorkerManager slotDeliveryWorkerManager = new SlotDeliveryWorkerManager();
+    private static MessageDeliveryManager messageDeliveryManager = new MessageDeliveryManager();
 
     private final TaskExecutorService<MessageDeliveryTask> taskManager;
 
-    private SlotDeliveryWorkerManager() {
+    private MessageDeliveryManager() {
         int numberOfThreads = AndesConfigurationManager
                 .readValue(AndesConfiguration.PERFORMANCE_TUNING_SLOTS_WORKER_THREAD_COUNT);
 
@@ -70,17 +65,16 @@ public final class SlotDeliveryWorkerManager implements StoreHealthListener, Net
         if (andesContext.isClusteringEnabled()) {
             // network partition detection and thrift client works only when clustered.
             andesContext.getClusterAgent().addNetworkPartitionListener(50, this);
-            MessagingEngine.getInstance().getSlotCoordinator().addCoordinatorConnectionListener(this);
         }
 
         FailureObservingStoreManager.registerStoreHealthListener(this);
     }
 
     /**
-     * @return SlotDeliveryWorkerManager instance
+     * @return MessageDeliveryManager instance
      */
-    public static SlotDeliveryWorkerManager getInstance() {
-        return slotDeliveryWorkerManager;
+    public static MessageDeliveryManager getInstance() {
+        return messageDeliveryManager;
     }
 
     /**
@@ -91,9 +85,7 @@ public final class SlotDeliveryWorkerManager implements StoreHealthListener, Net
      */
     public void startMessageDeliveryForQueue(StorageQueue storageQueue) throws AndesException {
 
-        MessageDeliveryTask messageDeliveryTask = new MessageDeliveryTask(storageQueue,
-                                    MessagingEngine.getInstance().getSlotCoordinator(),
-                                        MessageFlusher.getInstance());
+        MessageDeliveryTask messageDeliveryTask = new MessageDeliveryTask(storageQueue, MessageFlusher.getInstance());
         taskManager.add(messageDeliveryTask);
     }
 
@@ -172,24 +164,6 @@ public final class SlotDeliveryWorkerManager implements StoreHealthListener, Net
     @Override
     public void storeOperational(HealthAwareStore store) {
         log.info("Message stores became operational therefore resuming work");
-        taskManager.start();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void onCoordinatorDisconnect() {
-        log.warn("Disconnected from the coordinator. Waiting till reconnect");
-        taskManager.stop();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void onCoordinatorReconnect() {
-        log.info("Coordinator connection re-established");
         taskManager.start();
     }
 }

@@ -18,7 +18,10 @@
 
 package org.wso2.andes.kernel;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import javax.management.JMException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -30,41 +33,20 @@ import org.wso2.andes.kernel.dtx.DtxRegistry;
 import org.wso2.andes.kernel.registry.MessageRouterRegistry;
 import org.wso2.andes.kernel.registry.StorageQueueRegistry;
 import org.wso2.andes.kernel.registry.SubscriptionRegistry;
-import org.wso2.andes.kernel.slot.SlotCreator;
-import org.wso2.andes.kernel.slot.SlotDeletionExecutor;
-import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
-import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cluster.ClusterAgent;
 import org.wso2.andes.server.cluster.ClusterManagementInformationMBean;
 import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.cluster.coordination.ClusterNotificationListenerManager;
 import org.wso2.andes.server.cluster.coordination.CoordinationComponentFactory;
-import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.information.management.MessageStatusInformationMBean;
 import org.wso2.andes.server.information.management.SubscriptionManagementInformationMBean;
-import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
 import org.wso2.andes.store.FailureObservingAndesContextStore;
 import org.wso2.andes.store.FailureObservingMessageStore;
 import org.wso2.andes.store.FailureObservingStoreManager;
-import org.wso2.andes.thrift.MBThriftServer;
-import org.wso2.carbon.context.CarbonContext;
-import org.wso2.carbon.user.api.UserStoreException;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
-import javax.management.JMException;
 
 /**
  * Andes kernel startup/shutdown related work is done through this class.
@@ -127,82 +109,6 @@ public class AndesKernelBoot {
         createDefinedProtocolArtifacts();
         syncNodeWithClusterState();
         registerMBeans();
-        startThriftServer();
-        Andes.getInstance().startSafeZoneUpdateWorkers();
-        int slotDeletingWorkerCount = AndesConfigurationManager.readValue
-                (AndesConfiguration.PERFORMANCE_TUNING_SLOT_DELETE_WORKER_COUNT);
-        int maxNumberOfPendingSlotsToDelete = AndesConfigurationManager.readValue
-                (AndesConfiguration.PERFORMANCE_TUNING_SLOT_DELETE_QUEUE_DEPTH_WARNING_THRESHOLD);
-        SlotDeletionExecutor.getInstance().init(slotDeletingWorkerCount, maxNumberOfPendingSlotsToDelete);
-    }
-
-    /**
-     * This will recreate slot mapping for queues which have messages left in the message store.
-     * The slot mapping is required only for the cluster implementation.
-     *
-     * First we acquire the slot initialization lock and check if the cluster is already
-     * initialized using a distributed variable. Then if the cluster is not initialized, the
-     * server will reset slot storage and iterate through all the queues available in the
-     * context store and inform the the slot mapping. Finally the distribute variable is updated to
-     * indicate the success and the lock is released.
-     *
-     * @throws AndesException
-     */
-    public static void clearMembershipEventsAndRecoverDistributedSlotMap() throws AndesException {
-        if (AndesContext.getInstance().isClusteringEnabled()) {
-            HazelcastAgent hazelcastAgent = HazelcastAgent.getInstance();
-            try {
-                hazelcastAgent.acquireInitializationLock();
-                if (!hazelcastAgent.isClusterInitializedSuccessfully()) {
-                    clearSlotStorage();
-
-                    // Initialize current node's last published ID
-                    ClusterAgent clusterAgent = AndesContext.getInstance().getClusterAgent();
-                    contextStore.setLocalSafeZoneOfNode(clusterAgent.getLocalNodeIdentifier(), 0);
-
-                    recoverMapsForEachQueue();
-                    hazelcastAgent.indicateSuccessfulInitilization();
-                }
-            } finally {
-                hazelcastAgent.releaseInitializationLock();
-            }
-        } else {
-            recoverMapsForEachQueue();
-        }
-    }
-
-    /**
-     * Generate slots for each queue
-     * @throws AndesException
-     */
-    private static void recoverMapsForEachQueue() throws AndesException {
-        List<StorageQueue> queueList = contextStore.getAllQueuesStored();
-        List<Future> futureSlotRecoveryExecutorList = new ArrayList<>();
-        Integer concurrentReads = AndesConfigurationManager.readValue
-                (AndesConfiguration.RECOVERY_MESSAGES_CONCURRENT_STORAGE_QUEUE_READS);
-        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat
-                ("SlotRecoveryThread-%d").build();
-        ExecutorService executorService = Executors.newFixedThreadPool(concurrentReads,namedThreadFactory);
-        for (final StorageQueue queue : queueList) {
-            final String queueName = queue.getName();
-            // Skip slot creation for Dead letter Channel
-            if (DLCQueueUtils.isDeadLetterQueue(queueName)) {
-                continue;
-            }
-            Future submit = executorService.submit(new SlotCreator(messageStore, queueName));
-            futureSlotRecoveryExecutorList.add(submit);
-        }
-        for (Future slotRecoveryExecutor : futureSlotRecoveryExecutorList) {
-            try {
-                slotRecoveryExecutor.get();
-            } catch (InterruptedException e) {
-                log.error("Error occurred in slot recovery.", e);
-                Thread.currentThread().interrupt();
-            } catch (ExecutionException e) {
-                log.error("Error occurred in slot recovery.", e);
-            }
-        }
-        executorService.shutdown();
     }
 
     /**
@@ -336,7 +242,7 @@ public class AndesKernelBoot {
         ClusterResourceHolder.getInstance().setSubscriptionManager(subscriptionManager);
 
         MessagingEngine messagingEngine = MessagingEngine.getInstance();
-        messagingEngine.initialise(messageStore, new MessageExpiryManager(messageStore), subscriptionManager);
+        messagingEngine.initialise(messageStore, new MessageExpiryManager(messageStore));
 
         // initialise Andes context information related manager class
         AndesContextInformationManager contextInformationManager =
@@ -394,9 +300,6 @@ public class AndesKernelBoot {
 
         // Create the listener for listening for cluster events
         initClusterEventListener();
-
-        // Clear all slots and cluster notifications at a cluster startup
-        clearMembershipEventsAndRecoverDistributedSlotMap();
 
         //Start components such as the subscription manager, subscription engine, messaging engine, etc.
         startAndesComponents();
@@ -571,50 +474,21 @@ public class AndesKernelBoot {
         Andes.getInstance().stopMessageDelivery();
     }
 
-
-    /**
-     * Start the thrift server
-     * @throws AndesException
-     */
-    private static void startThriftServer() throws AndesException {
-        if (AndesContext.getInstance().isClusteringEnabled()) {
-            MBThriftServer.getInstance().start(AndesContext.getInstance().getThriftServerHost(),
-                    AndesContext.getInstance().getThriftServerPort(), "MB-ThriftServer-main-thread");
-        }
-
-    }
-
-    /**
-     * Stop the thrift server
-     */
-    public static void stopThriftServer(){
-        MBThriftServer.getInstance().stop();
-    }
-
     /**
      * Create a DEAD_LETTER_CHANNEL for the super tenant.
      */
     public static void createSuperTenantDLC() throws AndesException {
-        CarbonContext carbonContext = CarbonContext.getThreadLocalCarbonContext();
-        try {
-            String adminUserName = carbonContext.getUserRealm().getRealmConfiguration().getAdminUserName();
-            DLCQueueUtils.createDLCQueue(carbonContext.getTenantDomain(), adminUserName);
-        } catch (UserStoreException e) {
-            throw new AndesException("Error getting super tenant username", e);
-        }
+//        CarbonContext carbonContext = CarbonContext.getThreadLocalCarbonContext();
+//        try {
+//            String adminUserName = carbonContext.getUserRealm().getRealmConfiguration().getAdminUserName();
+//            DLCQueueUtils.createDLCQueue(carbonContext.getTenantDomain(), adminUserName);
+//        } catch (UserStoreException e) {
+//            throw new AndesException("Error getting super tenant username", e);
+//        }
     }
 
     public static boolean isKernelShuttingDown() {
         return isKernelShuttingDown;
     }
 
-    /**
-     * First node in the cluster clear and reset slot storage
-     * This will clear slot related records in database which were created in previous session.
-     * @throws AndesException
-     */
-    private static void clearSlotStorage() throws AndesException {
-        SlotManagerClusterMode.getInstance().clearSlotStorage();
-        log.info("Slots stored in last session were cleared to avoid duplicates when recovering.");
-    }
 }

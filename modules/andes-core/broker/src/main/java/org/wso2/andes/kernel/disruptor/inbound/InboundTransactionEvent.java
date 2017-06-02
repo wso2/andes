@@ -19,15 +19,6 @@
 package org.wso2.andes.kernel.disruptor.inbound;
 
 import com.google.common.util.concurrent.SettableFuture;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.AndesChannel;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessage;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.kernel.slot.SlotMessageCounter;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -36,6 +27,13 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesChannel;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessage;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.MessagingEngine;
 
 /**
  * This is the Andes transaction event related class. This event object handles
@@ -95,7 +93,7 @@ public class InboundTransactionEvent implements AndesInboundStateEvent {
 
     /**
      * Check whether messages are stored to DB for the current transaction. If this is true that means
-     * messages are stored in DB but {@link org.wso2.andes.kernel.slot.SlotMessageCounter} is not
+     * messages are stored in DB but not
      * updated completely.
      */
     private boolean messagesStoredNotCommitted;
@@ -312,9 +310,9 @@ public class InboundTransactionEvent implements AndesInboundStateEvent {
      */
     private void executeCommitEvent() throws AndesException {
         try {
+            // TODO: C5 revisit transaction commit rollback event
             messagesStoredNotCommitted = true;
             // update slot information for transaction related messages
-            SlotMessageCounter.getInstance().recordMetadataCountInSlot(getQueuedMessages());
             messageQueue.clear();
             messagesStoredNotCommitted = false; // Once slots are updated rolling back is irrelevant.
             currentBatchSize = 0;
@@ -333,6 +331,7 @@ public class InboundTransactionEvent implements AndesInboundStateEvent {
      */
     private void executeRollbackEvent() throws AndesException {
         try {
+            // TODO: C5 revisit transaction commit rollback event
             if(messagesStoredNotCommitted) {
                 List<AndesMessageMetadata> messagesToRemove = new ArrayList<>();
                 for (AndesMessage message : messageQueue) {

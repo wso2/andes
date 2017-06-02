@@ -20,22 +20,19 @@
 
 package org.wso2.andes.kernel;
 
-import org.wso2.andes.configuration.util.ConfigurationProperties;
-import org.wso2.andes.kernel.router.AndesMessageRouter;
-import org.wso2.andes.kernel.slot.Slot;
-import org.wso2.andes.kernel.slot.SlotState;
-import org.wso2.andes.kernel.subscription.AndesSubscription;
-import org.wso2.andes.kernel.subscription.StorageQueue;
-import org.wso2.andes.server.cluster.NodeHeartBeatData;
-import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEvent;
-import org.wso2.andes.server.cluster.coordination.ClusterNotification;
-import org.wso2.andes.store.HealthAwareStore;
-
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import org.wso2.andes.configuration.util.ConfigurationProperties;
+import org.wso2.andes.kernel.router.AndesMessageRouter;
+import org.wso2.andes.kernel.subscription.AndesSubscription;
+import org.wso2.andes.kernel.subscription.StorageQueue;
+import org.wso2.andes.server.cluster.NodeHeartBeatData;
+import org.wso2.andes.server.cluster.coordination.ClusterNotification;
+import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEvent;
+import org.wso2.andes.store.HealthAwareStore;
 
 /**
  * AndesContextStore is an abstraction of underlying data base to store information related to
@@ -261,90 +258,12 @@ public interface AndesContextStore extends HealthAwareStore {
     void deleteBindingInformation(String exchangeName, String boundQueueName) throws AndesException;
 
     /**
-     * Create a new slot in store.
-     *
-     * @param startMessageId   start message id of slot
-     * @param endMessageId     end message id of slot
-     * @param storageQueueName name of storage queue name
-     * @param assignedNodeId   id of assigned node
-     * @throws AndesException
-     */
-    void createSlot(long startMessageId, long endMessageId, String storageQueueName, String assignedNodeId)
-            throws AndesException;
-
-    /**
-     * Delete a non-overlapping slot from store.
-     *
-     * @param startMessageId start message id of slot
-     * @param endMessageId   end message id of slot
-     * @return True if slot deletion successful
-     * @throws AndesException
-     */
-    boolean deleteNonOverlappingSlot(long startMessageId, long endMessageId) throws AndesException;
-
-    /**
-     * Delete a slot from store.
-     *
-     * @param startMessageId start message id of slot
-     * @param endMessageId   end message id of slot
-     * @return True if slot deletion successful
-     * @throws AndesException
-     */
-    boolean deleteSlot(long startMessageId, long endMessageId) throws AndesException;
-
-    /**
-     * Delete all slots by queue name.
-     *
-     * @param queueName name of queue
-     * @throws AndesException
-     */
-    void deleteSlotsByQueueName(String queueName) throws AndesException;
-
-    /**
      * Delete message ids by queue name.
      *
      * @param queueName name of queue
      * @throws AndesException
      */
     void deleteMessageIdsByQueueName(String queueName) throws AndesException;
-
-    /**
-     * Unassign and return slot.
-     *
-     * @param startMessageId start message id of slot
-     * @param endMessageId   end message id of slot
-     * @throws AndesException
-     */
-    void deleteSlotAssignment(long startMessageId, long endMessageId) throws AndesException;
-
-    /**
-     * Unassign slots by queue name.
-     *
-     * @param nodeId    id of node
-     * @param queueName name of queue
-     * @throws AndesException
-     */
-    void deleteSlotAssignmentByQueueName(String nodeId, String queueName) throws AndesException;
-
-    /**
-     * Update assignment information in slot store.
-     *
-     * @param nodeId     id of node
-     * @param queueName  name of queue
-     * @param startMsgId start message id of slot
-     * @param endMsgId   end message id of slot
-     * @throws AndesException
-     */
-    void createSlotAssignment(String nodeId, String queueName, long startMsgId, long endMsgId) throws AndesException;
-
-    /**
-     * Select unassigned slots for a given queue name.
-     *
-     * @param queueName name of queue
-     * @return unassigned slot object if found
-     * @throws AndesException
-     */
-    Slot selectUnAssignedSlot(String queueName) throws AndesException;
 
     /**
      * Get last assigned id for a queue.
@@ -365,24 +284,6 @@ public interface AndesContextStore extends HealthAwareStore {
     void setQueueToLastAssignedId(String queueName, long messageId) throws AndesException;
 
     /**
-     * Get local safe zone for a given node.
-     *
-     * @param nodeId id of node
-     * @return local safe zone of node
-     * @throws AndesException
-     */
-    long getLocalSafeZoneOfNode(String nodeId) throws AndesException;
-
-    /**
-     * Set local safe zone for a given node.
-     *
-     * @param nodeId    id of node
-     * @param messageId id of message
-     * @throws AndesException
-     */
-    void setLocalSafeZoneOfNode(String nodeId, long messageId) throws AndesException;
-
-    /**
      * Remove entries for a given publishing node ID.
      *
      * @param nodeId id of the leaving node
@@ -396,26 +297,6 @@ public interface AndesContextStore extends HealthAwareStore {
      * @throws AndesException
      */
     TreeSet<String> getMessagePublishedNodes() throws AndesException;
-
-    /**
-     * Set slots states.
-     *
-     * @param startMessageId start message id of slot
-     * @param endMessageId   end message id of slot
-     * @param slotState      state of slot
-     * @throws AndesException
-     */
-    void setSlotState(long startMessageId, long endMessageId, SlotState slotState) throws AndesException;
-
-    /**
-     * Get overlapped slots for a given queue.
-     *
-     * @param nodeId    node identifier
-     * @param queueName name of queue
-     * @return overlapped slot object
-     * @throws AndesException
-     */
-    Slot getOverlappedSlot(String nodeId, String queueName) throws AndesException;
 
     /**
      * Add message ids to store.
@@ -444,33 +325,6 @@ public interface AndesContextStore extends HealthAwareStore {
     void deleteMessageId(long messageId) throws AndesException;
 
     /**
-     * Get all assigned slots for give node.
-     *
-     * @param nodeId id of node
-     * @return set of assigned slot objects
-     * @throws AndesException
-     */
-    TreeSet<Slot> getAssignedSlotsByNodeId(String nodeId) throws AndesException;
-
-    /**
-     * Get all overlapped slots for give node.
-     *
-     * @param nodeId id of node
-     * @return set of overlapped slot objects
-     * @throws AndesException
-     */
-    TreeSet<Slot> getOverlappedSlotsByNodeId(String nodeId) throws AndesException;
-
-    /**
-     * Get all slots for a give queue.
-     *
-     * @param queueName name of queue
-     * @return set of slot object for queue
-     * @throws AndesException
-     */
-    TreeSet<Slot> getAllSlotsByQueueName(String queueName) throws AndesException;
-
-    /**
      * Get all active queue names.
      *
      * @return set of queue names
@@ -485,13 +339,6 @@ public interface AndesContextStore extends HealthAwareStore {
      * @throws AndesException
      */
     Set<String> getAllQueuesInSubmittedSlots() throws AndesException;
-
-    /**
-     * Clear and reset slot storage
-     *
-     * @throws AndesException
-     */
-    void clearSlotStorage() throws AndesException;
 
     /**
      * Close the context store

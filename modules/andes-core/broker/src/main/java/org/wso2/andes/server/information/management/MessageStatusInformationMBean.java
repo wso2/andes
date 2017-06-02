@@ -39,12 +39,6 @@ public class MessageStatusInformationMBean extends AMQManagedObject
             fileToWriteMessageStatus.createNewFile();
 
 
-            //Get slot delivery workers
-            AndesContext.getInstance().getStorageQueueRegistry().
-                    dumpAllSlotInformationToFile(fileToWriteMessageStatus);
-
-        } catch (AndesException e) {
-            throw new RuntimeException("Internal error while dumping message status", e);
         } catch (IOException e) {
             throw new RuntimeException("Cannot create a file to dump message status", e);
         }

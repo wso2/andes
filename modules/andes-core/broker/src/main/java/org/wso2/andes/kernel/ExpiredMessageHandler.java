@@ -57,8 +57,6 @@ public class ExpiredMessageHandler extends DeliveryResponsibility {
             if (expiryLog.isWarnEnabled()) {
                 expiryLog.warn("Message is expired. Therefore, it will not be sent. : id= " + message.getMessageID());
             }
-            // Since this message is not going to be delivered, no point in wait for ack.
-            message.getSlot().decrementPendingMessageCount();
             // Add the expired messages to a list for a batch delete
             preDeliveryExpiryMessageDeletionTask.addMessageIdToExpiredQueue(message);
             MessageTracer.trace(message, MessageTracer.EXPIRED_MESSAGE_DETECTED_AND_QUEUED);

@@ -31,12 +31,7 @@ import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.kernel.SubscriptionAlreadyClosedException;
 import org.wso2.andes.kernel.subscription.AndesSubscription;
 import org.wso2.andes.kernel.subscription.StorageQueue;
-import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.tools.utils.MessageTracer;
-import org.wso2.carbon.metrics.manager.Counter;
-import org.wso2.carbon.metrics.manager.Level;
-import org.wso2.carbon.metrics.manager.Meter;
-import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -100,15 +95,15 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                         MessageTracer.trace(message, MessageTracer.DISPATCHED_TO_PROTOCOL);
 
                         //Adding metrics meter for ack rate
-                        Meter messageMeter = MetricManager.meter(MetricsConstants.MSG_SENT_RATE
-                                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMessageRouterName()
-                                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getDestination(), Level.INFO);
-                        messageMeter.mark();
-                        //Adding metrics counter for dequeue messages
-                        Counter counter = MetricManager.counter(MetricsConstants.DEQUEUE_MESSAGES
-                                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMessageRouterName()
-                                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getDestination(), Level.INFO);
-                        counter.inc();
+//                        Meter messageMeter = MetricManager.meter(MetricsConstants.MSG_SENT_RATE
+//                                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMessageRouterName()
+//                                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getDestination(), Level.INFO);
+//                        messageMeter.mark();
+//                        Adding metrics counter for dequeue messages
+//                        Counter counter = MetricManager.counter(MetricsConstants.DEQUEUE_MESSAGES
+//                                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMessageRouterName()
+//                                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getDestination(), Level.INFO);
+//                        counter.inc();
 
                         subscription.getSubscriberConnection().writeMessageToConnection(protocolMessage,
                                 deliveryEventData.getAndesContent());

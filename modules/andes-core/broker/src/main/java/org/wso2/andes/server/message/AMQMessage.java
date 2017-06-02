@@ -17,21 +17,18 @@
  */
 package org.wso2.andes.server.message;
 
+import java.lang.ref.WeakReference;
+import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
+import org.wso2.andes.configuration.qpid.SessionConfig;
 import org.wso2.andes.framing.ContentHeaderBody;
 import org.wso2.andes.framing.abstraction.MessagePublishInfo;
 import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.server.AMQChannel;
-import org.wso2.andes.kernel.slot.Slot;
-import org.wso2.andes.server.store.StoredMessage;
-import org.wso2.andes.configuration.qpid.SessionConfig;
 import org.wso2.andes.server.queue.AMQQueue;
-
-
-import java.util.concurrent.atomic.AtomicInteger;
-import java.lang.ref.WeakReference;
-import java.nio.ByteBuffer;
+import org.wso2.andes.server.store.StoredMessage;
 
 /**
  * A deliverable message.
@@ -132,10 +129,6 @@ public class AMQMessage implements ServerMessage
     public Long getMessageId()
     {
         return _handle.getMessageNumber();
-    }
-
-    public Slot getSlot(){
-        return _handle.getSlot();
     }
 
     /**

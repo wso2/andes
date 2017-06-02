@@ -16,32 +16,20 @@
 package org.wso2.andes.kernel;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.slot.Slot;
-import org.wso2.andes.kernel.slot.SlotDeletionExecutor;
-import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
-import org.wso2.andes.kernel.slot.SlotReAssignTask;
-import org.wso2.andes.kernel.subscription.StorageQueue;
-import org.wso2.andes.server.queue.DLCQueueUtils;
-import org.wso2.andes.tools.utils.MessageTracer;
-
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.subscription.StorageQueue;
+import org.wso2.andes.server.queue.DLCQueueUtils;
+import org.wso2.andes.tools.utils.MessageTracer;
 
 /**
  * This class is for message handling operations of a queue. Handling
@@ -60,12 +48,12 @@ public class MessageHandler {
     /**
      * Manager for message delivery to subscriptions.
      */
-    private SlotDeliveryWorkerManager messageDeliveryManager;
+    private MessageDeliveryManager messageDeliveryManager;
 
     /**
      * Name of the queue to handle
      */
-    private String queueName;
+    private String storageQueueName;
 
     /**
      * Maximum number to retries retrieve metadata list for a given storage
@@ -77,13 +65,7 @@ public class MessageHandler {
      * In-memory message list scheduled to be delivered. These messages will be flushed
      * to subscriber.Used Map instead of Set because of https://wso2.org/jira/browse/MB-1624
      */
-    private ConcurrentMap<Long, DeliverableAndesMetadata> readButUndeliveredMessages = new
-            ConcurrentSkipListMap<>();
-
-    /**
-     * Map of slots read so far
-     */
-    private Map<String, Slot> slotsRead;
+    private ConcurrentMap<Long, DeliverableAndesMetadata> readButUndeliveredMessages;
 
     /***
      * In case of a purge, we must store the timestamp when the purge was called.
@@ -94,25 +76,22 @@ public class MessageHandler {
     /**
      * Max number of messages to keep in buffer
      */
-    private Integer maxNumberOfReadButUndeliveredMessages;
+    private final Integer maxNumberOfReadButUndeliveredMessages;
 
-    /**
-     * Used for asynchronously execute slot reassign task
-     */
-    private final ExecutorService executor;
+    private long lastBufferedMessageId;
 
+    private final long messageFetchSize;
 
     public MessageHandler(String queueName) {
-        this.queueName = queueName;
-        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().
-                setNameFormat("AndesReleaseSlotTaskExecutor").build();
-        this.executor = Executors.newSingleThreadExecutor(namedThreadFactory);
+        this.storageQueueName = queueName;
+        this.readButUndeliveredMessages = new ConcurrentSkipListMap<>();
         this.maxNumberOfReadButUndeliveredMessages = AndesConfigurationManager.
                 readValue(AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_MAX_READ_BUT_UNDELIVERED_MESSAGES);
-        this.messageDeliveryManager = SlotDeliveryWorkerManager.getInstance();
+        this.messageDeliveryManager = MessageDeliveryManager.getInstance();
         this.lastPurgedTimestamp = 0L;
         this.messageStore = AndesContext.getInstance().getMessageStore();
-        this.slotsRead = new ConcurrentHashMap<>();
+        lastBufferedMessageId = 0;
+        messageFetchSize = 1000;
     }
 
     /**
@@ -143,36 +122,14 @@ public class MessageHandler {
     }
 
     /**
-     * Read messages from persistent store and buffer indicated
-     * by the slot. This will filter messages for overlapped slots
+     * Read messages from persistent store and buffer.
      * as well.
      *
-     * @param currentSlot slot of which messages to load
      * @return number of messages loaded to memory
      */
-    public int bufferMessages(Slot currentSlot) throws AndesException {
+    public int bufferMessages() throws AndesException {
 
-        List<DeliverableAndesMetadata> messagesReadFromStore = readMessagesFromMessageStore(currentSlot);
-
-        //if no messages are in the slot range, delete the slot from coordinator. No use of it
-        if (messagesReadFromStore.isEmpty()) {
-            SlotDeletionExecutor.getInstance().scheduleToDelete(currentSlot);
-        }
-
-        Slot trackedSlot = slotsRead.get(currentSlot.getId());
-        if (trackedSlot == null) {
-            slotsRead.put(currentSlot.getId(), currentSlot);
-            trackedSlot = currentSlot;
-        } else {
-            if (log.isDebugEnabled()) {
-                log.debug("Overlapped slot received. Slot ID " + trackedSlot.getId());
-            }
-        }
-
-        //filter and removed already buffered messages
-        filterOverlappedMessages(trackedSlot, messagesReadFromStore);
-
-        trackedSlot.incrementPendingMessageCount(messagesReadFromStore.size());
+        List<DeliverableAndesMetadata> messagesReadFromStore = readMessagesFromMessageStore();
 
         for (DeliverableAndesMetadata message : messagesReadFromStore) {
             bufferMessage(message);
@@ -182,22 +139,19 @@ public class MessageHandler {
     }
 
     /**
-     * Read messages from persistent store indicated by the message slot
+     * Read messages from persistent store
      *
-     * @param slot message slot to load messages
      * @return list of messages
      * @throws AndesException
      */
-    private List<DeliverableAndesMetadata> readMessagesFromMessageStore(Slot slot) throws AndesException {
+    private List<DeliverableAndesMetadata> readMessagesFromMessageStore() throws AndesException {
         List<DeliverableAndesMetadata> messagesRead;
         int numberOfRetries = 0;
+        long startMessageId = lastBufferedMessageId + 1;
         try {
 
             //Read messages in the slot
-            messagesRead = messageStore.getMetadataList(slot,
-                    slot.getStorageQueueName(),
-                    slot.getStartMessageId(),
-                    slot.getEndMessageId());
+            messagesRead = messageStore.getMetadataList(storageQueueName, startMessageId, messageFetchSize);
 
             if (log.isDebugEnabled()) {
                 StringBuilder messageIDString = new StringBuilder();
@@ -214,55 +168,31 @@ public class MessageHandler {
             if (numberOfRetries <= MAX_META_DATA_RETRIEVAL_COUNT) {
 
                 String errorMsg = String.format("error occurred retrieving metadata" +
-                        " list for slot :" + " %s, retry count = %d", slot.toString(), numberOfRetries);
+                        " list. retry count = %d", numberOfRetries);
 
                 log.error(errorMsg, aex);
-                messagesRead = messageStore.getMetadataList(slot,
-                        slot.getStorageQueueName(),
-                        slot.getStartMessageId(),
-                        slot.getEndMessageId());
+                messagesRead = messageStore.getMetadataList(storageQueueName, startMessageId, messageFetchSize);
             } else {
-                String errorMsg = String.format("error occurred retrieving metadata list for slot "
-                        + ": %s, in final attempt = %d. " + "this slot will not be delivered " +
-                        "and become stale in message store", slot.toString(), numberOfRetries);
+                String errorMsg = String.format("error occurred retrieving metadata list, in final attempt = %d. "
+                        + "this slot will not be delivered " + "and become stale in message store", numberOfRetries);
 
                 throw new AndesException(errorMsg, aex);
             }
 
         }
 
+        if (!messagesRead.isEmpty()) {
+            DeliverableAndesMetadata metadata = messagesRead.get(messagesRead.size()-1);
+            lastBufferedMessageId = metadata.messageID;
+        }
+
         if (log.isDebugEnabled()) {
-            log.debug("Number of messages read from slot " + slot.getStartMessageId()
-                    + " - " + slot.getEndMessageId() + " is " + messagesRead.size()
-                    + " storage queue= " + slot.getStorageQueueName());
+            log.debug("Number of messages read from slot " + startMessageId
+                    + " - " + lastBufferedMessageId + " is " + messagesRead.size()
+                    + " storage queue= " + storageQueueName);
         }
 
         return messagesRead;
-    }
-
-    /**
-     * This will remove already buffered messages from the messagesRead list.
-     * This is to avoid resending a message.
-     *
-     * @param slot     Slot which contains the given messages
-     * @param messages Messages of the given slots
-     */
-    private void filterOverlappedMessages(Slot slot, List<DeliverableAndesMetadata> messages) {
-        Iterator<DeliverableAndesMetadata> readMessageIterator = messages.iterator();
-        while (readMessageIterator.hasNext()) {
-            DeliverableAndesMetadata currentMessage = readMessageIterator.next();
-            if (slot.checkIfMessageIsAlreadyAdded(currentMessage.getMessageID())) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Tracker rejected message id= " + currentMessage.getMessageID()
-                            + " from buffering "
-                            + "to deliver. This is an already buffered message");
-                }
-                readMessageIterator.remove();
-            } else {
-                currentMessage.changeSlot(slot);
-                slot.addMessageToSlotIfAbsent(currentMessage);
-            }
-        }
     }
 
     /**
@@ -298,16 +228,12 @@ public class MessageHandler {
     }
 
     /**
-     * Returns boolean variable saying whether this destination has room or not
+     * Returns boolean variable saying whether the internal buffer is full or not
      *
-     * @return whether this destination has room or not
+     * @return true if buffer is full and wise versa
      */
-    public boolean messageBufferHasRoom() {
-        boolean hasRoom = true;
-        if (readButUndeliveredMessages.size() >= maxNumberOfReadButUndeliveredMessages) {
-            hasRoom = false;
-        }
-        return hasRoom;
+    public boolean isBufferFull() {
+        return readButUndeliveredMessages.size() >= maxNumberOfReadButUndeliveredMessages;
     }
 
     /***
@@ -319,13 +245,6 @@ public class MessageHandler {
         lastPurgedTimestamp = System.currentTimeMillis();
         int messageCount = readButUndeliveredMessages.size();
         readButUndeliveredMessages.clear();
-        for (Slot slot : slotsRead.values()) {
-            if (log.isDebugEnabled()) {
-                log.debug("clear tracking of messages for slot = " + slot);
-            }
-            slot.markMessagesOfSlotAsReturned();
-        }
-        slotsRead.clear();
         return messageCount;
     }
 
@@ -337,30 +256,23 @@ public class MessageHandler {
     public int purgeMessagesOfQueue() throws AndesException {
 
         try {
-            /*
-             * Clear all slots assigned to the Queue. This should ideally stop
-             * any messages being buffered during the purge. This call clears all slot associations
-             * for the queue in all nodes calling to coordinator node via Thrift protocol (could take time).
-             */
-            MessagingEngine.getInstance().getSlotCoordinator().clearAllActiveSlotRelationsToQueue(queueName);
-
             //clear all in-memory messages
             purgeInMemoryMessagesOfQueue();
 
             // Delete messages from store
             int deletedMessageCount;
-            if (!(DLCQueueUtils.isDeadLetterQueue(queueName))) {
+            if (!(DLCQueueUtils.isDeadLetterQueue(storageQueueName))) {
                 // delete all messages for the queue
-                deletedMessageCount = messageStore.deleteAllMessageMetadata(queueName);
+                deletedMessageCount = messageStore.deleteAllMessageMetadata(storageQueueName);
             } else {
                 //delete all the messages in dlc
-                deletedMessageCount = messageStore.clearDLCQueue(queueName);
+                deletedMessageCount = messageStore.clearDLCQueue(storageQueueName);
             }
             return deletedMessageCount;
 
         } catch (AndesException e) {
             // This will be a store-specific error.
-            throw new AndesException("Error occurred when purging queue from store : " + queueName, e);
+            throw new AndesException("Error occurred when purging queue from store : " + storageQueueName, e);
         }
 
     }
@@ -385,81 +297,11 @@ public class MessageHandler {
      */
     public long getMessageCountForQueue() throws AndesException {
         long messageCount;
-        if (!DLCQueueUtils.isDeadLetterQueue(queueName)) {
-            messageCount = messageStore.getMessageCountForQueue(queueName);
+        if (!DLCQueueUtils.isDeadLetterQueue(storageQueueName)) {
+            messageCount = messageStore.getMessageCountForQueue(storageQueueName);
         } else {
-            messageCount = messageStore.getMessageCountForDLCQueue(queueName);
+            messageCount = messageStore.getMessageCountForDLCQueue(storageQueueName);
         }
         return messageCount;
     }
-
-    /**
-     * Delete message slot read
-     *
-     * @param slotToDelete slot to delete
-     */
-    public void deleteSlot(Slot slotToDelete) {
-        if (log.isDebugEnabled()) {
-            log.debug("Releasing tracking of messages for slot " + slotToDelete.toString());
-        }
-        slotToDelete.deleteAllMessagesInSlot();
-        slotsRead.remove(slotToDelete.getId());
-    }
-
-    /**
-     * Schedule to release all non empty slots read back to the coordinator
-     */
-    public void releaseAllSlots() {
-        executor.submit(new SlotReAssignTask(queueName));
-    }
-
-
-    /**
-     * Dump all message status of the slots read to file given
-     *
-     * @param fileToWrite      file to write
-     * @param storageQueueName name of storage queue
-     * @throws AndesException
-     */
-    public void dumpAllSlotInformationToFile(File fileToWrite, String storageQueueName) throws AndesException {
-
-        FileWriter information = null;
-        try {
-            information = new FileWriter(fileToWrite, true);
-            for (Slot slot : slotsRead.values()) {
-                List<DeliverableAndesMetadata> messagesOfSlot = slot.getAllMessagesOfSlot();
-                if (!messagesOfSlot.isEmpty()) {
-
-                    int writerFlushCounter = 0;
-                    for (DeliverableAndesMetadata message : messagesOfSlot) {
-                        information.append(storageQueueName).append(",").append(slot.getId()).append(",")
-                                .append(message.dumpMessageStatus()).append("\n");
-                        writerFlushCounter = writerFlushCounter + 1;
-                        if (writerFlushCounter % 10 == 0) {
-                            information.flush();
-                        }
-                    }
-
-                    information.flush();
-                }
-            }
-            information.flush();
-
-        } catch (FileNotFoundException e) {
-            log.error("File to write is not found", e);
-            throw new AndesException("File to write is not found", e);
-        } catch (IOException e) {
-            log.error("Error while dumping message status to file", e);
-            throw new AndesException("Error while dumping message status to file", e);
-        } finally {
-            try {
-                if (information != null) {
-                    information.close();
-                }
-            } catch (IOException e) {
-                log.error("Error while closing file when dumping message status to file", e);
-            }
-        }
-    }
-
 }

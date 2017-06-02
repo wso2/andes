@@ -32,8 +32,6 @@ import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.url.BindingURL;
 import org.wso2.andes.url.URLSyntaxException;
 import org.wso2.andes.util.Strings;
-import org.wso2.securevault.SecretResolver;
-import org.wso2.securevault.SecretResolverFactory;
 
 import javax.jms.ConnectionFactory;
 import javax.jms.Destination;
@@ -195,21 +193,21 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
      * @param environment property values which need to construct the InitialContext
      */
     private static void resolveEncryptedProperties(Hashtable environment) {
-        if (environment != null) {
-            Properties properties = convertToProperties(environment);
-            SecretResolver secretResolver = SecretResolverFactory.create(properties);
-            for (Object key : environment.keySet()) {
-                if (secretResolver != null && secretResolver.isInitialized()) {
-                    String value = environment.get(key.toString()).toString();
-                    if(value != null && value.startsWith(SECRET_ALIAS_PREFIX)) {
-                        value = value.split(SECRET_ALIAS_PREFIX)[1];
-                    }
-                    if (secretResolver.isTokenProtected(value)) {
-                        environment.put(key.toString(), secretResolver.resolve(value));
-                    }
-                }
-            }
-        }
+//        if (environment != null) {
+//            Properties properties = convertToProperties(environment);
+//            SecretResolver secretResolver = SecretResolverFactory.create(properties);
+//            for (Object key : environment.keySet()) {
+//                if (secretResolver != null && secretResolver.isInitialized()) {
+//                    String value = environment.get(key.toString()).toString();
+//                    if(value != null && value.startsWith(SECRET_ALIAS_PREFIX)) {
+//                        value = value.split(SECRET_ALIAS_PREFIX)[1];
+//                    }
+//                    if (secretResolver.isTokenProtected(value)) {
+//                        environment.put(key.toString(), secretResolver.resolve(value));
+//                    }
+//                }
+//            }
+//        }
     }
 
     /**

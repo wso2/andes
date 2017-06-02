@@ -23,7 +23,6 @@ import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.moquette.messaging.spi.impl.subscriptions.SubscriptionsStore;
 import org.dna.mqtt.moquette.proto.messages.AbstractMessage;
 import org.dna.mqtt.wso2.QOSLevel;
-import org.wso2.andes.kernel.AndesConstants;
 import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
@@ -32,7 +31,6 @@ import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.MQTTMessageContext;
 import org.wso2.andes.mqtt.MQTTPublisherChannel;
 import org.wso2.andes.server.store.MessageMetaDataType;
-import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
 
 import java.nio.ByteBuffer;
 import java.util.UUID;
@@ -269,11 +267,12 @@ public class MQTTUtils {
      * @return Tenant name extracted from topic
      */
     public static String getTenantFromTopic(String topic) {
-        String tenant = MultitenantConstants.SUPER_TENANT_DOMAIN_NAME;
-
-        if (null != topic && topic.contains(AndesConstants.TENANT_SEPARATOR)) {
-            tenant = topic.split(AndesConstants.TENANT_SEPARATOR)[0];
-        }
+        String tenant = "";
+//                MultitenantConstants.SUPER_TENANT_DOMAIN_NAME;
+//
+//        if (null != topic && topic.contains(AndesConstants.TENANT_SEPARATOR)) {
+//            tenant = topic.split(AndesConstants.TENANT_SEPARATOR)[0];
+//        }
 
         return tenant;
     }

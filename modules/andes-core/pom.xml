@@ -322,12 +322,7 @@
         <!--Carbon Metrics Dependencies-->
         <dependency>
             <groupId>org.wso2.carbon.metrics</groupId>
-            <artifactId>org.wso2.carbon.metrics.manager</artifactId>
-        </dependency>
-        <!--Thrift Dependency-->
-        <dependency>
-            <groupId>libthrift.wso2</groupId>
-            <artifactId>libthrift</artifactId>
+            <artifactId>org.wso2.carbon.metrics.core</artifactId>
         </dependency>
         <dependency>
             <groupId>tomcat</groupId>
@@ -357,6 +352,10 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-pool2</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>commons-codec.wso2</groupId>
+            <artifactId>commons-codec</artifactId>
         </dependency>
     </dependencies>
 

@@ -24,7 +24,6 @@ import java.util.Map;
 import org.apache.commons.lang.StringUtils;
 import org.dna.mqtt.moquette.server.AuthenticationInfo;
 import org.dna.mqtt.moquette.server.IAuthenticator;
-import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 /**
  * This is the class used to authenticate MQTT activities against users. The configured users are used temporarily.
@@ -55,8 +54,8 @@ public class UserAuthenticator implements IAuthenticator {
         String carbonUsername = username.replace(DOMAIN_NAME_SEPARATOR, "@");
         AuthenticationInfo authenticationInfo = new AuthenticationInfo();
         authenticationInfo.setAuthenticated(!StringUtils.isBlank(foundPwq) && foundPwq.equals(password));
-        authenticationInfo.setUsername(MultitenantUtils.getTenantAwareUsername(carbonUsername));
-        authenticationInfo.setTenantDomain(MultitenantUtils.getTenantDomain(carbonUsername));
+//        authenticationInfo.setUsername(MultitenantUtils.getTenantAwareUsername(carbonUsername));
+//        authenticationInfo.setTenantDomain(MultitenantUtils.getTenantDomain(carbonUsername));
         return authenticationInfo;
     }
     

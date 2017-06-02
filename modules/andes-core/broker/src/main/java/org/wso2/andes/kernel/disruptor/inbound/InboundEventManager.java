@@ -22,6 +22,10 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -37,16 +41,7 @@ import org.wso2.andes.kernel.disruptor.LogExceptionHandler;
 import org.wso2.andes.kernel.disruptor.compression.LZ4CompressionHelper;
 import org.wso2.andes.kernel.disruptor.waitStrategy.SleepingBlockingWaitStrategy;
 import org.wso2.andes.kernel.dtx.DtxBranch;
-import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.tools.utils.MessageTracer;
-import org.wso2.carbon.metrics.manager.Gauge;
-import org.wso2.carbon.metrics.manager.Level;
-import org.wso2.carbon.metrics.manager.MetricManager;
-
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_ACKNOWLEDGEMENT_HANDLER_BATCH_SIZE;
 import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLER_COUNT;
@@ -58,10 +53,8 @@ import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_
 import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_PUBLISHING_BUFFER_SIZE;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.ACKNOWLEDGEMENT_EVENT;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.MESSAGE_EVENT;
-import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.PUBLISHER_RECOVERY_EVENT;
-import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.SAFE_ZONE_DECLARE_EVENT;
-import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.STATE_CHANGE_EVENT;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.MESSAGE_RECOVERY_EVENT;
+import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.STATE_CHANGE_EVENT;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.TRANSACTION_CLOSE_EVENT;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.TRANSACTION_COMMIT_EVENT;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.TRANSACTION_ENQUEUE_EVENT;
@@ -174,8 +167,8 @@ public class InboundEventManager {
         ringBuffer = disruptor.start();
 
         //Will add the gauge to metrics manager
-        MetricManager.gauge(MetricsConstants.DISRUPTOR_INBOUND_RING, Level.INFO, new InBoundRingGauge());
-        MetricManager.gauge(MetricsConstants.DISRUPTOR_MESSAGE_ACK, Level.INFO, new AckedMessageCountGauge());
+//        MetricManager.gauge(MetricsConstants.DISRUPTOR_INBOUND_RING, Level.INFO, new InBoundRingGauge());
+//        MetricManager.gauge(MetricsConstants.DISRUPTOR_MESSAGE_ACK, Level.INFO, new AckedMessageCountGauge());
     }
 
     /**
@@ -261,43 +254,6 @@ public class InboundEventManager {
             }
         }
 
-    }
-
-    /**
-     * Publish an event to update safe zone message ID
-     * as per this node (this is used when deleting slots)
-     */
-    public void updateSlotDeletionSafeZone() {
-        // Publishers claim events in sequence
-        long sequence = ringBuffer.next();
-        InboundEventContainer event = ringBuffer.get(sequence);
-        try {
-            event.setEventType(SAFE_ZONE_DECLARE_EVENT);
-        } finally {
-            // make the event available to EventProcessors
-            ringBuffer.publish(sequence);
-            if (log.isDebugEnabled()) {
-                log.debug("[ Sequence: " + sequence + " ] " + event.getEventType() + "' published to Disruptor");
-            }
-        }
-    }
-
-    /**
-     * Publish an event to recover from a member left without a submit slot event for messages written to DB
-     */
-    public void publishRecoveryEvent() {
-        // Publishers claim events in sequence
-        long sequence = ringBuffer.next();
-        InboundEventContainer event = ringBuffer.get(sequence);
-        try {
-            event.setEventType(PUBLISHER_RECOVERY_EVENT);
-        } finally {
-            // make the event available to EventProcessors
-            ringBuffer.publish(sequence);
-            if (log.isDebugEnabled()) {
-                log.debug("[ Sequence: " + sequence + " ] " + event.getEventType() + "' published to Disruptor");
-            }
-        }
     }
 
     /**
@@ -451,28 +407,30 @@ public class InboundEventManager {
         }
     }
 
+//        TODO: Metrics revamp
     /**
      * Utility to get the in bound ring gauge
      */
-    private class InBoundRingGauge implements Gauge<Long> {
+//    private class InBoundRingGauge implements Gauge<Long> {
+//
+//        @Override
+//        public Long getValue() {
+//            //The total message size will be reduced by the remaining capacity to get the total ring size
+//            return ringBuffer.getBufferSize() - ringBuffer.remainingCapacity();
+//        }
+//    }
 
-        @Override
-        public Long getValue() {
-            //The total message size will be reduced by the remaining capacity to get the total ring size
-            return ringBuffer.getBufferSize() - ringBuffer.remainingCapacity();
-        }
-    }
-
+//        TODO: Metrics revamp
     /**
      * Utility to get the acked message count
      */
-    private class AckedMessageCountGauge implements Gauge<Integer> {
-
-        @Override
-        public Integer getValue() {
-            //Acknowledged message count at a given time
-            return ackedMessageCount.getAndSet(0);
-        }
-    }
+//    private class AckedMessageCountGauge implements Gauge<Integer> {
+//
+//        @Override
+//        public Integer getValue() {
+//            //Acknowledged message count at a given time
+//            return ackedMessageCount.getAndSet(0);
+//        }
+//    }
 
 }

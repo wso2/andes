@@ -156,7 +156,7 @@ public class InMemoryConnector implements MQTTConnector {
                 //We allow only QoS 0 messages to be exchanged in-memory
                 int memoryQoSLevel = 0;
                 MQTTopicManager.getInstance().distributeMessageToSubscriber(topic, messages, messageID,
-                        memoryQoSLevel, retain, subChannel, memoryQoSLevel,new DeliverableAndesMetadata(null,0L,
+                        memoryQoSLevel, retain, subChannel, memoryQoSLevel,new DeliverableAndesMetadata(0L,
                                 null,false));
                 if (log.isDebugEnabled()) {
                     log.debug("Message " + messageID + " Delivered to subscription " + subChannel + " to topic " + topic);

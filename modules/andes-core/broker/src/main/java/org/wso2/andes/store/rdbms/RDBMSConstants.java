@@ -18,8 +18,6 @@
 
 package org.wso2.andes.store.rdbms;
 
-import org.wso2.andes.kernel.slot.SlotState;
-
 import java.sql.DataTruncation;
 import java.sql.SQLDataException;
 
@@ -270,13 +268,15 @@ public class RDBMSConstants {
             + " FROM " + METADATA_TABLE
             + " WHERE " + MESSAGE_ID + "=?";
 
+    // TODO: MySQL syntax. Updated RDBMS queries optimized for each database
     protected static final String PS_SELECT_METADATA_RANGE_FROM_QUEUE =
             "SELECT " + MESSAGE_ID + "," + METADATA
             + " FROM " + METADATA_TABLE
             + " WHERE " + QUEUE_ID + "=?"
             + " AND " + DLC_QUEUE_ID + "=-1"
-            + " AND " + MESSAGE_ID + " BETWEEN ? AND ?"
-            + " ORDER BY " + MESSAGE_ID;
+            + " AND " + MESSAGE_ID + " >=?"
+            + " ORDER BY " + MESSAGE_ID
+            + " LIMIT ?";
 
     protected static final String PS_SELECT_METADATA_RANGE_FROM_QUEUE_IN_DLC =
             "SELECT " + MESSAGE_ID + "," + METADATA
@@ -292,7 +292,8 @@ public class RDBMSConstants {
             + " WHERE " + MESSAGE_ID + ">?"
             + " AND " + QUEUE_ID + "=?"
             + " AND " + DLC_QUEUE_ID + "=-1"
-            + " ORDER BY " + MESSAGE_ID;
+            + " ORDER BY " + MESSAGE_ID
+            + " LIMIT ?";
 
     protected static final String PS_SELECT_MESSAGE_IDS_FROM_QUEUE =
             "SELECT " + MESSAGE_ID
@@ -578,141 +579,6 @@ public class RDBMSConstants {
 
     protected static final String PS_CLEAR_NODE_TO_LAST_PUBLISHED_ID =
             "DELETE FROM " + NODE_TO_LAST_PUBLISHED_ID;
-
-    /**
-     * Prepared statement to create a new slot in database
-     */
-    protected static final String PS_INSERT_SLOT =
-            "INSERT INTO " + SLOT_TABLE + " ("
-            + START_MESSAGE_ID + ","
-            + END_MESSAGE_ID + ","
-            + STORAGE_QUEUE_NAME + ","
-            + SLOT_STATE + ","
-            + ASSIGNED_NODE_ID + ")"
-            + " VALUES (?,?,?," + SlotState.ASSIGNED.getCode() + ",?)";
-
-    /**
-     * Prepared statement to delete a slot from database
-     */
-    protected static final String PS_DELETE_SLOT =
-            "DELETE FROM " + SLOT_TABLE
-            + " WHERE " + START_MESSAGE_ID + "=?"
-            + " AND " + END_MESSAGE_ID + "=?";
-
-    /**
-     * Prepared statement to delete a slot from database
-     */
-    protected static final String PS_DELETE_NON_OVERLAPPING_SLOT =
-            "DELETE FROM " + SLOT_TABLE
-            + " WHERE " + START_MESSAGE_ID + "=?"
-            + " AND " + END_MESSAGE_ID + "=?"
-            + " AND " + SLOT_STATE + "!=" + SlotState.OVERLAPPED.getCode();
-
-    /**
-     * Prepared statement to delete a slot by queue name
-     */
-    protected static final String PS_DELETE_SLOTS_BY_QUEUE_NAME =
-            "DELETE FROM " + SLOT_TABLE
-            + " WHERE " + STORAGE_QUEUE_NAME + "=?";
-
-    /**
-     * Prepared statement to assign a slot to node
-     */
-    protected static final String PS_INSERT_SLOT_ASSIGNMENT =
-            "UPDATE " + SLOT_TABLE
-            + " SET " + ASSIGNED_NODE_ID + "=?, "
-            + ASSIGNED_QUEUE_NAME + "=?,"
-            + SLOT_STATE + "=" + SlotState.ASSIGNED.getCode()
-            + " WHERE " + START_MESSAGE_ID + "=?"
-            + " AND " + END_MESSAGE_ID + "=?";
-
-    /**
-     * Prepared statement to un-assign a slot from node
-     */
-    protected static final String PS_DELETE_SLOT_ASSIGNMENT =
-            "UPDATE " + SLOT_TABLE
-            + " SET " + ASSIGNED_NODE_ID + "=NULL, "
-            + ASSIGNED_QUEUE_NAME + "=NULL, "
-            + SLOT_STATE + "=" + SlotState.RETURNED.getCode()
-            + " WHERE " + START_MESSAGE_ID + "=?"
-            + " AND " + END_MESSAGE_ID + "=?";
-
-    /**
-     * Prepared statement to un-assign slots assigned to a given queue
-     */
-    protected static final String PS_DELETE_SLOT_ASSIGNMENT_BY_QUEUE_NAME =
-            "UPDATE " + SLOT_TABLE
-            + " SET " + ASSIGNED_NODE_ID + " = NULL, "
-            + ASSIGNED_QUEUE_NAME + " = NULL, "
-            + SLOT_STATE + "=" + SlotState.RETURNED.getCode()
-            + " WHERE " + ASSIGNED_NODE_ID + "= ?"
-            + " AND " + ASSIGNED_QUEUE_NAME + "= ?";
-
-    /**
-     * Prepared statement to get slots assigned to a give node
-     */
-    protected static final String PS_GET_ASSIGNED_SLOTS_BY_NODE_ID =
-            "SELECT " + START_MESSAGE_ID + "," + END_MESSAGE_ID + "," + STORAGE_QUEUE_NAME
-            + " FROM " + SLOT_TABLE
-            + " WHERE " + ASSIGNED_NODE_ID + "=?"
-            + " AND " + SLOT_STATE + "=" + SlotState.ASSIGNED.getCode()
-            + " ORDER BY " + SLOT_ID;
-
-    /**
-     * Prepared statement to get slots assigned to a give node
-     */
-    protected static final String PS_GET_OVERLAPPED_SLOTS_BY_NODE_ID =
-            "SELECT " + START_MESSAGE_ID + "," + END_MESSAGE_ID + "," + STORAGE_QUEUE_NAME
-            + " FROM " + SLOT_TABLE
-            + " WHERE " + ASSIGNED_NODE_ID + "=?"
-            + " AND " + SLOT_STATE + "=" + SlotState.OVERLAPPED.getCode()
-            + " ORDER BY " + SLOT_ID;
-
-    /**
-     * Prepared statement to get a slot
-     */
-    protected static final String PS_GET_SLOT =
-            "SELECT " + SLOT_STATE + "," + STORAGE_QUEUE_NAME
-            + " FROM " + SLOT_TABLE
-            + " WHERE " + START_MESSAGE_ID + "=?"
-            + " AND " + END_MESSAGE_ID + "=?";
-
-    /**
-     * Prepared statements for setting slot states
-     */
-    protected static final String PS_SET_SLOT_STATE =
-            "UPDATE " + SLOT_TABLE
-            + " SET " + SLOT_STATE + " = ?"
-            + " WHERE " + START_MESSAGE_ID + " = ?"
-            + " AND " + END_MESSAGE_ID + " = ?";
-
-    /**
-     * Prepared statement for selecting unassigned slot
-     */
-
-    protected static final String PS_SELECT_ALL_SLOTS_BY_QUEUE_NAME =
-            "SELECT " + START_MESSAGE_ID + "," + END_MESSAGE_ID + "," + STORAGE_QUEUE_NAME + "," + SLOT_STATE
-            + " FROM " + SLOT_TABLE
-            + " WHERE " + STORAGE_QUEUE_NAME + " =?"
-            + " ORDER BY " + SLOT_ID;
-
-    protected static final String PS_SELECT_UNASSIGNED_SLOT =
-            "SELECT " + START_MESSAGE_ID + "," + END_MESSAGE_ID + "," + STORAGE_QUEUE_NAME
-            + " FROM " + SLOT_TABLE
-            + " WHERE " + STORAGE_QUEUE_NAME + " =?"
-            + " AND " + SLOT_STATE + " = " + SlotState.RETURNED.getCode()
-            + " ORDER BY " + SLOT_ID;
-
-    /**
-     * Prepared statement for selecting oldest overlapped slot
-     */
-    protected static final String PS_SELECT_OVERLAPPED_SLOT =
-            "SELECT " + START_MESSAGE_ID + "," + END_MESSAGE_ID + "," + STORAGE_QUEUE_NAME
-            + " FROM " + SLOT_TABLE
-            + " WHERE " + STORAGE_QUEUE_NAME + "=?"
-            + " AND " + ASSIGNED_NODE_ID + "=?"
-            + " AND " + SLOT_STATE + "=" + SlotState.OVERLAPPED.getCode()
-            + " ORDER BY " + SLOT_ID;
 
     /**
      * Prepared statement for getting last assigned id for queue

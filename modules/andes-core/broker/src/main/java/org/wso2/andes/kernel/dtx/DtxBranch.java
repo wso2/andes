@@ -15,17 +15,6 @@
 
 package org.wso2.andes.kernel.dtx;
 
-import org.apache.log4j.Logger;
-import org.wso2.andes.kernel.AndesAckData;
-import org.wso2.andes.kernel.AndesChannel;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessage;
-import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
-import org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer;
-import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
-import org.wso2.andes.kernel.slot.SlotMessageCounter;
-import org.wso2.andes.tools.utils.MessageTracer;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -35,6 +24,15 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ScheduledFuture;
 import javax.transaction.xa.Xid;
+import org.apache.log4j.Logger;
+import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.kernel.AndesChannel;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessage;
+import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
+import org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer;
+import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
+import org.wso2.andes.tools.utils.MessageTracer;
 
 /**
  * Class which holds information relates to a specific {@link Xid} within the broker
@@ -465,10 +463,9 @@ public class DtxBranch {
      *
      * @param messageList
      */
-    private void updateSlotAndClearLists(List<AndesMessage> messageList) {
+    private void clearListsAndNotifyClient(List<AndesMessage> messageList) {
         try {
 
-            SlotMessageCounter.getInstance().recordMetadataCountInSlot(messageList);
             traceMessageList(messageList, MessageTracer.DTX_RECORD_METADATA_COUNT_IN_SLOT);
             enqueueList.clear();
             dequeueList.clear();
@@ -634,7 +631,7 @@ public class DtxBranch {
 
         @Override
         public void run() {
-            updateSlotAndClearLists(enqueueList);
+            clearListsAndNotifyClient(enqueueList);
         }
     }
 
@@ -649,7 +646,7 @@ public class DtxBranch {
             for (AndesPreparedMessageMetadata metadata: preparedDequeueMessages) {
                 dequeuedMessages.add(new AndesMessage(metadata));
             }
-            updateSlotAndClearLists(dequeuedMessages);
+            clearListsAndNotifyClient(dequeuedMessages);
         }
     }
 
