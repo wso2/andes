@@ -177,6 +177,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
         //binding contains some validations. Thus register should happen after binding subscriber to queue
         storageQueue.bindSubscription(subscription, subscriptionRequest.getRoutingKey());
         registerSubscription(subscription);
+        storageQueue.getMessageHandler().setLastBufferedMessageId(0);
         //Store the subscription
         try {
             andesContextStore.storeDurableSubscription(subscription);

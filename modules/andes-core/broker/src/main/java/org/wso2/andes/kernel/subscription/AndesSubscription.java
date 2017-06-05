@@ -64,7 +64,12 @@ public class AndesSubscription {
     private ProtocolType protocolType;
 
     /**
-     * Is subscription active
+     * The cursor of the subscription in the queue.
+     */
+    private long cursor = 0;
+
+    /**
+     * Is subscription active.
      */
     protected boolean isActive;
 
@@ -589,5 +594,19 @@ public class AndesSubscription {
                 + ",protocolType=" + protocolType.toString()
                 + ",isActive=" + Boolean.toString(isActive)
                 + ",subscriberConnection=" + encodedConnectionInfo;
+    }
+
+    /**
+     * @return cursor of the subscription
+     */
+    public long getCursor() {
+        return cursor;
+    }
+
+    /**
+     * @param cursor cursor of the subscription.
+     */
+    public void setCursor(long cursor) {
+        this.cursor = cursor;
     }
 }
