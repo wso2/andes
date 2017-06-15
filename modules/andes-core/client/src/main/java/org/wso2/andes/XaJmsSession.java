@@ -15,6 +15,7 @@
 
 package org.wso2.andes;
 
+import org.wso2.andes.client.JmsNotImplementedRuntimeException;
 import org.wso2.andes.client.XASession_9_1;
 
 import java.io.Serializable;
@@ -275,6 +276,62 @@ public class XaJmsSession implements Session, QueueSession, TopicSession {
     public void unsubscribe(String s) throws JMSException {
         checkNotClosed();
         session.unsubscribe(s);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public MessageConsumer createSharedConsumer(Topic topic, String sharedSubscriptionName)
+            throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public MessageConsumer createSharedConsumer(Topic topic, String sharedSubscriptionName,
+                                                String messageSelector) throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public MessageConsumer createDurableConsumer(Topic topic, String name) throws JMSException {
+        checkNotClosed();
+        return session.createDurableConsumer(topic, name);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public MessageConsumer createDurableConsumer(Topic topic, String name, String messageSelector,
+                                                 boolean noLocal) throws JMSException {
+        checkNotClosed();
+        return session.createDurableConsumer(topic, name, messageSelector, noLocal);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public MessageConsumer createSharedDurableConsumer(Topic topic, String name)
+            throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public MessageConsumer createSharedDurableConsumer(Topic topic, String name,
+                                                       String messageSelector) throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
     }
 
     private void checkNotClosed() throws JMSException {

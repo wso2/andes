@@ -20,6 +20,9 @@
  */
 package org.wso2.andes.client.message;
 
+import org.apache.mina.common.ByteBuffer;
+import org.wso2.andes.AMQException;
+
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
@@ -29,11 +32,6 @@ import java.nio.charset.CharsetEncoder;
 import javax.jms.BytesMessage;
 import javax.jms.JMSException;
 import javax.jms.MessageFormatException;
-
-import org.apache.mina.common.ByteBuffer;
-import org.wso2.andes.AMQException;
-import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.framing.BasicContentHeaderProperties;
 
 public class JMSBytesMessage extends AbstractBytesMessage implements BytesMessage
 {
@@ -381,6 +379,37 @@ public class JMSBytesMessage extends AbstractBytesMessage implements BytesMessag
         else
         {
             throw new MessageFormatException("Only primitives plus byte arrays and String are valid types");
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isBodyAssignableTo(Class c) throws JMSException {
+        return (c == byte[].class || c == java.lang.Object.class);
+    }
+
+    /**
+     * {@inheritDoc}
+     * Suppressed "unchecked cast" warning since check happens in {@link #isBodyAssignableTo(Class)}
+     */
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T> T getBody(Class<T> c) throws JMSException {
+        if (this._data == null) {
+            return null;
+        }
+
+        if (isBodyAssignableTo(c)) {
+            this.reset();
+            int bodyLength = Math.toIntExact(this.getBodyLength());
+            byte[] bytes = new byte[bodyLength];
+            Integer body = readBytes(bytes);
+            this.reset();
+            return (T) body;
+        } else {
+            throw new MessageFormatException("Cannot Assign Body to Type " + c);
         }
     }
 }

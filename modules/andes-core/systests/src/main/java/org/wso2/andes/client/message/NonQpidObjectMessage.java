@@ -20,6 +20,8 @@
  */
 package org.wso2.andes.client.message;
 
+import org.wso2.andes.client.JmsNotImplementedRuntimeException;
+
 import java.io.Serializable;
 import java.util.Enumeration;
 
@@ -232,5 +234,26 @@ public class NonQpidObjectMessage implements ObjectMessage {
     }
 
     public Serializable getObject() throws JMSException {
-        return _contentString;      }
+        return _contentString;
+    }
+
+    @Override
+    public long getJMSDeliveryTime() throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+    @Override
+    public void setJMSDeliveryTime(long deliveryTime) throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+    @Override
+    public <T> T getBody(Class<T> c) throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+    @Override
+    public boolean isBodyAssignableTo(Class c) throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
+    }
 }

@@ -3652,4 +3652,58 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
     {
     	return DECLARE_EXCHANGES;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public MessageConsumer createSharedConsumer(Topic topic, String sharedSubscriptionName)
+            throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public MessageConsumer createSharedConsumer(Topic topic, String sharedSubscriptionName,
+                                                String messageSelector) throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public MessageConsumer createDurableConsumer(Topic topic, String name) throws JMSException {
+        return createDurableSubscriber(topic, name);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public MessageConsumer createDurableConsumer(Topic topic, String name, String messageSelector,
+                                                 boolean noLocal) throws JMSException {
+        return createDurableSubscriber(topic, name, messageSelector, noLocal);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public MessageConsumer createSharedDurableConsumer(Topic topic, String name)
+            throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public MessageConsumer createSharedDurableConsumer(Topic topic, String name,
+                                                       String messageSelector) throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
 }

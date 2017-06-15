@@ -21,22 +21,18 @@
 package org.wso2.andes.client.message;
 
 import org.apache.mina.common.ByteBuffer;
-
-import org.wso2.andes.AMQException;
-import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.framing.BasicContentHeaderProperties;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.jms.JMSException;
-import javax.jms.MessageFormatException;
+import org.wso2.andes.AMQException;
 
 import java.nio.charset.CharacterCodingException;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
+
+import javax.jms.JMSException;
+import javax.jms.MessageFormatException;
 
 public class JMSMapMessage extends AbstractBytesTypedMessage implements javax.jms.MapMessage
 {
@@ -509,4 +505,29 @@ public class JMSMapMessage extends AbstractBytesTypedMessage implements javax.jm
 
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isBodyAssignableTo(Class c) throws JMSException {
+        return (c == java.util.Map.class);
+    }
+
+    /**
+     * {@inheritDoc}
+     * Suppressed "unchecked cast" warning since check happens in {@link #isBodyAssignableTo(Class)}
+     */
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T> T getBody(Class<T> c) throws JMSException {
+        if (this._data == null) {
+            return null;
+        }
+
+        if (isBodyAssignableTo(c)) {
+            return (T) this._map;
+        } else {
+            throw new MessageFormatException("Cannot Assign Body to Type " + c);
+        }
+    }
 }

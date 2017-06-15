@@ -24,10 +24,12 @@ import java.io.UnsupportedEncodingException;
 import java.util.UUID;
 
 import javax.jms.BytesMessage;
+import javax.jms.CompletionListener;
 import javax.jms.DeliveryMode;
 import javax.jms.Destination;
 import javax.jms.InvalidDestinationException;
 import javax.jms.JMSException;
+import javax.jms.JMSRuntimeException;
 import javax.jms.MapMessage;
 import javax.jms.Message;
 import javax.jms.ObjectMessage;
@@ -597,5 +599,58 @@ public abstract class BasicMessageProducer extends Closeable implements org.wso2
     public boolean isBound(AMQDestination destination) throws JMSException
     {
         return _session.isQueueBound(destination.getExchangeName(), null, destination.getRoutingKey());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void send(Message message, CompletionListener completionListener)
+            throws JMSRuntimeException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void send(Destination destination, Message message,
+                     CompletionListener completionListener) throws JMSRuntimeException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void send(Message message, int deliveryMode, int priority, long timeToLive,
+                     CompletionListener completionListener) throws JMSRuntimeException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void send(Destination destination, Message message, int deliveryMode, int priority,
+                     long timeToLive, CompletionListener completionListener)
+            throws JMSRuntimeException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getDeliveryDelay() throws JMSRuntimeException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setDeliveryDelay(long deliveryDelay) throws JMSRuntimeException {
+        throw new JmsNotImplementedRuntimeException();
     }
 }

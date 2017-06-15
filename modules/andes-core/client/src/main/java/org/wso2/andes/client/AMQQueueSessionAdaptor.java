@@ -47,7 +47,7 @@ import javax.jms.TopicSubscriber;
 
 /**
  * Need this adaptor class to conform to JMS spec and throw IllegalStateException
- * from createDurableSubscriber, unsubscribe, createTopic & createTemporaryTopic
+ * from createDurableSubscriber, unsubscribe, createTopic & createTemporaryTopic.
  */
 public class AMQQueueSessionAdaptor implements QueueSession, AMQSessionAdapter
 {
@@ -195,6 +195,59 @@ public class AMQQueueSessionAdaptor implements QueueSession, AMQSessionAdapter
 
     public void unsubscribe(String string) throws JMSException {
         throw new IllegalStateException("Cannot call unsubscribe from QueueSession");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public MessageConsumer createSharedConsumer(Topic topic, String sharedSubscriptionName)
+            throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public MessageConsumer createSharedConsumer(Topic topic, String sharedSubscriptionName,
+                                                String messageSelector) throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public MessageConsumer createDurableConsumer(Topic topic, String name) throws JMSException {
+        return _session.createDurableConsumer(topic, name);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public MessageConsumer createDurableConsumer(Topic topic, String name, String messageSelector,
+                                                 boolean noLocal) throws JMSException {
+        return _session.createDurableConsumer(topic, name, messageSelector, noLocal);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public MessageConsumer createSharedDurableConsumer(Topic topic, String name)
+            throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public MessageConsumer createSharedDurableConsumer(Topic topic, String name,
+                                                       String messageSelector) throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
     }
 
     public AMQSession getSession()

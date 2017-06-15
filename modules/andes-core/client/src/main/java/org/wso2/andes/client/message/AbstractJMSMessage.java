@@ -20,6 +20,11 @@
  */
 package org.wso2.andes.client.message;
 
+import org.apache.mina.common.ByteBuffer;
+import org.wso2.andes.AMQException;
+import org.wso2.andes.client.AMQSession;
+import org.wso2.andes.client.JmsNotImplementedRuntimeException;
+
 import java.util.Enumeration;
 import java.util.UUID;
 
@@ -27,12 +32,6 @@ import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.MessageNotReadableException;
 import javax.jms.MessageNotWriteableException;
-
-import org.apache.mina.common.ByteBuffer;
-import org.wso2.andes.AMQException;
-import org.wso2.andes.client.AMQSession;
-import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.framing.BasicContentHeaderProperties;
 
 public abstract class AbstractJMSMessage implements org.wso2.andes.jms.Message
 {
@@ -532,4 +531,35 @@ public abstract class AbstractJMSMessage implements org.wso2.andes.jms.Message
         _delegate.removeProperty(propertyName);
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getJMSDeliveryTime() throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setJMSDeliveryTime(long deliveryTime) throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public <T> T getBody(Class<T> c) throws JMSException {
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isBodyAssignableTo(Class c) throws JMSException {
+        return true;
+    }
 }
