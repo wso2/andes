@@ -610,6 +610,15 @@ public enum AndesConfiguration implements ConfigurationProperty {
             .class),
 
     /**
+     * Internal batch size is used to define number of messages to be read in single database query
+     * when using rest services
+     * <p>
+     * default value: 1000
+     * </p>
+     */
+    RDBMS_INTERNAL_BATCH_SIZE("restservices/internalBatchSize", "1000", Integer.class),
+
+    /**
      * Time to wait before informing others about coordinator change. This value should be larger than a database read
      * time including network latency and should be less than (2 * heartbeatInterval).
      * <p>

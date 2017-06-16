@@ -127,6 +127,17 @@ public class Andes {
     private final int maxParallelDtxConnections;
 
     /**
+     * AndesChannel for this dead letter channel restore which implements flow control.
+     */
+    AndesChannel andesChannel;
+
+    /**
+     * The message restore flowcontrol blocking state.
+     * If true message restore will be interrupted from dead letter channel.
+     */
+    boolean restoreBlockedByFlowControl = false;
+
+    /**
      * Instance of AndesAPI returned.
      *
      * @return AndesAPI
@@ -134,6 +145,12 @@ public class Andes {
     public static Andes getInstance() {
         return instance;
     }
+
+    /**
+     * Publisher Acknowledgements are disabled
+     * hence using DisablePubAckImpl to drop any pub ack request by Andes
+     */
+    private  DisablePubAckImpl disablePubAck = null;
 
     /**
      * Singleton class. Hence private constructor.
@@ -382,6 +399,30 @@ public class Andes {
         InboundDeleteDLCMessagesEvent deleteDLCMessagesEvent = new InboundDeleteDLCMessagesEvent(messagesToRemove);
         deleteDLCMessagesEvent.prepareForDelete(messagingEngine);
         inboundEventManager.publishStateEvent(deleteDLCMessagesEvent);
+    }
+
+    /**
+     * Delete a selected message list from a given Dead Letter Queue of a tenant.
+     *
+     * @param andesMetadataIDs     The browser message Ids
+     * @param destinationQueueName The Dead Letter Queue Name for the tenant
+     */
+    public void deleteMessagesFromDeadLetterQueue(long[] andesMetadataIDs, String destinationQueueName) {
+
+        List<AndesMessageMetadata> messageMetadataList = new ArrayList<>(andesMetadataIDs.length);
+
+        for (long andesMetadataID : andesMetadataIDs) {
+            AndesMessageMetadata messageToRemove = new AndesMessageMetadata(andesMetadataID, null, false);
+            messageToRemove.setStorageQueueName(destinationQueueName);
+            messageToRemove.setDestination(destinationQueueName);
+            messageMetadataList.add(messageToRemove);
+        }
+
+        try {
+            deleteMessagesFromDLC(messageMetadataList);
+        } catch (AndesException e) {
+            throw new RuntimeException("Error deleting messages from Dead Letter Channel", e);
+        }
     }
 
     /**
@@ -723,7 +764,7 @@ public class Andes {
     }
 
     /**
-     * Allocate a distributed transaction object for dtx calls
+     * Allocate a distributed transaction object for dtx calls.
      *
      * @param channel   channel object of the session
      * @param sessionID session id
@@ -744,7 +785,7 @@ public class Andes {
     }
 
     /**
-     * Consider the given distributed transaction as stale
+     * Consider the given distributed transaction as stale.
      *
      * @param sessionId session id of the transaction channel
      */
@@ -753,7 +794,7 @@ public class Andes {
     }
 
     /**
-     * Get list of prepared transactions from Dtx registry
+     * Get list of prepared transactions from Dtx registry.
      *
      * @return list of XIDs belonging to branches in prepared state
      */
@@ -774,7 +815,8 @@ public class Andes {
     public List<Long> getNextNMessageIdsInDLCForQueue(final String sourceQueue, final String dlcQueueName,
             long startMessageId, int messageLimit) throws AndesException {
         return MessagingEngine.getInstance()
-                .getNextNMessageIdsInDLCForQueue(sourceQueue, dlcQueueName, startMessageId, messageLimit);
+                .getNextNMessageIdsInDLCForQueue(sourceQueue, dlcQueueName,
+                startMessageId, messageLimit);
     }
 
     /***
@@ -788,6 +830,177 @@ public class Andes {
     public List<Long> getNextNMessageIdsInDLC(final String dlcQueueName, long startMessageId, int messageLimit)
             throws AndesException {
         return MessagingEngine.getInstance().getNextNMessageIdsInDLC(dlcQueueName, startMessageId, messageLimit);
+    }
+
+    /***
+     * Get message IDs in DLC starting from given startMessageId up to the given message count.
+     *
+     * @param dlcQueueName Queue name of the Dead Letter Channel
+     * @param sourceQueue last message ID returned from invoking this method.
+     * @return List<Long> of message IDs moved to the DLC from the sourceQueue.
+     * @throws AndesException if an error occurs while reading messages from the database.
+     */
+    public int rerouteAllMessagesInDeadLetterChannelForQueue(String dlcQueueName, String sourceQueue, String
+            targetQueue, int internalBatchSize, boolean restoreToOriginalQueue) throws AndesException {
+
+        Long lastMessageId = 0L;
+        int movedMessageCount = 0;
+        List<Long> currentMessageIdList = getNextNMessageIdsInDLCForQueue(sourceQueue, dlcQueueName, lastMessageId,
+                internalBatchSize);
+        while (currentMessageIdList.size() > 0) {
+            int movedMessageCountInThisBatch = moveMessagesFromDLCToNewDestination(currentMessageIdList, sourceQueue,
+                    targetQueue, restoreToOriginalQueue);
+
+            if (log.isDebugEnabled()) {
+                log.debug("Successfully restored messages from sourceQueue : " + sourceQueue + " to targetQueue : "
+                        + targetQueue + " movedMessageCountInThisBatch : " + movedMessageCountInThisBatch);
+            }
+
+            movedMessageCount = movedMessageCount + movedMessageCountInThisBatch;
+            lastMessageId = currentMessageIdList.get(currentMessageIdList.size() - 1);
+
+            currentMessageIdList = getNextNMessageIdsInDLCForQueue(sourceQueue, dlcQueueName, lastMessageId,
+                    internalBatchSize);
+        }
+        return movedMessageCount;
+
+    }
+
+    /**
+     * Gets the supported protocol types by the broker.
+     *
+     * @return A set of protocol types.
+     */
+    public Set<ProtocolType> getSupportedProtocols() {
+        Set<ProtocolType> protocolTypes = new HashSet<>();
+        protocolTypes.add(ProtocolType.AMQP);
+        return protocolTypes;
+    }
+
+    /**
+     * Common method to restore a list of messages based on Id to its original queue or a different queue.
+     *
+     * @param messageIds             list of messages to be restored
+     * @param sourceQueue            original destination queue of the messages.
+     * @param targetQueue            new target destination of the messages.
+     * @param restoreToOriginalQueue true if the messages need to be restored to their original
+     *                               queues instead of a single target queue.
+     * @return int Number of messages that were successfully restored.
+     * @throws AndesException if the database calls to read/delete the messages/content fails.
+     */
+    public int moveMessagesFromDLCToNewDestination(List<Long> messageIds, String sourceQueue, String targetQueue,
+                                                    boolean restoreToOriginalQueue)
+            throws AndesException {
+
+        //creating an andes channel to move the messages
+        andesChannel = createChannel(new FlowControlListener() {
+            @Override
+            public void block() {
+                restoreBlockedByFlowControl = true;
+            }
+            @Override
+            public void unblock() {
+                restoreBlockedByFlowControl = false;
+            }
+            @Override
+            public void disconnect() {
+            }
+        });
+
+        disablePubAck = new DisablePubAckImpl();
+
+        if (messageIds == null) {
+            throw new AndesException("Requested message id list is null");
+        }
+        List<AndesMessageMetadata> messagesToRemove = new ArrayList<>(messageIds.size());
+
+        LongArrayList messageIdCollection = new LongArrayList();
+        for (Long messageId : messageIds) {
+            messageIdCollection.add(messageId);
+        }
+
+        int movedMessageCount = 0;
+        LongObjectHashMap<List<AndesMessagePart>> messageContent = getContent(messageIdCollection);
+        boolean interruptedByFlowControl = false;
+
+        for (Long messageId : messageIds) {
+            if (restoreBlockedByFlowControl) {
+                interruptedByFlowControl = true;
+                break;
+            }
+            AndesMessageMetadata metadata = getMessageMetaData(messageId);
+            if (!restoreToOriginalQueue) {
+                StorageQueue newStorageQueue = AndesContext.getInstance().getStorageQueueRegistry()
+                        .getStorageQueue(targetQueue);
+
+                metadata.setDestination(targetQueue);
+                metadata.setStorageQueueName(targetQueue);
+                metadata.setMessageRouterName(newStorageQueue.getMessageRouter().getName());
+                metadata.updateMetadata(targetQueue, newStorageQueue.getMessageRouter().getName());
+            }
+
+            AndesMessageMetadata clonedMetadata = metadata.shallowCopy(metadata.getMessageID());
+            AndesMessage andesMessage = new AndesMessage(clonedMetadata);
+
+            messagesToRemove.add(metadata);
+            if (!messageContent.isEmpty()) {
+                List<AndesMessagePart> messageParts = messageContent.get(messageId);
+                for (AndesMessagePart messagePart : messageParts) {
+                    andesMessage.addMessagePart(messagePart);
+                }
+            }
+
+            messageReceived(andesMessage, andesChannel, disablePubAck);
+
+            movedMessageCount++;
+        }
+
+        if (interruptedByFlowControl) {
+            throw new AndesException("Message restore from dead letter queue has been interrupted by flow "
+                    + "control. Messages in the DLC for sourceQueue : " + sourceQueue + " may be duplicated due to "
+                    + "this situation. Please try again later. movedMessageCount : " + movedMessageCount);
+        }
+
+        deleteMessagesFromDLC(messagesToRemove);
+
+        return movedMessageCount;
+    }
+
+    /**
+     * Get message metadata in dlc for a queue for a given number of messages starting from a specified id.
+     *
+     * @param queueName    name of the queue
+     * @param dlcQueueName name of the dead letter channel queue
+     * @param firstMsgId   starting message id
+     * @param count        maximum num of messages to return
+     * @return List of message metadata
+     * @throws AndesException
+     */
+    public List<AndesMessage> getNextNMessageContentInDLCForQueue(final String queueName, final String dlcQueueName,
+                                                                  long firstMsgId, int count) throws AndesException {
+        List<AndesMessage> andesMessageList = new ArrayList<>();
+        List<Long> currentMessageIdList = getNextNMessageIdsInDLCForQueue(queueName, dlcQueueName, firstMsgId, count);
+        LongArrayList messageIdCollection = new LongArrayList();
+
+        for (Long messageId : currentMessageIdList) {
+            messageIdCollection.add(messageId);
+        }
+
+        LongObjectHashMap<List<AndesMessagePart>> messageContent = getContent(messageIdCollection);
+
+        for (Long messageId : currentMessageIdList) {
+            AndesMessageMetadata metadata = getMessageMetaData(messageId);
+            AndesMessage andesMessage = new AndesMessage(metadata);
+            if (!messageContent.isEmpty()) {
+                List<AndesMessagePart> messageParts = messageContent.get(messageId);
+                for (AndesMessagePart messagePart : messageParts) {
+                    andesMessage.addMessagePart(messagePart);
+                }
+            }
+            andesMessageList.add(andesMessage);
+        }
+
+        return andesMessageList;
     }
 
     /**
@@ -838,7 +1051,7 @@ public class Andes {
     }
 
     /**
-     * Method to say hello to check status of the andes core
+     * Method to say hello to check status of the andes core.
      *
      * @return hello
      */
@@ -847,7 +1060,7 @@ public class Andes {
     }
 
     /**
-     * Check whether there is a queue already exists under the same name
+     * Check whether there is a queue already exists under the same name.
      *
      * @param queueName name of the queue
      * @return true if the queue already exists false otherwise
@@ -863,7 +1076,7 @@ public class Andes {
     }
 
     /**
-     * Get all destination either queue/topic
+     * Get all destination either queue/topic.
      *
      * @param protocolType    Protocol type of the queues
      * @param destinationType Destination type of the queues
