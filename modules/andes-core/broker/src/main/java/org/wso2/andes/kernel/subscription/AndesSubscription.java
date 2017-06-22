@@ -301,7 +301,7 @@ public class AndesSubscription {
                     unAckedMessage.rollbackDelivery(subscriberConnection.getProtocolChannelID());
                     storageQueue.bufferMessageForDelivery(unAckedMessage);
                     unAckedMessageIterator.remove();
-                    resetCursors();
+                    resetCursors();//TODO:make sure order is maintained for all delivery
                 }
             } else {    //reschedule messages back to subscriber
                 for (DeliverableAndesMetadata unAckedMessage : unAckedMessages) {

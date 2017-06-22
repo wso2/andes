@@ -119,7 +119,6 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
 
                         //for queue messages and durable topic messages (as they are now queue messages)
                         // we only send to one selected subscriber if it is a queue message
-                        localSubscription.setCursor(currentCursor);
                         minCursor = Long.min(currentCursor, minCursor);
                         if (numOfCurrentMsgDeliverySchedules == 1) {
                             if (log.isDebugEnabled()) {
@@ -132,6 +131,7 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
                         }
                         break;
                     }
+                    localSubscription.setCursor(currentCursor);
                 }
             }
             if (isRemoved) {
@@ -152,11 +152,12 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
         }
         return sentMessageCount;
     }
+
     /**
      * Check if the message is unacked in at least one of the subscriptions.
      *
      * @param subscriptions The subscriptions to check in.
-     * @param messageId The message id of the message to see if it is unacked.
+     * @param messageId     The message id of the message to see if it is unacked.
      */
     private boolean checkIfUnacked(List<AndesSubscription> subscriptions, long messageId) {
         for (AndesSubscription subscription : subscriptions) {
