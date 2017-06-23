@@ -320,8 +320,10 @@ public class StorageQueue {
         if (boundedSubscriptions.isEmpty()) {
             if (isDurable) {
                 messageHandler.clearReadButUndeliveredMessages();
+                // In case of the last subscription being disconnected, we should reset the message Id cursor to read
+                // from the beginning.
+                messageHandler.resetLastBufferedMessageId();
             }
-
             messageHandler.stopMessageDelivery(this);
         } else {
             subscription.rebufferUnackedMessages();
