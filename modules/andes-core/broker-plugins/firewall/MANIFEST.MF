@@ -31,6 +31,10 @@ Import-Package:  org.apache.qpid,
  javax.management;version=1.0.0,
  javax.management.openmbean;version=1.0.0,
  org.osgi.util.tracker;version=1.0.0,
- org.osgi.framework;version=1.3
+ org.osgi.framework;version=1.3,
+ com.googlecode.cqengine,
+ org.wso2.carbon.metrics.manager,
+ org.wso2.carbon.metrics.manager,
+ io.netty.buffer
 Private-Package: org.wso2.andes.server.security.access.config
 Export-Package: org.apache.qpid.server.security.access.plugins;uses:="org.osgi.framework"
