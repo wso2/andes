@@ -22,6 +22,7 @@ package org.wso2.andes.util;
 
 import java.io.UnsupportedEncodingException;
 
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Properties;
@@ -40,13 +41,10 @@ public final class Strings
 
     private static final byte[] EMPTY = new byte[0];
 
-    private static final ThreadLocal<char[]> charbuf = new ThreadLocal<char[]>()
-    {
-        public char[] initialValue()
-        {
-            return new char[4096];
-        }
-    };
+    /**
+     * Resolving the UTF_8 charset
+     */
+    private static final Charset UTF_8_CHARSET = Charset.forName("UTF-8");
 
     public static final byte[] toUTF8(String str)
     {
@@ -57,27 +55,14 @@ public final class Strings
         else
         {
             final int size = str.length();
-            char[] chars = charbuf.get();
-            if (size > chars.length)
-            {
-                chars = new char[Math.max(size, 2*chars.length)];
-                charbuf.set(chars);
-            }
-
+            char[] chars = new char[size];
             str.getChars(0, size, chars, 0);
             final byte[] bytes = new byte[size];
             for (int i = 0; i < size; i++)
             {
                 if (chars[i] > 127)
                 {
-                    try
-                    {
-                        return str.getBytes("UTF-8");
-                    }
-                    catch (UnsupportedEncodingException e)
-                    {
-                        throw new RuntimeException(e);
-                    }
+                    return str.getBytes(UTF_8_CHARSET);
                 }
 
                 bytes[i] = (byte) chars[i];
