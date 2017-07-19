@@ -285,7 +285,7 @@ public class MessagingEngine {
         return storageSeparatedMessages;
     }
 
-    public List<AndesPreparedMessageMetadata> acknowledgeOnDtxPrepare(List<AndesAckData> ackDataList)
+    public List<AndesPreparedMessageMetadata> acknowledgeAndRetrieveDequeueRecords(List<AndesAckData> ackDataList)
             throws AndesException {
 
         List<AndesPreparedMessageMetadata> messagesToRemove = new ArrayList<>(ackDataList.size());

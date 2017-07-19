@@ -53,6 +53,16 @@ public interface DtxStore extends HealthAwareStore {
     void updateOnCommit(long internalXid, List<AndesMessage> enqueueRecords) throws AndesException;
 
     /**
+     * Update the store on a dtx.commit(one-phase) request with a set of enqueued and dequeued records.
+     * This is done in a database transaction operation.
+     *
+     * @param enqueueRecords {@link AndesMessage} list to be stored
+     * @param dequeueRecordsMetadata {@link AndesPreparedMessageMetadata} list to be removed
+     * @throws AndesException Throws exception on database related errors
+     */
+    void updateOnOnePhaseCommit(List<AndesMessage> enqueueRecords, List<AndesPreparedMessageMetadata> dequeueRecordsMetadata)
+            throws AndesException;
+    /**
      * Update the data store on rollback. Move acknowledged but not committed messages to message store
      *
      * @param internalXid internalXid of the dtx transaction
