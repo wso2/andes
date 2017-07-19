@@ -199,8 +199,7 @@ public class DtxRegistry {
      * @throws AndesException when database error occurs
      */
     long storeRecords(DtxBranch branch) throws AndesException {
-        List<AndesPreparedMessageMetadata> dequeueRecords =
-                messagingEngine.acknowledgeOnDtxPrepare(branch.getDequeueList());
+        List<AndesPreparedMessageMetadata> dequeueRecords = acknowledgeAndRetrieveDequeueRecords(branch);
         branch.setMessagesToRestore(dequeueRecords);
         long internalXid = dtxStore.storeDtxRecords(branch.getXid(), branch.getEnqueueList(), dequeueRecords);
         if (MessageTracer.isEnabled()) {
@@ -214,6 +213,17 @@ public class DtxRegistry {
             }
         }
         return internalXid;
+    }
+
+    /**
+     * Acknowledge the dequeue list of the passed dtx branch and return.
+     *
+     * @param branch {@link DtxBranch} of which the dequeue list needs to acknowledged and retrieved
+     * @return {@link List<AndesPreparedMessageMetadata>} The acknowledged dequeue list
+     * @throws AndesException
+     */
+    List<AndesPreparedMessageMetadata> acknowledgeAndRetrieveDequeueRecords(DtxBranch branch) throws AndesException {
+        return messagingEngine.acknowledgeAndRetrieveDequeueRecords(branch.getDequeueList());
     }
 
     /**
@@ -283,7 +293,7 @@ public class DtxRegistry {
                 dtxBranch.setState(DtxBranch.State.FORGOTTEN);
 
                 DisruptorEventCallback wrappedCallback = new CommitCallback(callback, dtxBranch);
-                dtxBranch.commit(wrappedCallback, channel);
+                dtxBranch.commit(wrappedCallback, channel, onePhase);
 
             } else {
                 throw new IncorrectDtxStateException("Branch still has associated sessions", xid);

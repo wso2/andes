@@ -71,7 +71,8 @@ public class ContentChunkHandler implements EventHandler<InboundEventContainer> 
             case TRANSACTION_ENQUEUE_EVENT:
                 handleTransaction(event, sequence);
                 break;
-            case DTX_COMMIT_EVENT:
+            case DTX_ONE_PHASE_COMMIT_EVENT:
+            case DTX_TWO_PHASE_COMMIT_EVENT:
                 handleDtxEvent(event, sequence);
                 break;
             default:
