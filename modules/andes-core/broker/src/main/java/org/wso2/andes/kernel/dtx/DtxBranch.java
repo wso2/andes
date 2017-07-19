@@ -401,7 +401,8 @@ public class DtxBranch {
      * @param channel  corresponding channel object
      * @throws AndesException if an internal error occured
      */
-    public void commit(DisruptorEventCallback callback, AndesChannel channel) throws AndesException {
+    public void commit(DisruptorEventCallback callback, AndesChannel channel, boolean isOnePhaseCommit) throws
+            AndesException {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Performing commit for DtxBranch " + xid);
         }
@@ -410,7 +411,11 @@ public class DtxBranch {
 
         this.callback = callback;
         updateSlotCommand = new DtxCommitCommand();
-        eventManager.requestDtxEvent(this, channel, InboundEventContainer.Type.DTX_COMMIT_EVENT);
+        if (isOnePhaseCommit) {
+            eventManager.requestDtxEvent(this, channel, InboundEventContainer.Type.DTX_ONE_PHASE_COMMIT_EVENT);
+        } else {
+            eventManager.requestDtxEvent(this, channel, InboundEventContainer.Type.DTX_COMMIT_EVENT);
+        }
     }
 
     /**
@@ -445,6 +450,16 @@ public class DtxBranch {
     public void writeToDbOnCommit() throws AndesException {
         dtxRegistry.getStore().updateOnCommit(internalXid, enqueueList);
         traceMessageList(enqueueList, MessageTracer.DTX_MESSAGE_WRITTEN_TO_DB);
+    }
+
+    /**
+     * Write committed messages to the database.
+     *
+     * @throws AndesException throws AndesException on database error
+     */
+    public void writeToDbOnOnePhaseCommit() throws AndesException {
+        dtxRegistry.getStore().updateOnOnePhaseCommit(enqueueList, dtxRegistry.acknowledgeAndRetrieveDequeueRecords
+                (this));
     }
 
     /**

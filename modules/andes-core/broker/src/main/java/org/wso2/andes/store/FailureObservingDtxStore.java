@@ -75,6 +75,17 @@ public class FailureObservingDtxStore extends FailureObservingStore<DtxStore> im
     }
 
     @Override
+    public void updateOnOnePhaseCommit(List<AndesMessage> enqueueRecords,
+            List<AndesPreparedMessageMetadata> dequeueRecordsMetadata) throws AndesException {
+        try {
+            wrappedInstance.updateOnOnePhaseCommit(enqueueRecords, dequeueRecordsMetadata);
+        } catch (AndesStoreUnavailableException e) {
+            notifyFailures(e);
+            throw new AndesException(e);
+        }
+    }
+
+    @Override
     public void updateOnRollback(long internalXid, List<AndesPreparedMessageMetadata> messagesToRestore) throws AndesException {
         try {
             wrappedInstance.updateOnRollback(internalXid, messagesToRestore);
