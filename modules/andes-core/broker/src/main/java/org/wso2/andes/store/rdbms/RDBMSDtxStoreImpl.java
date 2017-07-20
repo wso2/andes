@@ -238,6 +238,34 @@ public class RDBMSDtxStoreImpl implements DtxStore {
     /**
      * {@inheritDoc}
      */
+    public void updateOnOnePhaseCommit(List<AndesMessage> enqueueRecords, List<AndesPreparedMessageMetadata> dequeueRecordsMetadata) throws
+            AndesException {
+        Connection connection = null;
+
+        String task = "Updating records on dtx.onephase.commit ";
+
+        try {
+            connection = rdbmsMessageStore.getConnection();
+            if (!enqueueRecords.isEmpty()) {
+                rdbmsMessageStore.prepareToStoreMessages(connection, enqueueRecords);
+            }
+
+            if (!dequeueRecordsMetadata.isEmpty()) {
+                rdbmsMessageStore.prepareToDeleteMessages(connection, dequeueRecordsMetadata);
+            }
+            connection.commit();
+
+        } catch (SQLException e) {
+            rdbmsMessageStore.rollback(connection, task);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while executing dtx commit event", e);
+        } finally {
+            rdbmsMessageStore.close(connection, RDBMSConstants.TASK_DTX_COMMIT);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void updateOnRollback(long internalXid, List<AndesPreparedMessageMetadata> messagesToRestore) throws AndesException {
         Connection connection = null;
