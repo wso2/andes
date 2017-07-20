@@ -68,6 +68,8 @@ public class DtxDbWriter extends InboundEventHandler {
             }
             if (InboundEventContainer.Type.DTX_COMMIT_EVENT == event.getEventType()) {
                 event.getDtxBranch().writeToDbOnCommit();
+            } else if (InboundEventContainer.Type.DTX_ONE_PHASE_COMMIT_EVENT == event.getEventType()) {
+                event.getDtxBranch().writeToDbOnOnePhaseCommit();
             } else if (InboundEventContainer.Type.DTX_ROLLBACK_EVENT == event.getEventType()) {
                 event.getDtxBranch().writeToDbOnRollback();
             } else if (InboundEventContainer.Type.DTX_PREPARE_EVENT == event.getEventType()) {
