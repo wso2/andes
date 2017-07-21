@@ -195,9 +195,14 @@ public class InboundEventContainer {
         DTX_PREPARE_EVENT,
 
         /**
-         * Distributed transaction commit event
+         * Distributed transaction two-phase commit event
          */
-        DTX_COMMIT_EVENT,
+        DTX_TWO_PHASE_COMMIT_EVENT,
+
+        /**
+         * Distributed transaction one-phase commit event
+         */
+        DTX_ONE_PHASE_COMMIT_EVENT,
 
         /**
          * Distributed transaction rollback event
@@ -238,7 +243,8 @@ public class InboundEventContainer {
                 getTransactionEvent().updateState();
                 break;
             case DTX_PREPARE_EVENT:
-            case DTX_COMMIT_EVENT:
+            case DTX_TWO_PHASE_COMMIT_EVENT:
+            case DTX_ONE_PHASE_COMMIT_EVENT:
             case DTX_ROLLBACK_EVENT:
                 getDtxBranch().updateState(this);
                 break;
