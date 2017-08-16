@@ -264,6 +264,7 @@ public class InboundEventContainer {
      * Reset internal references null and sets event type to IGNORE_EVENT
      */
     public void clear() {
+        channel = null;
         messageList.clear();
         retainMessage = null;
         ackData = null;
