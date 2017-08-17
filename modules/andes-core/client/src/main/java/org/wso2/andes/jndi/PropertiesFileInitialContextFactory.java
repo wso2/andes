@@ -27,6 +27,7 @@ import org.wso2.andes.client.AMQDestination;
 import org.wso2.andes.client.AMQHeadersExchange;
 import org.wso2.andes.client.AMQQueue;
 import org.wso2.andes.client.AMQTopic;
+import org.wso2.andes.client.AMQXAConnectionFactory;
 import org.wso2.andes.exchange.ExchangeDefaults;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.url.BindingURL;
@@ -61,11 +62,12 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
 {
     protected final Logger _logger = LoggerFactory.getLogger(PropertiesFileInitialContextFactory.class);
 
-    private String CONNECTION_FACTORY_PREFIX = "connectionfactory.";
-    private String DESTINATION_PREFIX = "destination.";
-    private String QUEUE_PREFIX = "queue.";
-    private String TOPIC_PREFIX = "topic.";
+    private static String CONNECTION_FACTORY_PREFIX = "connectionfactory.";
+    private static String DESTINATION_PREFIX = "destination.";
+    private static String QUEUE_PREFIX = "queue.";
+    private static String TOPIC_PREFIX = "topic.";
     private static String SECRET_ALIAS_PREFIX = "secretAlias:";
+    private static String XA_CONNECTION_FACTORY_PREFIX ="xaconnectionfactory.";
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
     public Context getInitialContext(Hashtable environment) throws NamingException
@@ -186,6 +188,12 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
                 {
                     data.put(jndiName, cf);
                 }
+            } else if (key.startsWith(XA_CONNECTION_FACTORY_PREFIX)) {
+                String jndiName = key.substring(XA_CONNECTION_FACTORY_PREFIX.length());
+                ConnectionFactory cf = createXAFactory(entry.getValue().toString().trim());
+                if (cf != null) {
+                    data.put(jndiName, cf);
+                }
             }
         }
     }
@@ -301,6 +309,25 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
         catch (URLSyntaxException urlse)
         {
             _logger.warn("Unable to create factory:" + urlse);
+
+            ConfigurationException ex = new ConfigurationException("Failed to parse entry: " + urlse + " due to : " +  urlse.getMessage());
+            ex.initCause(urlse);
+            throw ex;
+        }
+    }
+
+    /**
+     * Factory method to create new XA Connection Factory instances
+     */
+    protected ConnectionFactory createXAFactory(String url) throws ConfigurationException
+    {
+        try
+        {
+            return new AMQXAConnectionFactory(url);
+        }
+        catch (URLSyntaxException urlse)
+        {
+            _logger.warn("Unable to create xafactory:" + urlse);
 
             ConfigurationException ex = new ConfigurationException("Failed to parse entry: " + urlse + " due to : " +  urlse.getMessage());
             ex.initCause(urlse);
