@@ -29,26 +29,12 @@ import org.wso2.andes.jms.ConnectionURL;
 import org.wso2.andes.url.AMQBindingURL;
 import org.wso2.andes.url.URLSyntaxException;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.Hashtable;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import javax.jms.ConnectionFactory;
 import javax.jms.JMSException;
-import javax.jms.JMSSecurityException;
 import javax.jms.QueueConnection;
 import javax.jms.QueueConnectionFactory;
 import javax.jms.TopicConnection;
 import javax.jms.TopicConnectionFactory;
-import javax.jms.XAConnection;
-import javax.jms.XAConnectionFactory;
-import javax.jms.XAQueueConnection;
-import javax.jms.XAQueueConnectionFactory;
-import javax.jms.XATopicConnection;
-import javax.jms.XATopicConnectionFactory;
 import javax.naming.Context;
 import javax.naming.Name;
 import javax.naming.NamingException;
@@ -57,6 +43,11 @@ import javax.naming.Reference;
 import javax.naming.Referenceable;
 import javax.naming.StringRefAddr;
 import javax.naming.spi.ObjectFactory;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.Hashtable;
 
 
 public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionFactory, TopicConnectionFactory,
