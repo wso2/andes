@@ -1040,13 +1040,13 @@ public class QpidBrokerTestCase extends QpidTestCase
     }
 
     /**
-     * Get a connection factory for the currently used broker
+     * Get a xa connection factory for the currently used broker
      *
      * @param factoryName The factory name
      *
      * @return A conection factory
      *
-     * @throws Exception if there is an error getting the tactory
+     * @throws Exception if there is an error getting the factory
      */
     public AMQXAConnectionFactory getXAConnectionFactory(String factoryName) throws NamingException
     {
@@ -1059,7 +1059,7 @@ public class QpidBrokerTestCase extends QpidTestCase
      *
      * @return A conection factory
      *
-     * @throws Exception if there is an error getting the tactory
+     * @throws Exception if there is an error getting the factory
      */
     public AMQXAConnectionFactory getXAConnectionFactory() throws NamingException
     {

@@ -62,12 +62,12 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
 {
     protected final Logger _logger = LoggerFactory.getLogger(PropertiesFileInitialContextFactory.class);
 
-    private static String CONNECTION_FACTORY_PREFIX = "connectionfactory.";
-    private static String DESTINATION_PREFIX = "destination.";
-    private static String QUEUE_PREFIX = "queue.";
-    private static String TOPIC_PREFIX = "topic.";
+    private String CONNECTION_FACTORY_PREFIX = "connectionfactory.";
+    private String DESTINATION_PREFIX = "destination.";
+    private String QUEUE_PREFIX = "queue.";
+    private String TOPIC_PREFIX = "topic.";
     private static String SECRET_ALIAS_PREFIX = "secretAlias:";
-    private static String XA_CONNECTION_FACTORY_PREFIX ="xaconnectionfactory.";
+    private static final String XA_CONNECTION_FACTORY_PREFIX ="xaconnectionfactory.";
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
     public Context getInitialContext(Hashtable environment) throws NamingException
