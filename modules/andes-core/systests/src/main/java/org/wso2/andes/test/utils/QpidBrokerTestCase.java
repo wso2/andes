@@ -57,6 +57,7 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.client.AMQConnectionFactory;
 import org.wso2.andes.client.AMQQueue;
+import org.wso2.andes.client.AMQXAConnectionFactory;
 import org.wso2.andes.exchange.ExchangeDefaults;
 import org.wso2.andes.jms.BrokerDetails;
 import org.wso2.andes.jms.ConnectionURL;
@@ -161,6 +162,7 @@ public class QpidBrokerTestCase extends QpidTestCase
 
     protected InitialContext _initialContext;
     protected AMQConnectionFactory _connectionFactory;
+    protected AMQXAConnectionFactory _xaConnectionFactory;
 
     protected String _testName;
 
@@ -1035,6 +1037,45 @@ public class QpidBrokerTestCase extends QpidTestCase
             }
         }
         return _connectionFactory;
+    }
+
+    /**
+     * Get a connection factory for the currently used broker
+     *
+     * @param factoryName The factory name
+     *
+     * @return A conection factory
+     *
+     * @throws Exception if there is an error getting the tactory
+     */
+    public AMQXAConnectionFactory getXAConnectionFactory(String factoryName) throws NamingException
+    {
+        return (AMQXAConnectionFactory) getInitialContext().lookup(factoryName);
+    }
+
+    /**
+     * Get the default xa connection factory for the currently used broker
+     * Default factory is "local"
+     *
+     * @return A conection factory
+     *
+     * @throws Exception if there is an error getting the tactory
+     */
+    public AMQXAConnectionFactory getXAConnectionFactory() throws NamingException
+    {
+        _logger.info("get ConnectionFactory");
+        if (_xaConnectionFactory == null)
+        {
+            if (Boolean.getBoolean("profile.use_ssl"))
+            {
+                _xaConnectionFactory = getXAConnectionFactory("default.ssl");
+            }
+            else
+            {
+                _xaConnectionFactory = getXAConnectionFactory("default");
+            }
+        }
+        return _xaConnectionFactory;
     }
 
     /**

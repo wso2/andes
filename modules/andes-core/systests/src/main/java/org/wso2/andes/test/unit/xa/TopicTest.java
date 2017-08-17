@@ -130,7 +130,7 @@ public class TopicTest extends AbstractXATestCase
             // lookup connection factory
             try
             {
-                _topicFactory = getConnectionFactory();
+                _topicFactory = getXAConnectionFactory();
             }
             catch (Exception e)
             {
