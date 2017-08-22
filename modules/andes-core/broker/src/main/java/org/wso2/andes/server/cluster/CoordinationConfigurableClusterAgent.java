@@ -20,7 +20,6 @@ package org.wso2.andes.server.cluster;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
-import com.hazelcast.core.IdGenerator;
 import com.hazelcast.core.Member;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
@@ -163,14 +162,15 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
         //HazelcastAgent.getInstance().addTopicListeners();
 
         Member localMember = hazelcastInstance.getCluster().getLocalMember();
-        nodeIdMap.set(localMember.getSocketAddress().toString(), getLocalNodeIdentifier());
+        String localNodeIdentifier = getLocalNodeIdentifier();
+        nodeIdMap.set(localMember.getSocketAddress().toString(), localNodeIdentifier);
 
         checkForDuplicateNodeId(localMember);
 
-        // Generate a unique id for this node for message id generation
-        IdGenerator idGenerator = this.hazelcastInstance.getIdGenerator(
-                CoordinationConstants.HAZELCAST_ID_GENERATOR_NAME);
-        this.uniqueIdOfLocalMember = (int) idGenerator.newId();
+        // TODO: we need generate a node wise unique ID if more than one node is publishing messages
+        // This to avoid message ID duplication.
+        // Modulus is taken to make sure we get a 8 bit long id
+        this.uniqueIdOfLocalMember = localMember.hashCode() % 256;
         if (log.isDebugEnabled()) {
             log.debug("Unique ID generation for message ID generation:" + uniqueIdOfLocalMember);
         }
@@ -180,8 +180,8 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
         InetSocketAddress thriftAddress = new InetSocketAddress(thriftCoordinatorServerIP, thriftCoordinatorServerPort);
         InetSocketAddress hazelcastAddress = hazelcastInstance.getCluster().getLocalMember().getSocketAddress();
 
-        coordinationStrategy.start(this, getLocalNodeIdentifier(), thriftAddress,
-                hazelcastAddress);
+        coordinationStrategy.start(this, localNodeIdentifier, thriftAddress,
+                                   hazelcastAddress);
     }
 
     /**
