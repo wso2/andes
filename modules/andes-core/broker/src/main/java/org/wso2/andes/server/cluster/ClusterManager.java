@@ -18,10 +18,6 @@
 package org.wso2.andes.server.cluster;
 
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -34,6 +30,11 @@ import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Cluster Manager is responsible for Handling the Broker Cluster Management Tasks like
@@ -198,8 +199,8 @@ public class ClusterManager implements StoreHealthListener{
      */
     private void initClusterMode() throws AndesException {
 
-        // Set the cluster agent from the Andes Context.
-        this.clusterAgent = AndesContext.getInstance().getClusterAgent();
+        this.clusterAgent = new CoordinationConfigurableClusterAgent();
+        AndesContext.getInstance().setClusterAgent(clusterAgent);
 
         clusterAgent.start(this);
 

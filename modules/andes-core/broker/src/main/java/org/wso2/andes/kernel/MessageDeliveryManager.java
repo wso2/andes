@@ -62,11 +62,6 @@ public final class MessageDeliveryManager implements StoreHealthListener, Networ
         taskManager.setExceptionHandler(new DeliveryTaskExceptionHandler());
         AndesContext andesContext = AndesContext.getInstance();
 
-        if (andesContext.isClusteringEnabled()) {
-            // network partition detection and thrift client works only when clustered.
-            andesContext.getClusterAgent().addNetworkPartitionListener(50, this);
-        }
-
         FailureObservingStoreManager.registerStoreHealthListener(this);
     }
 

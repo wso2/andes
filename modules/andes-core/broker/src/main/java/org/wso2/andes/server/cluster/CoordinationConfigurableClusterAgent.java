@@ -22,11 +22,6 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
 import com.hazelcast.core.IdGenerator;
 import com.hazelcast.core.Member;
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -35,10 +30,12 @@ import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
-import org.wso2.andes.server.cluster.error.detection.DisabledNetworkPartitionDetector;
-import org.wso2.andes.server.cluster.error.detection.HazelcastBasedNetworkPartitionDetector;
-import org.wso2.andes.server.cluster.error.detection.NetworkPartitionDetector;
-import org.wso2.andes.server.cluster.error.detection.NetworkPartitionListener;
+
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Hazelcast based cluster agent implementation
@@ -58,7 +55,7 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
     /**
      * Hazelcast instance used to communicate with the hazelcast cluster
      */
-    private final HazelcastInstance hazelcastInstance;
+    private HazelcastInstance hazelcastInstance;
 
     /**
      * Unique id of local member used for message ID generation
@@ -79,10 +76,6 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
      */
     private IMap<String, String> nodeIdMap;
 
-    /**
-     * Implementation of scheme used to detect network partitions
-     */
-    private NetworkPartitionDetector networkPartitionDetector;
     
     /*
     * Maximum number of attempts to read node id of a cluster member
@@ -94,15 +87,10 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
         this.hazelcastInstance = hazelcastInstance;
         nodeIdMap = hazelcastInstance.getMap(CoordinationConstants.NODE_ID_MAP_NAME);
 
-        boolean isNetworkPartitionDectectionEnabled = AndesConfigurationManager.readValue(
-                                                         AndesConfiguration.RECOVERY_NETWORK_PARTITIONS_DETECTION);
+        coordinationStrategy = new RDBMSCoordinationStrategy();
+    }
 
-        if (isNetworkPartitionDectectionEnabled) {
-            networkPartitionDetector = new HazelcastBasedNetworkPartitionDetector(hazelcastInstance);
-        } else {
-            networkPartitionDetector = new DisabledNetworkPartitionDetector();
-        }
-
+    public CoordinationConfigurableClusterAgent() {
         coordinationStrategy = new RDBMSCoordinationStrategy();
     }
 
@@ -194,8 +182,6 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
 
         coordinationStrategy.start(this, getLocalNodeIdentifier(), thriftAddress,
                 hazelcastAddress);
-
-        networkPartitionDetector.start();
     }
 
     /**
@@ -301,11 +287,4 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
         return nodeDetailStringList;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void addNetworkPartitionListener(int priority, NetworkPartitionListener listener) {
-        networkPartitionDetector.addNetworkPartitionListener(priority, listener);
-    }
 }

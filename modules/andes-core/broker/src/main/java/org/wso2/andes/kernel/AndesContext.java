@@ -28,7 +28,6 @@ import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.server.cluster.ClusterAgent;
 import org.wso2.andes.server.cluster.coordination.ClusterNotificationListenerManager;
 
-
 import java.util.List;
 
 /**
