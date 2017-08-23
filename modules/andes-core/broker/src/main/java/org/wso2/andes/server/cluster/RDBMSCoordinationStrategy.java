@@ -203,6 +203,12 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
         contextStore = AndesContext.getInstance().getAndesContextStore();
         this.configurableClusterAgent = configurableClusterAgent;
 
+        try {
+            contextStore.createNodeHeartbeatEntry(localNodeId, hazelcastAddress);
+        } catch (AndesException e) {
+            throw new RuntimeException("Error while registering node ID", e);
+        }
+
         membershipEventingEngine = new RDBMSMembershipEventingEngine();
         membershipEventingEngine.start(nodeId);
 

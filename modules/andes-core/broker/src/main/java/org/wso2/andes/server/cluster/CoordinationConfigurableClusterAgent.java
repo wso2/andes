@@ -19,22 +19,17 @@
 package org.wso2.andes.server.cluster;
 
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.IMap;
-import com.hazelcast.core.Member;
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
+import java.util.UUID;
 
 /**
  * Hazelcast based cluster agent implementation
@@ -66,15 +61,6 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
      */
     private ClusterManager manager;
 
-
-    /**
-     * Node identifier (set in broker.xml) of each node is stored in this map against the <ip>:<port> of that node.
-     *
-     *  Key - <ip>:<port>
-     *  Value - NodeId
-     */
-    private IMap<String, String> nodeIdMap;
-
     
     /*
     * Maximum number of attempts to read node id of a cluster member
@@ -84,7 +70,6 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
     public CoordinationConfigurableClusterAgent(HazelcastInstance hazelcastInstance) {
 
         this.hazelcastInstance = hazelcastInstance;
-        nodeIdMap = hazelcastInstance.getMap(CoordinationConstants.NODE_ID_MAP_NAME);
 
         coordinationStrategy = new RDBMSCoordinationStrategy();
     }
@@ -115,21 +100,6 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
     public void becameCoordinator() {
         manager.localNodeElectedAsCoordinator();
     }
-    
-    /**
-     * Get id of the give node
-     *
-     * @param node
-     *         Hazelcast member node
-     * @return id of the node
-     */
-    public String getIdOfNode(Member node) {
-        String nodeId = nodeIdMap.get(node.getSocketAddress().toString());
-        if(StringUtils.isEmpty(nodeId)) {
-            return null;
-        }
-        return nodeId;
-    }
 
     /**
      * {@inheritDoc}
@@ -154,23 +124,12 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
     public void start(ClusterManager manager) throws AndesException{
         this.manager = manager;
 
-        /**
-         * register topic listeners for cluster events. This has to be done
-         * after initializing Andes Stores and Manager classes
-         */
-        //TODO: review
-        //HazelcastAgent.getInstance().addTopicListeners();
-
-        Member localMember = hazelcastInstance.getCluster().getLocalMember();
         String localNodeIdentifier = getLocalNodeIdentifier();
-        nodeIdMap.set(localMember.getSocketAddress().toString(), localNodeIdentifier);
 
-        checkForDuplicateNodeId(localMember);
-
-        // TODO: we need generate a node wise unique ID if more than one node is publishing messages
+        // TODO: We need generate a node wise unique ID if more than one node is publishing messages
         // This to avoid message ID duplication.
         // Modulus is taken to make sure we get a 8 bit long id
-        this.uniqueIdOfLocalMember = localMember.hashCode() % 256;
+        this.uniqueIdOfLocalMember = localNodeIdentifier.hashCode() % 256;
         if (log.isDebugEnabled()) {
             log.debug("Unique ID generation for message ID generation:" + uniqueIdOfLocalMember);
         }
@@ -182,51 +141,8 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
 
         coordinationStrategy.start(this, localNodeIdentifier, thriftAddress,
                                    hazelcastAddress);
-    }
 
-    /**
-     * Check if the local node id is already taken by a different node in the cluster
-     *
-     * @param localMember
-     *         Current member
-     * @throws AndesException
-     */
-    private void checkForDuplicateNodeId(Member localMember) throws AndesException {
-        Set<Member> members = hazelcastInstance.getCluster().getMembers();
-
-        for (Member member : members) {
-            int nodeIdReadAttempts = 1;
-            String nodeIdOfMember = getIdOfNode(member);
-
-            /*
-             Node ID can be null if the node has not initialized yet. Therefore try to read the node id
-             MAX_NODE_ID_READ_ATTEMPTS times before failing.
-              */
-            while ((null == nodeIdOfMember) && (nodeIdReadAttempts <= MAX_NODE_ID_READ_ATTEMPTS)) {
-
-                // Exponentially increase waiting time,
-                long sleepTime = Math.round(Math.pow(2, nodeIdReadAttempts));
-                log.warn("Node id was null for member " + member + ". Node id will be read again after "
-                         + sleepTime + " seconds.");
-
-                try {
-                    TimeUnit.SECONDS.sleep(sleepTime);
-                } catch (InterruptedException ignore) {
-                }
-
-                nodeIdReadAttempts++;
-                nodeIdOfMember = getIdOfNode(member);
-            }
-
-            if (nodeIdOfMember == null) {
-                throw new AndesException("Failed to read Node id of hazelcast member " + member);
-            }
-
-            if ((localMember != member) && (nodeIdOfMember.equals(getLocalNodeIdentifier()))) {
-                throw new AndesException("Another node with the same node id: " + getLocalNodeIdentifier()
-                                         + " found in the cluster. Cannot start the node.");
-            }
-        }
+        log.info("Initializing Cluster Mode. Current Node ID:" + localNodeIdentifier);
     }
 
     /**
@@ -247,11 +163,10 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
         // Get Node ID configured by user in broker.xml (if not "default" we must use it as the ID)
         nodeId = AndesConfigurationManager.readValue(AndesConfiguration.COORDINATION_NODE_ID);
 
-        // If the config value is "default" we must generate the ID
+        // If the config value is "default" we must generate the ID. If we want to reuse the ID for same node we can
+        // persist the entry locally in CARBON_HOME.
         if (AndesConfiguration.COORDINATION_NODE_ID.get().getDefaultValue().equals(nodeId)) {
-            Member localMember = hazelcastInstance.getCluster().getLocalMember();
-            nodeId = CoordinationConstants.NODE_NAME_PREFIX + localMember.getSocketAddress().getHostName()
-                    + CoordinationConstants.HOSTNAME_PORT_SEPARATOR + localMember.getSocketAddress().getPort();
+            nodeId = UUID.randomUUID().toString();
         }
 
         return nodeId;

@@ -203,16 +203,6 @@ public class ClusterManager implements StoreHealthListener{
         AndesContext.getInstance().setClusterAgent(clusterAgent);
 
         clusterAgent.start(this);
-
-        this.nodeId = clusterAgent.getLocalNodeIdentifier();
-        log.info("Initializing Cluster Mode. Current Node ID:" + this.nodeId);
-
-        String localMemberHostAddress = clusterAgent.getLocalNodeIdentifier();
-
-        if (log.isDebugEnabled()) {
-            log.debug("Stored node ID : " + this.nodeId +  ". Stored node data(Hazelcast local "
-                      + "member host address) : " + localMemberHostAddress);
-        }
     }
 
     /**
