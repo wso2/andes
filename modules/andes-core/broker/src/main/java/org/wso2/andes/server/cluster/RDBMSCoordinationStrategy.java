@@ -63,11 +63,6 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
     private int coordinatorEntryCreationWaitTime;
 
     /**
-     * Used to identify a node using its IP address and port
-     */
-    private InetSocketAddress hazelcastAddress;
-
-    /**
      * Possible node states
      *
      *               +----------+
@@ -194,17 +189,16 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
      */
     @Override
     public void start(CoordinationConfigurableClusterAgent configurableClusterAgent, String nodeId,
-            InetSocketAddress thriftAddress, InetSocketAddress hazelcastAddress) {
+            InetSocketAddress thriftAddress) {
         localNodeId = nodeId;
         this.thriftAddress = thriftAddress;
-        this.hazelcastAddress = hazelcastAddress;
 
         // TODO detect if already started
         contextStore = AndesContext.getInstance().getAndesContextStore();
         this.configurableClusterAgent = configurableClusterAgent;
 
         try {
-            contextStore.createNodeHeartbeatEntry(localNodeId, hazelcastAddress);
+            contextStore.createNodeHeartbeatEntry(localNodeId);
         } catch (AndesException e) {
             throw new RuntimeException("Error while registering node ID", e);
         }
@@ -295,7 +289,6 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
             boolean isCoordinatorNode = coordinatorNodeId.equals(nodeHeartBeatData.getNodeId());
 
             nodeDetails.add(new NodeDetail(nodeHeartBeatData.getNodeId(),
-                    nodeHeartBeatData.getClusterAgentAddress(),
                     isCoordinatorNode));
         }
         return nodeDetails;
@@ -427,7 +420,7 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
         private void updateNodeHeartBeat() throws AndesException {
             boolean heartbeatEntryExists = contextStore.updateNodeHeartbeat(localNodeId);
             if (!heartbeatEntryExists) {
-                contextStore.createNodeHeartbeatEntry(localNodeId, hazelcastAddress);
+                contextStore.createNodeHeartbeatEntry(localNodeId);
             }
         }
 

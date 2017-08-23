@@ -27,7 +27,6 @@ import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -121,7 +120,7 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
      * {@inheritDoc}
      */
     @Override
-    public void start(ClusterManager manager) throws AndesException{
+    public String start(ClusterManager manager) throws AndesException{
         this.manager = manager;
 
         String localNodeIdentifier = getLocalNodeIdentifier();
@@ -137,12 +136,11 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
         String thriftCoordinatorServerIP = AndesContext.getInstance().getThriftServerHost();
         int thriftCoordinatorServerPort = AndesContext.getInstance().getThriftServerPort();
         InetSocketAddress thriftAddress = new InetSocketAddress(thriftCoordinatorServerIP, thriftCoordinatorServerPort);
-        InetSocketAddress hazelcastAddress = hazelcastInstance.getCluster().getLocalMember().getSocketAddress();
 
-        coordinationStrategy.start(this, localNodeIdentifier, thriftAddress,
-                                   hazelcastAddress);
+        coordinationStrategy.start(this, localNodeIdentifier, thriftAddress);
 
         log.info("Initializing Cluster Mode. Current Node ID:" + localNodeIdentifier);
+        return localNodeIdentifier;
     }
 
     /**
@@ -178,28 +176,6 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
     @Override
     public List<String> getAllNodeIdentifiers() throws AndesException {
         return coordinationStrategy.getAllNodeIdentifiers();
-    }
-
-
-
-    /**
-     * Gets address of all the members in the cluster. i.e address:port
-     *
-     * @return A list of address of the nodes in a cluster
-     */
-    public List<String> getAllClusterNodeAddresses() throws AndesException {
-        List<String> nodeDetailStringList = new ArrayList<>();
-
-        List<NodeDetail> nodeDetails = coordinationStrategy.getAllNodeDetails();
-
-        if (AndesContext.getInstance().isClusteringEnabled()) {
-            for (NodeDetail nodeDetail : nodeDetails) {
-                nodeDetailStringList.add(nodeDetail.getNodeId() + "," + nodeDetail.getClusterAgentAddress().getHostString() + ","
-                        + nodeDetail.getClusterAgentAddress().getPort() + "," + nodeDetail.isCoordinator());
-            }
-        }
-
-        return nodeDetailStringList;
     }
 
 }

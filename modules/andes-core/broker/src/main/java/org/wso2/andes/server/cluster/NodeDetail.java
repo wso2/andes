@@ -15,8 +15,6 @@
 
 package org.wso2.andes.server.cluster;
 
-import java.net.InetSocketAddress;
-
 /**
  * Hold clustering related information related to a node.
  */
@@ -27,18 +25,12 @@ public class NodeDetail {
     private final String nodeId;
 
     /**
-     * Socket address of the cluster agent. With Hazelcast clustering this will be local node's Hazelcast bind address
-     */
-    private final InetSocketAddress clusterAgentAddress;
-
-    /**
      * Indicate if the node is the coordinator node
      */
     private final boolean isCoordinator;
 
-    public NodeDetail(String nodeId, InetSocketAddress clusterAgentAddress, boolean isCoordinator) {
+    public NodeDetail(String nodeId, boolean isCoordinator) {
         this.nodeId = nodeId;
-        this.clusterAgentAddress = clusterAgentAddress;
         this.isCoordinator = isCoordinator;
     }
 
@@ -58,14 +50,5 @@ public class NodeDetail {
      */
     public boolean isCoordinator() {
         return isCoordinator;
-    }
-
-    /**
-     * Getter method for clusterAgentAddress
-     *
-     * @return cluster agent's socket address
-     */
-    public InetSocketAddress getClusterAgentAddress() {
-        return clusterAgentAddress;
     }
 }

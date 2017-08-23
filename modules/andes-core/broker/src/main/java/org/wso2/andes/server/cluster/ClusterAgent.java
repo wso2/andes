@@ -28,13 +28,6 @@ import java.util.List;
 public interface ClusterAgent {
 
     /**
-     * Gets address of all the members in the cluster.
-     *
-     * @return A list of address of the nodes in a cluster
-     */
-     List<String> getAllClusterNodeAddresses() throws AndesException;
-
-    /**
      * Return all ids of the connected nodes.
      *
      * @return list of member ids
@@ -68,7 +61,7 @@ public interface ClusterAgent {
      * @param manager
      *         Cluster manager for the current node
      */
-    void start(ClusterManager manager) throws AndesException;
+    String start(ClusterManager manager) throws AndesException;
 
     /**
      * Stop listening to cluster events

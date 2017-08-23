@@ -112,9 +112,6 @@ public class ClusterManager implements StoreHealthListener{
         log.info("Handling cluster gossip: Node " + deletedNodeId + "  left the Cluster");
 
         if(clusterAgent.isCoordinator()) {
-            // Schedule a slot recovery task for lost submit slot event from left member node
-            log.info("Scheduling slot recovery task.");
-
             ClusterResourceHolder.getInstance().getSubscriptionManager()
                     .removeAllSubscriptionsOfNodeFromMemoryAndStore(deletedNodeId);
         } else {
@@ -202,7 +199,7 @@ public class ClusterManager implements StoreHealthListener{
         this.clusterAgent = new CoordinationConfigurableClusterAgent();
         AndesContext.getInstance().setClusterAgent(clusterAgent);
 
-        clusterAgent.start(this);
+        nodeId = clusterAgent.start(this);
     }
 
     /**
@@ -238,22 +235,6 @@ public class ClusterManager implements StoreHealthListener{
      * Perform coordinator initialization tasks, when this node is elected as the new coordinator
      */
     public void localNodeElectedAsCoordinator() {
-    }
-
-    /**
-     * Gets details  of all the members in the cluster in the format of,
-     *    "node_ID,host_address,port,isCoordinator->(true|false)"
-     *
-     * @return A list of address of the nodes in a cluster
-     */
-    public List<String> getAllClusterNodeAddresses() throws AndesException {
-
-        if (AndesContext.getInstance().isClusteringEnabled()) {
-            return clusterAgent.getAllClusterNodeAddresses();
-        }
-        ArrayList<String> nodes = new ArrayList<>();
-        nodes.add(getMyNodeID());
-        return nodes;
     }
 
     /**
