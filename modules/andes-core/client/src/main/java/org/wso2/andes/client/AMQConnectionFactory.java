@@ -29,26 +29,12 @@ import org.wso2.andes.jms.ConnectionURL;
 import org.wso2.andes.url.AMQBindingURL;
 import org.wso2.andes.url.URLSyntaxException;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.Hashtable;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import javax.jms.ConnectionFactory;
 import javax.jms.JMSException;
-import javax.jms.JMSSecurityException;
 import javax.jms.QueueConnection;
 import javax.jms.QueueConnectionFactory;
 import javax.jms.TopicConnection;
 import javax.jms.TopicConnectionFactory;
-import javax.jms.XAConnection;
-import javax.jms.XAConnectionFactory;
-import javax.jms.XAQueueConnection;
-import javax.jms.XAQueueConnectionFactory;
-import javax.jms.XATopicConnection;
-import javax.jms.XATopicConnectionFactory;
 import javax.naming.Context;
 import javax.naming.Name;
 import javax.naming.NamingException;
@@ -57,11 +43,15 @@ import javax.naming.Reference;
 import javax.naming.Referenceable;
 import javax.naming.StringRefAddr;
 import javax.naming.spi.ObjectFactory;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.Hashtable;
 
 
 public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionFactory, TopicConnectionFactory,
-                                             ObjectFactory, Referenceable, XATopicConnectionFactory,
-                                             XAQueueConnectionFactory, XAConnectionFactory
+                                             ObjectFactory, Referenceable
 {
     private static final Logger logger = LoggerFactory.getLogger(AMQConnectionFactory.class);
 
@@ -71,16 +61,11 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
     private String _defaultPassword;
     private String _virtualPath;
 
-    private ConnectionURL _connectionDetails;
-    private SSLConfiguration _sslConfig;
+    protected ConnectionURL _connectionDetails;
+    protected SSLConfiguration _sslConfig;
 
     private ConnectionListener connectionListener = null;
     private ThreadLocal<Boolean> removeBURL = new ThreadLocal<Boolean>();
-
-    /**
-     * Scheduled executor share by the XAConnectionImpl objects
-     */
-    private ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
 
     private static final Logger log = LoggerFactory.getLogger(AMQConnectionFactory.class);
 
@@ -543,127 +528,6 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
                 AMQConnectionFactory.class.getName(),
                 new StringRefAddr(AMQConnectionFactory.class.getName(), _connectionDetails.getURL()),
                              AMQConnectionFactory.class.getName(), null);          // factory location
-    }
-
-    // ---------------------------------------------------------------------------------------------------
-    // the following methods are provided for XA compatibility
-    // Those methods are only supported by 0_10 and above 
-    // ---------------------------------------------------------------------------------------------------
-
-    /**
-     * Creates a XAConnection with the default user identity.
-     * <p> The XAConnection is created in stopped mode. No messages
-     * will be delivered until the <code>Connection.start</code> method
-     * is explicitly called.
-     *
-     * @return A newly created XAConnection
-     * @throws JMSException         If creating the XAConnection fails due to some internal error.
-     * @throws JMSSecurityException If client authentication fails due to an invalid user name or password.
-     */
-    public XAConnection createXAConnection() throws JMSException
-    {
-        try
-        {
-            return new XAConnectionImpl(_connectionDetails, _sslConfig, scheduledExecutor);
-        }
-        catch (Exception e)
-        {
-            JMSException jmse = new JMSException("Error creating connection: " + e.getMessage());
-            jmse.setLinkedException(e);
-            jmse.initCause(e);
-            throw jmse;
-        }
-    }
-
-    /**
-     * Creates a XAConnection with the specified user identity.
-     * <p> The XAConnection is created in stopped mode. No messages
-     * will be delivered until the <code>Connection.start</code> method
-     * is explicitly called.
-     *
-     * @param username the caller's user name
-     * @param password the caller's password
-     * @return A newly created XAConnection.
-     * @throws JMSException         If creating the XAConnection fails due to some internal error.
-     * @throws JMSSecurityException If client authentication fails due to an invalid user name or password.
-     */
-    public XAConnection createXAConnection(String username, String password) throws JMSException
-    {
-        if (_connectionDetails != null)
-        {
-            _connectionDetails.setUsername(username);
-            _connectionDetails.setPassword(password);
-        }
-        else
-        {
-            throw new JMSException("A URL must be specified to access XA connections");
-        }
-        return createXAConnection();
-    }
-
-
-    /**
-     * Creates a XATopicConnection with the default user identity.
-     * <p> The XATopicConnection is created in stopped mode. No messages
-     * will be delivered until the <code>Connection.start</code> method
-     * is explicitly called.
-     *
-     * @return A newly created XATopicConnection
-     * @throws JMSException         If creating the XATopicConnection fails due to some internal error.
-     * @throws JMSSecurityException If client authentication fails due to an invalid user name or password.
-     */
-    public XATopicConnection createXATopicConnection() throws JMSException
-    {
-        return (XATopicConnection) createXAConnection();
-    }
-
-    /**
-     * Creates a XATopicConnection with the specified user identity.
-     * <p> The XATopicConnection is created in stopped mode. No messages
-     * will be delivered until the <code>Connection.start</code> method
-     * is explicitly called.
-     *
-     * @param username the caller's user name
-     * @param password the caller's password
-     * @return A newly created XATopicConnection.
-     * @throws JMSException         If creating the XATopicConnection fails due to some internal error.
-     * @throws JMSSecurityException If client authentication fails due to an invalid user name or password.
-     */
-    public XATopicConnection createXATopicConnection(String username, String password) throws JMSException
-    {
-         return (XATopicConnection) createXAConnection(username, password);
-    }
-
-    /**
-     * Creates a XAQueueConnection with the default user identity.
-     * <p> The XAQueueConnection is created in stopped mode. No messages
-     * will be delivered until the <code>Connection.start</code> method
-     * is explicitly called.
-     *
-     * @return A newly created XAQueueConnection
-     * @throws JMSException         If creating the XAQueueConnection fails due to some internal error.
-     * @throws JMSSecurityException If client authentication fails due to an invalid user name or password.
-     */
-    public XAQueueConnection createXAQueueConnection() throws JMSException
-    {
-       return (XAQueueConnection) createXAConnection();
-    }
-
-    /**
-     * Creates a XAQueueConnection with the specified user identity.
-     * <p> The XAQueueConnection is created in stopped mode. No messages
-     * will be delivered until the <code>Connection.start</code> method
-     * is explicitly called.
-     *
-     * @param username the caller's user name
-     * @param password the caller's password
-     * @return A newly created XAQueueConnection.
-     * @throws JMSException         If creating the XAQueueConnection fails due to some internal error.
-     * @throws JMSSecurityException If client authentication fails due to an invalid user name or password.
-     */
-    public XAQueueConnection createXAQueueConnection(String username, String password) throws JMSException
-    {
-        return (XAQueueConnection) createXAConnection(username, password);
     }
 
     public ConnectionListener getConnectionListener() {

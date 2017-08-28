@@ -110,7 +110,7 @@ public class FaultTest extends AbstractXATestCase
         if (!isBroker08())
         {
             _queue = (Queue) getInitialContext().lookup(QUEUENAME);
-            _queueFactory = getConnectionFactory();
+            _queueFactory = getXAConnectionFactory();
             _xaqueueConnection = _queueFactory.createXAQueueConnection("guest", "guest");
             XAQueueSession session = _xaqueueConnection.createXAQueueSession();
             _queueConnection = _queueFactory.createQueueConnection();
