@@ -18,18 +18,6 @@
 
 package org.wso2.andes.store.rdbms;
 
-import java.net.InetSocketAddress;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
-import javax.sql.DataSource;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesBinding;
@@ -45,6 +33,19 @@ import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEvent;
 import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEventType;
 import org.wso2.andes.store.AndesDataIntegrityViolationException;
+
+import java.net.InetSocketAddress;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+import javax.sql.DataSource;
 
 /**
  * ANSI SQL based Andes Context Store implementation. This is used to persist information of
@@ -1796,7 +1797,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public void createNodeHeartbeatEntry(String nodeId, InetSocketAddress nodeAddress) throws AndesException {
+    public void createNodeHeartbeatEntry(String nodeId) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
 
@@ -1808,8 +1809,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement.setString(1, nodeId);
             preparedStatement.setLong(2, System.currentTimeMillis());
-            preparedStatement.setString(3, nodeAddress.getHostString());
-            preparedStatement.setInt(4, nodeAddress.getPort());
 
             preparedStatement.executeUpdate();
             connection.commit();
@@ -1844,10 +1843,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
                 String nodeId = resultSet.getString(1);
                 long lastHeartbeat = resultSet.getLong(2);
                 boolean isNewNode = convertIntToBoolean(resultSet.getInt(3));
-                String clusterAgentHost = resultSet.getString(4);
-                int clusterAgentPort = resultSet.getInt(5);
-                InetSocketAddress clusterAgentAddress = new InetSocketAddress(clusterAgentHost, clusterAgentPort);
-                NodeHeartBeatData heartBeatData = new NodeHeartBeatData(nodeId, lastHeartbeat, isNewNode, clusterAgentAddress);
+                NodeHeartBeatData heartBeatData = new NodeHeartBeatData(nodeId, lastHeartbeat, isNewNode);
 
                 nodeDataList.add(heartBeatData);
             }

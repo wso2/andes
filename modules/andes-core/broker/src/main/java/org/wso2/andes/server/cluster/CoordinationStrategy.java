@@ -62,10 +62,9 @@ interface CoordinationStrategy {
      * @param configurableClusterAgent cluster agent used to indicate cluster change events
      * @param nodeId                   local node ID
      * @param thriftAddress            local node's thrift server socket address
-     * @param hazelcastAddress         local node's Hazelcast socket address
      */
     void start(CoordinationConfigurableClusterAgent configurableClusterAgent, String nodeId,
-            InetSocketAddress thriftAddress, InetSocketAddress hazelcastAddress);
+            InetSocketAddress thriftAddress);
 
     /**
      * Meant to be invoked when coordination algorithm should stop working. This is typically during the server

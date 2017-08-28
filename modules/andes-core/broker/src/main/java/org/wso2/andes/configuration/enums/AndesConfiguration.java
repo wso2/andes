@@ -729,15 +729,6 @@ public enum AndesConfiguration implements ConfigurationProperty {
     RDBMS_BASED_COORDINATION("coordination/rdbmsBasedCoordination/@enabled", "true", Boolean.class),
 
     /**
-     * Enable network partition detection ( and surrounding functionality, such
-     * as disconnecting subscriptions, enabling error based flow control if the
-     * minimal node count becomes less than configured value.
-     * <p>
-     * default value: false
-     * </p>
-     */
-    RECOVERY_NETWORK_PARTITIONS_DETECTION("recovery/networkPartitionsDetection/@enabled", "false", Boolean.class),
-    /**
      * The minimum node count the cluster should maintain for this node to
      * operate. if cluster size becomes less that configured value
      * This node will not accept any incoming traffic ( and disconnect

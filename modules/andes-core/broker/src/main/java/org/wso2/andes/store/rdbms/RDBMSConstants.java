@@ -148,8 +148,6 @@ public class RDBMSConstants {
     protected static final String IS_NEW_NODE = "IS_NEW_NODE";
     protected static final String THRIFT_HOST = "THRIFT_HOST";
     protected static final String THRIFT_PORT = "THRIFT_PORT";
-    protected static final String CLUSTER_AGENT_HOST = "CLUSTER_AGENT_HOST";
-    protected static final String CLUSTER_AGENT_PORT = "CLUSTER_AGENT_PORT";
 
     //Slot table columns
     protected static final String SLOT_ID = "SLOT_ID";
@@ -669,10 +667,8 @@ public class RDBMSConstants {
             "INSERT INTO " + CLUSTER_NODE_HEARTBEAT_TABLE
                     + "(" + NODE_ID + ","
                     + LAST_HEARTBEAT + ","
-                    + CLUSTER_AGENT_HOST + ","
-                    + CLUSTER_AGENT_PORT + ","
                     + IS_NEW_NODE + ")"
-                    + " VALUES (?,?,?,?,1)";
+                    + " VALUES (?,?,1)";
 
     /**
      * Prepared statement to check if coordinator
@@ -736,8 +732,7 @@ public class RDBMSConstants {
      * Prepared statement to check if coordinator
      */
     protected static final String PS_GET_ALL_NODE_HEARTBEAT =
-            "SELECT " + NODE_ID + "," + LAST_HEARTBEAT + "," + IS_NEW_NODE + "," + CLUSTER_AGENT_HOST + ","
-                    + CLUSTER_AGENT_PORT
+            "SELECT " + NODE_ID + "," + LAST_HEARTBEAT + "," + IS_NEW_NODE
                     + " FROM " + CLUSTER_NODE_HEARTBEAT_TABLE;
 
     protected static final String PS_DELETE_COORDINATOR =

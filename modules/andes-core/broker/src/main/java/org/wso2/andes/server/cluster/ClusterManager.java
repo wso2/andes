@@ -18,10 +18,6 @@
 package org.wso2.andes.server.cluster;
 
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -34,6 +30,11 @@ import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Cluster Manager is responsible for Handling the Broker Cluster Management Tasks like
@@ -111,9 +112,6 @@ public class ClusterManager implements StoreHealthListener{
         log.info("Handling cluster gossip: Node " + deletedNodeId + "  left the Cluster");
 
         if(clusterAgent.isCoordinator()) {
-            // Schedule a slot recovery task for lost submit slot event from left member node
-            log.info("Scheduling slot recovery task.");
-
             ClusterResourceHolder.getInstance().getSubscriptionManager()
                     .removeAllSubscriptionsOfNodeFromMemoryAndStore(deletedNodeId);
         } else {
@@ -198,20 +196,10 @@ public class ClusterManager implements StoreHealthListener{
      */
     private void initClusterMode() throws AndesException {
 
-        // Set the cluster agent from the Andes Context.
-        this.clusterAgent = AndesContext.getInstance().getClusterAgent();
+        this.clusterAgent = new CoordinationConfigurableClusterAgent();
+        AndesContext.getInstance().setClusterAgent(clusterAgent);
 
-        clusterAgent.start(this);
-
-        this.nodeId = clusterAgent.getLocalNodeIdentifier();
-        log.info("Initializing Cluster Mode. Current Node ID:" + this.nodeId);
-
-        String localMemberHostAddress = clusterAgent.getLocalNodeIdentifier();
-
-        if (log.isDebugEnabled()) {
-            log.debug("Stored node ID : " + this.nodeId +  ". Stored node data(Hazelcast local "
-                      + "member host address) : " + localMemberHostAddress);
-        }
+        nodeId = clusterAgent.start(this);
     }
 
     /**
@@ -247,22 +235,6 @@ public class ClusterManager implements StoreHealthListener{
      * Perform coordinator initialization tasks, when this node is elected as the new coordinator
      */
     public void localNodeElectedAsCoordinator() {
-    }
-
-    /**
-     * Gets details  of all the members in the cluster in the format of,
-     *    "node_ID,host_address,port,isCoordinator->(true|false)"
-     *
-     * @return A list of address of the nodes in a cluster
-     */
-    public List<String> getAllClusterNodeAddresses() throws AndesException {
-
-        if (AndesContext.getInstance().isClusteringEnabled()) {
-            return clusterAgent.getAllClusterNodeAddresses();
-        }
-        ArrayList<String> nodes = new ArrayList<>();
-        nodes.add(getMyNodeID());
-        return nodes;
     }
 
     /**
