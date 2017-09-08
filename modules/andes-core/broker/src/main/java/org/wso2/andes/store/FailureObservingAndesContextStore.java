@@ -18,11 +18,6 @@
 
 package org.wso2.andes.store;
 
-import java.net.InetSocketAddress;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesBinding;
 import org.wso2.andes.kernel.AndesContextStore;
@@ -34,6 +29,12 @@ import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.server.cluster.NodeHeartBeatData;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEvent;
+
+import java.net.InetSocketAddress;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * Implementation of {@link AndesContextStore} which observes failures such is
@@ -666,9 +667,9 @@ public class FailureObservingAndesContextStore extends FailureObservingStore<And
      * {@inheritDoc}
      */
     @Override
-    public void createNodeHeartbeatEntry(String nodeId,  InetSocketAddress nodeAddress) throws AndesException {
+    public void createNodeHeartbeatEntry(String nodeId) throws AndesException {
         try {
-            wrappedInstance.createNodeHeartbeatEntry(nodeId, nodeAddress);
+            wrappedInstance.createNodeHeartbeatEntry(nodeId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

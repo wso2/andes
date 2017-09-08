@@ -19,22 +19,13 @@
 package org.wso2.andes.server.cluster;
 
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.server.cluster.error.detection.NetworkPartitionListener;
 
-import java.net.InetSocketAddress;
 import java.util.List;
 
 /**
  * This is responsible for handling cluster communication
  */
 public interface ClusterAgent {
-
-    /**
-     * Gets address of all the members in the cluster.
-     *
-     * @return A list of address of the nodes in a cluster
-     */
-     List<String> getAllClusterNodeAddresses() throws AndesException;
 
     /**
      * Return all ids of the connected nodes.
@@ -70,20 +61,10 @@ public interface ClusterAgent {
      * @param manager
      *         Cluster manager for the current node
      */
-    void start(ClusterManager manager) throws AndesException;
+    String start(ClusterManager manager) throws AndesException;
 
     /**
      * Stop listening to cluster events
      */
     void stop();
-
-    /**
-     * Allows to register a listeners when there are network partitions. Hence
-     * any implementation of Cluster Agent should provide a mechanism
-     * to detect network partitions (if allowed via configuration)
-     *
-     * @param priority listener priority (lower value has higher priority)
-     * @param listener any party required act on a network partition.
-     */
-    void addNetworkPartitionListener(int priority, NetworkPartitionListener listener);
 }

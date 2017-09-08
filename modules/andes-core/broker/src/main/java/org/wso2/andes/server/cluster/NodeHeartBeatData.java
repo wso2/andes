@@ -15,8 +15,6 @@
 
 package org.wso2.andes.server.cluster;
 
-import java.net.InetSocketAddress;
-
 /**
  * Hold information related to a node heartbeat entry. This can be used to pass information related to node heartbeat
  * to/from persistence layer.
@@ -38,24 +36,16 @@ public class NodeHeartBeatData {
     private final boolean isNewNode;
 
     /**
-     * Socket address of the cluster agent. With Hazelcast clustering this will be local node's Hazelcast bind address
-     */
-    private final InetSocketAddress clusterAgentAddress;
-
-    /**
      * NodeHeartBeatData constructor
      *
      * @param nodeId              node ID
      * @param lastHeartbeat       last heartbeat received from the node
      * @param isNewNode           true if new node
-     * @param clusterAgentAddress cluster agent's socket address
      */
-    public NodeHeartBeatData(String nodeId, long lastHeartbeat, boolean isNewNode,
-            InetSocketAddress clusterAgentAddress) {
+    public NodeHeartBeatData(String nodeId, long lastHeartbeat, boolean isNewNode) {
         this.nodeId = nodeId;
         this.lastHeartbeat = lastHeartbeat;
         this.isNewNode = isNewNode;
-        this.clusterAgentAddress = clusterAgentAddress;
     }
 
     /**
@@ -83,14 +73,5 @@ public class NodeHeartBeatData {
      */
     public boolean isNewNode() {
         return isNewNode;
-    }
-
-    /**
-     * Getter method for clusterAgentAddress
-     *
-     * @return cluster agent's socket address
-     */
-    public InetSocketAddress getClusterAgentAddress() {
-        return clusterAgentAddress;
     }
 }

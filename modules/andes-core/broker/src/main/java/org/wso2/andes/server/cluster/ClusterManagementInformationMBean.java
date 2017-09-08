@@ -20,12 +20,10 @@ package org.wso2.andes.server.cluster;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
-import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.management.common.mbeans.ClusterManagementInformation;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanConstructor;
 import org.wso2.andes.server.management.AMQManagedObject;
 
-import java.util.List;
 import javax.management.JMException;
 
 /**
@@ -77,19 +75,6 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
     @Override
     public String getMyNodeID() {
         return clusterManager.getMyNodeID();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public List<String> getAllClusterNodeAddresses() throws JMException {
-        try {
-            return this.clusterManager.getAllClusterNodeAddresses();
-        } catch (AndesException e) {
-            logger.error("Error occurred while retrieving cluster details", e);
-            throw new JMException("Error occurred while retrieving cluster details");
-        }
     }
 
     /**

@@ -127,11 +127,6 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
         CoordinationComponentFactory coordinationComponentFactory = new CoordinationComponentFactory();
         this.clusterNotificationAgent = coordinationComponentFactory.createClusterNotificationAgent();
 
-        if (AndesContext.getInstance().isClusteringEnabled()) {
-            // network partition detection works only when clustered.
-            AndesContext.getInstance().getClusterAgent().addNetworkPartitionListener(10, this);
-        }
-
         //Add subscribers gauge to metrics manager
 //        MetricManager.gauge(MetricsConstants.QUEUE_SUBSCRIBERS, Level.INFO, new QueueSubscriberGauge());
 //        Add topic gauge to metrics manager

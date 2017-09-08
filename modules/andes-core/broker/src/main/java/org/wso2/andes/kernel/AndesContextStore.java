@@ -20,11 +20,6 @@
 
 package org.wso2.andes.kernel;
 
-import java.net.InetSocketAddress;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.router.AndesMessageRouter;
 import org.wso2.andes.kernel.subscription.AndesSubscription;
@@ -33,6 +28,12 @@ import org.wso2.andes.server.cluster.NodeHeartBeatData;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 import org.wso2.andes.server.cluster.coordination.rdbms.MembershipEvent;
 import org.wso2.andes.store.HealthAwareStore;
+
+import java.net.InetSocketAddress;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * AndesContextStore is an abstraction of underlying data base to store information related to
@@ -405,10 +406,9 @@ public interface AndesContextStore extends HealthAwareStore {
      * Update Node heartbeat value to current time
      *
      * @param nodeId      local node ID
-     * @param nodeAddress Hazelcast bind address of the node
      * @throws AndesException when an error is detected while calling the store (mostly due to a DB error)
      */
-    void createNodeHeartbeatEntry(String nodeId, InetSocketAddress nodeAddress) throws AndesException;
+    void createNodeHeartbeatEntry(String nodeId) throws AndesException;
 
     /**
      * Get node heart beat status for all existing nodes
