@@ -46,11 +46,6 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
     private final CoordinationStrategy coordinationStrategy;
 
     /**
-     * Hazelcast instance used to communicate with the hazelcast cluster
-     */
-    private HazelcastInstance hazelcastInstance;
-
-    /**
      * Unique id of local member used for message ID generation
      */
     private int uniqueIdOfLocalMember;
@@ -61,16 +56,8 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
     private ClusterManager manager;
 
     
-    /*
-    * Maximum number of attempts to read node id of a cluster member
-    */
-    public static final int MAX_NODE_ID_READ_ATTEMPTS = 4;
-    
     public CoordinationConfigurableClusterAgent(HazelcastInstance hazelcastInstance) {
-
-        this.hazelcastInstance = hazelcastInstance;
-
-        coordinationStrategy = new RDBMSCoordinationStrategy();
+        this();
     }
 
     public CoordinationConfigurableClusterAgent() {
@@ -178,4 +165,10 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
         return coordinationStrategy.getAllNodeIdentifiers();
     }
 
+    /**
+     * Callback method for coordinator state lost event
+     */
+    public void coordinatorStateLost() {
+        manager.coordinatorStateLost();
+    }
 }

@@ -126,10 +126,10 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
      * Default constructor
      */
     RDBMSCoordinationStrategy() {
-        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("RDBMSCoordinationStrategy-%d")
-                                                                     .build();
-        threadExecutor = Executors.newSingleThreadExecutor(namedThreadFactory);
-        scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+        threadExecutor = Executors.newSingleThreadExecutor(createThreadFactory("RDBMSCoordinationStrategy-%d"));
+
+        scheduledExecutorService = Executors.newScheduledThreadPool(2,
+                                                                    createThreadFactory("RDBMSCoordinationScheduledTask-%d"));
 
         heartBeatInterval = AndesConfigurationManager
                 .readValue(AndesConfiguration.RDBMS_BASED_COORDINATION_HEARTBEAT_INTERVAL);
@@ -146,6 +146,18 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
                     .RDBMS_BASED_COORDINATION_HEARTBEAT_INTERVAL + " * 2 should be greater than " +
                     AndesConfiguration.RDBMS_BASED_COORDINATOR_ENTRY_CREATION_WAIT_TIME);
         }
+    }
+
+    /**
+     * Create a thread factory with the given name.
+     *
+     * @param nameFormat thread name format
+     * @return thread factory with the given name format
+     */
+    private ThreadFactory createThreadFactory(String nameFormat) {
+        return new ThreadFactoryBuilder()
+                .setNameFormat(nameFormat)
+                .build();
     }
 
     /*
@@ -178,6 +190,19 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
     @Override
     public void coordinatorChanged(String coordinator) {
         // Do nothing
+    }
+
+    /**
+     * Notify coordinator lost event asynchronously
+     */
+    private void notifyCoordinatorStateLostEvent() {
+        scheduledExecutorService.submit(() -> {
+            try {
+                configurableClusterAgent.coordinatorStateLost();
+            } catch (Throwable e) {
+                logger.error("Error while notifying coordinator state lost", e);
+            }
+        });
     }
 
     /*
@@ -361,6 +386,9 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
                         break;
                     case COORDINATOR:
                         currentNodeState = performCoordinatorTask();
+                        if (currentNodeState != NodeState.COORDINATOR) {
+                            notifyCoordinatorStateLostEvent();
+                        }
                         break;
                     case ELECTION:
                         currentNodeState = performElectionTask();
@@ -574,11 +602,8 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
          */
         private void resetScheduleStateExpirationTask() {
             cancelStateExpirationTask();
-            scheduledFuture = scheduledExecutorService.schedule(new Runnable() {
-                @Override
-                public void run() {
-                    currentNodeState = NodeState.ELECTION;
-                }
+            scheduledFuture = scheduledExecutorService.schedule(() -> {
+                currentNodeState = NodeState.ELECTION;
             }, heartbeatMaxAge, TimeUnit.MILLISECONDS);
         }
     }

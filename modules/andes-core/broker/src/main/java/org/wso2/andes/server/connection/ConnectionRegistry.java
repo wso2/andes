@@ -38,22 +38,28 @@ public class ConnectionRegistry implements IConnectionRegistry, Closeable
         // None required
     }
 
-    /** Close all of the currently open connections. */
-    public void close()
-    {
+    /**
+     * Close all existing client connections.
+     */
+    public void close() {
+        close("Broker is shutting down");
+    }
+
+    public void close(String message) {
         while (!_registry.isEmpty())
         {
             AMQConnectionModel connection = _registry.get(0);
-            closeConnection(connection, AMQConstant.INTERNAL_ERROR, "Broker is shutting down");
+            closeConnection(connection, AMQConstant.INTERNAL_ERROR, message);
 
             if (!_registry.isEmpty() && connection.equals(_registry.get(0))) {
                 _logger.error("Forcefully deregister connection since close failed."
-                        + " Connection ID: " + connection.getConnectionId());
+                                      + " Connection ID: " + connection.getConnectionId());
                 deregisterConnection(connection);
             }
         }
+
     }
-    
+
     public void closeConnection(AMQConnectionModel connection, AMQConstant cause, String message)
     {
         try

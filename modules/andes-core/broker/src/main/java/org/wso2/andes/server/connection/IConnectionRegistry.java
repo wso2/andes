@@ -17,7 +17,6 @@
  */
 package org.wso2.andes.server.connection;
 
-import org.wso2.andes.AMQException;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.protocol.AMQConnectionModel;
 
@@ -27,7 +26,7 @@ public interface IConnectionRegistry
 {
     public void initialise();
 
-    public void close() throws AMQException;
+    public void close();
     
     public void closeConnection(AMQConnectionModel connection, AMQConstant cause, String message);
     
