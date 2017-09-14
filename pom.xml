@@ -402,6 +402,11 @@
                 <artifactId>org.wso2.carbon.core</artifactId>
                 <version>${carbon.kernel.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.wso2.carbon.utils</groupId>
+                <artifactId>org.wso2.carbon.utils</artifactId>
+                <version>${carbon.utils.version}</version>
+            </dependency>
             <!--Carbon Metrics-->
             <dependency>
                 <groupId>org.wso2.carbon.metrics</groupId>
@@ -582,7 +587,8 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <carbon.kernel.version>5.2.0-m3</carbon.kernel.version>
+        <carbon.kernel.version>5.2.0-beta</carbon.kernel.version>
+        <carbon.utils.version>2.0.2</carbon.utils.version>
         <project.scm.id>wso2-scm-server</project.scm.id>
         <!--This fixed version value is used to version intermediate ant artifacts which are installed only
         to local maven repo by maven-install-plugin. Those artifacts will be dependencies of the orbit bundle
