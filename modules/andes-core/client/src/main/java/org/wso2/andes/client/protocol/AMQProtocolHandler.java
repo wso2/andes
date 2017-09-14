@@ -737,6 +737,7 @@ public class AMQProtocolHandler implements ProtocolEngine
             catch (FailoverException e)
             {
                 _logger.debug("FailoverException interrupted connection close, ignoring as connection   close anyway.");
+                return;
             } finally {
                 if(null != _network){
                     _network.close();
