@@ -99,4 +99,9 @@ public class InboundChannelFlowEvent implements AndesInboundStateEvent {
         return eventType.toString();
     }
 
+    @Override
+    public boolean isActionableWhenPassive() {
+        return false;
+    }
+
 }

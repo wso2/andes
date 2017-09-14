@@ -182,4 +182,9 @@ public class InboundSubscriptionSyncEvent implements AndesInboundStateEvent {
     public String eventInfo() {
         return eventType.toString();
     }
+
+    @Override
+    public boolean isActionableWhenPassive() {
+        return true;
+    }
 }

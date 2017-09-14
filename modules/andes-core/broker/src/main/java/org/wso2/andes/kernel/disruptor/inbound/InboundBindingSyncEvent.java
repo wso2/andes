@@ -105,6 +105,11 @@ public class InboundBindingSyncEvent implements AndesInboundStateEvent {
         return eventType.toString();
     }
 
+    @Override
+    public boolean isActionableWhenPassive() {
+        return true;
+    }
+
     /**
      * Update event to be an add binding event
      *

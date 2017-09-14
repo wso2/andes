@@ -104,7 +104,8 @@ public class QpidDistributedTransaction implements ServerTransaction {
             }
             distributedTransaction.dequeue(ackList);
         } catch (AndesException e) {
-            throw new AMQException("Error occurred while creating a AndesAckEvent ", e);
+            failTransaction("Error occurred while creating a message ack event");
+            throw new AMQException("Error occurred while creating a AndesAckEvent", e);
         }
     }
 

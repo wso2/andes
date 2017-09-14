@@ -19,6 +19,14 @@
 package org.wso2.andes.kernel.disruptor.inbound;
 
 import com.google.common.util.concurrent.SettableFuture;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesChannel;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessage;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.MessagingEngine;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -27,13 +35,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.AndesChannel;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessage;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.MessagingEngine;
 
 /**
  * This is the Andes transaction event related class. This event object handles
@@ -223,7 +224,7 @@ public class InboundTransactionEvent implements AndesInboundStateEvent {
      * This is a asynchronous call
      * @param message AndesMessage
      */
-    public void preProcessEnqueue(AndesMessage message) {
+    public void preProcessEnqueue(AndesMessage message) throws AndesException {
         currentBatchSize = currentBatchSize + message.getMetadata().getMessageContentLength();
 
         if (currentBatchSize > maxBatchSize) {
@@ -284,6 +285,11 @@ public class InboundTransactionEvent implements AndesInboundStateEvent {
     @Override
     public String eventInfo() {
         return "Event type " + eventType;
+    }
+
+    @Override
+    public boolean isActionableWhenPassive() {
+        return false;
     }
 
     /**

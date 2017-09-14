@@ -15,15 +15,6 @@
 
 package org.wso2.andes.kernel.dtx;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ScheduledFuture;
-import javax.transaction.xa.Xid;
 import org.apache.log4j.Logger;
 import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesChannel;
@@ -33,6 +24,16 @@ import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
 import org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer;
 import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
 import org.wso2.andes.tools.utils.MessageTracer;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ScheduledFuture;
+import javax.transaction.xa.Xid;
 
 /**
  * Class which holds information relates to a specific {@link Xid} within the broker
@@ -420,7 +421,7 @@ public class DtxBranch {
      * Store enqueue and dequeue records in the DtxStore
      * @param callback callback that is called after completing the commit task
      */
-    public void prepare(DisruptorEventCallback callback) {
+    public void prepare(DisruptorEventCallback callback) throws AndesException {
         updateSlotCommand = new DtxPrepareCommand(callback);
         traceMessageList(enqueueList, MessageTracer.PUBLISHING_DTX_PREPARE_ENQUEUE_RECORDS_TO_DISRUPTOR);
         traceAckData(dequeueList, MessageTracer.PUBLISHING_DTX_PREPARE_DEQUEUE_RECORDS_TO_DISRUPTOR);

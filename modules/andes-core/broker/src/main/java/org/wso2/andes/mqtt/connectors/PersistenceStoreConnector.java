@@ -141,7 +141,11 @@ public class PersistenceStoreConnector implements MQTTConnector {
             // Publish to Andes core
             AndesMessage andesMessage = new MQTTMessage(messageHeader);
             andesMessage.addMessagePart(messagePart);
-            Andes.getInstance().messageReceived(andesMessage, publisher.getChannel(), messageContext.getPubAckHandler());
+            try {
+                Andes.getInstance().messageReceived(andesMessage, publisher.getChannel(), messageContext.getPubAckHandler());
+            } catch (AndesException e) {
+                throw new MQTTException("Error while publishing messages", e);
+            }
             if (log.isDebugEnabled()) {
                 log.debug(" Message added with message id " + messageContext.getMqttLocalMessageID());
             }

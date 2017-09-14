@@ -480,7 +480,7 @@ public class AndesKernelBoot {
     /**
      * Start accepting and delivering messages
      */
-    public static void startMessaging() {
+    public static void startMessaging() throws AndesException {
         Andes.getInstance().startMessageDelivery();
     }
 
@@ -488,7 +488,7 @@ public class AndesKernelBoot {
      * Stop worker threads, close transports and stop message delivery
      *
      */
-    private static void stopMessaging() {
+    private static void stopMessaging() throws AndesException {
         //this will un-assign all slots currently owned
         Andes.getInstance().stopMessageDelivery();
     }

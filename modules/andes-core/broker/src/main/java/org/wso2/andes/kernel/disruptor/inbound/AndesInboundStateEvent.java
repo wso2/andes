@@ -38,4 +38,11 @@ public interface AndesInboundStateEvent {
      */
     String eventInfo();
 
+    /**
+     * Used to check if the event should process while the node is in passive mode.
+     *
+     * @return true if the event should be processed, false otherwise
+     */
+    boolean isActionableWhenPassive();
+
 }
