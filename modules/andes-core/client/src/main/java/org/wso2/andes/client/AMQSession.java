@@ -2354,8 +2354,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
      *
      * @throws AMQException
      */
-    void resubscribe() throws AMQException
-    {
+    void resubscribe() throws AMQException, FailoverException {
         if (_dirty)
         {
             _failedOverDirty = true;
@@ -2964,7 +2963,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
      *
      * @throws AMQException
      */
-    private void registerConsumer(C consumer, boolean nowait) throws AMQException // , FailoverException
+    private void registerConsumer(C consumer, boolean nowait) throws AMQException, FailoverException
     {
         AMQDestination amqd = consumer.getDestination();
 
@@ -3021,14 +3020,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
             log.debug("Immediately prefetching existing messages to new consumer.");
         }
 
-        try
-        {
-            consumeFromQueue(consumer, queueName, protocolHandler, nowait, consumer._messageSelector);
-        }
-        catch (FailoverException e)
-        {
-            throw new AMQException(null, "Fail-over exception interrupted basic consume.", e);
-        }
+        consumeFromQueue(consumer, queueName, protocolHandler, nowait, consumer._messageSelector);
     }
 
     public abstract void handleAddressBasedDestination(AMQDestination dest, 
@@ -3092,8 +3084,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
         }
     }
 
-    private void resubscribeConsumers() throws AMQException
-    {
+    private void resubscribeConsumers() throws AMQException, FailoverException {
         ArrayList<C> consumers = new ArrayList<C>(_consumers.values());
         _consumers.clear();
 
