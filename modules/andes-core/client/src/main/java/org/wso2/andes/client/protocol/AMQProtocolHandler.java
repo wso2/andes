@@ -133,6 +133,11 @@ public class AMQProtocolHandler implements ProtocolEngine
     private static final long MAXIMUM_STATE_WAIT_TIME = Long.parseLong(System.getProperty("amqj.MaximumStateWait", "30000"));
 
     /**
+     * Indicate if the pool is in a usable state
+     */
+    private boolean poolAcquired;
+
+    /**
      * The connection that this protocol handler is associated with. There is a 1-1 mapping between connection
      * instances and protocol handler instances.
      */
@@ -215,6 +220,7 @@ public class AMQProtocolHandler implements ProtocolEngine
         _readJob = new Job(_poolReference, Job.MAX_JOB_EVENTS, true);
         _writeJob = new Job(_poolReference, Job.MAX_JOB_EVENTS, false);
         _poolReference.acquireExecutorService();
+        poolAcquired = true;
         _failoverHandler = new FailoverHandler(this);
         isFailoverStart = new AtomicBoolean(false);
     }
@@ -743,6 +749,7 @@ public class AMQProtocolHandler implements ProtocolEngine
         AccessController.doPrivileged(new PrivilegedAction<Void>() {
             public Void run() {
                 _poolReference.releaseExecutorService();
+                poolAcquired = false;
                 return null; // nothing to return
             }
         });
@@ -895,5 +902,15 @@ public class AMQProtocolHandler implements ProtocolEngine
      */
     public AtomicBoolean getIsFailoverStart() {
         return isFailoverStart;
+    }
+
+    /**
+     * Initialize the Job pool if it was released before failover
+     */
+    public void resetJobPoolAfterFailover() {
+        if (!poolAcquired) {
+            _poolReference.acquireExecutorService();
+            poolAcquired = true;
+        }
     }
 }

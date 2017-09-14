@@ -195,6 +195,7 @@ public class FailoverHandler implements Runnable
             }
             else
             {
+                _amqProtocolHandler.resetJobPoolAfterFailover();
                 // Set the new Protocol Session in the StateManager.
                 existingStateManager.setProtocolSession(_amqProtocolHandler.getProtocolSession());
 
