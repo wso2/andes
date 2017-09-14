@@ -2707,7 +2707,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
             sendConsume(consumer, queueName, protocolHandler, nowait, messageSelector, tagId);
             consumer.readyToConsume();
         }
-        catch (AMQException e)
+        catch (AMQException | FailoverException e)
         {
             // clean-up the map in the event of an error
             _consumers.remove(tagId);
