@@ -639,14 +639,17 @@ public class AMQProtocolHandler implements ProtocolEngine
                     Exception e = _stateManager.getLastException();
                     if (e != null)
                     {
-                        if (e instanceof AMQException)
-                        {
+                        if (e instanceof AMQConnectionClosedException) {
+                            // We can consider AMQConnectionClosedException as a failover exception since the
+                            // failover is triggered when we receive AMQConnectionClosedException.
+                            FailoverException failoverException = new FailoverException("Connection closed while writing");
+                            failoverException.initCause(e);
+                            throw failoverException;
+                        } else if (e instanceof AMQException) {
                             AMQException amqe = (AMQException) e;
 
                             throw amqe.cloneForCurrentThread();
-                        }
-                        else
-                        {
+                        } else {
                             throw new AMQException(AMQConstant.INTERNAL_ERROR, e.getMessage(), e);
                         }
                     }
