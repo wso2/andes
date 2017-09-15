@@ -279,6 +279,10 @@ public class AndesKernelBoot {
         Andes.getInstance().initialise(messagingEngine, inboundEventManager, contextInformationManager,
                                        subscriptionManager, dtxRegistry);
 
+        if (!AndesContext.getInstance().isClusteringEnabled()) {
+            Andes.getInstance().makeActive();
+        }
+
         //Initialize cluster notification listener (null if standalone)
         if(null != clusterNotificationListenerManager) {
             clusterNotificationListenerManager.initializeListener(inboundEventManager, subscriptionManager,
