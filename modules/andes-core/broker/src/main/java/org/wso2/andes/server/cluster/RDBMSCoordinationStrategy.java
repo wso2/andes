@@ -604,6 +604,7 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
             cancelStateExpirationTask();
             scheduledFuture = scheduledExecutorService.schedule(() -> {
                 currentNodeState = NodeState.ELECTION;
+                notifyCoordinatorStateLostEvent();
             }, heartbeatMaxAge, TimeUnit.MILLISECONDS);
         }
     }

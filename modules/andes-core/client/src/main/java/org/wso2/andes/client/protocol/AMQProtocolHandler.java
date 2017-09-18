@@ -133,7 +133,8 @@ public class AMQProtocolHandler implements ProtocolEngine
     private static final long MAXIMUM_STATE_WAIT_TIME = Long.parseLong(System.getProperty("amqj.MaximumStateWait", "30000"));
 
     /**
-     * Indicate if the pool is in a usable state
+     * Indicate if the pool has not been released. A released pool can be shutdown. Therefore we have to acquire it
+     * before assigning job to thread pool.
      */
     private boolean poolAcquired;
 
