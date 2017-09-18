@@ -78,8 +78,8 @@ public class PlainSaslServer implements SaslServer
             Callback[] callbacks = new Callback[]{nameCb, passwordCb, authzCb};
             _cbh.handle(callbacks);
 
-            // TODO C5 Authentication and autherization needs to be reworked.
-            if (passwordCb.isAuthenticated() || true)
+            // TODO C5  authorization needs to be reworked.
+            if (passwordCb.isAuthenticated())
             {
                 _complete = true;
             }
