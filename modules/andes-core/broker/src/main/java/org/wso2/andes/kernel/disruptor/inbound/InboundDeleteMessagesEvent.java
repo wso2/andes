@@ -125,6 +125,11 @@ public class InboundDeleteMessagesEvent implements AndesInboundStateEvent {
         return eventType.toString();
     }
 
+    @Override
+    public boolean isActionableWhenPassive() {
+        return true;
+    }
+
     /**
      * Prepare to update Andes state with a delete messages event
      * @param messagingEngine MessagingEngine to be used for this event

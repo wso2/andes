@@ -16,6 +16,8 @@
 package org.wso2.andes.kernel.dtx;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
@@ -40,6 +42,11 @@ import javax.transaction.xa.Xid;
  * Acts as a distributed transaction related interface for the transport layer.
  */
 public class DistributedTransaction {
+
+    /**
+     * Class logger
+     */
+    private static final Log LOGGER = LogFactory.getLog(DistributedTransaction.class);
 
     /**
      * Max amount of memory allowed to be used for keeping message content per transaction
@@ -253,7 +260,11 @@ public class DistributedTransaction {
                 }
             }
         } else {
-            QpidAndesBridge.messageReceived(andesMessage, andesChannel);
+            try {
+                QpidAndesBridge.messageReceived(andesMessage, andesChannel);
+            } catch (AndesException e) {
+                LOGGER.error("Non-transactional message publishing failed", e);
+            }
         }
     }
 

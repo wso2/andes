@@ -448,6 +448,10 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
                 AMQConnectionException ce = evt.getMethod().getConnectionException(AMQConstant.ACCESS_REFUSED, e.getMessage());
                 _logger.info(e.getMessage() + " whilst processing:" + methodBody);
                 closeConnection(channelId, ce, false);
+            } catch (AMQException e) {
+                AMQConnectionException ce = evt.getMethod().getConnectionException(AMQConstant.INTERNAL_ERROR, e.getMessage());
+                _logger.info(e.getMessage() + " whilst processing:" + methodBody);
+                closeConnection(channelId, ce, false);
             }
         }
         catch (Exception e)

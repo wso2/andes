@@ -18,10 +18,6 @@
 
 package org.wso2.andes.kernel;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import javax.management.JMException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -40,6 +36,7 @@ import org.wso2.andes.server.cluster.ClusterManagementInformationMBean;
 import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.cluster.coordination.ClusterNotificationListenerManager;
 import org.wso2.andes.server.cluster.coordination.CoordinationComponentFactory;
+import org.wso2.andes.server.connection.IConnectionRegistry;
 import org.wso2.andes.server.information.management.MessageStatusInformationMBean;
 import org.wso2.andes.server.information.management.SubscriptionManagementInformationMBean;
 import org.wso2.andes.server.virtualhost.VirtualHost;
@@ -47,6 +44,11 @@ import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
 import org.wso2.andes.store.FailureObservingAndesContextStore;
 import org.wso2.andes.store.FailureObservingMessageStore;
 import org.wso2.andes.store.FailureObservingStoreManager;
+
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import javax.management.JMException;
 
 /**
  * Andes kernel startup/shutdown related work is done through this class.
@@ -96,6 +98,11 @@ public class AndesKernelBoot {
     private static ClusterNotificationListenerManager clusterNotificationListenerManager;
 
     /**
+     * Used to close connections when broker becomes passive.
+     */
+    private static IConnectionRegistry amqpConnectionRegistry;
+
+    /**
      * This will boot up all the components in Andes kernel and bring the server to working state
      */
     public static void initializeComponents() throws AndesException {
@@ -118,10 +125,22 @@ public class AndesKernelBoot {
      * @param defaultVirtualHost virtual host to set
      */
     public static void initVirtualHostConfigSynchronizer(VirtualHost defaultVirtualHost) {
+        amqpConnectionRegistry = defaultVirtualHost.getConnectionRegistry();
         // initialize amqp constructs syncing into Qpid
         VirtualHostConfigSynchronizer _VirtualHostConfigSynchronizer = new VirtualHostConfigSynchronizer
                 (defaultVirtualHost);
         ClusterResourceHolder.getInstance().setVirtualHostConfigSynchronizer(_VirtualHostConfigSynchronizer);
+    }
+
+    /**
+     * Forcefully close all existing AMQP connections
+     */
+    public static void closeAllConnections() {
+        if (amqpConnectionRegistry != null) {
+            amqpConnectionRegistry.close();
+        } else {
+            log.warn("Cannot close existing connections since the Connection registry is not available");
+        }
     }
 
     /**
@@ -259,6 +278,10 @@ public class AndesKernelBoot {
         //Initialize Andes API (used by all inbound transports)
         Andes.getInstance().initialise(messagingEngine, inboundEventManager, contextInformationManager,
                                        subscriptionManager, dtxRegistry);
+
+        if (!AndesContext.getInstance().isClusteringEnabled()) {
+            Andes.getInstance().makeActive();
+        }
 
         //Initialize cluster notification listener (null if standalone)
         if(null != clusterNotificationListenerManager) {
@@ -461,7 +484,7 @@ public class AndesKernelBoot {
     /**
      * Start accepting and delivering messages
      */
-    public static void startMessaging() {
+    public static void startMessaging() throws AndesException {
         Andes.getInstance().startMessageDelivery();
     }
 
@@ -469,7 +492,7 @@ public class AndesKernelBoot {
      * Stop worker threads, close transports and stop message delivery
      *
      */
-    private static void stopMessaging() {
+    private static void stopMessaging() throws AndesException {
         //this will un-assign all slots currently owned
         Andes.getInstance().stopMessageDelivery();
     }

@@ -22,9 +22,11 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesKernelBoot;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.store.FailureObservingStoreManager;
@@ -235,6 +237,7 @@ public class ClusterManager implements StoreHealthListener{
      * Perform coordinator initialization tasks, when this node is elected as the new coordinator
      */
     public void localNodeElectedAsCoordinator() {
+        Andes.getInstance().makeActive();
     }
 
     /**
@@ -262,5 +265,15 @@ public class ClusterManager implements StoreHealthListener{
     public void storeOperational(HealthAwareStore store) {
         storeOperational = true;
         log.info("Store became operational.");
+    }
+
+    /**
+     * This method contains the tasks to be done when node become passive
+     */
+    public void coordinatorStateLost() {
+        log.info("Start closing all connections since the active state is lost");
+        Andes.getInstance().makePassive();
+        AndesKernelBoot.closeAllConnections();
+        log.info("Finished closing all client connections");
     }
 }

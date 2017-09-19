@@ -749,7 +749,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * another node. Therefore it will not try to coordinate with other nodes (possibly non-existent) to
      * provide HA or clustering.
      */
-    DEPLOYMENT_MODE("deployment/mode","default", String.class);
+    DEPLOYMENT_MODE("deployment/mode","standalone", String.class);
 
     /**
      * Meta data about configuration.

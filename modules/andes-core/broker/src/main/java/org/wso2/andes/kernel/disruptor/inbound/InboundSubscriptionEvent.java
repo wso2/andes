@@ -210,4 +210,16 @@ public class InboundSubscriptionEvent implements AndesInboundStateEvent {
     public String eventInfo() {
         return eventType.toString();
     }
+
+    @Override
+    public boolean isActionableWhenPassive() {
+        if (eventType == EventType.CLOSE_SUBSCRIPTION_EVENT) {
+            return true;
+        } else if (eventType == EventType.OPEN_SUBSCRIPTION_EVENT) {
+            return false;
+        } else {
+            log.warn("Unknown event type used");
+            return false;
+        }
+    }
 }

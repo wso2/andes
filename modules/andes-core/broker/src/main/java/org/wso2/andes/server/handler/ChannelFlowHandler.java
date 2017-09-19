@@ -24,6 +24,7 @@ import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.framing.AMQMethodBody;
 import org.wso2.andes.framing.ChannelFlowBody;
 import org.wso2.andes.framing.MethodRegistry;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
@@ -58,29 +59,35 @@ public class ChannelFlowHandler implements StateAwareMethodListener<ChannelFlowB
 
         channel.setSuspended(!body.getActive());
 
-        QpidAndesBridge.notifyChannelFlow(channel.getId(), body.getActive(), new DisruptorEventCallback() {
-            @Override
-            public void execute() {
-                MethodRegistry methodRegistry = session.getMethodRegistry();
-                AMQMethodBody responseBody = methodRegistry.createChannelFlowOkBody(body.getActive());
-                session.writeFrame(responseBody.generateFrame(channelId));
-            }
-
-            @Override
-            public void onException(Exception exception) {
-                logger.error("Exception occurred while processing channel flow: " + body.getActive(),
-                             exception);
-                AMQChannelException channelException = body.getChannelException(AMQConstant.INTERNAL_ERROR,
-                                                                                exception.getMessage());
-                session.writeFrame(channelException.getCloseFrame(channelId));
-                try {
-                    session.closeChannel(channelId);
-                } catch (AMQException e) {
-                    logger.error("Couldn't close channel (channel id ) " + channelId, e);
+        try {
+            QpidAndesBridge.notifyChannelFlow(channel.getId(), body.getActive(), new DisruptorEventCallback() {
+                @Override
+                public void execute() {
+                    MethodRegistry methodRegistry = session.getMethodRegistry();
+                    AMQMethodBody responseBody = methodRegistry.createChannelFlowOkBody(body.getActive());
+                    session.writeFrame(responseBody.generateFrame(channelId));
                 }
 
-            }
-        });
+                @Override
+                public void onException(Exception exception) {
+                    logger.error("Exception occurred while processing channel flow: " + body.getActive(),
+                                 exception);
+                    AMQChannelException channelException = body.getChannelException(AMQConstant.INTERNAL_ERROR,
+                                                                                    exception.getMessage());
+                    session.writeFrame(channelException.getCloseFrame(channelId));
+                    try {
+                        session.closeChannel(channelId);
+                    } catch (AMQException e) {
+                        logger.error("Couldn't close channel (channel id ) " + channelId, e);
+                    }
+
+                }
+            });
+        } catch (AndesException e) {
+            throw new AMQException(AMQConstant.INTERNAL_ERROR,
+                                   "Error occurred while handling flow command.", e);
+        }
+
         if (logger.isDebugEnabled()) {
             logger.debug(" Channel flow: " + body.getActive() + " set for channel: " + channel.getId());
         }

@@ -182,6 +182,11 @@ public class InboundBindingEvent implements AndesInboundStateEvent {
         return eventType.toString();
     }
 
+    @Override
+    public boolean isActionableWhenPassive() {
+        return false;
+    }
+
     /**
      * Update event to be an add binding event
      *

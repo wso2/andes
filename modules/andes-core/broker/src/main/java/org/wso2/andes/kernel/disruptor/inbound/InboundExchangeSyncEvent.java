@@ -93,6 +93,10 @@ public class InboundExchangeSyncEvent implements AndesInboundStateEvent {
         return this.eventType.toString();
     }
 
+    @Override
+    public boolean isActionableWhenPassive() {
+        return true;
+    }
 
     /**
      * Update the event to a create exchange sync event

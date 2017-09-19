@@ -19,7 +19,6 @@
 package org.wso2.andes.kernel.disruptor.inbound;
 
 import com.google.common.util.concurrent.SettableFuture;
-import java.util.concurrent.ExecutionException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
@@ -30,6 +29,8 @@ import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.dtx.DtxRegistry;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.registry.ApplicationRegistry;
+
+import java.util.concurrent.ExecutionException;
 
 /**
  * Handles events related to basic kernel operations.
@@ -104,6 +105,11 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
     @Override
     public String eventInfo() {
         return eventType.toString();
+    }
+
+    @Override
+    public boolean isActionableWhenPassive() {
+        return true;
     }
 
     /**

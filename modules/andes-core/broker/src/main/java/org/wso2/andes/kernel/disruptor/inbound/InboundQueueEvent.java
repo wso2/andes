@@ -159,6 +159,11 @@ public class InboundQueueEvent implements AndesInboundStateEvent {
         return eventType.toString();
     }
 
+    @Override
+    public boolean isActionableWhenPassive() {
+        return true;
+    }
+
     private void handleIsQueueDeletableEvent() {
         boolean queueDeletable = false;
         try {

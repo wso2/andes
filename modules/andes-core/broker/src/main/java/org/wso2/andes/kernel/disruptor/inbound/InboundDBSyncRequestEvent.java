@@ -84,6 +84,11 @@ public class InboundDBSyncRequestEvent implements AndesInboundStateEvent {
         return EVENT_TYPE;
     }
 
+    @Override
+    public boolean isActionableWhenPassive() {
+        return true;
+    }
+
     /**
      * Prepare event for publishing
      *

@@ -139,6 +139,11 @@ public class InboundQueueSyncEvent implements AndesInboundStateEvent {
         return eventType.toString();
     }
 
+    @Override
+    public boolean isActionableWhenPassive() {
+        return true;
+    }
+
     private void handlePurgeEvent() {
         int count = 0;
         try {

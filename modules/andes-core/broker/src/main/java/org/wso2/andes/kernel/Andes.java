@@ -20,18 +20,6 @@ package org.wso2.andes.kernel;
 
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import javax.transaction.xa.Xid;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -58,6 +46,18 @@ import org.wso2.andes.kernel.router.AndesMessageRouter;
 import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.tools.utils.MessageTracer;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import javax.transaction.xa.Xid;
 
 import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_PURGED_COUNT_TIMEOUT;
 
@@ -194,7 +194,8 @@ public class Andes {
      * @param andesChannel  AndesChannel
      * @param pubAckHandler PubAckHandler
      */
-    public void messageReceived(AndesMessage message, AndesChannel andesChannel, PubAckHandler pubAckHandler) {
+    public void messageReceived(AndesMessage message, AndesChannel andesChannel, PubAckHandler pubAckHandler)
+            throws AndesException {
 
         //Tracing message
         MessageTracer.trace(message, MessageTracer.REACHED_ANDES_CORE);
@@ -278,7 +279,7 @@ public class Andes {
      * Notify client connection is closed from protocol level.
      * State related to connection will be updated within Andes.
      */
-    void startMessageDelivery() {
+    void startMessageDelivery() throws AndesException {
         InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
         kernelOpsEvent.prepareForStartMessageDelivery(messagingEngine);
         inboundEventManager.publishStateEvent(kernelOpsEvent);
@@ -287,7 +288,7 @@ public class Andes {
     /**
      * Stop message delivery.
      */
-    void stopMessageDelivery() {
+    void stopMessageDelivery() throws AndesException {
         InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
         kernelOpsEvent.prepareForStopMessageDelivery(messagingEngine);
         inboundEventManager.publishStateEvent(kernelOpsEvent);
@@ -307,7 +308,7 @@ public class Andes {
      * Start message expiration task. This will periodically delete any expired messages
      * NOTE: This is package specific. We don't need access outside from kernel for this task
      */
-    void startMessageExpirationWorker() {
+    void startMessageExpirationWorker() throws AndesException {
         InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
         kernelOpsEvent.prepareForStartMessageExpirationWorker(messagingEngine);
         inboundEventManager.publishStateEvent(kernelOpsEvent);
@@ -317,7 +318,7 @@ public class Andes {
      * Stop message expiration task.
      * NOTE: This is package specific. We don't need outside kernel access for this task
      */
-    void stopMessageExpirationWorker() {
+    void stopMessageExpirationWorker() throws AndesException {
         InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
         kernelOpsEvent.prepareForStopMessageExpirationWorker(messagingEngine);
         inboundEventManager.publishStateEvent(kernelOpsEvent);
@@ -799,7 +800,8 @@ public class Andes {
      *                            resumed and vis versa
      * @param channelFlowCallback the call back to be registered to send the response
      */
-    public void notifySubscriptionFlow(UUID channelId, boolean active, DisruptorEventCallback channelFlowCallback) {
+    public void notifySubscriptionFlow(UUID channelId, boolean active, DisruptorEventCallback channelFlowCallback)
+            throws AndesException {
 
         InboundChannelFlowEvent inboundChannelFlowEvent = new InboundChannelFlowEvent(channelId, active,
                 channelFlowCallback);
@@ -917,5 +919,18 @@ public class Andes {
         return queueNameList;
     }
 
+    /**
+     * Put the event manager in passive mode which will make the event manager reject client related events.
+     */
+    public void makePassive() {
+        inboundEventManager.makePassive();
+    }
+
+    /**
+     * Activate the event manager so that it accepts all client related events.
+     */
+    public void makeActive() {
+        inboundEventManager.makeActive();
+    }
 }
 

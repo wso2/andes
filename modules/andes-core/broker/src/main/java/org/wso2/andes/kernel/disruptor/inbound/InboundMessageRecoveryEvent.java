@@ -81,16 +81,21 @@ public class InboundMessageRecoveryEvent implements AndesInboundStateEvent {
         // to recover any messages.
         if (null == subscription) {
             log.warn("Cannot handle recover. No subscriptions found for channel " + channelID);
-            return;
+        } else {
+            subscription.recoverMessages();
         }
 
-        subscription.recoverMessages();
         recoverOKCallback.execute();
     }
 
     @Override
     public String eventInfo() {
         return eventType.toString();
+    }
+
+    @Override
+    public boolean isActionableWhenPassive() {
+        return false;
     }
 
 }

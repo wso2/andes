@@ -110,6 +110,11 @@ public class InboundExchangeEvent implements AndesInboundStateEvent {
         return eventType.toString();
     }
 
+    @Override
+    public boolean isActionableWhenPassive() {
+        return true;
+    }
+
     /**
      * Update the event to a create exchange event
      * @param contextInformationManager AndesContextInformationManager

@@ -159,8 +159,9 @@ public class QpidAndesBridge {
      *
      * @param andesMessage Message coming in
      * @param andesChannel AndesChannel
+     * @throws AndesException if error occurred while publishing the event
      */
-    public static void messageReceived(AndesMessage andesMessage, AndesChannel andesChannel) {
+    public static void messageReceived(AndesMessage andesMessage, AndesChannel andesChannel) throws AndesException {
         Andes.getInstance().messageReceived(andesMessage, andesChannel, pubAckHandler);
 
         //Following code is only a performance counter
@@ -651,7 +652,8 @@ public class QpidAndesBridge {
      *                            resumed and vis versa
      * @param channelFlowCallback the call back to be registered to send the response
      */
-    public static void notifyChannelFlow(UUID channelId, boolean active, DisruptorEventCallback channelFlowCallback) {
+    public static void notifyChannelFlow(UUID channelId, boolean active, DisruptorEventCallback channelFlowCallback)
+            throws AndesException {
         Andes.getInstance().notifySubscriptionFlow(channelId, active, channelFlowCallback);
     }
 }

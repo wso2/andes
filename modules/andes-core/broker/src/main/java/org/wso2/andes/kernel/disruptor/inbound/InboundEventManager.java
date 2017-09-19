@@ -22,16 +22,13 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesAckEvent;
 import org.wso2.andes.kernel.AndesChannel;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.DisablePubAckImpl;
 import org.wso2.andes.kernel.MessagingEngine;
@@ -42,6 +39,12 @@ import org.wso2.andes.kernel.disruptor.compression.LZ4CompressionHelper;
 import org.wso2.andes.kernel.disruptor.waitStrategy.SleepingBlockingWaitStrategy;
 import org.wso2.andes.kernel.dtx.DtxBranch;
 import org.wso2.andes.tools.utils.MessageTracer;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_ACKNOWLEDGEMENT_HANDLER_BATCH_SIZE;
 import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLER_COUNT;
@@ -73,6 +76,11 @@ public class InboundEventManager {
     private Disruptor<InboundEventContainer> disruptor;
     private final DisablePubAckImpl disablePubAck;
     private LZ4CompressionHelper lz4CompressionHelper;
+
+    /**
+     * Hold true if in active mode, false otherwise
+     */
+    private AtomicBoolean active = new AtomicBoolean();
 
     public InboundEventManager(MessagingEngine messagingEngine) {
 
@@ -179,7 +187,10 @@ public class InboundEventManager {
      * @param andesChannel AndesChannel
      * @param pubAckHandler PubAckHandler
      */
-    public void messageReceived(AndesMessage message, AndesChannel andesChannel, PubAckHandler pubAckHandler) {
+    public void messageReceived(AndesMessage message, AndesChannel andesChannel, PubAckHandler pubAckHandler)
+            throws AndesException {
+        checkIfActive();
+
         // Publishers claim events in sequence
         long sequence = ringBuffer.next();
         InboundEventContainer event = ringBuffer.get(sequence);
@@ -203,11 +214,22 @@ public class InboundEventManager {
     }
 
     /**
+     * Check if the event manager is in active mode anf throw an exception if not
+     * @throws AndesException if in passive mode
+     */
+    private void checkIfActive() throws AndesException {
+        if (!active.get()) {
+            throw new AndesException("Broker in passive mode");
+        }
+    }
+
+    /**
      * Acknowledgement received from clients for sent messages will be handled through this method
      *
      * @param ackData Acknowledgement information by protocol
      */
-    public void ackReceived(AndesAckData ackData) {
+    public void ackReceived(AndesAckData ackData) throws AndesException {
+        checkIfActive();
         //For metrics
         ackedMessageCount.getAndIncrement();
 
@@ -237,7 +259,11 @@ public class InboundEventManager {
      * Publish state change event to event Manager
      * @param stateEvent AndesInboundStateEvent
      */
-    public void publishStateEvent(AndesInboundStateEvent stateEvent) {
+    public void publishStateEvent(AndesInboundStateEvent stateEvent) throws AndesException {
+
+        if (!active.get() && !stateEvent.isActionableWhenPassive()) {
+            throw new AndesException("Broker in passive mode");
+        }
 
         // Publishers claim events in sequence
         long sequence = ringBuffer.next();
@@ -261,7 +287,9 @@ public class InboundEventManager {
      *
      * @param recoveryEvent event containing required information regarding the event
      */
-    public void publishMessageRecoveryEvent(InboundMessageRecoveryEvent recoveryEvent) {
+    public void publishMessageRecoveryEvent(InboundMessageRecoveryEvent recoveryEvent) throws AndesException {
+        checkIfActive();
+
         // Publishers claim events in sequence
         long sequence = ringBuffer.next();
         InboundEventContainer event = ringBuffer.get(sequence);
@@ -287,7 +315,9 @@ public class InboundEventManager {
      * @param channel {@link org.wso2.andes.kernel.AndesChannel} of the publisher
      */
     public void requestTransactionEnqueueEvent(AndesMessage message,
-                                               InboundTransactionEvent transactionEvent, AndesChannel channel) {
+                                               InboundTransactionEvent transactionEvent, AndesChannel channel)
+            throws AndesException {
+        checkIfActive();
         long sequence = ringBuffer.next();
         InboundEventContainer eventContainer = ringBuffer.get(sequence);
 
@@ -317,7 +347,8 @@ public class InboundEventManager {
      * @param transactionEvent {@link org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent}
      * @param channel {@link org.wso2.andes.kernel.AndesChannel}
      */
-    public void requestTransactionCommitEvent(InboundTransactionEvent transactionEvent, AndesChannel channel) {
+    public void requestTransactionCommitEvent(InboundTransactionEvent transactionEvent, AndesChannel channel)
+            throws AndesException {
         requestTransactionEvent(transactionEvent, TRANSACTION_COMMIT_EVENT, channel);
 
         //Tracing message activity
@@ -330,7 +361,8 @@ public class InboundEventManager {
      * @param transactionEvent {@link org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent}
      * @param channel {@link org.wso2.andes.kernel.AndesChannel}
      */
-    public void requestTransactionRollbackEvent(InboundTransactionEvent transactionEvent, AndesChannel channel) {
+    public void requestTransactionRollbackEvent(InboundTransactionEvent transactionEvent, AndesChannel channel)
+            throws AndesException {
         requestTransactionEvent(transactionEvent, TRANSACTION_ROLLBACK_EVENT, channel);
 
         //Tracing message activity
@@ -343,7 +375,8 @@ public class InboundEventManager {
      * @param transactionEvent {@link org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent}
      * @param channel {@link org.wso2.andes.kernel.AndesChannel}
      */
-    public void requestTransactionCloseEvent(InboundTransactionEvent transactionEvent, AndesChannel channel) {
+    public void requestTransactionCloseEvent(InboundTransactionEvent transactionEvent, AndesChannel channel)
+            throws AndesException {
         requestTransactionEvent(transactionEvent, TRANSACTION_CLOSE_EVENT, channel);
 
         //Tracing message activity
@@ -358,7 +391,10 @@ public class InboundEventManager {
      * @param channel {@link org.wso2.andes.kernel.AndesChannel}
      */
     private void requestTransactionEvent(InboundTransactionEvent transactionEvent,
-                                         InboundEventContainer.Type eventType, AndesChannel channel) {
+                                         InboundEventContainer.Type eventType, AndesChannel channel)
+            throws AndesException {
+        checkIfActive();
+
         long sequence = ringBuffer.next();
         InboundEventContainer eventContainer = ringBuffer.get(sequence);
 
@@ -390,7 +426,10 @@ public class InboundEventManager {
      * @param channel {@link AndesChannel} related to the {@link DtxBranch} commit request
      * @param type Dtx event type of {@link org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type}
      */
-    public void requestDtxEvent(DtxBranch dtxBranch, AndesChannel channel, InboundEventContainer.Type type) {
+    public void requestDtxEvent(DtxBranch dtxBranch, AndesChannel channel, InboundEventContainer.Type type)
+            throws AndesException {
+        checkIfActive();
+
         long sequence = ringBuffer.next();
         InboundEventContainer eventContainer = ringBuffer.get(sequence);
         try {
@@ -407,7 +446,23 @@ public class InboundEventManager {
         }
     }
 
-//        TODO: Metrics revamp
+    /**
+     * Deactivate the event manager
+     */
+    public void makePassive() {
+        log.info("Inbound event manager became passive");
+        active.set(false);
+    }
+
+    /**
+     * Activate the event manager
+     */
+    public void makeActive() {
+        log.info("Inbound event manager became active");
+        active.set(true);
+    }
+
+    //        TODO: Metrics revamp
     /**
      * Utility to get the in bound ring gauge
      */
