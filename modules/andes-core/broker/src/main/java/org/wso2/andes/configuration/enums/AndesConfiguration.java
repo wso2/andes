@@ -83,6 +83,13 @@ public enum AndesConfiguration implements ConfigurationProperty {
     COORDINATION_NODE_ID("coordination/nodeID", "default", String.class),
 
     /**
+     * Class name of the authentication interface implementation is added here.By default,default implementation of
+     * Broker component is added.
+     */
+    AUTHENTICATOR_CLASS("authenticator/@class",
+            "org.wso2.carbon.business.messaging.core.internal.AuthenticationServiceImpl", String.class),
+
+    /**
      * The IP address to which mqtt/amqp channels should be bound.
      */
     TRANSPORTS_BIND_ADDRESS("transports/bindAddress", "*", String.class),
