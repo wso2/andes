@@ -46,25 +46,24 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Setting this to a very low value could have an impact on the performance since the number of DB calls will be
      * high. Setting this to a large value increases the time taken for a cluster event to be synchronized.
      */
-    CLUSTER_EVENT_SYNC_INTERVAL("coordination/rdbmsBasedClusterEventSynchronization/eventSyncInterval", "1000", Integer.class),
+    CLUSTER_EVENT_SYNC_INTERVAL("coordination/rdbmsBasedClusterEventSynchronization/eventSyncInterval", "1000",
+            Integer.class),
 
     /**
      * The host IP to be used by the Thrift server. Thrift is used to coordinate message slots between MB nodes.
      */
-    COORDINATION_THRIFT_SERVER_HOST
-            ("coordination/thriftServerHost", "127.0.0.1", String.class),
+    COORDINATION_THRIFT_SERVER_HOST("coordination/thriftServerHost", "127.0.0.1", String.class),
 
     /**
      * Port dedicated to be used for the thrift server
      */
-    COORDINATION_THRIFT_SERVER_PORT
-            ("coordination/thriftServerPort", "7611", Integer.class),
-            
+    COORDINATION_THRIFT_SERVER_PORT("coordination/thriftServerPort", "7611", Integer.class),
+
     /**
      * Socket timeout for thrift connection.
      */
     COORDINATION_THRIFT_SO_TIMEOUT("coordination/thriftSOTimeout", "0", Integer.class),
-        
+
     /**
      * Thrift server reconnect timeout. Value specified in SECONDS
      */
@@ -81,6 +80,13 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * However, with this property, the Node ID can be explicitly set.
      */
     COORDINATION_NODE_ID("coordination/nodeID", "default", String.class),
+
+    /**
+     * Class name of the authentication interface implementation is added here.By default,default implementation
+     * of Broker component is added.
+     */
+    AUTHENTICATOR_CLASS("authenticator/@class",
+            "org.wso2.carbon.business.messaging.core.internal.AuthenticationServiceImpl", String.class),
 
     /**
      * The IP address to which mqtt/amqp channels should be bound.
@@ -136,31 +142,27 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * By default, expired messages are sent to the Dead Letter Channel for later revival/reference. But,
      * in cases where expired messages can pile up in the DLC, this behaviour can be disabled.
      */
-    TRANSPORTS_AMQP_SEND_EXPIRED_MESSAGES_TO_DLC("transports/amqp/sendExpiredMessagesToDLC",
-            "true", Boolean.class),
+    TRANSPORTS_AMQP_SEND_EXPIRED_MESSAGES_TO_DLC("transports/amqp/sendExpiredMessagesToDLC", "true", Boolean.class),
 
     /**
      * By default, in case of a failure during message publishing, MB will re-attempt to publish for 9 more times.
      * This can be modified according to your reliability requirements.
      */
-    TRANSPORTS_AMQP_MAXIMUM_REDELIVERY_ATTEMPTS("transports/amqp/maximumRedeliveryAttempts",
-            "10", Integer.class),
+    TRANSPORTS_AMQP_MAXIMUM_REDELIVERY_ATTEMPTS("transports/amqp/maximumRedeliveryAttempts", "10", Integer.class),
 
     /**
      * For durable topics there can be only one topic subscriber cluster-wide per a particular
      * client id. Enabling this configuration, multiple subscribers can use same client id and
      * share the messages
      */
-    ALLOW_SHARED_SHARED_SUBSCRIBERS("transports/amqp/allowSharedTopicSubscriptions",
-             "false", Boolean.class),
+    ALLOW_SHARED_SHARED_SUBSCRIBERS("transports/amqp/allowSharedTopicSubscriptions", "false", Boolean.class),
 
     /**
      * Topics and queue names are validated according to AMQP specification. Therefore special
      * characters are not allowed in the topic and queue names. By enabling this property strict
      * validation will not be done against topic and queue names.
      */
-    ALLOW_STRICT_NAME_VALIDATION("transports/amqp/allowStrictNameValidation",
-            "true", Boolean.class),
+    ALLOW_STRICT_NAME_VALIDATION("transports/amqp/allowStrictNameValidation", "true", Boolean.class),
 
     /**
      * Enable this to support lightweight messaging with the MQTT protocol.
@@ -210,42 +212,44 @@ public enum AndesConfiguration implements ConfigurationProperty {
     /**
      * This is a temporary list of user elements to enable user-authentication for MQTT.
      */
-    LIST_TRANSPORTS_MQTT_USERNAMES("transports/mqtt/users/user/@userName", "",
-            List.class),
+    LIST_TRANSPORTS_MQTT_USERNAMES("transports/mqtt/users/user/@userName", "", List.class),
 
     /**
      * Class name of the authenticator to use. class should inherit from {@link org.dna.mqtt.moquette.server.IAuthenticator}
      * <p>Note: default implementation authenticates against carbon user store based on supplied username/password
      */
     TRANSPORTS_MQTT_USER_AUTHENTICATOR_CLASS("transports/mqtt/security/authenticator/@class",
-                                             "org.wso2.carbon.andes.authentication.andes.CarbonBasedMQTTAuthenticator", String.class),
+            "org.wso2.carbon.andes.authentication.andes.CarbonBasedMQTTAuthenticator", String.class),
 
     /**
      * Instructs the MQTT server to sending credential is required or optional.
      * This behavior is subject to change in mqtt specification v 3.1.1
      */
-    TRANSPORTS_MQTT_USER_AUTHENTICATION("transports/mqtt/security/authentication", "OPTIONAL", MQTTUserAuthenticationScheme.class),
+    TRANSPORTS_MQTT_USER_AUTHENTICATION("transports/mqtt/security/authentication", "OPTIONAL",
+            MQTTUserAuthenticationScheme.class),
 
     /**
      * List of properties that can define how the server will authenticate the user with the authentication service.
      */
-    LIST_TRANSPORT_MQTT_AUTHENTICATION_PROPERTIES("transports/mqtt/security/authenticator/property/@name", "", List.class),
+    LIST_TRANSPORT_MQTT_AUTHENTICATION_PROPERTIES("transports/mqtt/security/authenticator/property/@name", "",
+            List.class),
 
     /**
      * This can be used to access a property by giving its key. e.g. hosturl
      */
-    TRANSPORT_MQTT_AUTHENTICATION_PROPERTIES("transports/mqtt/security/authenticator/property[@name = '{key}']", "", String.class),
-    /**
+    TRANSPORT_MQTT_AUTHENTICATION_PROPERTIES("transports/mqtt/security/authenticator/property[@name = '{key}']", "",
+            String.class), /**
      * Instructs the MQTT server whether authorization is required or not.
      */
-    TRANSPORTS_MQTT_USER_AUTHORIZATION("transports/mqtt/security/authorization", "NOT_REQUIRED", MQTTUserAuthorizationScheme.class),
+    TRANSPORTS_MQTT_USER_AUTHORIZATION("transports/mqtt/security/authorization", "NOT_REQUIRED",
+                    MQTTUserAuthorizationScheme.class),
 
     /**
      * Class name of the authorizer to use. class should inherit from {@link org.dna.mqtt.moquette.server.IAuthorizer}
      * <p>Note: default implementation authorize against carbon permission
      */
     TRANSPORTS_MQTT_USER_AUTHORIZATION_CLASS("transports/mqtt/security/authorizer/@class",
-                                             "org.wso2.carbon.andes.authorization.andes.CarbonPermissionBasedMQTTAuthorizer", String.class),
+            "org.wso2.carbon.andes.authorization.andes.CarbonPermissionBasedMQTTAuthorizer", String.class),
 
     /**
      * List of properties that can define how the server will authorizer the user with the authorizer service.
@@ -255,12 +259,11 @@ public enum AndesConfiguration implements ConfigurationProperty {
     /**
      * This can be used to access a property by giving its key. e.g. hosturl
      */
-    TRANSPORT_MQTT_AUTHORIZATION_PROPERTIES("transports/mqtt/security/authorizer/property[@name = '{key}']", "", String.class),
-    /**
+    TRANSPORT_MQTT_AUTHORIZATION_PROPERTIES("transports/mqtt/security/authorizer/property[@name = '{key}']", "",
+            String.class), /**
      * The class that is used to access an external RDBMS database to operate on messages.
      */
-    PERSISTENCE_MESSAGE_STORE_HANDLER("persistence/messageStore/@class",
-            "JDBCMessageStoreImpl", String.class),
+    PERSISTENCE_MESSAGE_STORE_HANDLER("persistence/messageStore/@class", "JDBCMessageStoreImpl", String.class),
 
     /**
      * List of properties that can define how the server will access the store.
@@ -278,8 +281,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
     /**
      * The class that is used to access an external RDBMS database to operate on server context. e.g. subscriptions
      */
-    PERSISTENCE_CONTEXT_STORE_HANDLER("persistence/contextStore/@class",
-            "JDBCAndesContextStoreImpl", String.class),
+    PERSISTENCE_CONTEXT_STORE_HANDLER("persistence/contextStore/@class", "JDBCAndesContextStoreImpl", String.class),
 
     /**
      * List of properties that can define how the server will access the store.
@@ -298,12 +300,12 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Size of the messages cache in MBs. Setting '0' will disable the cache. defaults to 256 MB.
      */
     PERSISTENCE_CACHE_SIZE("persistence/cache/size", "256", Integer.class),
-    
+
     /**
      * Expected concurrency for the cache (4 is guava default)
      */
     PERSISTENCE_CACHE_CONCURRENCY_LEVEL("persistence/cache/concurrencyLevel", "4", Integer.class),
-    
+
     /**
      * Number of seconds cache will keep messages after they are
      * added (unless they are consumed and deleted).
@@ -312,13 +314,13 @@ public enum AndesConfiguration implements ConfigurationProperty {
 
     /**
      * Reference type used to hold messages in memory.
-     * 
+     * <p>
      * <p>
      * <ul>
-     *  <li>weak   - Using java weak references ( - results higher cache misses)</li>
-     *  <li>strong - ordinary references ( - higher cache hits, but not good if
-     *               server is going to run with limited heap size + under severe load).
-     *  </li>
+     * <li>weak   - Using java weak references ( - results higher cache misses)</li>
+     * <li>strong - ordinary references ( - higher cache hits, but not good if
+     * server is going to run with limited heap size + under severe load).
+     * </li>
      * </ul>
      * </p>
      */
@@ -328,12 +330,12 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Indicates weather print cache related statistics in 2 minutes interval in carbon log.
      */
     PERSISTENCE_CACHE_PRINT_STATS("persistence/cache/printStats", "false", Boolean.class),
-    
+
     /**
      * The ID generation class that is used to maintain unique IDs for each message that arrives at the server.
      */
-    PERSISTENCE_ID_GENERATOR("persistence/idGenerator", "org.wso2.andes.server.cluster" +
-            ".coordination.TimeStampBasedMessageIdGenerator", String.class),
+    PERSISTENCE_ID_GENERATOR("persistence/idGenerator",
+            "org.wso2.andes.server.cluster" + ".coordination.TimeStampBasedMessageIdGenerator", String.class),
 
     /**
      * This is the Task interval (in SECONDS) to check weather communication
@@ -349,8 +351,8 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * chunk size of AMQP. By changing this parameter to a lesser value we can store large content
      * chunks converted to smaller content chunks within the DB with this parameter.
      */
-    PERFORMANCE_TUNING_MAX_CONTENT_CHUNK_SIZE
-            ("performanceTuning/contentHandling/maxContentChunkSize", "65500", Integer.class),
+    PERFORMANCE_TUNING_MAX_CONTENT_CHUNK_SIZE("performanceTuning/contentHandling/maxContentChunkSize", "65500",
+            Integer.class),
 
     /**
      * Within Andes there are content chunk handlers which convert incoming large content chunks
@@ -361,51 +363,46 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * and there are significant number of large messages published, then having multiple handlers will
      * increase performance.
      */
-    PERFORMANCE_TUNING_CONTENT_CHUNK_HANDLER_COUNT
-            ("performanceTuning/contentHandling/contentChunkHandlerCount", "3", Integer.class),
+    PERFORMANCE_TUNING_CONTENT_CHUNK_HANDLER_COUNT("performanceTuning/contentHandling/contentChunkHandlerCount", "3",
+            Integer.class),
 
     /**
      * Boolean value to indicate if compression of message content is enabled or not
      */
-    PERFORMANCE_TUNING_ALLOW_COMPRESSION
-            ("performanceTuning/contentHandling/allowCompression", "true", Boolean.class),
+    PERFORMANCE_TUNING_ALLOW_COMPRESSION("performanceTuning/contentHandling/allowCompression", "true", Boolean.class),
 
     /**
      * Maximum content size to check before compress message content. Messages with content less than this size
      * will not compress.
      * NOTE : specified in bytes.
      */
-    PERFORMANCE_TUNING_CONTENT_COMPRESSION_THRESHOLD
-            ("performanceTuning/contentHandling/contentCompressionThreshold", "1000", Integer.class),
+    PERFORMANCE_TUNING_CONTENT_COMPRESSION_THRESHOLD("performanceTuning/contentHandling/contentCompressionThreshold",
+            "1000", Integer.class),
 
     /**
      * Maximum time interval until which a slot can be retained in memory before updating to the cluster.
      * NOTE : specified in milliseconds.
      */
-    @Deprecated
-    PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY("performanceTuning/slots" +
-            "/slotRetainTimeInMemory", "1000", Long.class),
-    
-    
+    @Deprecated PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY(
+            "performanceTuning/slots" + "/slotRetainTimeInMemory", "1000", Long.class),
+
     /**
      * Maximum time interval until messages are accumulated into a slot before
      * marking it ( notifying to Coordinator) as deliverable.
      * NOTE : specified in milliseconds.
      */
-    PERFORMANCE_TUNING_SLOTS_MESSAGE_ACCUMULATION_TIMEOUT("performanceTuning/slots" +
-            "/messageAccumulationTimeout", "2000", Long.class, PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY),
+    PERFORMANCE_TUNING_SLOTS_MESSAGE_ACCUMULATION_TIMEOUT("performanceTuning/slots" + "/messageAccumulationTimeout",
+            "2000", Long.class, PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY),
 
     /**
      * Rough estimate for size of a slot. e.g. If the slot window size is 1000, given 3 nodes, it can expand up to 3000.
      */
-    PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE("performanceTuning/slots/windowSize", "1000",
-            Integer.class),
+    PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE("performanceTuning/slots/windowSize", "1000", Integer.class),
 
     /**
      * Number of Slot Delivery Worker threads that should be started.
      */
-    PERFORMANCE_TUNING_SLOTS_WORKER_THREAD_COUNT("performanceTuning/slots/deliveryThreadCount", "5",
-            Integer.class),
+    PERFORMANCE_TUNING_SLOTS_WORKER_THREAD_COUNT("performanceTuning/slots/deliveryThreadCount", "5", Integer.class),
 
     /**
      * Number of maximum thrift clients connections that should be created when utilizing the thrift client
@@ -421,25 +418,22 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * For instance if we publish one message per minute then each message will have to wait
      * till this timeout before the messages are submitted to the slot coordinator.
      */
-    @Deprecated
-    PERFORMANCE_TUNING_SUBMIT_SLOT_TIMEOUT (
-            "performanceTuning/slots/windowCreationTimeout", "3000", Integer.class),
+    @Deprecated PERFORMANCE_TUNING_SUBMIT_SLOT_TIMEOUT("performanceTuning/slots/windowCreationTimeout", "3000",
+            Integer.class),
 
-    
     /**
      * Time interval which broker check for slots that can be marked as 'ready
      * to deliver'
      * (- slots which have a aged more than 'messageAccumulationTimeout')
      */
-    PERFORMANCE_TUNING_MAX_SLOT_SUBMIT_DELAY(
-            "performanceTuning/slots/maxSubmitDelay", "1000", Integer.class, PERFORMANCE_TUNING_SUBMIT_SLOT_TIMEOUT),
+    PERFORMANCE_TUNING_MAX_SLOT_SUBMIT_DELAY("performanceTuning/slots/maxSubmitDelay", "1000", Integer.class,
+            PERFORMANCE_TUNING_SUBMIT_SLOT_TIMEOUT),
 
     /**
      * Number of parallel threads to execute slot deletion task. Increasing this value will remove slots
      * whose messages are read, delivered to consumers, acknowledged faster reducing heap memory used by server.
      */
-    PERFORMANCE_TUNING_SLOT_DELETE_WORKER_COUNT(
-            "performanceTuning/slots/deleteThreadCount", "5",  Integer.class),
+    PERFORMANCE_TUNING_SLOT_DELETE_WORKER_COUNT("performanceTuning/slots/deleteThreadCount", "5", Integer.class),
 
     /**
      * Max number of pending message count to delete per Slot Deleting Task. This config is used to raise a WARN
@@ -447,15 +441,14 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * message accumulation on server.
      */
     PERFORMANCE_TUNING_SLOT_DELETE_QUEUE_DEPTH_WARNING_THRESHOLD(
-             "performanceTuning/slots/SlotDeleteQueueDepthWarningThreshold", "1000", Integer.class),
-
+            "performanceTuning/slots/SlotDeleteQueueDepthWarningThreshold", "1000", Integer.class),
 
     /**
      * Maximum number of undelivered messages that can be in memory. Increasing this value could cause out of memory
      * scenarios, but performance will be improved
      */
-    PERFORMANCE_TUNING_DELIVERY_MAX_READ_BUT_UNDELIVERED_MESSAGES("performanceTuning/delivery" +
-            "/maxNumberOfReadButUndeliveredMessages", "1000", Integer.class),
+    PERFORMANCE_TUNING_DELIVERY_MAX_READ_BUT_UNDELIVERED_MESSAGES(
+            "performanceTuning/delivery" + "/maxNumberOfReadButUndeliveredMessages", "1000", Integer.class),
 
     /**
      * This is the ring buffer size of the delivery disruptor. This value should be a power of 2 (E.g. 1024, 2048,
@@ -468,7 +461,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * the message sending mechanism. But the load on the data store will increase.
      */
     PERFORMANCE_TUNING_DELIVERY_PARALLEL_CONTENT_READERS("performanceTuning/delivery/parallelContentReaders", "5",
-                                                         Integer.class),
+            Integer.class),
 
     /**
      * Number of parallel decompression handlers used to decompress messages before send to subscribers. Increasing
@@ -494,14 +487,14 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Specify the maximum number of entries the cache may contain
      */
     PERFORMANCE_TUNING_DELIVERY_CONTENT_CACHE_MAXIMUM_SIZE("performanceTuning/delivery/contentCache/maximumSize", "100",
-                                                           Integer.class),
+            Integer.class),
 
     /**
      * Specify the time in minutes that each entry should be automatically removed from the cache after the entry's
      * creation
      */
     PERFORMANCE_TUNING_DELIVERY_CONTENT_CACHE_EXPIRY_TIME("performanceTuning/delivery/contentCache/expiryTime", "120",
-                                                          Integer.class),
+            Integer.class),
 
     /**
      * Number of parallel writers used to write content to message store. Increasing this value will speedup
@@ -515,8 +508,8 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Increasing this value will speedup commit duration for a transaction.
      * But the load on the data store will increase.
      */
-    PERFORMANCE_TUNING_PARALLEL_TRANSACTION_MESSAGE_WRITERS(
-            "performanceTuning/inboundEvents/transactionMessageWriters", "1", Integer.class),
+    PERFORMANCE_TUNING_PARALLEL_TRANSACTION_MESSAGE_WRITERS("performanceTuning/inboundEvents/transactionMessageWriters",
+            "1", Integer.class),
 
     /**
      * Size of the Disruptor ring buffer for inbound event handling. Buffer size should be a value of power of two
@@ -529,97 +522,91 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Maximum batch size of the batch write operation for inbound messages. Batch write of a message will vary around
      * this number.
      */
-    PERFORMANCE_TUNING_MESSAGE_WRITER_BATCH_SIZE
-            ("performanceTuning/inboundEvents/messageWriterBatchSize", "70", Integer.class),
+    PERFORMANCE_TUNING_MESSAGE_WRITER_BATCH_SIZE("performanceTuning/inboundEvents/messageWriterBatchSize", "70",
+            Integer.class),
 
     /**
      * Timeout for waiting for a queue purge event to end to get the purged count. Doesn't affect actual purging.
      * If purge takes time, increasing the value will improve the possibility of retrieving the correct purged count.
      * Having a lower value doesn't stop purge event. Getting the purged count is affected by this
      */
-    PERFORMANCE_TUNING_PURGED_COUNT_TIMEOUT
-            ("performanceTuning/inboundEvents/purgedCountTimeout", "180", Integer.class),
-    
+    PERFORMANCE_TUNING_PURGED_COUNT_TIMEOUT("performanceTuning/inboundEvents/purgedCountTimeout", "180", Integer.class),
+
     /**
      * Average batch size of the batch acknowledgement handling for message acknowledgements. Andes will be updated
      * of acknowledgements batched around this number.
      */
-    PERFORMANCE_TUNING_ACKNOWLEDGEMENT_HANDLER_BATCH_SIZE
-            ("performanceTuning/ackHandling/ackHandlerBatchSize", "100", Integer.class),
+    PERFORMANCE_TUNING_ACKNOWLEDGEMENT_HANDLER_BATCH_SIZE("performanceTuning/ackHandling/ackHandlerBatchSize", "100",
+            Integer.class),
 
     /**
      * Ack handler count for disruptor based event handling.
      */
-    PERFORMANCE_TUNING_ACK_HANDLER_COUNT("performanceTuning/ackHandling/ackHandlerCount", "1",
-            Integer.class ),
+    PERFORMANCE_TUNING_ACK_HANDLER_COUNT("performanceTuning/ackHandling/ackHandlerCount", "1", Integer.class),
 
     /**
      * Message delivery from server to the client will be paused temporarily if number of delivered but
      * unacknowledged message count reaches this size. Should be set considering message consume rate.
      */
-    PERFORMANCE_TUNING_ACK_HANDLING_MAX_UNACKED_MESSAGES("performanceTuning/ackHandling" +
-            "/maxUnackedMessages", "1000", Integer.class),
+    PERFORMANCE_TUNING_ACK_HANDLING_MAX_UNACKED_MESSAGES("performanceTuning/ackHandling" + "/maxUnackedMessages",
+            "1000", Integer.class),
 
     /**
      * When delivering topic messages to multiple topic subscribers a strategy can be chosen.
      */
-    PERFORMANCE_TUNING_TOPIC_MESSAGE_DELIVERY_STRATEGY("performanceTuning/delivery/"
-            + "topicMessageDeliveryStrategy/strategyName", TopicMessageDeliveryStrategy.DISCARD_NONE.toString() ,
-            TopicMessageDeliveryStrategy.class),
+    PERFORMANCE_TUNING_TOPIC_MESSAGE_DELIVERY_STRATEGY(
+            "performanceTuning/delivery/" + "topicMessageDeliveryStrategy/strategyName",
+            TopicMessageDeliveryStrategy.DISCARD_NONE.toString(), TopicMessageDeliveryStrategy.class),
 
     /**
      * If you choose DISCARD_ALLOWED topic message delivery strategy, we keep messages in memory
      * until ack is done until this timeout. If an ack is not received under this timeout, ack will
      * be simulated internally and real acknowledgement is discarded.
      */
-    PERFORMANCE_TUNING_TOPIC_MESSAGE_DELIVERY_TIMEOUT("performanceTuning/delivery/"
-            + "topicMessageDeliveryStrategy/deliveryTimeout", "60" , Integer.class),
+    PERFORMANCE_TUNING_TOPIC_MESSAGE_DELIVERY_TIMEOUT(
+            "performanceTuning/delivery/" + "topicMessageDeliveryStrategy/deliveryTimeout", "60", Integer.class),
 
     /**
      * Time interval after which the Virtual host syncing Task can sync host details across the cluster.
      * specified in seconds.
      */
-    PERFORMANCE_TUNING_FAILOVER_VHOST_SYNC_TASK_INTERVAL("recovery" +
-            "/vHostSyncTaskInterval", "900", Integer.class),
+    PERFORMANCE_TUNING_FAILOVER_VHOST_SYNC_TASK_INTERVAL("recovery" + "/vHostSyncTaskInterval", "900", Integer.class),
 
     /**
      * Enable/Disable expiry check in the DLC.
      */
-    PERFORMANCE_TUNING_EXPIRE_MESSAGES_IN_DLC
-            ("performanceTuning/messageExpiration/expireMessagesInDLC", "false", Boolean.class),
+    PERFORMANCE_TUNING_EXPIRE_MESSAGES_IN_DLC("performanceTuning/messageExpiration/expireMessagesInDLC", "false",
+            Boolean.class),
 
-     /**
+    /**
      * In order to have a batch delete for the expired messages captured at the message flusher, accumulate them
      * in to a queue and delete them periodically as a batch. specified in seconds
      */
-    PERFORMANCE_TUNING_PRE_DELIVERY_EXPIRY_DELETION_INTERVAL
-            ("performanceTuning/messageExpiration/preDeliveryExpiryDeletionInterval", "600", Integer.class),
+    PERFORMANCE_TUNING_PRE_DELIVERY_EXPIRY_DELETION_INTERVAL(
+            "performanceTuning/messageExpiration/preDeliveryExpiryDeletionInterval", "600", Integer.class),
 
     /**
      * Since server startup, whenever this interval elapses, the expired messages will be cleared from the store.
      * specified in seconds.
      */
-    PERFORMANCE_TUNING_PERIODIC_EXPIRY_MESSAGE_DELETION_INTERVAL
-            ("performanceTuning/messageExpiration/periodicMessageDeletionInterval", "900", Integer.class),
+    PERFORMANCE_TUNING_PERIODIC_EXPIRY_MESSAGE_DELETION_INTERVAL(
+            "performanceTuning/messageExpiration/periodicMessageDeletionInterval", "900", Integer.class),
 
     /**
      * The number of expired messages to be cleared in one store operation.
-     *
      */
-    PERFORMANCE_TUNING_MESSAGE_EXPIRATION_BATCH_SIZE
-            ("performanceTuning/messageExpiration/messageBatchSize", "1000", Integer.class),
-    /**
+    PERFORMANCE_TUNING_MESSAGE_EXPIRATION_BATCH_SIZE("performanceTuning/messageExpiration/messageBatchSize", "1000",
+            Integer.class), /**
      * The number of slots for one queue which may be be allocated for slot delivery worker in near future.
      * Because of that the deletion task should not execute on those slots. specified in slot counts.
      */
-    PERFORMANCE_TUNING_SAFE_DELETE_REGION_SLOT_COUNT
-            ("performanceTuning/messageExpiration/safetySlotCount", "3", Integer.class),
-    /**
+    PERFORMANCE_TUNING_SAFE_DELETE_REGION_SLOT_COUNT("performanceTuning/messageExpiration/safetySlotCount", "3",
+                    Integer.class), /**
      * Maximum batch size (Messages) in kilobytes for a transaction. Exceeding this limit will result in a failure in
      * the subsequent commit (or prepare) request. Default is set to 10MB. Limit is calculated considering the payload
      * of messages.
      */
-    MAX_TRANSACTION_BATCH_SIZE ("transaction/maxBatchSizeInKB", "10240", Integer.class),
+    MAX_TRANSACTION_BATCH_SIZE("transaction/maxBatchSizeInKB", "10240", Integer.class),
 
     /**
      * Maximum number of parallel dtx enabled channel count. Transaction requests exceeding this limit will fail.
@@ -630,12 +617,10 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Maximum wait time (in seconds) for a transactional publisher commit, rollback or close event to complete on
      * server side.
      */
-    MAX_TRANSACTION_WAIT_TIMEOUT("transaction/maxWaitTimeout", "30", Long.class),
-    /**
+    MAX_TRANSACTION_WAIT_TIMEOUT("transaction/maxWaitTimeout", "30", Long.class), /**
      * The number of messages to be fetched per page when browsing message in management console.
      */
-    MANAGEMENT_CONSOLE_MESSAGE_BROWSE_PAGE_SIZE("managementConsole" +
-            "/messageBrowsePageSize", "100", Integer.class),
+    MANAGEMENT_CONSOLE_MESSAGE_BROWSE_PAGE_SIZE("managementConsole" + "/messageBrowsePageSize", "100", Integer.class),
 
     /**
      * This property defines the maximum message content length that can be displayed at the management console when
@@ -644,47 +629,42 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * NOTE : Increasing this value could cause delays when loading the message content page.
      * (Introduced as per jira MB_939. )
      */
-    MANAGEMENT_CONSOLE_MAX_DISPLAY_LENGTH_FOR_MESSAGE_CONTENT("managementConsole" +
-            "/maximumMessageDisplayLength", "100000", Integer.class),
+    MANAGEMENT_CONSOLE_MAX_DISPLAY_LENGTH_FOR_MESSAGE_CONTENT("managementConsole" + "/maximumMessageDisplayLength",
+            "100000", Integer.class),
 
     /**
      * Enable users to all reroute messages from a specific destination(queue or durable topic) to a specific queue.
      */
-    MANAGEMENT_CONSOLE_ALLOW_REREOUTE_ALL_IN_DLC("managementConsole" +
-                                                "/allowReRouteAllInDLC", "false", Boolean.class),
+    MANAGEMENT_CONSOLE_ALLOW_REREOUTE_ALL_IN_DLC("managementConsole" + "/allowReRouteAllInDLC", "false", Boolean.class),
 
     /**
      * This is the per publisher buffer size low limit which disable the flow control for a channel if the flow-control
      * was enabled previously.
      */
-    FLOW_CONTROL_BUFFER_BASED_LOW_LIMIT("flowControl/bufferBased" +
-                                        "/lowLimit", "100", Integer.class),
+    FLOW_CONTROL_BUFFER_BASED_LOW_LIMIT("flowControl/bufferBased" + "/lowLimit", "100", Integer.class),
 
     /**
      * This is the per publisher buffer size high limit which enable the flow control for a channel.
      */
-    FLOW_CONTROL_BUFFER_BASED_HIGH_LIMIT("flowControl/bufferBased" +
-                                         "/highLimit", "1000", Integer.class),
+    FLOW_CONTROL_BUFFER_BASED_HIGH_LIMIT("flowControl/bufferBased" + "/highLimit", "1000", Integer.class),
 
     /**
      * This is the global buffer low limit that disable the flow control globally if the flow-control
      * was enabled previously.
      */
-    FLOW_CONTROL_GLOBAL_LOW_LIMIT("flowControl/global" +
-                                        "/lowLimit", "800", Integer.class),
+    FLOW_CONTROL_GLOBAL_LOW_LIMIT("flowControl/global" + "/lowLimit", "800", Integer.class),
 
     /**
-     *  This is the global buffer high limit which enable the flow control globally.
+     * This is the global buffer high limit which enable the flow control globally.
      */
-    FLOW_CONTROL_GLOBAL_HIGH_LIMIT("flowControl/global" +
-                                         "/highLimit", "8000", Integer.class),
+    FLOW_CONTROL_GLOBAL_HIGH_LIMIT("flowControl/global" + "/highLimit", "8000", Integer.class),
 
     /**
      * This allows you to apply flow control based on the message count on a given connection.
      * NOT USED FOR NOW.
      */
-    FLOW_CONTROL_CONNECTION_BASED_PER_CONNECTION_MESSAGE_THRESHOLD("flowControl/connectionBased" +
-            "/perConnectionMessageThreshold", "1000", Integer.class),
+    FLOW_CONTROL_CONNECTION_BASED_PER_CONNECTION_MESSAGE_THRESHOLD(
+            "flowControl/connectionBased" + "/perConnectionMessageThreshold", "1000", Integer.class),
 
     /**
      * Concurrently reads storage queues to make warm startup faster. But increasing concurrent value to big number
@@ -698,8 +678,8 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * default value: 5
      * </p>
      */
-    RDBMS_BASED_COORDINATION_HEARTBEAT_INTERVAL("coordination/rdbmsBasedCoordination/heartbeatInterval", "5", Integer
-            .class),
+    RDBMS_BASED_COORDINATION_HEARTBEAT_INTERVAL("coordination/rdbmsBasedCoordination/heartbeatInterval", "5",
+            Integer.class),
 
     /**
      * Time to wait before informing others about coordinator change. This value should be larger than a database read
@@ -708,9 +688,8 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * default value: 3
      * </p>
      */
-    RDBMS_BASED_COORDINATOR_ENTRY_CREATION_WAIT_TIME
-            ("coordination/rdbmsBasedCoordination/coordinatorEntryCreationWaitTime",
-            "3", Integer.class),
+    RDBMS_BASED_COORDINATOR_ENTRY_CREATION_WAIT_TIME(
+            "coordination/rdbmsBasedCoordination/coordinatorEntryCreationWaitTime", "3", Integer.class),
 
     /**
      * Time interval used to poll database for membership related events.
@@ -734,25 +713,25 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * This node will not accept any incoming traffic ( and disconnect
      * subscriptions) etc.
      */
-    RECOVERY_NETWORK_PARTITIONS_MINIMUM_CLUSTER_SIZE("recovery/networkPartitionsDetection/minimumClusterSize",
-            "1", Integer.class),
+    RECOVERY_NETWORK_PARTITIONS_MINIMUM_CLUSTER_SIZE("recovery/networkPartitionsDetection/minimumClusterSize", "1",
+            Integer.class),
 
     /**
      * Specifies the deployment mode for the broker node (and cluster). Possible values {standalone, clustered}.
-     *
+     * <p>
      * standalone - This is the simplest mode a broker can be started. The node will assume that message store is not
      * shared with another node. Therefore it will not try to coordinate with other nodes (possibly non-existent) to
      * provide HA.
-     *
+     * <p>
      * clustered - Broker node will run in HA mode (active/passive).
      */
-    DEPLOYMENT_MODE("deployment/mode","standalone", String.class);
+    DEPLOYMENT_MODE("deployment/mode", "standalone", String.class);
 
     /**
      * Meta data about configuration.
      */
     private final MetaProperties metaProperties;
-    
+
     /**
      * Holds the configuration which was deprecated by introduction of this configuration.
      */
@@ -760,9 +739,10 @@ public enum AndesConfiguration implements ConfigurationProperty {
 
     /**
      * Constructor to define a configuration in broker.
-     * @param keyInFile Xpath (or any key value) which can be used to identify the configuration in the file.
-     * @param defaultValue the default value 
-     * @param dataType data type of the config ( e.g. boolean, string )
+     *
+     * @param keyInFile    Xpath (or any key value) which can be used to identify the configuration in the file.
+     * @param defaultValue the default value
+     * @param dataType     data type of the config ( e.g. boolean, string )
      */
     private AndesConfiguration(String keyInFile, String defaultValue, Class<?> dataType) {
         this(keyInFile, defaultValue, dataType, null);
@@ -770,15 +750,16 @@ public enum AndesConfiguration implements ConfigurationProperty {
 
     /**
      * Constructor to define a configuration in broker.
-     * 
-     * @param keyInFile Xpath (or any key value) which can be used to identify the configuration in the file.
+     *
+     * @param keyInFile    Xpath (or any key value) which can be used to identify the configuration in the file.
      * @param defaultValue the default value
-     * @param dataType data type of the config ( e.g. boolean, string )
-     * @param deprecated the configuratio value which became deprecated after introducing this one.
+     * @param dataType     data type of the config ( e.g. boolean, string )
+     * @param deprecated   the configuratio value which became deprecated after introducing this one.
      */
-    private AndesConfiguration(String keyInFile, String defaultValue, Class<?> dataType, AndesConfiguration deprecated ) {
+    private AndesConfiguration(String keyInFile, String defaultValue, Class<?> dataType,
+            AndesConfiguration deprecated) {
         // We need to pass the enum name as the identifier : therefore this.name()
-        this.metaProperties = new ImmutableMetaProperties(this.name(),keyInFile, defaultValue, dataType);
+        this.metaProperties = new ImmutableMetaProperties(this.name(), keyInFile, defaultValue, dataType);
         this.deprecated = deprecated;
     }
 
@@ -792,10 +773,10 @@ public enum AndesConfiguration implements ConfigurationProperty {
     /**
      * Indicates whether this configuration deprecates another configuration.
      */
-    public boolean hasDeprecatedProperty(){
+    public boolean hasDeprecatedProperty() {
         return deprecated != null;
     }
-    
+
     /**
      * Returns meta data
      */
@@ -803,7 +784,5 @@ public enum AndesConfiguration implements ConfigurationProperty {
     public MetaProperties get() {
         return metaProperties;
     }
-    
-    
-    
+
 }
