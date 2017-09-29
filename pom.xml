@@ -29,9 +29,16 @@
     <groupId>org.wso2.andes</groupId>
     <artifactId>andes-parent</artifactId>
     <packaging>pom</packaging>
-    <version>3.2.19</version>
+    <version>3.2.26-SNAPSHOT</version>
     <name>Andes</name>
     <description>Andes, Distributed message broker engine</description>
+
+    <scm>
+        <connection>scm:https://github.com/wso2/andes.git</connection>
+        <developerConnection>scm:git:https://github.com/wso2/andes.git</developerConnection>
+        <url>https://github.com/wso2/andes.git</url>
+        <tag>HEAD</tag>
+    </scm>
 
     <modules>
         <module>modules/andes-core</module>
@@ -492,6 +499,18 @@
             <!-- surefire plugin configuration -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <configuration>
+                    <preparationGoals>clean install</preparationGoals>
+                    <autoVersionSubmodules>true</autoVersionSubmodules>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>2.4.3</version>
                 <configuration>
@@ -535,14 +554,9 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <carbon.kernel.version>4.4.16</carbon.kernel.version>
-        <!--This fixed version value is used to version intermediate ant artifacts which are installed only
-        to local maven repo by maven-install-plugin. Those artifacts will be dependencies of the orbit bundle
-        which exports the packages from the artifacts with the correct version value. Reason this was set to
-        a fixed version is, when releasing the repository with maven-release-plugin, if we have the
-        project.version set here, release prepare goal would expect us to get rid of SNAPSHOT dependencies to the
-        artifacts built with ant which are not automatically updated by maven. -->
-        <andes.version>1.0.0</andes.version>
+        <carbon.kernel.version>4.4.18</carbon.kernel.version>
+        <project.scm.id>wso2-scm-server</project.scm.id>
+        <andes.version>3.2.6</andes.version>
         <commons-cli.version>1.0</commons-cli.version>
         <commons-configuration.version>1.10</commons-configuration.version>
         <commons-lang.version>2.6</commons-lang.version>
@@ -611,7 +625,7 @@
         <hawtdb.version>1.6</hawtdb.version>
         <hawtbuf.version>1.9</hawtbuf.version>
         <hazelcast.version>3.5.0.wso2v1</hazelcast.version>
-        <org.wso2.carbon.metrics.manager.version>1.2.3</org.wso2.carbon.metrics.manager.version>
+        <org.wso2.carbon.metrics.manager.version>1.2.2</org.wso2.carbon.metrics.manager.version>
         <libthrift.version>0.9.2.wso2v1</libthrift.version>
         <h2.version>1.2.140</h2.version>
         <naming-factory.version>5.5.15</naming-factory.version>
@@ -625,7 +639,6 @@
         <gs-collections-api.version>7.0.3</gs-collections-api.version>
         <gs-collections.version>7.0.3</gs-collections.version>
         <org.apache.commons.pool.version>2.4.2</org.apache.commons.pool.version>
-        <commons-lang.imp.pkg.version>[2.6, 3.0)</commons-lang.imp.pkg.version>
 
     </properties>
 
