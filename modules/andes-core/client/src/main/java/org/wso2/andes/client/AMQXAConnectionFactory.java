@@ -17,6 +17,7 @@
  */
 package org.wso2.andes.client;
 
+import org.wso2.andes.url.AMQBindingURL;
 import org.wso2.andes.url.URLSyntaxException;
 
 import javax.jms.JMSException;
@@ -27,6 +28,13 @@ import javax.jms.XAQueueConnection;
 import javax.jms.XAQueueConnectionFactory;
 import javax.jms.XATopicConnection;
 import javax.jms.XATopicConnectionFactory;
+import javax.naming.Context;
+import javax.naming.Name;
+import javax.naming.NamingException;
+import javax.naming.RefAddr;
+import javax.naming.Reference;
+import javax.naming.StringRefAddr;
+import java.util.Hashtable;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -47,6 +55,10 @@ public class AMQXAConnectionFactory extends AMQConnectionFactory implements XATo
 
     public AMQXAConnectionFactory(String url) throws URLSyntaxException {
         super(url);
+    }
+
+    public AMQXAConnectionFactory() {
+
     }
 
     /**
@@ -165,4 +177,87 @@ public class AMQXAConnectionFactory extends AMQConnectionFactory implements XATo
     {
         return (XAQueueConnection) createXAConnection(username, password);
     }
+
+    /**
+     * Retrieves the Reference of this object (AMQXAConnectionFactory).
+     *
+     * @return The non-null Reference of this object.
+     * @exception NamingException If a naming exception was encountered
+     *         while retrieving the reference.
+     */
+    public Reference getReference() throws NamingException
+    {
+        return new Reference(
+                AMQXAConnectionFactory.class.getName(),
+                new StringRefAddr(AMQXAConnectionFactory.class.getName(), _connectionDetails.getURL()),
+                AMQXAConnectionFactory.class.getName(), null);          // factory location
+    }
+
+
+    /**
+     * JNDI interface to create objects from References.
+     *
+     * @param obj  The Reference from JNDI
+     * @param name JNDI name
+     * @param ctx  Context
+     * @param env  Environment
+     *
+     * @return XAConnectionImpl,AMQTopic,AMQQueue, or AMQXAConnectionFactory.
+     *
+     * @throws Exception
+     */
+    public Object getObjectInstance(Object obj, Name name, Context ctx, Hashtable env) throws Exception
+    {
+        if (obj instanceof Reference)
+        {
+            Reference ref = (Reference) obj;
+
+            if (ref.getClassName().equals(XAConnectionImpl.class.getName()))
+            {
+                RefAddr addr = ref.get(XAConnectionImpl.class.getName());
+
+                if (addr != null)
+                {
+                    XAConnectionImpl xaConnection =
+                            new XAConnectionImpl(new AMQConnectionURL((String) addr.getContent()), null,
+                            Executors.newSingleThreadScheduledExecutor());
+                    xaConnection.setConnectionListener(getConnectionListener());
+                    return xaConnection;
+                }
+            }
+
+            if (ref.getClassName().equals(AMQQueue.class.getName()))
+            {
+                RefAddr addr = ref.get(AMQQueue.class.getName());
+
+                if (addr != null)
+                {
+                    return new AMQQueue(new AMQBindingURL((String) addr.getContent()));
+                }
+            }
+
+            if (ref.getClassName().equals(AMQTopic.class.getName()))
+            {
+                RefAddr addr = ref.get(AMQTopic.class.getName());
+
+                if (addr != null)
+                {
+                    return new AMQTopic(new AMQBindingURL((String) addr.getContent()));
+                }
+            }
+
+            if (ref.getClassName().equals(AMQXAConnectionFactory.class.getName()))
+            {
+                RefAddr addr = ref.get(AMQXAConnectionFactory.class.getName());
+
+                if (addr != null)
+                {
+                    return new AMQXAConnectionFactory((String) addr.getContent());
+                }
+            }
+
+        }
+        return null;
+    }
+
 }
