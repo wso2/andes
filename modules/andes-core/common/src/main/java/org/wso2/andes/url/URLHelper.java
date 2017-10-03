@@ -21,6 +21,8 @@
 package org.wso2.andes.url;
 
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class URLHelper
 {
@@ -136,8 +138,10 @@ public class URLHelper
 
     public static URLSyntaxException parseError(int index, int length, String error, String url)
     {
-        return new URLSyntaxException(url, error, index, length);
+        return new URLSyntaxException(maskURLPassword(url), error, index, length);
     }
+
+
 
     public static String printOptions(Map<String, String> options)
     {
@@ -165,5 +169,25 @@ public class URLHelper
 
             return sb.toString();
         }
+    }
+
+    /**
+     * Mask the password of the connection url with ***
+     * @param url the actual url
+     * @return the masked url
+     */
+    private static String maskURLPassword(String url) {
+
+        Pattern urlPattern = Pattern.compile("[a-z]+://.*");
+        Pattern passwordPattern = Pattern.compile(":(?:[^/]+)@");
+
+        final Matcher urlMatcher = urlPattern.matcher(url);
+        String maskUrl;
+        if (urlMatcher.find()) {
+            final Matcher pwdMatcher = passwordPattern.matcher(url);
+            maskUrl = pwdMatcher.replaceFirst(":***@");
+            return maskUrl;
+        }
+        return url;
     }
 }
