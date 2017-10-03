@@ -78,8 +78,8 @@
             <artifactId>log4j</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.wso2.securevault</groupId>
-            <artifactId>org.wso2.securevault</artifactId>
+            <groupId>org.wso2.carbon.secvault</groupId>
+            <artifactId>org.wso2.carbon.secvault</artifactId>
         </dependency>
         <dependency>
             <groupId>commons-lang</groupId>
@@ -106,7 +106,7 @@
                             org.apache.commons.lang.*;version="${commons-lang.imp.pkg.version}",
                             org.slf4j.*;version="1.6.1",
                             org.apache.commons.logging.*,
-                            org.wso2.securevault.*,
+                            org.wso2.carbon.secvault.*,
                             org.ietf.jgss*,
                             javax.*,
                             com.google.common.base;version="19.0.0",
