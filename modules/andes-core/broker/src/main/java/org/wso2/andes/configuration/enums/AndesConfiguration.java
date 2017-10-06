@@ -59,12 +59,12 @@ public enum AndesConfiguration implements ConfigurationProperty {
      */
     COORDINATION_THRIFT_SERVER_PORT
             ("coordination/thriftServerPort", "7611", Integer.class),
-            
+
     /**
      * Socket timeout for thrift connection.
      */
     COORDINATION_THRIFT_SO_TIMEOUT("coordination/thriftSOTimeout", "0", Integer.class),
-        
+
     /**
      * Thrift server reconnect timeout. Value specified in SECONDS
      */
@@ -81,6 +81,13 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * However, with this property, the Node ID can be explicitly set.
      */
     COORDINATION_NODE_ID("coordination/nodeID", "default", String.class),
+
+    /**
+     * Class name of the authentication interface implementation is added here.By default,default implementation of
+     * Broker component is added.
+     */
+    AUTHENTICATOR_CLASS("authenticator/@class",
+            "org.wso2.carbon.business.messaging.core.internal.AuthenticationServiceImpl", String.class),
 
     /**
      * The IP address to which mqtt/amqp channels should be bound.
@@ -152,7 +159,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * share the messages
      */
     ALLOW_SHARED_SHARED_SUBSCRIBERS("transports/amqp/allowSharedTopicSubscriptions",
-             "false", Boolean.class),
+            "false", Boolean.class),
 
     /**
      * Topics and queue names are validated according to AMQP specification. Therefore special
@@ -218,7 +225,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * <p>Note: default implementation authenticates against carbon user store based on supplied username/password
      */
     TRANSPORTS_MQTT_USER_AUTHENTICATOR_CLASS("transports/mqtt/security/authenticator/@class",
-                                             "org.wso2.carbon.andes.authentication.andes.CarbonBasedMQTTAuthenticator", String.class),
+            "org.wso2.carbon.andes.authentication.andes.CarbonBasedMQTTAuthenticator", String.class),
 
     /**
      * Instructs the MQTT server to sending credential is required or optional.
@@ -245,7 +252,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * <p>Note: default implementation authorize against carbon permission
      */
     TRANSPORTS_MQTT_USER_AUTHORIZATION_CLASS("transports/mqtt/security/authorizer/@class",
-                                             "org.wso2.carbon.andes.authorization.andes.CarbonPermissionBasedMQTTAuthorizer", String.class),
+            "org.wso2.carbon.andes.authorization.andes.CarbonPermissionBasedMQTTAuthorizer", String.class),
 
     /**
      * List of properties that can define how the server will authorizer the user with the authorizer service.
@@ -298,12 +305,12 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Size of the messages cache in MBs. Setting '0' will disable the cache. defaults to 256 MB.
      */
     PERSISTENCE_CACHE_SIZE("persistence/cache/size", "256", Integer.class),
-    
+
     /**
      * Expected concurrency for the cache (4 is guava default)
      */
     PERSISTENCE_CACHE_CONCURRENCY_LEVEL("persistence/cache/concurrencyLevel", "4", Integer.class),
-    
+
     /**
      * Number of seconds cache will keep messages after they are
      * added (unless they are consumed and deleted).
@@ -312,7 +319,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
 
     /**
      * Reference type used to hold messages in memory.
-     * 
+     *
      * <p>
      * <ul>
      *  <li>weak   - Using java weak references ( - results higher cache misses)</li>
@@ -328,7 +335,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Indicates weather print cache related statistics in 2 minutes interval in carbon log.
      */
     PERSISTENCE_CACHE_PRINT_STATS("persistence/cache/printStats", "false", Boolean.class),
-    
+
     /**
      * The ID generation class that is used to maintain unique IDs for each message that arrives at the server.
      */
@@ -385,8 +392,8 @@ public enum AndesConfiguration implements ConfigurationProperty {
     @Deprecated
     PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY("performanceTuning/slots" +
             "/slotRetainTimeInMemory", "1000", Long.class),
-    
-    
+
+
     /**
      * Maximum time interval until messages are accumulated into a slot before
      * marking it ( notifying to Coordinator) as deliverable.
@@ -425,7 +432,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
     PERFORMANCE_TUNING_SUBMIT_SLOT_TIMEOUT (
             "performanceTuning/slots/windowCreationTimeout", "3000", Integer.class),
 
-    
+
     /**
      * Time interval which broker check for slots that can be marked as 'ready
      * to deliver'
@@ -447,7 +454,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * message accumulation on server.
      */
     PERFORMANCE_TUNING_SLOT_DELETE_QUEUE_DEPTH_WARNING_THRESHOLD(
-             "performanceTuning/slots/SlotDeleteQueueDepthWarningThreshold", "1000", Integer.class),
+            "performanceTuning/slots/SlotDeleteQueueDepthWarningThreshold", "1000", Integer.class),
 
 
     /**
@@ -468,7 +475,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * the message sending mechanism. But the load on the data store will increase.
      */
     PERFORMANCE_TUNING_DELIVERY_PARALLEL_CONTENT_READERS("performanceTuning/delivery/parallelContentReaders", "5",
-                                                         Integer.class),
+            Integer.class),
 
     /**
      * Number of parallel decompression handlers used to decompress messages before send to subscribers. Increasing
@@ -494,14 +501,14 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Specify the maximum number of entries the cache may contain
      */
     PERFORMANCE_TUNING_DELIVERY_CONTENT_CACHE_MAXIMUM_SIZE("performanceTuning/delivery/contentCache/maximumSize", "100",
-                                                           Integer.class),
+            Integer.class),
 
     /**
      * Specify the time in minutes that each entry should be automatically removed from the cache after the entry's
      * creation
      */
     PERFORMANCE_TUNING_DELIVERY_CONTENT_CACHE_EXPIRY_TIME("performanceTuning/delivery/contentCache/expiryTime", "120",
-                                                          Integer.class),
+            Integer.class),
 
     /**
      * Number of parallel writers used to write content to message store. Increasing this value will speedup
@@ -539,7 +546,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      */
     PERFORMANCE_TUNING_PURGED_COUNT_TIMEOUT
             ("performanceTuning/inboundEvents/purgedCountTimeout", "180", Integer.class),
-    
+
     /**
      * Average batch size of the batch acknowledgement handling for message acknowledgements. Andes will be updated
      * of acknowledgements batched around this number.
@@ -588,7 +595,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
     PERFORMANCE_TUNING_EXPIRE_MESSAGES_IN_DLC
             ("performanceTuning/messageExpiration/expireMessagesInDLC", "false", Boolean.class),
 
-     /**
+    /**
      * In order to have a batch delete for the expired messages captured at the message flusher, accumulate them
      * in to a queue and delete them periodically as a batch. specified in seconds
      */
@@ -651,33 +658,33 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Enable users to all reroute messages from a specific destination(queue or durable topic) to a specific queue.
      */
     MANAGEMENT_CONSOLE_ALLOW_REREOUTE_ALL_IN_DLC("managementConsole" +
-                                                "/allowReRouteAllInDLC", "false", Boolean.class),
+            "/allowReRouteAllInDLC", "false", Boolean.class),
 
     /**
      * This is the per publisher buffer size low limit which disable the flow control for a channel if the flow-control
      * was enabled previously.
      */
     FLOW_CONTROL_BUFFER_BASED_LOW_LIMIT("flowControl/bufferBased" +
-                                        "/lowLimit", "100", Integer.class),
+            "/lowLimit", "100", Integer.class),
 
     /**
      * This is the per publisher buffer size high limit which enable the flow control for a channel.
      */
     FLOW_CONTROL_BUFFER_BASED_HIGH_LIMIT("flowControl/bufferBased" +
-                                         "/highLimit", "1000", Integer.class),
+            "/highLimit", "1000", Integer.class),
 
     /**
      * This is the global buffer low limit that disable the flow control globally if the flow-control
      * was enabled previously.
      */
     FLOW_CONTROL_GLOBAL_LOW_LIMIT("flowControl/global" +
-                                        "/lowLimit", "800", Integer.class),
+            "/lowLimit", "800", Integer.class),
 
     /**
      *  This is the global buffer high limit which enable the flow control globally.
      */
     FLOW_CONTROL_GLOBAL_HIGH_LIMIT("flowControl/global" +
-                                         "/highLimit", "8000", Integer.class),
+            "/highLimit", "8000", Integer.class),
 
     /**
      * This allows you to apply flow control based on the message count on a given connection.
@@ -710,7 +717,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      */
     RDBMS_BASED_COORDINATOR_ENTRY_CREATION_WAIT_TIME
             ("coordination/rdbmsBasedCoordination/coordinatorEntryCreationWaitTime",
-            "3", Integer.class),
+                    "3", Integer.class),
 
     /**
      * Time interval used to poll database for membership related events.
@@ -752,7 +759,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Meta data about configuration.
      */
     private final MetaProperties metaProperties;
-    
+
     /**
      * Holds the configuration which was deprecated by introduction of this configuration.
      */
@@ -761,7 +768,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
     /**
      * Constructor to define a configuration in broker.
      * @param keyInFile Xpath (or any key value) which can be used to identify the configuration in the file.
-     * @param defaultValue the default value 
+     * @param defaultValue the default value
      * @param dataType data type of the config ( e.g. boolean, string )
      */
     private AndesConfiguration(String keyInFile, String defaultValue, Class<?> dataType) {
@@ -770,7 +777,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
 
     /**
      * Constructor to define a configuration in broker.
-     * 
+     *
      * @param keyInFile Xpath (or any key value) which can be used to identify the configuration in the file.
      * @param defaultValue the default value
      * @param dataType data type of the config ( e.g. boolean, string )
@@ -795,7 +802,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
     public boolean hasDeprecatedProperty(){
         return deprecated != null;
     }
-    
+
     /**
      * Returns meta data
      */
@@ -803,7 +810,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
     public MetaProperties get() {
         return metaProperties;
     }
-    
-    
-    
+
+
+
 }
