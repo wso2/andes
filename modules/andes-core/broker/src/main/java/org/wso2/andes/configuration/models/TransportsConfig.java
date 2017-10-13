@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License, 
  * Version 2.0 (the "License"); you may not use this file except 
@@ -17,25 +17,18 @@
 package org.wso2.andes.configuration.models;
 
 import org.wso2.carbon.config.annotation.Configuration;
-import org.wso2.carbon.config.annotation.Element;
 
 /**
- * Configuration model for broker coordination.
+ * Configuration model for transports related configs.
  */
-@Configuration(description = "Broker coordination config")
-public class CoordinationConfiguration {
+@Configuration(description = "You can enable/disable specific messaging transports in this section. By default all\n"
+        + "transports are enabled. This section also allows you to customize the messaging flows used\n"
+        + "within WSO2 MB. NOT performance related, but logic related.")
+public class TransportsConfig {
 
-    @Element(description = "The node ID of each member")
-    private String nodeID = "default";
+    private AMQPConfigs amqp = new AMQPConfigs();
 
-    @Element(description = "Thrift is used to maintain and sync slot (message groups) ranges between MB nodes.")
-    private String thriftServerHost = "localhost";
-
-    public String getNodeID() {
-        return nodeID;
-    }
-
-    public String getThriftServerHost() {
-        return thriftServerHost;
+    public AMQPConfigs getAmqp() {
+        return amqp;
     }
 }

@@ -27,10 +27,41 @@ import org.wso2.carbon.config.annotation.Element;
                description = "Broker configuration parameters")
 public class BrokerConfiguration {
 
-    @Element(description = "Coordination related configuration")
-    private CoordinationConfiguration coordination = new CoordinationConfiguration();
+    @Element(description = "Coordination related configuration.")
+    private CoordinationConfig coordination = new CoordinationConfig();
 
-    public CoordinationConfiguration getCoordination() {
+    @Element(description = "Transport related configuration")
+    private TransportsConfig transports = new TransportsConfig();
+
+    @Element(description = "Depending on the database type selected in deployment.yaml, you must enable the\n"
+            + "relevant Data access classes here. Currently WSO2 MB Supports RDBMS(any RDBMS store).")
+    private PersistenceConfig persistance = new PersistenceConfig();
+
+    @Element(description = "Publisher transaction related configurations.")
+    private TransactionConfig transaction = new TransactionConfig();
+
+    @Element(description = "This section allows you to tweak memory and processor allocations used by WSO2 MB.\n"
+            + "Broken down by critical processes so you have a clear view of which parameters to change in\n"
+            + "different scenarios.")
+    private PerformanceTuningConfig performanceTuning = new PerformanceTuningConfig();
+
+    public CoordinationConfig getCoordination() {
         return coordination;
+    }
+
+    public TransportsConfig getTransports() {
+        return transports;
+    }
+
+    public PersistenceConfig getPersistance() {
+        return persistance;
+    }
+
+    public TransactionConfig getTransaction() {
+        return transaction;
+    }
+
+    public PerformanceTuningConfig getPerformanceTuning() {
+        return performanceTuning;
     }
 }
