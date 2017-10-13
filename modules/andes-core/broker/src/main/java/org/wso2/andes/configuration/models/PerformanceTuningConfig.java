@@ -28,4 +28,36 @@ public class PerformanceTuningConfig {
     private SlotsConfig slots = new SlotsConfig();
 
     private DeliveryConfig delivery = new DeliveryConfig();
+
+    private AckHandlingConfig ackHandling = new AckHandlingConfig();
+
+    private ContentHandlingConfig contentHandling = new ContentHandlingConfig();
+
+    private InboundEventsConfig inboundEvents = new InboundEventsConfig();
+
+    private MessageExpirationConfig messageExpiration = new MessageExpirationConfig();
+
+    public SlotsConfig getSlots() {
+        return slots;
+    }
+
+    public DeliveryConfig getDelivery() {
+        return delivery;
+    }
+
+    public AckHandlingConfig getAckHandling() {
+        return ackHandling;
+    }
+
+    public ContentHandlingConfig getContentHandling() {
+        return contentHandling;
+    }
+
+    public InboundEventsConfig getInboundEvents() {
+        return inboundEvents;
+    }
+
+    public MessageExpirationConfig getMessageExpiration() {
+        return messageExpiration;
+    }
 }

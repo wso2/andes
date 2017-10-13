@@ -16,11 +16,13 @@
  */
 package org.wso2.andes.configuration.models;
 
+import org.wso2.carbon.config.annotation.Configuration;
 import org.wso2.carbon.config.annotation.Element;
 
 /**
  * Configuration model for delivery config in Performance Tuning config section.
  */
+@Configuration(description = "Message delivery configurations.")
 public class DeliveryConfig {
     @Element(description = "Maximum number of undelivered messages that can have in memory. Increasing this\n"
             + "value increase the possibility of out of memory scenario but performance will be\n"

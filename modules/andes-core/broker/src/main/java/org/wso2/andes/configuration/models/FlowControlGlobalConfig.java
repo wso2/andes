@@ -20,22 +20,24 @@ import org.wso2.carbon.config.annotation.Configuration;
 import org.wso2.carbon.config.annotation.Element;
 
 /**
- * Configuration model for Content caching.
+ * Configuration model for global config in Flow control section.
  */
-@Configuration(description = "Content caching configuration.")
-public class ContentCacheConfig {
-    @Element(description = "Specify the maximum number of entries the cache may contain.")
-    private int maximumSize = 100;
+@Configuration(description = "This is the global buffer limits which enable/disable the flow control globally")
+public class FlowControlGlobalConfig {
 
-    @Element(description = "Specify the time in seconds that each entry should be\n"
-            + "automatically removed from the cache after the entry's creation.")
-    private int expiryTime = 120;
+    @Element(description = "flow control is disabled (if enabled) when message chunk pending to be handled\n"
+            + "         by inbound disruptor reaches below this limit")
+    private int lowLimit = 800;
 
-    public int getMaximumSize() {
-        return maximumSize;
+    @Element(description = "flow control is enabled when message chunk pending to be handled by inbound\n"
+            + "         disruptor reaches above this limit")
+    private int highLimit = 8000;
+
+    public int getLowLimit() {
+        return lowLimit;
     }
 
-    public int getExpiryTime() {
-        return expiryTime;
+    public int getHighLimit() {
+        return highLimit;
     }
 }

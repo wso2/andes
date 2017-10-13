@@ -23,10 +23,10 @@ import org.wso2.carbon.config.annotation.Element;
  * Configuration model for Topic delivery strategy config.
  */
 @Configuration(description = "When delivering topic messages to multiple topic\n"
-        + "subscribers one of following stratigies can be choosen.\n" + "\n"
+        + "subscribers one of following stratigies can be choosen.\n"
         + "               1. DISCARD_NONE     - Broker do not loose any message to any subscriber.\n"
         + "                                     When there are slow subscribers this can cause broker\n"
-        + "                                     go Out of Memory.\n" + "\n"
+        + "                                     go Out of Memory.\n"
         + "               2. SLOWEST_SUB_RATE - Broker deliver to the speed of the slowest\n"
         + "                                     topic subscriber. This can cause fast subscribers\n"
         + "                                     to starve. But eliminate Out of Memory issue.\n" + "\n"

@@ -22,7 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Configuration model for Message Store persistence configs
+ * Configuration model for Message Store persistence configs.
  */
 @Configuration(description = "RDBMS MB Store Configuration")
 public class MessageStoreConfig {

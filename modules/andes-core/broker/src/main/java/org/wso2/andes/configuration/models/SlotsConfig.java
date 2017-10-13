@@ -16,11 +16,13 @@
  */
 package org.wso2.andes.configuration.models;
 
+import org.wso2.carbon.config.annotation.Configuration;
 import org.wso2.carbon.config.annotation.Element;
 
 /**
  * Configuration model for slots config in performance tuning section.
  */
+@Configuration(description = "Slots related configurations.")
 public class SlotsConfig {
 
     @Element(description = "Rough estimate for size of a slot. What is meant by size is the number of messages\n"
