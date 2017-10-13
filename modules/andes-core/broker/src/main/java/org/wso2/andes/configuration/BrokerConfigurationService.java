@@ -32,8 +32,17 @@ import java.nio.file.Paths;
 public class BrokerConfigurationService {
     private static Log log = LogFactory.getLog(BrokerConfigurationService.class);
 
+    /**
+     * Configuration directory name.
+     */
     private static String CONF_FOLDER = "conf";
+    /**
+     * Carbon runtime name.
+     */
     private static String RUNTIME = "broker";
+    /**
+     * Deployment descriptor name.
+     */
     private static String CONFIG_NAME = "deployment.yaml";
     private static BrokerConfigurationService brokerConfigurationService = new BrokerConfigurationService();
     private BrokerConfiguration brokerConfiguration;

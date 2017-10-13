@@ -29,7 +29,7 @@ import org.wso2.carbon.config.annotation.Element;
         + "                                     go Out of Memory.\n"
         + "               2. SLOWEST_SUB_RATE - Broker deliver to the speed of the slowest\n"
         + "                                     topic subscriber. This can cause fast subscribers\n"
-        + "                                     to starve. But eliminate Out of Memory issue.\n" + "\n"
+        + "                                     to starve. But eliminate Out of Memory issue.\n"
         + "               3. DISCARD_ALLOWED  - Broker will try best to deliver. To eliminate Out\n"
         + "                                     of Memory threat broker limits sent but not acked message\n"
         + "                                     count to <maxUnackedMessages>.\n"
