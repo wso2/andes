@@ -28,7 +28,7 @@ public class TrustStoreConfig {
 
     private String password = "wso2carbon";
 
-    private String certType = "SunX509";git add
+    private String certType = "SunX509";
 
     public String getLocation() {
         return location;
