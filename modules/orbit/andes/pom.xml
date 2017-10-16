@@ -131,6 +131,31 @@
         </dependency>
     </dependencies>
 
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.wso2.carbon.config</groupId>
+                <artifactId>org.wso2.carbon.config.maven.plugin</artifactId>
+                <version>${carbon.config.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>create-doc</goal>
+                        </goals>
+                        <phase>compile</phase>
+                    </execution>
+                </executions>
+                <configuration>
+                    <configclasses>
+                        <configclass>
+                            org.wso2.andes.configuration.models.BrokerConfiguration
+                        </configclass>
+                    </configclasses>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
     <properties>
         <bundle.name>${project.artifactId}</bundle.name>
         <private.package>
@@ -145,6 +170,7 @@
             com.google.common.base;version="19.0.0",
             com.google.common.util.concurrent;version="19.0.0",
             com.google.common.cache;version="19.0.0",
+            org.wso2.carbon.config.*,
             org.wso2.carbon.business.messaging.core.authentication,
             *;resolution:=optional
         </import.package>
