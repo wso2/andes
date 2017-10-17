@@ -118,7 +118,7 @@ public class AndesSubscription {
         String[] propertyToken = encodedSubscription.split(",");
 
         for (String pt : propertyToken) {
-            String[] tokens = pt.split("=");
+            String[] tokens = pt.split("=", 2);
             switch (tokens[0]) {
                 case "subscriptionId":
                     this.subscriptionId = tokens[1];
