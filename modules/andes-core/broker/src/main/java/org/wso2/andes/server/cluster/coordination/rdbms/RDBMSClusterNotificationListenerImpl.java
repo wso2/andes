@@ -17,8 +17,7 @@ package org.wso2.andes.server.cluster.coordination.rdbms;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.log4j.Logger;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextInformationManager;
 import org.wso2.andes.kernel.AndesContextStore;
@@ -174,8 +173,8 @@ public class RDBMSClusterNotificationListenerImpl implements ClusterNotification
         //and schedule a periodic task to read cluster events
         // from the store if cluster event sync mode is set to RDBMS.
         ThreadFactory threadFactory = new ThreadFactoryBuilder().setNameFormat("ClusterEventReaderTask-%d").build();
-        int clusterEventReaderInterval = AndesConfigurationManager.readValue(AndesConfiguration
-                .CLUSTER_EVENT_SYNC_INTERVAL);
+        int clusterEventReaderInterval = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getCoordination().getRdbmsBasedClusterEventSynchronization().getEventSyncInterval();
         scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(threadFactory);
         scheduledExecutorService.scheduleWithFixedDelay(new ClusterEventReaderTask(),
                 clusterEventReaderInterval, clusterEventReaderInterval, TimeUnit.MILLISECONDS);

@@ -28,8 +28,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.mina.common.ByteBuffer;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.BasicContentHeaderProperties;
 import org.wso2.andes.kernel.Andes;
@@ -59,6 +58,16 @@ import org.wso2.andes.server.queue.QueueRegistry;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostImpl;
 import org.wso2.andes.transport.codec.BBDecoder;
+
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import javax.management.JMException;
 import javax.management.MBeanException;
 import javax.management.NotCompliantMBeanException;
@@ -69,15 +78,6 @@ import javax.management.openmbean.CompositeType;
 import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
-import java.nio.charset.CharacterCodingException;
-import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Collections;
 
 /**
  * This class contains all operations such as addition, deletion, purging, browsing, etc. that are invoked by the UI
@@ -121,8 +121,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
     /**
      * Maximum size a message will be displayed on UI
      */
-    public static final Integer MESSAGE_DISPLAY_LENGTH_MAX = AndesConfigurationManager
-            .readValue(AndesConfiguration.MANAGEMENT_CONSOLE_MAX_DISPLAY_LENGTH_FOR_MESSAGE_CONTENT);
+    public static final Integer MESSAGE_DISPLAY_LENGTH_MAX = BrokerConfigurationService.getInstance()
+            .getBrokerConfiguration().getManagementConsole().getMaximumMessageDisplayLength();
 
     /**
      * Shown to user has a indication that the particular message has more content than shown in UI

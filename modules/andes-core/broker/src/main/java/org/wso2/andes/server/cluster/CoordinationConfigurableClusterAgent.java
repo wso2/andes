@@ -21,8 +21,7 @@ package org.wso2.andes.server.cluster;
 import com.hazelcast.core.HazelcastInstance;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 
@@ -146,11 +145,11 @@ public class CoordinationConfigurableClusterAgent implements ClusterAgent {
         String nodeId;
 
         // Get Node ID configured by user in broker.xml (if not "default" we must use it as the ID)
-        nodeId = AndesConfigurationManager.readValue(AndesConfiguration.COORDINATION_NODE_ID);
+        nodeId = BrokerConfigurationService.getInstance().getBrokerConfiguration().getCoordination().getNodeID();
 
         // If the config value is "default" we must generate the ID. If we want to reuse the ID for same node we can
         // persist the entry locally in CARBON_HOME.
-        if (AndesConfiguration.COORDINATION_NODE_ID.get().getDefaultValue().equals(nodeId)) {
+        if (nodeId.equals("default")) {
             nodeId = UUID.randomUUID().toString();
         }
 

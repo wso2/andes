@@ -18,8 +18,7 @@
 
 package org.wso2.andes.server;
 
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.kernel.AndesConstants;
 
 import java.util.regex.Matcher;
@@ -33,8 +32,8 @@ public class NameValidationUtils {
     /**
      * Whether strict validation against queue name or topic name is enabled
      */
-    private static Boolean isStrictValidationEnabled = AndesConfigurationManager.readValue
-            (AndesConfiguration.ALLOW_STRICT_NAME_VALIDATION);
+    private static Boolean isStrictValidationEnabled = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+            .getTransport().getAmqpConfiguration().isAllowStrictNameValidation();
 
    /* Pattern to validate the topic name. Pattern can starts with star(*) or any alphanumeric
     character(a-z A-Z 0-9),

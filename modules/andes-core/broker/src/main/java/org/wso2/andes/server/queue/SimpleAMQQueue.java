@@ -21,16 +21,20 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.amqp.QpidAndesBridge;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.configuration.qpid.*;
+import org.wso2.andes.configuration.BrokerConfigurationService;
+import org.wso2.andes.configuration.qpid.ConfigStore;
+import org.wso2.andes.configuration.qpid.ConfiguredObject;
+import org.wso2.andes.configuration.qpid.QueueConfigType;
+import org.wso2.andes.configuration.qpid.QueueConfiguration;
+import org.wso2.andes.configuration.qpid.SessionConfig;
+import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 import org.wso2.andes.framing.AMQShortString;
+import org.wso2.andes.kernel.AndesConstants;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.pool.ReadWriteRunnable;
 import org.wso2.andes.pool.ReferenceCountingExecutorService;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.binding.Binding;
-import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.logging.LogActor;
 import org.wso2.andes.server.logging.LogSubject;
@@ -49,11 +53,15 @@ import org.wso2.andes.server.subscription.SubscriptionList;
 import org.wso2.andes.server.txn.AutoCommitTransaction;
 import org.wso2.andes.server.txn.LocalTransaction;
 import org.wso2.andes.server.txn.ServerTransaction;
-import org.wso2.andes.kernel.AndesConstants;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 
-import javax.management.JMException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -62,6 +70,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.management.JMException;
 
 public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
 {
@@ -411,8 +420,8 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
                     "Not Allowed !, Please use a Different Alias");
         }
 
-        Boolean sharedSubscribersAllowed = AndesConfigurationManager.readValue
-                (AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
+        Boolean sharedSubscribersAllowed = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getTransport().getAmqpConfiguration().isAllowSharedTopicSubscriptions();
 
         if (hasExclusiveSubscriber())
         {

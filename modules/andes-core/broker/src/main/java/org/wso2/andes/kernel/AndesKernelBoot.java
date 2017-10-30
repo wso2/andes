@@ -20,9 +20,8 @@ package org.wso2.andes.kernel;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.configuration.StoreConfiguration;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
 import org.wso2.andes.kernel.disruptor.inbound.InboundExchangeEvent;
 import org.wso2.andes.kernel.dtx.DtxRegistry;
@@ -380,12 +379,12 @@ public class AndesKernelBoot {
         //deleted the expired message from db
         PeriodicExpiryMessageDeletionTask periodicExpiryMessageDeletionTask = null;
 
-        int recoveryTaskScheduledPeriod = AndesConfigurationManager.readValue
-                (AndesConfiguration.PERFORMANCE_TUNING_FAILOVER_VHOST_SYNC_TASK_INTERVAL);
-        int dbBasedDeletionTaskScheduledPeriod = AndesConfigurationManager.readValue
-                (AndesConfiguration.PERFORMANCE_TUNING_PERIODIC_EXPIRY_MESSAGE_DELETION_INTERVAL);
-        int safeDeleteRegionSlotCount = AndesConfigurationManager.readValue
-                (AndesConfiguration.PERFORMANCE_TUNING_SAFE_DELETE_REGION_SLOT_COUNT);
+        int recoveryTaskScheduledPeriod = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getRecovery().getvHostSyncTaskInterval();
+        int dbBasedDeletionTaskScheduledPeriod = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getPerformanceTuning().getMessageExpiration().getPeriodicMessageDeletionInterval();
+        int safeDeleteRegionSlotCount = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getPerformanceTuning().getMessageExpiration().getSafetySlotCount();
 
         periodicExpiryMessageDeletionTask = new PeriodicExpiryMessageDeletionTask();
 

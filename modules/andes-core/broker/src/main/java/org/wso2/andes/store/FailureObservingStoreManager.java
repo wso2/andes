@@ -19,8 +19,7 @@
 package org.wso2.andes.store;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -78,9 +77,9 @@ public class FailureObservingStoreManager {
      * @return a future referring to the periodic health check task.
      */
     ScheduledFuture<?> scheduleHealthCheckTask(HealthAwareStore store) {
-        
-        int taskDelay = (Integer) AndesConfigurationManager.readValue(
-                                    AndesConfiguration.PERSISTENCE_STORE_HEALTH_CHECK_INTERVAL);
+
+        int taskDelay = BrokerConfigurationService.getInstance().getBrokerConfiguration().getPersistence()
+                .getStoreHealthCheckInterval();
         //initial delay and period interval is set to same for the sake of simplicity
         StoreHealthCheckTask healthCheckTask = new StoreHealthCheckTask(store, healthListeners);
         return executor.scheduleWithFixedDelay(healthCheckTask, taskDelay,

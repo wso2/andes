@@ -24,8 +24,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.kernel.disruptor.DisruptorEventCallback;
 import org.wso2.andes.kernel.disruptor.inbound.InboundBindingEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundChannelFlowEvent;
@@ -58,8 +57,6 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import javax.transaction.xa.Xid;
-
-import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_PURGED_COUNT_TIMEOUT;
 
 /**
  * API for all the tasks done by Andes.
@@ -142,16 +139,20 @@ public class Andes {
      * Singleton class. Hence private constructor.
      */
     private Andes() {
-        PURGE_TIMEOUT_SECONDS = AndesConfigurationManager.readValue(PERFORMANCE_TUNING_PURGED_COUNT_TIMEOUT);
+        PURGE_TIMEOUT_SECONDS = BrokerConfigurationService.getInstance().getBrokerConfiguration().getPerformanceTuning()
+                .getInboundEvents().getPurgedCountTimeout();
         this.flowControlManager = new FlowControlManager();
-        maxTxBatchSize = (Integer) AndesConfigurationManager.
-                readValue(AndesConfiguration.MAX_TRANSACTION_BATCH_SIZE) * 1024;
-        TX_EVENT_TIMEOUT = AndesConfigurationManager.readValue(AndesConfiguration.MAX_TRANSACTION_WAIT_TIMEOUT);
-        maxParallelDtxConnections = AndesConfigurationManager.readValue(AndesConfiguration.MAX_PARALLEL_DISTRIBUTED_TRANSACTION_COUNT);
+        maxTxBatchSize =
+                BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransaction().getMaxBatchSizeInKB()
+                        * 1024;
+
+        TX_EVENT_TIMEOUT = BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransaction()
+                .getMaxWaitTimeout();
+        maxParallelDtxConnections = BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransaction()
+                .getMaxParallelDtxChannels();
 
         dtxChannelList = new ArrayList<>();
     }
-
 
     /**
      * Recover messages for the subscriber. Re-schedule sent but un-ackenowledged
@@ -171,11 +172,9 @@ public class Andes {
     /**
      * Initialise is package specific. We don't need outsiders initialising the API
      */
-    void initialise(MessagingEngine messagingEngine,
-                    InboundEventManager inboundEventManager,
-                    AndesContextInformationManager contextInformationManager,
-                    AndesSubscriptionManager subscriptionManager,
-                    DtxRegistry dtxRegistry ) {
+    void initialise(MessagingEngine messagingEngine, InboundEventManager inboundEventManager,
+            AndesContextInformationManager contextInformationManager, AndesSubscriptionManager subscriptionManager,
+            DtxRegistry dtxRegistry) {
 
         this.contextInformationManager = contextInformationManager;
         this.messagingEngine = messagingEngine;
@@ -203,16 +202,16 @@ public class Andes {
         inboundEventManager.messageReceived(message, andesChannel, pubAckHandler);
 
         //Adding metrics meter for message rate
-//        Meter messageMeter = MetricManager.meter(MetricsConstants.MSG_RECEIVE_RATE
-//                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getMessageRouterName()
-//                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getDestination(), Level.INFO);
-//        messageMeter.mark();
+        //        Meter messageMeter = MetricManager.meter(MetricsConstants.MSG_RECEIVE_RATE
+        //                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getMessageRouterName()
+        //                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getDestination(), Level.INFO);
+        //        messageMeter.mark();
 
         //Adding metrics counter for enqueue messages
-//        Counter counter = MetricManager.counter(MetricsConstants.ENQUEUE_MESSAGES
-//                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getMessageRouterName()
-//                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getDestination(), Level.INFO);
-//        counter.inc();
+        //        Counter counter = MetricManager.counter(MetricsConstants.ENQUEUE_MESSAGES
+        //                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getMessageRouterName()
+        //                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getDestination(), Level.INFO);
+        //        counter.inc();
     }
 
     /**
@@ -248,8 +247,7 @@ public class Andes {
      * @param subscriptionEvent InboundSubscriptionEvent
      * @throws SubscriptionAlreadyExistsException
      */
-    public void openLocalSubscription(InboundSubscriptionEvent subscriptionEvent)
-            throws AndesException {
+    public void openLocalSubscription(InboundSubscriptionEvent subscriptionEvent) throws AndesException {
         subscriptionEvent.prepareForNewSubscription(subscriptionManager);
         inboundEventManager.publishStateEvent(subscriptionEvent);
         subscriptionEvent.waitForCompletion();
@@ -270,8 +268,8 @@ public class Andes {
         StorageQueue queue = AndesContext.getInstance().
                 getStorageQueueRegistry().getStorageQueue(subscriptionEvent.getBoundStorageQueueName());
 
-        InboundQueueEvent deleteQueueEvent = new InboundQueueEvent(queue.getName(),
-                queue.isDurable(), queue.isShared(), queue.getQueueOwner(), queue.isExclusive());
+        InboundQueueEvent deleteQueueEvent = new InboundQueueEvent(queue.getName(), queue.isDurable(), queue.isShared(),
+                queue.getQueueOwner(), queue.isExclusive());
         deleteQueue(deleteQueueEvent);
     }
 
@@ -436,14 +434,14 @@ public class Andes {
     /**
      * Handle message reject.
      *
-     * @param messageId  Id of message that is rejected.
-     * @param channelID Id of the connection channel reject is received
-     * @param reQueue true if message should be re-queued to subscriber
-     * @param isMessageBeyondLastRollback  true if the message was rejected after the last rollback event.
+     * @param messageId                   Id of message that is rejected.
+     * @param channelID                   Id of the connection channel reject is received
+     * @param reQueue                     true if message should be re-queued to subscriber
+     * @param isMessageBeyondLastRollback true if the message was rejected after the last rollback event.
      * @throws AndesException on a message re-schedule issue
      */
-    public void messageRejected(long messageId, UUID channelID, boolean reQueue,
-                                boolean isMessageBeyondLastRollback) throws AndesException {
+    public void messageRejected(long messageId, UUID channelID, boolean reQueue, boolean isMessageBeyondLastRollback)
+            throws AndesException {
         InboundMessageRejectEvent messageRejectEvent = new InboundMessageRejectEvent(messageId, channelID, reQueue);
         messageRejectEvent.prepareToRejectMessage(isMessageBeyondLastRollback);
         inboundEventManager.publishStateEvent(messageRejectEvent);
@@ -590,7 +588,7 @@ public class Andes {
      * Get expired but not yet deleted messages from message store.
      *
      * @param lowerBoundMessageID lower bound message Id of the safe zone for delete
-     * @param queueName queue name in which the expired messages needs to be checked
+     * @param queueName           queue name in which the expired messages needs to be checked
      * @return list of expired message Ids
      * @throws AndesException
      */
@@ -699,7 +697,7 @@ public class Andes {
      */
     public InboundTransactionEvent newTransaction(AndesChannel channel) throws AndesException {
         return new InboundTransactionEvent(messagingEngine, inboundEventManager, maxTxBatchSize, TX_EVENT_TIMEOUT,
-                                           channel);
+                channel);
     }
 
     /**
@@ -735,14 +733,13 @@ public class Andes {
     public synchronized DistributedTransaction createDistributedTransaction(AndesChannel channel, UUID sessionID)
             throws AndesException {
         if (dtxChannelList.size() <= maxParallelDtxConnections) {
-            DistributedTransaction distributedTransaction = new DistributedTransaction(dtxRegistry,
-                                                                                       inboundEventManager,
-                                                                                       channel);
+            DistributedTransaction distributedTransaction = new DistributedTransaction(dtxRegistry, inboundEventManager,
+                    channel);
             dtxChannelList.add(sessionID);
             return distributedTransaction;
         } else {
-            throw new AndesException("Maximum number of parallel transactions limit " + maxParallelDtxConnections
-                                             + " reached. ");
+            throw new AndesException(
+                    "Maximum number of parallel transactions limit " + maxParallelDtxConnections + " reached. ");
         }
     }
 
@@ -775,8 +772,9 @@ public class Andes {
      * @throws AndesException if an error occurs while reading message IDs from database.
      */
     public List<Long> getNextNMessageIdsInDLCForQueue(final String sourceQueue, final String dlcQueueName,
-                                                      long startMessageId, int messageLimit) throws AndesException {
-        return MessagingEngine.getInstance().getNextNMessageIdsInDLCForQueue(sourceQueue, dlcQueueName, startMessageId, messageLimit);
+            long startMessageId, int messageLimit) throws AndesException {
+        return MessagingEngine.getInstance()
+                .getNextNMessageIdsInDLCForQueue(sourceQueue, dlcQueueName, startMessageId, messageLimit);
     }
 
     /***
@@ -807,7 +805,6 @@ public class Andes {
                 channelFlowCallback);
         inboundEventManager.publishStateEvent(inboundChannelFlowEvent);
     }
-
 
     /**
      * Gets the supported protocol types by the broker.
@@ -890,7 +887,8 @@ public class Andes {
      * @param destinationType Destination type of the queues
      * @return
      */
-    public List<String> getAllQueueNames(ProtocolType protocolType, DestinationType destinationType, String destination) {
+    public List<String> getAllQueueNames(ProtocolType protocolType, DestinationType destinationType,
+            String destination) {
         // At the moment this will support only for amqp topics and queues
         String routerName = (DestinationType.QUEUE.equals(destinationType) ?
                 AMQPUtils.DIRECT_EXCHANGE_NAME :

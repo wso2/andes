@@ -22,14 +22,10 @@ import io.netty.channel.ChannelHandler;
 import io.netty.handler.ssl.SslHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.configuration.modules.JKSStore;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.transport.ConnectionSettings;
 import org.wso2.andes.transport.network.security.ssl.SSLUtil;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
 import java.io.IOException;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
@@ -37,6 +33,8 @@ import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import java.util.Properties;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLEngine;
 
 /**
  * This class is responsible of creating ssl context for mqtt
@@ -90,22 +88,25 @@ public class SSLHandlerFactory {
      */
     private ConnectionSettings constructConnectionSettings(Properties props) {
         ConnectionSettings connectionSettings = new ConnectionSettings();
-        
-        String sslTrustStoreLocation = ((JKSStore) AndesConfigurationManager.readValue
-                (AndesConfiguration.TRANSPORTS_MQTT_SSL_CONNECTION_TRUSTSTORE)).getStoreLocation();
-        String sslTrustStorePassword = ((JKSStore) AndesConfigurationManager.readValue
-                (AndesConfiguration.TRANSPORTS_MQTT_SSL_CONNECTION_TRUSTSTORE)).getPassword();
 
-        String trustStoreCertificateType = ((JKSStore) AndesConfigurationManager.readValue
-                (AndesConfiguration.TRANSPORTS_MQTT_SSL_CONNECTION_TRUSTSTORE)).getStoreAlgorithm();
-        
-        String sslKeyStoreLocation = ((JKSStore) AndesConfigurationManager.readValue
-                (AndesConfiguration.TRANSPORTS_MQTT_SSL_CONNECTION_KEYSTORE)).getStoreLocation();
-        String sslKeyStorePassword = ((JKSStore) AndesConfigurationManager.readValue
-                (AndesConfiguration.TRANSPORTS_MQTT_SSL_CONNECTION_KEYSTORE)).getPassword();
+        String sslTrustStoreLocation = BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport()
+                .getMqttConfiguration().getSslConnection().getTrustStore().getLocation();
 
-        String keyStoreCertificateType = ((JKSStore) AndesConfigurationManager.readValue
-                (AndesConfiguration.TRANSPORTS_MQTT_SSL_CONNECTION_KEYSTORE)).getStoreAlgorithm();
+        String sslTrustStorePassword = BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport()
+                .getMqttConfiguration().getSslConnection().getTrustStore().getPassword();
+
+        String trustStoreCertificateType = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getTransport().getMqttConfiguration().getSslConnection().getTrustStore().getCertType();
+
+        String sslKeyStoreLocation = BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport()
+                .getMqttConfiguration().getSslConnection().getKeyStore().getLocation();
+
+        String sslKeyStorePassword = BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport()
+                .getMqttConfiguration().getSslConnection().getKeyStore().getPassword();
+
+        String keyStoreCertificateType = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getTransport().getMqttConfiguration().getSslConnection().getKeyStore().getCertType();
+
 
         connectionSettings.setTrustStorePath(sslTrustStoreLocation);
         connectionSettings.setTrustStorePassword(sslTrustStorePassword);

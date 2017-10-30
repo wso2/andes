@@ -15,22 +15,22 @@
 
 package org.wso2.andes.kernel.subscription;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.MessageHandler;
 import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.router.AndesMessageRouter;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * Storage queue represents the bounded queue for subscription. A subscription
@@ -280,8 +280,8 @@ public class StorageQueue {
                         + messageRouterBindingKey);
             }
 
-            boolean allowSharedSubscribers = AndesConfigurationManager
-                    .readValue(AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
+            boolean allowSharedSubscribers = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                    .getTransport().getAmqpConfiguration().isAllowSharedTopicSubscriptions();
 
             if (!allowSharedSubscribers) {
 

@@ -473,6 +473,11 @@
                 <artifactId>commons-pool2</artifactId>
                 <version>${org.apache.commons.pool.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.wso2.carbon.config</groupId>
+                <artifactId>org.wso2.carbon.config</artifactId>
+                <version>${carbon.config.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -597,6 +602,7 @@
         project.version set here, release prepare goal would expect us to get rid of SNAPSHOT dependencies to the
         artifacts built with ant which are not automatically updated by maven. -->
         <andes.version>1.0.0</andes.version>
+        <carbon.config.version>2.0.5</carbon.config.version>
         <commons-cli.version>1.0</commons-cli.version>
         <commons-configuration.version>1.10</commons-configuration.version>
         <commons-lang.version>2.6</commons-lang.version>

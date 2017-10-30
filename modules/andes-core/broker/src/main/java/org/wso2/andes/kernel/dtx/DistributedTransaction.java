@@ -19,8 +19,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.QpidAndesBridge;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesChannel;
@@ -95,7 +94,7 @@ public class DistributedTransaction {
         this.channel = channel;
         //noinspection ConstantConditions
         maxTotalMessageSizeAllowed =
-                (Integer) AndesConfigurationManager.readValue(AndesConfiguration.MAX_TRANSACTION_BATCH_SIZE) * 1024;
+                BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransaction().getMaxBatchSizeInKB() * 1024;
     }
 
     /**
