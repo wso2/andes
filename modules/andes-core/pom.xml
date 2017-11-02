@@ -143,11 +143,11 @@
             <artifactId>maven-ant-tasks</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.apache.mina</groupId>
+            <groupId>org.wso2.org.apache.mina</groupId>
             <artifactId>mina-core</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.apache.mina</groupId>
+            <groupId>org.wso2.org.apache.mina</groupId>
             <artifactId>mina-filter-ssl</artifactId>
         </dependency>
         <dependency>

@@ -47,7 +47,7 @@
             <optional>true</optional>
         </dependency>
         <dependency>
-            <groupId>org.apache.mina</groupId>
+            <groupId>org.wso2.org.apache.mina</groupId>
             <artifactId>mina-core</artifactId>
             <optional>true</optional>
             <exclusions>
@@ -58,7 +58,7 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>org.apache.mina</groupId>
+            <groupId>org.wso2.org.apache.mina</groupId>
             <artifactId>mina-filter-ssl</artifactId>
         </dependency>
         <dependency>
