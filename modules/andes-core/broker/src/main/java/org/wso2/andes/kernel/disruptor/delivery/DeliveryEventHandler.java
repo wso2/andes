@@ -149,9 +149,6 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                 onDeliveryException(message, subscription);
                 reQueueMessageIfDurable(message, subscription);
 
-            } finally {
-                deliveryEventData.clearData();
-
             }
         }
     }

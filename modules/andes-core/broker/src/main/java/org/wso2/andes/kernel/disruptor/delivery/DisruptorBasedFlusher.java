@@ -119,8 +119,11 @@ public class DisruptorBasedFlusher {
             deliveryEventHandlers[i] = new DeliveryEventHandler(i, parallelDeliveryHandlers);
         }
 
+        // Initialize handler for delivery event cleanup
+        DeliveryEventCleanupHandler deliveryEventCleanupHandler = new DeliveryEventCleanupHandler();
+
         disruptor.handleEventsWith(contentReadTaskBatchProcessor).then(decompressionEventHandlers)
-                .then(deliveryEventHandlers);
+                .then(deliveryEventHandlers).then(deliveryEventCleanupHandler);
 
         disruptor.start();
         ringBuffer = disruptor.getRingBuffer();
