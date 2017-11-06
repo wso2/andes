@@ -658,13 +658,8 @@ public class AMQProtocolHandler implements ProtocolEngine
                 // state so as we don't check we are likely just to time out here as I believe is being seen in QPID-1255
             }
 
-            // Write and wait for frame atomically
-            return listener.writeAndBlockForFrame(new Runnable() {
-                @Override
-                public void run() {
-                    writeFrame(frame);
-                }
-            }, timeout);
+            writeFrame(frame);
+            return listener.blockForFrame(timeout);
 
             // When control resumes before this line, a reply will have been received
             // that matches the criteria defined in the blocking listener
