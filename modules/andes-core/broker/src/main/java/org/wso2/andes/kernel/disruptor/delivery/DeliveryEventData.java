@@ -76,6 +76,8 @@ public class DeliveryEventData {
      * Clear state data for current instance. This should be called by the last event handler for the ring-buffer
      */
     public void clearData() {
+        localSubscription = null;
+        metadata = null;
         errorOccurred = false;
         andesContent = null;
         freshContent.set(true);
