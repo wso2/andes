@@ -120,7 +120,7 @@ public abstract class BlockingWaiter<T>
             try
             {
                 _doneObject = object;
-                _ready = true;
+                _ready = ready;
                 _receivedCondition.signal();
             }
             finally
@@ -145,45 +145,15 @@ public abstract class BlockingWaiter<T>
      * @throws AMQException
      * @throws FailoverException
      */
-    public Object block(long timeout) throws AMQException, FailoverException
-    {
+    public Object block(long timeout) throws AMQException, FailoverException {
+        long nanoTimeout = TimeUnit.MILLISECONDS.toNanos(timeout);
         _lock.lock();
 
-        try
-        {
-            waitForFrame(timeout);
-        }
-        finally
-        {
-            _waiting.set(false);
-
-            //Release Error handling thread
-            if (_error != null)
+        try {
+            if (_closed)
             {
-                _errorAck = true;
-                _errorConditionAck.signal();
-
-                _error = null;
+                throw throwClosedException();
             }
-            _lock.unlock();
-        }
-
-        return _doneObject;
-    }
-
-    /**
-     * Blocking call to wait for a specified frame or until the timeout is elapsed
-     *
-     * @param timeout tie to wait till a specified frame is returned in milliseconds
-     * @throws AMQException
-     * @throws FailoverException
-     */
-    private void waitForFrame(long timeout) throws AMQException, FailoverException {
-
-        long nanoTimeout = TimeUnit.MILLISECONDS.toNanos(timeout);
-        if (_closed) {
-            throw throwClosedException();
-        }
 
             if (_error == null)
             {
@@ -238,6 +208,23 @@ public abstract class BlockingWaiter<T>
                 }
             }
 
+        }
+        finally
+        {
+            _waiting.set(false);
+
+            //Release Error handling thread
+            if (_error != null)
+            {
+                _errorAck = true;
+                _errorConditionAck.signal();
+
+                _error = null;
+            }
+            _lock.unlock();
+        }
+
+        return _doneObject;
     }
 
     /**
@@ -361,39 +348,4 @@ public abstract class BlockingWaiter<T>
         return new AMQException(null, "Waiter was closed.", null);
     }
 
-    /**
-     * Write the frame and wait for the expected frame or the specified timeout.
-     *
-     * @param action {@link Runnable} with the write frame
-     * @param timeout time to wait for the specified expected frame
-     * @return The object that resolved the blocking.
-     * @throws FailoverException
-     * @throws AMQException
-     */
-    protected Object writeAndWait(Runnable action, long timeout) throws FailoverException, AMQException {
-
-        _lock.lock();
-
-        try
-        {
-            action.run();
-            waitForFrame(timeout);
-        }
-        finally
-        {
-            _waiting.set(false);
-
-            //Release Error handling thread
-            if (_error != null)
-            {
-                _errorAck = true;
-                _errorConditionAck.signal();
-
-                _error = null;
-            }
-            _lock.unlock();
-        }
-
-        return _doneObject;
-    }
 }
