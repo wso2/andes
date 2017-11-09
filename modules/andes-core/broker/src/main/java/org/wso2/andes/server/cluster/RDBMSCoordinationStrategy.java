@@ -18,8 +18,7 @@ package org.wso2.andes.server.cluster;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
@@ -121,7 +120,14 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
      * Thread executor used for expiring the coordinator state
      */
     private final ScheduledExecutorService scheduledExecutorService;
-
+    /**
+     * Default hearbeat interval value
+     */
+   private static final  int DEFAULT_HEARTBEAT_INTERVAL = 5;
+    /**
+     * Default rdbms coordination entry creation wait time value
+     */
+    private static final  int DEFAULT_ENTRY_CREATION_WAIT_TIME = 3;
     /**
      * Default constructor
      */
@@ -131,10 +137,10 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
         scheduledExecutorService = Executors.newScheduledThreadPool(2,
                                                                     createThreadFactory("RDBMSCoordinationScheduledTask-%d"));
 
-        heartBeatInterval = AndesConfigurationManager
-                .readValue(AndesConfiguration.RDBMS_BASED_COORDINATION_HEARTBEAT_INTERVAL);
-        coordinatorEntryCreationWaitTime = AndesConfigurationManager
-                .readValue(AndesConfiguration.RDBMS_BASED_COORDINATOR_ENTRY_CREATION_WAIT_TIME);
+        heartBeatInterval = BrokerConfigurationService.getInstance().getBrokerConfiguration().getCoordination()
+                .getRdbmsBasedCoordination().getHeartbeatInterval();
+        coordinatorEntryCreationWaitTime = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getCoordination().getRdbmsBasedCoordination().getCoordinatorEntryCreationWaitTime();
                 //(heartBeatInterval / 2) + 1;
 
         // Maximum age of a heartbeat. After this much of time, the heartbeat is considered invalid and node is
@@ -142,9 +148,9 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
         heartbeatMaxAge = heartBeatInterval * 2;
 
         if (heartBeatInterval <= coordinatorEntryCreationWaitTime) {
-            throw new RuntimeException("Configuration error. " + AndesConfiguration
-                    .RDBMS_BASED_COORDINATION_HEARTBEAT_INTERVAL + " * 2 should be greater than " +
-                    AndesConfiguration.RDBMS_BASED_COORDINATOR_ENTRY_CREATION_WAIT_TIME);
+            throw new RuntimeException(
+                    "Configuration error. " + DEFAULT_HEARTBEAT_INTERVAL + " * 2 should be greater than "
+                            + DEFAULT_ENTRY_CREATION_WAIT_TIME);
         }
     }
 

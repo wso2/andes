@@ -22,8 +22,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.configuration.util.TopicMessageDeliveryStrategy;
 import org.wso2.andes.kernel.disruptor.delivery.DisruptorBasedFlusher;
 import org.wso2.andes.kernel.subscription.AndesSubscription;
@@ -83,9 +82,8 @@ public class MessageFlusher {
         this.queueMessageFlusher = new FlowControlledQueueMessageDeliveryImpl();
 
         //set topic message flusher
-        TopicMessageDeliveryStrategy topicMessageDeliveryStrategy =
-                AndesConfigurationManager.readValue(AndesConfiguration.
-                        PERFORMANCE_TUNING_TOPIC_MESSAGE_DELIVERY_STRATEGY);
+        TopicMessageDeliveryStrategy topicMessageDeliveryStrategy = BrokerConfigurationService.getInstance()
+                .getBrokerConfiguration().getPerformanceTuning().getDelivery().getTopicMessageDeliveryStrategy().getStrategyName();
 
         if(topicMessageDeliveryStrategy.equals(TopicMessageDeliveryStrategy.DISCARD_ALLOWED)
                 || topicMessageDeliveryStrategy.equals(TopicMessageDeliveryStrategy.DISCARD_NONE)) {
@@ -115,8 +113,8 @@ public class MessageFlusher {
         //link the third handler
         expiredMessageHandler.setNextDeliveryFilter(new DeliveryMessageHandler());
 
-        int preDeliveryDeletionTaskScheduledPeriod = AndesConfigurationManager.readValue
-                (AndesConfiguration.PERFORMANCE_TUNING_PRE_DELIVERY_EXPIRY_DELETION_INTERVAL);
+        int preDeliveryDeletionTaskScheduledPeriod = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getPerformanceTuning().getMessageExpiration().getPreDeliveryExpiryDeletionInterval();
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("ExpiryMessageDeletionTask-%d")
                 .build();
         //executor service for pre delivery deletion task

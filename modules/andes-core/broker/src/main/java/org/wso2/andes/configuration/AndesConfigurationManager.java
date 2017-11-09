@@ -17,8 +17,19 @@
  */
 package org.wso2.andes.configuration;
 
+import org.apache.commons.configuration.CompositeConfiguration;
+import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration.XMLConfiguration;
+import org.apache.commons.configuration.tree.xpath.XPathExpressionEngine;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.util.ConfigurationProperty;
+import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesException;
+
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
@@ -34,19 +45,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
-
-import org.apache.commons.configuration.CompositeConfiguration;
-import org.apache.commons.configuration.ConfigurationException;
-import org.apache.commons.configuration.XMLConfiguration;
-import org.apache.commons.configuration.tree.xpath.XPathExpressionEngine;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.configuration.util.ConfigurationProperty;
-import org.wso2.andes.kernel.AndesContext;
-import org.wso2.andes.kernel.AndesException;
-
 import javax.xml.namespace.QName;
 import javax.xml.stream.XMLStreamException;
 
@@ -166,8 +164,8 @@ public class AndesConfigurationManager {
             AndesConfigurationManager.carbonPortOffset = portOffset;
 
             //set delivery timeout for a message
-            int deliveryTimeoutForMessage = AndesConfigurationManager.readValue(AndesConfiguration
-                    .PERFORMANCE_TUNING_TOPIC_MESSAGE_DELIVERY_TIMEOUT);
+            int deliveryTimeoutForMessage = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                    .getPerformanceTuning().getDelivery().getTopicMessageDeliveryStrategy().getDeliveryTimeout();
             AndesContext.getInstance().setDeliveryTimeoutForMessage(deliveryTimeoutForMessage);
 
         } catch (ConfigurationException e) {
@@ -417,17 +415,23 @@ public class AndesConfigurationManager {
     private static void addDerivedProperties() throws AndesException, UnknownHostException {
 
         // For AndesConfiguration.TRANSPORTS_MQTT_BIND_ADDRESS
-        if ("*".equals(readValue(AndesConfiguration.TRANSPORTS_MQTT_BIND_ADDRESS))) {
+        if ("*".equals(
+                BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport().getMqttConfiguration()
+                        .getBindAddress())) {
 
             InetAddress host = InetAddress.getLocalHost();
+            //SETTERS TODO
             compositeConfiguration.setProperty(AndesConfiguration.TRANSPORTS_MQTT_BIND_ADDRESS.get().getKeyInFile(),
                     host.getHostAddress());
         }
 
         // For AndesConfiguration.TRANSPORTS_AMQP_BIND_ADDRESS
-        if ("*".equals(readValue(AndesConfiguration.TRANSPORTS_AMQP_BIND_ADDRESS))) {
+        if ("*".equals(
+                BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport().getAmqpConfiguration()
+                        .getBindAddress())) {
 
             InetAddress host = InetAddress.getLocalHost();
+            //SETTERS TODO
             compositeConfiguration.setProperty(AndesConfiguration.TRANSPORTS_AMQP_BIND_ADDRESS.get().getKeyInFile(),
                     host.getHostAddress());
         }

@@ -26,8 +26,7 @@ import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.kernel.disruptor.waitStrategy.SleepingBlockingWaitStrategy;
 import org.wso2.andes.kernel.subscription.AndesSubscription;
@@ -61,18 +60,18 @@ public class DisruptorBasedFlusher {
     private final RingBuffer<DeliveryEventData> ringBuffer;
 
     public DisruptorBasedFlusher() {
-        Integer ringBufferSize = AndesConfigurationManager.readValue(
-                AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_RING_BUFFER_SIZE);
-        Integer parallelContentReaders = AndesConfigurationManager.readValue(
-                AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_PARALLEL_CONTENT_READERS);
-        Integer parallelDecompressionHandlers = AndesConfigurationManager.readValue(
-                AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_PARALLEL_DECOMPRESSION_HANDLERS);
-        Integer parallelDeliveryHandlers = AndesConfigurationManager.readValue(
-                AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_PARALLEL_DELIVERY_HANDLERS);
-        Integer contentSizeToBatch = AndesConfigurationManager.readValue(
-                AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_CONTENT_READ_BATCH_SIZE);
-        int maxContentChunkSize = AndesConfigurationManager.readValue(
-                AndesConfiguration.PERFORMANCE_TUNING_MAX_CONTENT_CHUNK_SIZE);
+        Integer ringBufferSize = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getPerformanceTuning().getDelivery().getRingBufferSize();
+        Integer parallelContentReaders = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getPerformanceTuning().getDelivery().getParallelContentReaders();
+        Integer parallelDecompressionHandlers = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getPerformanceTuning().getDelivery().getParallelDecompressionHandlers();
+        Integer parallelDeliveryHandlers = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getPerformanceTuning().getDelivery().getParallelDeliveryHandlers();
+        Integer contentSizeToBatch = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getPerformanceTuning().getDelivery().getContentReadBatchSize();
+        int maxContentChunkSize = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getPerformanceTuning().getContentHandling().getMaxContentChunkSize();
 
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("DisruptorBasedFlusher-%d").build();
         Executor threadPoolExecutor = Executors.newCachedThreadPool(namedThreadFactory);

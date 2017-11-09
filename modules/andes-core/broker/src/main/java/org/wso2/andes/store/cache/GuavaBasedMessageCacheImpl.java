@@ -25,14 +25,12 @@ import com.gs.collections.api.iterator.MutableLongIterator;
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.apache.log4j.Logger;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessagePart;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -78,21 +76,23 @@ public class GuavaBasedMessageCacheImpl implements AndesMessageCache {
 
     public GuavaBasedMessageCacheImpl() {
 
-        DEFAULT_CONTENT_CHUNK_SIZE = AndesConfigurationManager
-                .readValue(AndesConfiguration.PERFORMANCE_TUNING_MAX_CONTENT_CHUNK_SIZE);
+        DEFAULT_CONTENT_CHUNK_SIZE = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getPerformanceTuning().getContentHandling().getMaxContentChunkSize();
 
         long cacheSizeInBytes =
-                1024L * 1024L * ((int) AndesConfigurationManager.readValue(AndesConfiguration.PERSISTENCE_CACHE_SIZE));
+                1024L * 1024L * (BrokerConfigurationService.getInstance().getBrokerConfiguration().getPersistence()
+                        .getCache().getSize());
 
-        int cacheConcurrency = AndesConfigurationManager
-                .readValue(AndesConfiguration.PERSISTENCE_CACHE_CONCURRENCY_LEVEL);
+        int cacheConcurrency = BrokerConfigurationService.getInstance().getBrokerConfiguration().getPersistence()
+                .getCache().getConcurrencyLevel();
 
-        int cacheExpirySeconds = AndesConfigurationManager
-                .readValue(AndesConfiguration.PERSISTENCE_CACHE_EXPIRY_SECONDS);
+        int cacheExpirySeconds = BrokerConfigurationService.getInstance().getBrokerConfiguration().getPersistence()
+                .getCache().getExpirySeconds();
 
-        String valueRefType = AndesConfigurationManager
-                .readValue(AndesConfiguration.PERSISTENCE_CACHE_VALUE_REFERENCE_TYPE);
-        printStats = AndesConfigurationManager.readValue(AndesConfiguration.PERSISTENCE_CACHE_PRINT_STATS);
+        String valueRefType = BrokerConfigurationService.getInstance().getBrokerConfiguration().getPersistence()
+                .getCache().getValueReferenceType();
+        printStats = BrokerConfigurationService.getInstance().getBrokerConfiguration().getPersistence().getCache()
+                .isPrintStats();
 
         CacheBuilder<Long, AndesMessage> builder = CacheBuilder.newBuilder().concurrencyLevel(cacheConcurrency)
                 .expireAfterAccess(cacheExpirySeconds, TimeUnit.SECONDS).maximumWeight(cacheSizeInBytes)

@@ -18,8 +18,7 @@ package org.wso2.andes.kernel.subscription;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
@@ -82,8 +81,8 @@ public class SubscriberConnection {
         this.connectedNode = connectedNode;
         this.protocolChannelID = protocolChannelID;
         //create a tracker with maximum number of messages to keep in memory
-        int maxNumberOfDeliveredButNotAckedMessages = AndesConfigurationManager
-                .readValue(AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLING_MAX_UNACKED_MESSAGES);
+        int maxNumberOfDeliveredButNotAckedMessages = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getPerformanceTuning().getAckHandling().getMaxUnackedMessages();
         this.outBoundMessageTracker = new OutBoundMessageTracker(maxNumberOfDeliveredButNotAckedMessages);
         this.outboundSubscription = outboundSubscription;
         obsolete = new AtomicBoolean(false);

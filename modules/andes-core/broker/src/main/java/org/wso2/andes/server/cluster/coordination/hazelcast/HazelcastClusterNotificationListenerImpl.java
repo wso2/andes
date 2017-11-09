@@ -18,8 +18,7 @@ package org.wso2.andes.server.cluster.coordination.hazelcast;
 import com.hazelcast.core.ITopic;
 import com.hazelcast.core.MessageListener;
 import org.apache.commons.lang.StringUtils;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextInformationManager;
 import org.wso2.andes.kernel.AndesException;
@@ -124,8 +123,8 @@ public class HazelcastClusterNotificationListenerImpl implements ClusterNotifica
         // to these topics are stored in the database, this situation is handled by synchronizing the information in
         // the databases when the node recovers. Therefore, we do not need undelivered messages to delivered
         // after a while. Therefore, we need messages to be held in the buffer onle for a very little time.
-        int hazelcastRingBufferTTL = AndesConfigurationManager.readValue(AndesConfiguration
-                .COORDINATION_CLUSTER_NOTIFICATION_TIMEOUT);
+        int hazelcastRingBufferTTL = BrokerConfigurationService.getInstance().getBrokerConfiguration().getCoordination()
+                .getClusterNotificationTimeout();
 
         // Creating the channel for communicating database sync notification to run andes recovery task.
         this.dbSyncNotifierChannel = hazelcastAgent.createReliableTopic(

@@ -1,12 +1,11 @@
 package org.dna.mqtt.moquette.server;
 
+import org.dna.mqtt.commons.Constants;
 import org.dna.mqtt.moquette.messaging.spi.impl.SimpleMessaging;
 import org.dna.mqtt.moquette.server.netty.NettyAcceptor;
-import org.dna.mqtt.commons.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.kernel.AndesException;
 
 import java.io.File;
@@ -29,7 +28,8 @@ public class Server {
     SimpleMessaging messaging;
 
     public void startServer(int port) throws IOException {
-        if (AndesConfigurationManager.<Boolean>readValue(AndesConfiguration.TRANSPORTS_MQTT_ENABLED)) {
+        if (BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport().getMqttConfiguration()
+                .getEnabled()) {
             Properties configProps = loadConfigurations();
             configProps.put("port",Integer.toString(port));
             serverInit(configProps);
@@ -53,21 +53,26 @@ public class Server {
 
         Properties mqttProperties = new Properties();
 
-        mqttProperties.put(Constants.SSL_PORT_PROPERTY_NAME,AndesConfigurationManager.
-                                          readValue(AndesConfiguration.TRANSPORTS_MQTT_DEFAULT_CONNECTION_PORT));
+        mqttProperties.put(Constants.SSL_PORT_PROPERTY_NAME,
+                BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport().getMqttConfiguration()
+                        .getDefaultConnection().getPort());
 
-        mqttProperties.put(Constants.SSL_PORT_PROPERTY_NAME,AndesConfigurationManager.
-                                          readValue(AndesConfiguration.TRANSPORTS_MQTT_SSL_CONNECTION_PORT));
+        mqttProperties.put(Constants.SSL_PORT_PROPERTY_NAME,
+                BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport().getMqttConfiguration()
+                        .getSslConnection().getPort());
 
-        mqttProperties.put(Constants.SSL_CONNECTION_ENABLED,AndesConfigurationManager.
-                                          readValue(AndesConfiguration.TRANSPORTS_MQTT_SSL_CONNECTION_ENABLED));
+        mqttProperties.put(Constants.SSL_CONNECTION_ENABLED,
+                BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport().getMqttConfiguration()
+                        .getSslConnection().getEnabled());
 
-        mqttProperties.put(Constants.DEFAULT_CONNECTION_ENABLED,AndesConfigurationManager.
-                                          readValue(AndesConfiguration.TRANSPORTS_MQTT_DEFAULT_CONNECTION_ENABLED));
+        mqttProperties.put(Constants.DEFAULT_CONNECTION_ENABLED,
+                BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport().getMqttConfiguration()
+                        .getDefaultConnection().getEnabled());
 
-        mqttProperties.put(Constants.HOST_PROPERTY_NAME,AndesConfigurationManager.
-                                          readValue(AndesConfiguration.TRANSPORTS_MQTT_BIND_ADDRESS));
-        
+        mqttProperties.put(Constants.HOST_PROPERTY_NAME,
+                BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport().getMqttConfiguration()
+                        .getBindAddress());
+
         return mqttProperties;
     }
 

@@ -36,7 +36,7 @@ import org.dna.mqtt.moquette.server.netty.exception.MQTTInitializationException;
 import org.dna.mqtt.wso2.AndesMQTTBridge;
 import org.dna.mqtt.wso2.MqttLogExceptionHandler;
 import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.configuration.enums.MQTTAuthoriztionPermissionLevel;
 import org.wso2.andes.configuration.enums.MQTTUserAuthenticationScheme;
 import org.wso2.andes.configuration.enums.MQTTUserAuthorizationScheme;
@@ -54,7 +54,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
-import static org.wso2.andes.configuration.enums.AndesConfiguration.TRANSPORTS_MQTT_DELIVERY_BUFFER_SIZE;
 import static org.wso2.andes.configuration.enums.AndesConfiguration.TRANSPORTS_MQTT_USER_AUTHENTICATION;
 import static org.wso2.andes.configuration.enums.AndesConfiguration.TRANSPORTS_MQTT_USER_AUTHORIZATION;
 
@@ -109,15 +108,16 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
         this.subscriptions = subscriptions;
         m_authenticator = authenticator;
         m_storageService = storageService;
-
+//TODO:
         isAuthenticationRequired = AndesConfigurationManager.readValue(TRANSPORTS_MQTT_USER_AUTHENTICATION) ==
                 MQTTUserAuthenticationScheme.REQUIRED;
         isAuthorizationRequired = AndesConfigurationManager.readValue(TRANSPORTS_MQTT_USER_AUTHORIZATION) ==
                 MQTTUserAuthorizationScheme.REQUIRED;
         //Initialize Authorization
         if (isAuthorizationRequired) {
-            String authorizerClassName = AndesConfigurationManager.readValue(
-                    AndesConfiguration.TRANSPORTS_MQTT_USER_AUTHORIZATION_CLASS);
+            String authorizerClassName = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                    .getTransport().getMqttConfiguration().getSecurity().getAuthorizer().getClassName();
+
             try {
                 Class<? extends IAuthorizer> authorizerClass = Class.forName(authorizerClassName).asSubclass(IAuthorizer.class);
                 m_authorizer = authorizerClass.newInstance();
@@ -130,7 +130,8 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             }
         }
 
-        Integer RingBufferSize = AndesConfigurationManager.readValue(TRANSPORTS_MQTT_DELIVERY_BUFFER_SIZE);
+        Integer RingBufferSize = BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport()
+                .getMqttConfiguration().getDeliveryBufferSize();
 
         // Init the output Disruptor
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()

@@ -24,7 +24,7 @@ import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesAckEvent;
 import org.wso2.andes.kernel.AndesChannel;
@@ -46,14 +46,6 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_ACKNOWLEDGEMENT_HANDLER_BATCH_SIZE;
-import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLER_COUNT;
-import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_CONTENT_CHUNK_HANDLER_COUNT;
-import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_MAX_CONTENT_CHUNK_SIZE;
-import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_MESSAGE_WRITER_BATCH_SIZE;
-import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_PARALLEL_MESSAGE_WRITERS;
-import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_PARALLEL_TRANSACTION_MESSAGE_WRITERS;
-import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_PUBLISHING_BUFFER_SIZE;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.ACKNOWLEDGEMENT_EVENT;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.MESSAGE_EVENT;
 import static org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer.Type.MESSAGE_RECOVERY_EVENT;
@@ -84,26 +76,26 @@ public class InboundEventManager {
 
     public InboundEventManager(MessagingEngine messagingEngine) {
 
-        Integer bufferSize = AndesConfigurationManager.readValue(
-                PERFORMANCE_TUNING_PUBLISHING_BUFFER_SIZE);
-        Integer writeHandlerCount = AndesConfigurationManager.readValue(
-                PERFORMANCE_TUNING_PARALLEL_MESSAGE_WRITERS);
-        Integer ackHandlerCount = AndesConfigurationManager.readValue(
-                PERFORMANCE_TUNING_ACK_HANDLER_COUNT);
-        Integer writerBatchSize = AndesConfigurationManager.readValue(
-                PERFORMANCE_TUNING_MESSAGE_WRITER_BATCH_SIZE);
-        Integer ackHandlerBatchSize = AndesConfigurationManager.readValue(
-                PERFORMANCE_TUNING_ACKNOWLEDGEMENT_HANDLER_BATCH_SIZE);
-        Integer transactionHandlerCount = AndesConfigurationManager.readValue(
-                PERFORMANCE_TUNING_PARALLEL_TRANSACTION_MESSAGE_WRITERS);
+        Integer bufferSize = BrokerConfigurationService.getInstance().getBrokerConfiguration().getPerformanceTuning()
+                .getInboundEvents().getBufferSize();
 
+        Integer writeHandlerCount = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getPerformanceTuning().getInboundEvents().getParallelMessageWriters();
+        Integer ackHandlerCount = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getPerformanceTuning().getAckHandling().getAckHandlerCount();
+        Integer writerBatchSize = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getPerformanceTuning().getInboundEvents().getMessageWriterBatchSize();
+        Integer ackHandlerBatchSize = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getPerformanceTuning().getAckHandling().getAckHandlerBatchSize();
+        Integer transactionHandlerCount = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getPerformanceTuning().getInboundEvents().getTransactionMessageWriters();
         Integer dtxDbWriterCount = 1; // need to merge local and distributed transaction writing logic to the same
 
         disablePubAck = new DisablePubAckImpl();
-        int maxContentChunkSize = AndesConfigurationManager.readValue(
-                PERFORMANCE_TUNING_MAX_CONTENT_CHUNK_SIZE);
-        int contentChunkHandlerCount = AndesConfigurationManager.readValue(
-                PERFORMANCE_TUNING_CONTENT_CHUNK_HANDLER_COUNT);
+        int maxContentChunkSize = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getPerformanceTuning().getContentHandling().getMaxContentChunkSize();
+        int contentChunkHandlerCount = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getPerformanceTuning().getContentHandling().getContentChunkHandlerCount();
 
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
                 .setNameFormat("DisruptorInboundEventThread-%d").build();

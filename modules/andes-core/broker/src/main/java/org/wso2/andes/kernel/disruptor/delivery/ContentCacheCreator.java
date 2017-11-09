@@ -25,8 +25,7 @@ import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import com.gs.collections.impl.set.mutable.primitive.LongHashSet;
 import org.apache.log4j.Logger;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.DisruptorCachedContent;
@@ -73,10 +72,10 @@ public class ContentCacheCreator {
     public ContentCacheCreator(int maxContentChunkSize) {
         this.maxChunkSize = maxContentChunkSize;
 
-        Integer maximumSize = AndesConfigurationManager
-                .readValue(AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_CONTENT_CACHE_MAXIMUM_SIZE);
-        Integer expiryTime = AndesConfigurationManager
-                .readValue(AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_CONTENT_CACHE_EXPIRY_TIME);
+        Integer maximumSize = BrokerConfigurationService.getInstance().getBrokerConfiguration().getPerformanceTuning()
+                .getDelivery().getContentCache().getMaximumSize();
+        Integer expiryTime = BrokerConfigurationService.getInstance().getBrokerConfiguration().getPerformanceTuning()
+                .getDelivery().getContentCache().getExpiryTime();
 
         contentCache = CacheBuilder.newBuilder().expireAfterWrite(expiryTime, TimeUnit.SECONDS).maximumSize(maximumSize)
                 .concurrencyLevel(1).build();

@@ -22,9 +22,9 @@ import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.logging.Log;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.configuration.modules.JKSStore;
+import org.wso2.andes.configuration.BrokerConfigurationService;
+import org.wso2.andes.configuration.models.transport.KeyStoreConfiguration;
+import org.wso2.andes.configuration.models.transport.TrustStoreConfiguration;
 import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.configuration.qpid.ServerNetworkTransportConfiguration;
 import org.wso2.andes.configuration.qpid.management.ConfigurationManagementMBean;
@@ -49,7 +49,6 @@ import org.wso2.andes.transport.network.IncomingNetworkTransport;
 import org.wso2.andes.transport.network.Transport;
 import org.wso2.andes.transport.network.mina.MinaNetworkTransport;
 
-import javax.management.JMException;
 import java.io.File;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -58,6 +57,7 @@ import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import javax.management.JMException;
 
 import static org.wso2.andes.transport.ConnectionSettings.WILDCARD_ADDRESS;
 
@@ -122,7 +122,8 @@ public class Broker
     private void startAMQPListener(ApplicationRegistry config, BrokerOptions options, ServerConfiguration
             serverConfig) throws AndesException {
         try {
-            if (AndesConfigurationManager.<Boolean>readValue(AndesConfiguration.TRANSPORTS_AMQP_ENABLED)) {
+            if (BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport().getAmqpConfiguration()
+                    .getEnabled()) {
                 ConfigurationManagementMBean configMBean = new ConfigurationManagementMBean();
                 configMBean.register();
 
@@ -207,14 +208,15 @@ public class Broker
                 }
 
                 if (serverConfig.getEnableSSL()) {
-                    JKSStore keyStore = AndesConfigurationManager
-                            .readValue(AndesConfiguration.TRANSPORTS_AMQP_SSL_CONNECTION_KEYSTORE);
-                    JKSStore trustStore = AndesConfigurationManager
-                            .readValue(AndesConfiguration.TRANSPORTS_AMQP_SSL_CONNECTION_TRUSTSTORE);
+                    KeyStoreConfiguration keyStore = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                            .getTransport().getAmqpConfiguration().getSslConnection().getKeyStore();
+                    TrustStoreConfiguration trustStore = BrokerConfigurationService.getInstance()
+                            .getBrokerConfiguration().getTransport().getAmqpConfiguration().getSslConnection()
+                            .getTrustStore();
 
-                    SSLContextFactory sslFactory =
-                            new SSLContextFactory(trustStore.getStoreLocation(), trustStore.getPassword(), trustStore.getStoreAlgorithm(),
-                                                  keyStore.getStoreLocation(), keyStore.getPassword(), keyStore.getStoreAlgorithm());
+                    SSLContextFactory sslFactory = new SSLContextFactory(trustStore.getLocation(),
+                            trustStore.getPassword(), trustStore.getCertType(), keyStore.getLocation(),
+                            keyStore.getPassword(), keyStore.getCertType());
 
                     for(int sslPort : sslPorts)
                     {
@@ -295,9 +297,8 @@ public class Broker
 
             AndesKernelBoot.startMessaging();
             AndesKernelBoot.createSuperTenantDLC();
-
-            AMQPUtils.DEFAULT_CONTENT_CHUNK_SIZE = AndesConfigurationManager.readValue(
-                    AndesConfiguration.PERFORMANCE_TUNING_MAX_CONTENT_CHUNK_SIZE);
+            AMQPUtils.DEFAULT_CONTENT_CHUNK_SIZE = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                    .getPerformanceTuning().getContentHandling().getMaxContentChunkSize();
 
         } catch (ConfigurationException ce) {
             throw new AndesException("Unable to create configuration files based application registry", ce);

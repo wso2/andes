@@ -18,8 +18,7 @@
 
 package org.wso2.andes.store.cache;
 
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 
 /**
  * Factory to create a {@link AndesMessageCache} based on the configurations in broker.xml 
@@ -40,7 +39,8 @@ public class MessageCacheFactory {
      */
     public AndesMessageCache create() {
 
-        int cacheSizeInMegaBytes = AndesConfigurationManager.readValue(AndesConfiguration.PERSISTENCE_CACHE_SIZE);
+        int cacheSizeInMegaBytes = BrokerConfigurationService.getInstance().getBrokerConfiguration().getPersistence()
+                .getCache().getSize();
                                     
         AndesMessageCache cache = null;
         
