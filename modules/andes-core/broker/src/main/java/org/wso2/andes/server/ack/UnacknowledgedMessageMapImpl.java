@@ -18,8 +18,7 @@
 package org.wso2.andes.server.ack;
 
 import org.wso2.andes.AMQException;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.configuration.util.TopicMessageDeliveryStrategy;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.queue.QueueEntry;
@@ -51,12 +50,13 @@ public class UnacknowledgedMessageMapImpl implements UnacknowledgedMessageMap
     public UnacknowledgedMessageMapImpl(int prefetchLimit, AMQChannel amqChannel, boolean isDurable) {
         _prefetchLimit = prefetchLimit;
 
-        TopicMessageDeliveryStrategy messageDeliveryStrategy = AndesConfigurationManager.readValue
-                (AndesConfiguration.PERFORMANCE_TUNING_TOPIC_MESSAGE_DELIVERY_STRATEGY);
+        TopicMessageDeliveryStrategy messageDeliveryStrategy = BrokerConfigurationService.getInstance()
+                .getBrokerConfiguration().getPerformanceTuning().getDelivery().getTopicMessageDeliveryStrategy()
+                .getStrategyName();
 
         if (!isDurable && messageDeliveryStrategy.equals(TopicMessageDeliveryStrategy.DISCARD_ALLOWED)) {
-            int growLimit = AndesConfigurationManager.readValue
-                    (AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLING_MAX_UNACKED_MESSAGES);
+            int growLimit = BrokerConfigurationService.getInstance().getBrokerConfiguration().getPerformanceTuning()
+                    .getAckHandling().getMaxUnackedMessages();
             _map = new LimitedSizeQueueEntryHolder(_prefetchLimit, growLimit, amqChannel);
         } else {
             _map = new LinkedHashMap<Long, QueueEntry>(prefetchLimit);

@@ -21,8 +21,7 @@ package org.wso2.andes.server.cluster.coordination.rdbms;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.log4j.Logger;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
@@ -76,8 +75,8 @@ public class RDBMSMembershipEventingEngine {
 
         membershipListenerTask = new MembershipListenerTask(nodeId);
 
-        int scheduledPeriod = AndesConfigurationManager
-                .readValue(AndesConfiguration.RDBMS_BASED_EVENT_POLLING_INTERVAL);
+        int scheduledPeriod = BrokerConfigurationService.getInstance().getBrokerConfiguration().getCoordination()
+                .getRdbmsBasedCoordination().getEventPollingInterval();
 
         clusterMembershipReaderTaskScheduler.scheduleWithFixedDelay(membershipListenerTask, scheduledPeriod,
                 scheduledPeriod, TimeUnit.MILLISECONDS);

@@ -20,19 +20,19 @@ package org.wso2.andes.kernel;
 
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.apache.log4j.Logger;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.kernel.dtx.AndesPreparedMessageMetadata;
 import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerator;
 import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.tools.utils.MessageTracer;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * This class will handle all message related functions of WSO2 Message Broker
@@ -502,7 +502,8 @@ public class MessagingEngine {
 
     private void configureMessageIDGenerator() {
         // Configure message ID generator
-        String idGeneratorImpl = AndesConfigurationManager.readValue(AndesConfiguration.PERSISTENCE_ID_GENERATOR);
+        String idGeneratorImpl = BrokerConfigurationService.getInstance().getBrokerConfiguration().getPersistence()
+                .getIdGenerator();
         if (idGeneratorImpl != null && !"".equals(idGeneratorImpl)) {
             try {
                 Class clz = Class.forName(idGeneratorImpl);

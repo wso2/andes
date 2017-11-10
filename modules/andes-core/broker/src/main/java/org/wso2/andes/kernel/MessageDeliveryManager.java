@@ -21,8 +21,7 @@ package org.wso2.andes.kernel;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.server.cluster.error.detection.NetworkPartitionListener;
 import org.wso2.andes.store.FailureObservingStoreManager;
@@ -52,9 +51,8 @@ public final class MessageDeliveryManager implements StoreHealthListener, Networ
     private final TaskExecutorService<MessageDeliveryTask> taskManager;
 
     private MessageDeliveryManager() {
-        int numberOfThreads = AndesConfigurationManager
-                .readValue(AndesConfiguration.PERFORMANCE_TUNING_SLOTS_WORKER_THREAD_COUNT);
-
+        int numberOfThreads = BrokerConfigurationService.getInstance().getBrokerConfiguration().getPerformanceTuning()
+                .getSlots().getDeliveryThreadCount();
         ThreadFactory threadFactory = new ThreadFactoryBuilder()
                 .setNameFormat("MessageDeliveryTaskThreadPool-%d").build();
 

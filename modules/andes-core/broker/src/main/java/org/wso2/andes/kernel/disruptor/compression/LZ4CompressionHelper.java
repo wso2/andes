@@ -21,15 +21,14 @@ package org.wso2.andes.kernel.disruptor.compression;
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.lz4.LZ4FastDecompressor;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.kernel.AndesMessagePart;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 
 
 /**
@@ -40,21 +39,21 @@ public class LZ4CompressionHelper {
     /**
      * Whether message content compression from the server side is enabled
      */
-    static final boolean isCompressionEnabled = (boolean) AndesConfigurationManager.readValue
-            (AndesConfiguration.PERFORMANCE_TUNING_ALLOW_COMPRESSION);
+    static final boolean isCompressionEnabled = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+            .getPerformanceTuning().getContentHandling().isAllowCompression();
 
     /**
      * Maximum content size to check before compress message content, in bytes. Messages with
      * content less than this size will not compress.
      */
-    static final int contentCompressionThreshold = (int) AndesConfigurationManager.readValue
-            (AndesConfiguration.PERFORMANCE_TUNING_CONTENT_COMPRESSION_THRESHOLD);
+    static final int contentCompressionThreshold = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+            .getPerformanceTuning().getContentHandling().getContentCompressionThreshold();
 
     /**
      * Maximum allowed chunk size to be stored in DB, in bytes.
      */
-    static final int maxChunkSize = (int) AndesConfigurationManager.readValue(
-            AndesConfiguration.PERFORMANCE_TUNING_MAX_CONTENT_CHUNK_SIZE);
+    static final int maxChunkSize = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+            .getPerformanceTuning().getContentHandling().getMaxContentChunkSize();
 
     /**
      * Keep a reference to lz4 instance

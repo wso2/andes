@@ -31,11 +31,10 @@ import org.dna.mqtt.moquette.proto.messages.UnsubscribeMessage;
 import org.dna.mqtt.moquette.server.Constants;
 import org.dna.mqtt.moquette.server.IAuthenticator;
 import org.dna.mqtt.moquette.server.ServerChannel;
-import org.dna.mqtt.wso2.MqttLogExceptionHandler;
 import org.dna.mqtt.wso2.MQTTPingRequest;
 import org.dna.mqtt.wso2.MQTTSubscriptionStore;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.dna.mqtt.wso2.MqttLogExceptionHandler;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
@@ -83,8 +82,8 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
                 .setNameFormat("Disruptor MQTT Simple Messaging Thread %d").build();
         ExecutorService executor = Executors.newCachedThreadPool(namedThreadFactory);
-        Integer ringBufferSize = AndesConfigurationManager.readValue(
-                AndesConfiguration.TRANSPORTS_MQTT_INBOUND_BUFFER_SIZE);
+        Integer ringBufferSize = BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport()
+                .getMqttConfiguration().getInboundBufferSize();
 
         disruptor = new Disruptor<ValueEvent>( ValueEvent.EVENT_FACTORY, ringBufferSize, executor);
         //Added by WSO2, we do not want to ignore the exception here
@@ -224,7 +223,8 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 
         subscriptions.init(m_storageService);
 
-        String authenticatorClassName = AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_MQTT_USER_AUTHENTICATOR_CLASS);
+        String authenticatorClassName = BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport()
+                .getMqttConfiguration().getSecurity().getAuthenticator();
         
         try {
             Class<? extends IAuthenticator> authenticatorClass = Class.forName(authenticatorClassName).asSubclass(IAuthenticator.class);

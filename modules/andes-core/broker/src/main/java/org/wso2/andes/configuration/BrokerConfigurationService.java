@@ -33,26 +33,36 @@ public class BrokerConfigurationService {
     private static Log log = LogFactory.getLog(BrokerConfigurationService.class);
 
     /**
-     * Configuration directory name.
+     * path name to conf folder in wso2 runtime
      */
     private static String CONF_FOLDER = "conf";
     /**
-     * Carbon runtime name.
+     * path name to runtime folder
      */
     private static String RUNTIME = "broker";
     /**
-     * Deployment descriptor name.
+     * file name of global config yaml
      */
     private static String CONFIG_NAME = "deployment.yaml";
+    /**
+     * path name to carbon home in wso2 runtime
+     */
+    private static String CARBON_HOME = "carbon.home";
+    /**
+     * Broker configuration service to access broker config provider
+     */
     private static BrokerConfigurationService brokerConfigurationService = new BrokerConfigurationService();
+    /**
+     * Broker configuration provider
+     */
     private BrokerConfiguration brokerConfiguration;
 
     // Get the config file location
-    Path deploymentConfigPath = Paths.get(System.getProperty(AndesConfigurationManager.CARBON_HOME), CONF_FOLDER, RUNTIME,
+    private Path deploymentConfigPath = Paths.get(System.getProperty(CARBON_HOME), CONF_FOLDER, RUNTIME,
             CONFIG_NAME);
 
     private BrokerConfigurationService() {
-        // Get configuration
+        // Get configuration provider
         try {
             ConfigProvider configProvider = ConfigProviderFactory.getConfigProvider(deploymentConfigPath);
             brokerConfiguration = configProvider.getConfigurationObject(BrokerConfiguration.class);
@@ -64,6 +74,7 @@ public class BrokerConfigurationService {
 
     /**
      * Get the broker configuration service instance.
+     *
      * @return BrokerConfigurationService
      */
     public static BrokerConfigurationService getInstance() {
@@ -72,6 +83,7 @@ public class BrokerConfigurationService {
 
     /**
      * Get the Broker Configuration instance.
+     *
      * @return BrokerConfiguration
      */
     public BrokerConfiguration getBrokerConfiguration() {

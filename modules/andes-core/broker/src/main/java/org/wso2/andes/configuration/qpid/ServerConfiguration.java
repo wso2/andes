@@ -18,14 +18,16 @@
 
 package org.wso2.andes.configuration.qpid;
 
-import org.apache.commons.configuration.*;
+import org.apache.commons.configuration.CompositeConfiguration;
 import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration.ConfigurationFactory;
+import org.apache.commons.configuration.HierarchicalConfiguration;
+import org.apache.commons.configuration.SystemConfiguration;
+import org.apache.commons.configuration.XMLConfiguration;
 import org.apache.log4j.Logger;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.configuration.modules.JKSStore;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
-import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostRegistry;
@@ -33,10 +35,13 @@ import sun.misc.Signal;
 import sun.misc.SignalHandler;
 
 import java.io.File;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Map.Entry;
-
-import static org.wso2.andes.transport.ConnectionSettings.WILDCARD_ADDRESS;
 
 public class ServerConfiguration extends ConfigurationPlugin implements SignalHandler {
     protected static final Logger _logger = Logger.getLogger(ServerConfiguration.class);
@@ -512,7 +517,8 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
      * @return Port
      */
     public List getPorts() {
-        Integer port = AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_DEFAULT_CONNECTION_PORT);
+        Integer port = BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport()
+                .getAmqpConfiguration().getDefaultConnection().getPort();
 
         return Collections.singletonList(port);
     }
@@ -534,12 +540,13 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
     }
 
     /**
-     * Retrieve bind address from Andes configurations(broker.xml).
+     * Retrieve bind address from Andes configurations(deployment.yaml).
      *
      * @return Bind address
      */
     public String getBind() {
-        return AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_BIND_ADDRESS);
+        return BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport().getAmqpConfiguration()
+                .getBindAddress();
     }
 
     public int getReceiveBufferSize() {
@@ -559,17 +566,21 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
     }
 
     public boolean getEnableSSL() {
-        return (Boolean)AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_SSL_CONNECTION_ENABLED);
+        return BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport().getAmqpConfiguration()
+                .getSslConnection().getEnabled();
     }
 
     public boolean getSSLOnly() {
-        return (Boolean)AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_SSL_CONNECTION_ENABLED) &&
-                !(Boolean)AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_DEFAULT_CONNECTION_ENABLED);
+        return BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport().getAmqpConfiguration()
+                .getSslConnection().getEnabled() && !BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getTransport().getAmqpConfiguration().getDefaultConnection().getEnabled();
     }
 
     public boolean getMQTTSSLOnly() {
-        return (Boolean) AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_MQTT_SSL_CONNECTION_ENABLED) &&
-               !(Boolean)AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_MQTT_DEFAULT_CONNECTION_ENABLED);
+        return (Boolean) BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport()
+                .getMqttConfiguration().getSslConnection().getEnabled() && !(Boolean) BrokerConfigurationService
+                .getInstance().getBrokerConfiguration().getTransport().getMqttConfiguration().getDefaultConnection()
+                .getEnabled();
     }
 
     /**
@@ -578,23 +589,27 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
      * @return SSL Port List
      */
     public List getSSLPorts() {
-        Integer sslPort = AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_SSL_CONNECTION_PORT);
+        Integer sslPort = BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport()
+                .getAmqpConfiguration().getSslConnection().getPort();
 
         return Collections.singletonList(sslPort);
     }
 
     public String getKeystorePath() {
-        return ((JKSStore)AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_SSL_CONNECTION_KEYSTORE)).getStoreLocation();
+        return BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport().getAmqpConfiguration()
+                .getSslConnection().getKeyStore().getLocation();
     }
 
     public String getKeystorePassword() {
-        return ((JKSStore)AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_SSL_CONNECTION_KEYSTORE)).getPassword();
+        return BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport().getAmqpConfiguration()
+                .getSslConnection().getKeyStore().getPassword();
     }
 
     public String getKeyStoreCertType() {
-        return ((JKSStore)AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_SSL_CONNECTION_KEYSTORE)).getStoreAlgorithm();
+        return BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport().getAmqpConfiguration()
+                .getSslConnection().getKeyStore().getCertType();
     }
-    
+
     public boolean getUseBiasedWrites() {
         return getBooleanValue("advanced.useWriteBiasedPool");
     }

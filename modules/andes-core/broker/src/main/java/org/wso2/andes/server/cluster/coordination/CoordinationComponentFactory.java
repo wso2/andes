@@ -17,8 +17,7 @@ package org.wso2.andes.server.cluster.coordination;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
@@ -106,8 +105,8 @@ public class CoordinationComponentFactory {
      * Init the configs needed
      */
     private void initConfiguration() {
-        isRDBMSBasedCoordinationEnabled =
-                AndesConfigurationManager.readValue(AndesConfiguration.CLUSTER_EVENT_SYNC_MODE_RDBMS_ENABLED);
+        isRDBMSBasedCoordinationEnabled = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getCoordination().getRdbmsBasedClusterEventSynchronization().getEnabled();
         isClusteringEnabled = ClusterResourceHolder.getInstance().getClusterManager().isClusteringEnabled();
     }
 

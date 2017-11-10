@@ -21,8 +21,7 @@ package org.wso2.andes.kernel;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.server.cluster.error.detection.NetworkPartitionListener;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
@@ -109,14 +108,14 @@ public class FlowControlManager  implements StoreHealthListener, NetworkPartitio
 
     public FlowControlManager() {
         // Read configured limits
-        globalLowLimit = (Integer) AndesConfigurationManager
-                .readValue(AndesConfiguration.FLOW_CONTROL_GLOBAL_LOW_LIMIT);
-        globalHighLimit = (Integer) AndesConfigurationManager
-                .readValue(AndesConfiguration.FLOW_CONTROL_GLOBAL_HIGH_LIMIT);
-        channelLowLimit = ((Integer) AndesConfigurationManager
-                .readValue(AndesConfiguration.FLOW_CONTROL_BUFFER_BASED_LOW_LIMIT));
-        channelHighLimit = ((Integer) AndesConfigurationManager
-                .readValue(AndesConfiguration.FLOW_CONTROL_BUFFER_BASED_HIGH_LIMIT));
+        globalLowLimit = BrokerConfigurationService.getInstance().getBrokerConfiguration().getFlowControl().getGlobal()
+                .getLowLimit();
+        globalHighLimit = BrokerConfigurationService.getInstance().getBrokerConfiguration().getFlowControl().getGlobal()
+                .getHighLimit();
+        channelLowLimit = BrokerConfigurationService.getInstance().getBrokerConfiguration().getFlowControl()
+                .getBufferBased().getLowLimit();
+        channelHighLimit = BrokerConfigurationService.getInstance().getBrokerConfiguration().getFlowControl()
+                .getBufferBased().getHighLimit();
 
         if (globalHighLimit <= globalLowLimit || channelHighLimit <= channelLowLimit) {
             throw new RuntimeException("Flow Control limits are not configured correctly.");

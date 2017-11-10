@@ -20,8 +20,7 @@ package org.wso2.andes.server.cluster;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextStore;
@@ -169,9 +168,10 @@ public class ClusterManager implements StoreHealthListener{
 
         try {
             // Get Node ID configured by user in broker.xml (if not "default" we must use it as the ID)
-            this.nodeId = AndesConfigurationManager.readValue(AndesConfiguration.COORDINATION_NODE_ID);
+            this.nodeId = BrokerConfigurationService.getInstance().getBrokerConfiguration().getCoordination()
+                    .getNodeID();
 
-            if (AndesConfiguration.COORDINATION_NODE_ID.get().getDefaultValue().equals(this.nodeId)) {
+            if (this.nodeId.equals("default")) {
                 this.nodeId = CoordinationConstants.NODE_NAME_PREFIX + InetAddress.getLocalHost().toString();
             }
 

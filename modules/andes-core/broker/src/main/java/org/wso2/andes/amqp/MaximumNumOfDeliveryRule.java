@@ -19,8 +19,7 @@ package org.wso2.andes.amqp;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.server.message.AMQMessage;
@@ -36,8 +35,8 @@ public class MaximumNumOfDeliveryRule implements AMQPDeliveryRule {
     /**
      * Maximum number of times a message is tried to deliver
      */
-    private int maximumRedeliveryTimes = (Integer) AndesConfigurationManager
-            .readValue(AndesConfiguration.TRANSPORTS_AMQP_MAXIMUM_REDELIVERY_ATTEMPTS);
+    private int maximumRedeliveryTimes = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+            .getTransport().getAmqpConfiguration().getMaximumRedeliveryAttempts();
 
     /**
      * Evaluating the maximum number of delivery rule

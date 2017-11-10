@@ -18,17 +18,14 @@
 
 package org.wso2.andes.kernel;
 
-import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.configuration.StoreConfiguration;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
 import org.wso2.andes.kernel.registry.MessageRouterRegistry;
 import org.wso2.andes.kernel.registry.StorageQueueRegistry;
 import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.server.cluster.ClusterAgent;
 import org.wso2.andes.server.cluster.coordination.ClusterNotificationListenerManager;
-
-import java.util.List;
 
 /**
  * AndesContext is used to pass instances created and configurations read through component level
@@ -189,7 +186,8 @@ public class AndesContext {
      * @return  thrift server host ip
      */
     public String getThriftServerHost() {
-        return AndesConfigurationManager.readValue(AndesConfiguration.COORDINATION_THRIFT_SERVER_HOST);
+        return BrokerConfigurationService.getInstance().getBrokerConfiguration().getCoordination()
+                .getThriftServerHost();
     }
 
     /**
@@ -198,7 +196,8 @@ public class AndesContext {
      * @return The port value
      */
     public Integer getThriftServerPort() {
-        return AndesConfigurationManager.readValue(AndesConfiguration.COORDINATION_THRIFT_SERVER_PORT);
+        return BrokerConfigurationService.getInstance().getBrokerConfiguration().getCoordination()
+                .getThriftServerPort();
     }
 
     /**
@@ -209,27 +208,46 @@ public class AndesContext {
 
         storeConfiguration = new StoreConfiguration();
 
-        storeConfiguration.setMessageStoreClassName((String) AndesConfigurationManager.readValue
-                (AndesConfiguration.PERSISTENCE_MESSAGE_STORE_HANDLER));
+        storeConfiguration.setMessageStoreClassName(
+                BrokerConfigurationService.getInstance().getBrokerConfiguration().getPersistence().getMessageStore()
+                        .getClassName());
 
-        List<String> messageStoreProperties = AndesConfigurationManager.readValueList
-                (AndesConfiguration.LIST_PERSISTENCE_MESSAGE_STORE_PROPERTIES);
+        storeConfiguration.addMessageStoreProperty("dataSource",
+                BrokerConfigurationService.getInstance().getBrokerConfiguration().getPersistence().getMessageStore()
+                        .getDataSource());
+        storeConfiguration.addMessageStoreProperty("storeUnavailableSQLStateClasses",
+                BrokerConfigurationService.getInstance().getBrokerConfiguration().getPersistence().getMessageStore()
+                        .getStoreUnavailableSQLStateClasses());
+        storeConfiguration.addMessageStoreProperty("integrityViolationSQLStateClasses",
+                BrokerConfigurationService.getInstance().getBrokerConfiguration().getPersistence().getMessageStore()
+                        .getIntegrityViolationSQLStateClasses());
+        storeConfiguration.addMessageStoreProperty("dataErrorSQLStateClasses",
+                BrokerConfigurationService.getInstance().getBrokerConfiguration().getPersistence().getMessageStore()
+                        .getDataErrorSQLStateClasses());
+        storeConfiguration.addMessageStoreProperty("transactionRollbackSQLStateClasses",
+                BrokerConfigurationService.getInstance().getBrokerConfiguration().getPersistence().getMessageStore()
+                        .getTransactionRollbackSQLStateClasses());
 
-        for (String messageStoreProperty : messageStoreProperties) {
-            storeConfiguration.addMessageStoreProperty(messageStoreProperty, (String) AndesConfigurationManager
-                    .readValueOfChildByKey(AndesConfiguration.PERSISTENCE_MESSAGE_STORE_PROPERTY, messageStoreProperty));
-        }
 
-        storeConfiguration.setAndesContextStoreClassName((String) AndesConfigurationManager.readValue
-                (AndesConfiguration.PERSISTENCE_CONTEXT_STORE_HANDLER));
+        storeConfiguration.setAndesContextStoreClassName(
+                BrokerConfigurationService.getInstance().getBrokerConfiguration().getPersistence().getContextStore()
+                        .getClassName());
 
-        List<String> contextStoreProperties = AndesConfigurationManager.readValueList
-                (AndesConfiguration.LIST_PERSISTENCE_CONTEXT_STORE_PROPERTIES);
-
-        for (String contextStoreProperty : contextStoreProperties) {
-            storeConfiguration.addContextStoreProperty(contextStoreProperty, (String) AndesConfigurationManager
-                    .readValueOfChildByKey(AndesConfiguration.PERSISTENCE_CONTEXT_STORE_PROPERTY,contextStoreProperty));
-        }
+        storeConfiguration.addContextStoreProperty("dataSource",
+                BrokerConfigurationService.getInstance().getBrokerConfiguration().getPersistence().getContextStore()
+                        .getDataSource());
+        storeConfiguration.addContextStoreProperty("storeUnavailableSQLStateClasses",
+                BrokerConfigurationService.getInstance().getBrokerConfiguration().getPersistence().getContextStore()
+                        .getStoreUnavailableSQLStateClasses());
+        storeConfiguration.addContextStoreProperty("integrityViolationSQLStateClasses",
+                BrokerConfigurationService.getInstance().getBrokerConfiguration().getPersistence().getContextStore()
+                        .getIntegrityViolationSQLStateClasses());
+        storeConfiguration.addContextStoreProperty("dataErrorSQLStateClasses",
+                BrokerConfigurationService.getInstance().getBrokerConfiguration().getPersistence().getContextStore()
+                        .getDataErrorSQLStateClasses());
+        storeConfiguration.addContextStoreProperty("transactionRollbackSQLStateClasses",
+                BrokerConfigurationService.getInstance().getBrokerConfiguration().getPersistence().getContextStore()
+                        .getTransactionRollbackSQLStateClasses());
     }
 
     /**

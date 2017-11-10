@@ -15,21 +15,17 @@
 
 package org.wso2.andes.kernel;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.BrokerConfigurationService;
+import org.wso2.andes.kernel.subscription.StorageQueue;
+import org.wso2.andes.server.queue.DLCQueueUtils;
+import org.wso2.andes.tools.utils.MessageTracer;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.subscription.StorageQueue;
-import org.wso2.andes.server.queue.DLCQueueUtils;
-import org.wso2.andes.tools.utils.MessageTracer;
 
 /**
  * This class is for message handling operations of a queue. Handling
@@ -85,8 +81,8 @@ public class MessageHandler {
     public MessageHandler(String queueName) {
         this.storageQueueName = queueName;
         this.readButUndeliveredMessages = new ConcurrentSkipListMap<>();
-        this.maxNumberOfReadButUndeliveredMessages = AndesConfigurationManager.
-                readValue(AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_MAX_READ_BUT_UNDELIVERED_MESSAGES);
+        this.maxNumberOfReadButUndeliveredMessages = BrokerConfigurationService.getInstance().getBrokerConfiguration()
+                .getPerformanceTuning().getDelivery().getMaxNumberOfReadButUndeliveredMessages();
         this.messageDeliveryManager = MessageDeliveryManager.getInstance();
         this.lastPurgedTimestamp = 0L;
         this.messageStore = AndesContext.getInstance().getMessageStore();
