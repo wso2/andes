@@ -30,8 +30,7 @@ import javax.net.ssl.TrustManagerFactory;
 /**
  * Common class used to maintain and parse JKS stores specified in broker.xml.
  * <p/>
- * This is an example for modularizing configurations for re-usability. Since JKS stores are used for both AMQP and
- * MQTT, the following config block is used repeatedly within the broker.xml :
+ * This is an example for modularizing configurations for re-usability.
  * <p/>
  * <keyStore>
  * <location>repository/resources/security/wso2carbon.jks</location>

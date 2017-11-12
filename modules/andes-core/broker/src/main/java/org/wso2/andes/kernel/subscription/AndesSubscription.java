@@ -81,7 +81,7 @@ public class AndesSubscription {
      * @param subscriptionId       ID of subscription. This is unique cluster-wide for a subscription
      * @param storageQueue         queue to bind the subscription. Any message come to this queue will be received by
      *                             subscriber
-     * @param protocol             protocol of the subscription (AMQP/MQTT)
+     * @param protocol             protocol of the subscription
      * @param subscriberConnection connection handler with protocol specific implementations
      */
     public AndesSubscription(String subscriptionId, StorageQueue storageQueue,

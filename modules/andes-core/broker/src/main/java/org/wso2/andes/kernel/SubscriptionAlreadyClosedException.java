@@ -20,7 +20,7 @@ package org.wso2.andes.kernel;
 
 /**
  * This exception represents subscription channel is already closed while
- * delivering message to a protocol (AMQP/MQTT). The block which catches this exception should
+ * delivering message to a protocol (AMQP). The block which catches this exception should
  * handle the failure state (i.e re-queuing/discarding/DLC)
  */
 public class SubscriptionAlreadyClosedException extends ProtocolDeliveryFailureException {

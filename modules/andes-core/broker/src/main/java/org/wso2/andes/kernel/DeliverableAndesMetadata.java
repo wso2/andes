@@ -189,7 +189,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
     /**
      * Mark message as scheduled to deliver to given subscribers
      *
-     * @param localSubscriptions local subscriptions to deliver. AMQP/MQTT subscribers have individual
+     * @param localSubscriptions local subscriptions to deliver. AMQP subscribers have individual
      *                           delivery channels
      */
     public void markAsScheduledToDeliver(Collection<AndesSubscription> localSubscriptions) {

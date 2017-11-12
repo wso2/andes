@@ -17,7 +17,6 @@
 package org.wso2.andes.configuration.models.transport;
 
 import org.wso2.andes.configuration.models.transport.amqp.AMQPTransportConfiguration;
-import org.wso2.andes.configuration.models.transport.mqtt.MQTTTransportConfiguration;
 import org.wso2.carbon.config.annotation.Configuration;
 import org.wso2.carbon.config.annotation.Element;
 
@@ -30,15 +29,7 @@ public class TransportConfiguration {
     @Element(description = "Configurations related to amqp messaging transport")
     private AMQPTransportConfiguration amqp = new AMQPTransportConfiguration();
 
-    @Element(description = "Configurations related to mqtt messaging transport")
-    private MQTTTransportConfiguration mqtt = new MQTTTransportConfiguration();
-
     public AMQPTransportConfiguration getAmqpConfiguration() {
         return amqp;
     }
-
-    public MQTTTransportConfiguration getMqttConfiguration() {
-        return mqtt;
-    }
-
 }

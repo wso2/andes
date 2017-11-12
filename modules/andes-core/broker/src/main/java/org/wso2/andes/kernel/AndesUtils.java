@@ -22,7 +22,6 @@ import com.gs.collections.impl.map.mutable.ConcurrentHashMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.ClusterResourceHolder;
 
 /**
@@ -36,9 +35,6 @@ public class AndesUtils {
 
     //this constant will be used to prefix storage queue name for AMQP topics
     public final static String AMQP_TOPIC_STORAGE_QUEUE_PREFIX = "AMQP_Topic";
-
-    //this constant will be used to prefix storage queue name for MQTT topics
-    public final static String MQTT_TOPIC_STORAGE_QUEUE_PREFIX = "MQTT_Topic";
 
     //This will be used to co-relate between the message id used in the browser and the message id used internally in MB
     private static ConcurrentHashMap<String, Long> browserMessageIdCorrelater = new ConcurrentHashMap<>();
@@ -91,12 +87,6 @@ public class AndesUtils {
         if (AMQPUtils.TOPIC_EXCHANGE_NAME.equals(messageRouterName)) {
             if (!isQueueDurable) {
                 storageQueueName = AMQP_TOPIC_STORAGE_QUEUE_PREFIX + "_" + routingKey + "_" + nodeID;
-            } else {
-                storageQueueName = queueName;
-            }
-        } else if(MQTTUtils.MQTT_EXCHANGE_NAME.equals(messageRouterName)) {
-            if (!isQueueDurable) {
-                storageQueueName = MQTT_TOPIC_STORAGE_QUEUE_PREFIX + "_" + routingKey + "_" + nodeID;
             } else {
                 storageQueueName = queueName;
             }

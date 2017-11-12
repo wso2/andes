@@ -28,7 +28,6 @@ import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.subscription.AndesSubscription;
 import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.management.common.mbeans.SubscriptionManagementInformation;
-import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.management.AMQManagedObject;
 
 import java.util.HashSet;
@@ -249,23 +248,15 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
         DestinationType destinationTypeArg = DestinationType.valueOf(destinationType);
         if(isActive) {
             String messageRouterName;
-            switch (destinationTypeArg){
+            switch (destinationTypeArg) {
                 case TOPIC:
-                    if(protocolTypeArg.equals(ProtocolType.AMQP)) {
-                        messageRouterName = AMQPUtils.TOPIC_EXCHANGE_NAME;
-                    } else {
-                        messageRouterName = MQTTUtils.MQTT_EXCHANGE_NAME;
-                    }
+                    messageRouterName = AMQPUtils.TOPIC_EXCHANGE_NAME;
                     break;
                 case QUEUE:
                     messageRouterName = AMQPUtils.DIRECT_EXCHANGE_NAME;
                     break;
                 case DURABLE_TOPIC:
-                    if(protocolTypeArg.equals(ProtocolType.AMQP)) {
-                        messageRouterName = AMQPUtils.TOPIC_EXCHANGE_NAME;
-                    } else {
-                        messageRouterName = MQTTUtils.MQTT_EXCHANGE_NAME;
-                    }
+                    messageRouterName = AMQPUtils.TOPIC_EXCHANGE_NAME;
                     break;
                 default:
                     messageRouterName = AMQPUtils.DIRECT_EXCHANGE_NAME;

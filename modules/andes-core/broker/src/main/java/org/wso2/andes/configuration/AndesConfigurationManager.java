@@ -414,17 +414,6 @@ public class AndesConfigurationManager {
      */
     private static void addDerivedProperties() throws AndesException, UnknownHostException {
 
-        // For AndesConfiguration.TRANSPORTS_MQTT_BIND_ADDRESS
-        if ("*".equals(
-                BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport().getMqttConfiguration()
-                        .getBindAddress())) {
-
-            InetAddress host = InetAddress.getLocalHost();
-            //SETTERS TODO
-            compositeConfiguration.setProperty(AndesConfiguration.TRANSPORTS_MQTT_BIND_ADDRESS.get().getKeyInFile(),
-                    host.getHostAddress());
-        }
-
         // For AndesConfiguration.TRANSPORTS_AMQP_BIND_ADDRESS
         if ("*".equals(
                 BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport().getAmqpConfiguration()

@@ -292,24 +292,6 @@
             <groupId>org.apache.ant</groupId>
             <artifactId>ant</artifactId>
         </dependency>
-        <!--MQTT Dependencies-->
-        <dependency>
-            <groupId>io.netty.wso2</groupId>
-            <artifactId>netty-all</artifactId>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>org.fusesource.hawtdb</groupId>
-            <artifactId>hawtdb</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.fusesource.hawtbuf</groupId>
-            <artifactId>hawtbuf</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-        </dependency>
         <!--Hzelcast Dependencies-->
         <dependency>
             <groupId>org.wso2.orbit.com.hazelcast</groupId>
