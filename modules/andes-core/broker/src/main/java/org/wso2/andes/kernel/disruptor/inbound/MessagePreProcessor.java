@@ -197,7 +197,7 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
         for (StorageQueue matchingQueue : matchingQueues) {
 
             if (!originalMessageConsumed) {
-                message.getMetadata().setStorageQueueName(matchingQueue.getName());
+                message.getMetadata().setStorageDestination(matchingQueue.getName());
 
                 // add the topic wise cloned message to the events list. Message writers will pick that and
                 // write it.
@@ -210,16 +210,11 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                 //Message should be written to storage queue name. This is
                 //determined by destination of the message. So should be
                 //updated (but internal metadata will have topic name as usual)
-                clonedMessage.getMetadata().setStorageQueueName(matchingQueue.getName());
-
-                // Update cloned message metadata if isCompressed set true.
-                if (clonedMessage.getMetadata().isCompressed()) {
-                    clonedMessage.getMetadata().updateMetadata(true);
-                }
+                clonedMessage.getMetadata().setStorageDestination(matchingQueue.getName());
 
                 if (MessageTracer.isEnabled()) {
                     MessageTracer.trace(message, MessageTracer.MESSAGE_CLONED + clonedMessage.getMetadata()
-                            .getMessageID() + " for " + clonedMessage.getMetadata().getStorageQueueName());
+                            .getMessageID() + " for " + clonedMessage.getMetadata().getStorageDestination());
                 }
 
                 // add the topic wise cloned message to the events list. Message writers will pick that and

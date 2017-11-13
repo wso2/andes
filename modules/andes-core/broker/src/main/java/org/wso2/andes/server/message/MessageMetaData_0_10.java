@@ -17,6 +17,7 @@
  */
 package org.wso2.andes.server.message;
 
+import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.server.store.StorableMessageMetaData;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.transport.MessageTransfer;
@@ -214,10 +215,10 @@ public class MessageMetaData_0_10 implements StorableMessageMetaData
 
     private static class MetaDataFactory implements MessageMetaDataType.Factory<MessageMetaData_0_10>
     {
-        public MessageMetaData_0_10 createMetaData(ByteBuffer buf)
+        public MessageMetaData_0_10 createMetaData(AndesMessageMetadata metadata)
         {
             BBDecoder decoder = new BBDecoder();
-            decoder.init(buf);
+            decoder.init(ByteBuffer.wrap(metadata.getProtocolMetadata()));
 
             long arrivalTime = decoder.readInt64();
             int bodySize = decoder.readInt32();

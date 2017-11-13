@@ -126,7 +126,7 @@ public class AndesAckEvent {
      */
     private void addTraceLog() {
         //Tracing Message
-        MessageTracer.trace(metadataReference.messageID,
+        MessageTracer.trace(metadataReference.getMessageID(),
                 metadataReference.getDestination(), MessageTracer.ACK_MESSAGE_REFERENCE_SET_BY_DISRUPTOR);
 
         //Adding metrics meter for ack rate

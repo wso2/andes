@@ -66,8 +66,8 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
 
     private static Log log = LogFactory.getLog(DeliverableAndesMetadata.class);
 
-    public DeliverableAndesMetadata(long messageID, byte[] metadata, boolean parse) {
-        super(messageID, metadata, parse);
+    public DeliverableAndesMetadata(byte[] metadata) {
+        super(metadata);
         this.timeMessageIsRead = System.currentTimeMillis();
         this.channelDeliveryInfo = new ConcurrentHashMap<>();
         this.messageStatus = Collections.synchronizedList(new ArrayList<MessageStatus>());
@@ -91,9 +91,9 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
      * @return check expire result
      */
     public boolean isExpired() {
-        if (expirationTime != 0L) {
+        if (getExpirationTime() != 0L) {
             long now = System.currentTimeMillis();
-            if (now > expirationTime) {
+            if (now > getExpirationTime()) {
                 addMessageStatus(MessageStatus.EXPIRED);
                 return true;
             } else {
@@ -515,7 +515,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
                 messageStatus.add(state);
             } else {
                 log.warn(
-                        "Invalid message state transition suggested: " + state + " Message ID: " + messageID);
+                        "Invalid message state transition suggested: " + state + " Message ID: " + getMessageID());
             }
         } else {
             isValidTransition = messageStatus.get(messageStatus.size() - 1).isValidNextTransition(state);
@@ -523,7 +523,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
                 messageStatus.add(state);
             } else {
                 log.warn("Invalid message state transition from " + messageStatus.get(messageStatus.size() - 1)
-                        + " suggested: " + state + " Message ID: " + messageID
+                        + " suggested: " + state + " Message ID: " + getMessageID()
                         + " Message Status History >> " + messageStatus);
             }
         }
@@ -551,7 +551,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
         StringBuilder information = new StringBuilder();
 
         information.append("Message ID ");
-        information.append(Long.toString(messageID));
+        information.append(Long.toString(getMessageID()));
         information.append(',');
         information.append("Message Header ");
         information.append("null");
@@ -566,7 +566,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
         information.append(Long.toString(timeMessageIsRead));
         information.append(',');
         information.append("Expiration time ");
-        information.append(Long.toString(expirationTime));
+        information.append(Long.toString(getExpirationTime()));
         information.append(',');
         information.append("Channels sent ");
         StringBuilder deliveries = new StringBuilder();
@@ -619,7 +619,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
                 } else {
                     log.warn(
                             "Invalid channel message state transition suggested: " + state +
-                                    " Message ID: " + messageID + " Message Status History >> " + messageStatus);
+                                    " Message ID: " + getMessageID() + " Message Status History >> " + messageStatus);
                 }
             } else {
                 isValidTransition = messageStatusesForChannel.
@@ -630,7 +630,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
                 } else {
                     log.warn("Invalid channel message state transition from " + messageStatusesForChannel
                             .get(messageStatusesForChannel.size() - 1) + " suggested: " + state + " Message ID: "
-                            + messageID + " Channel Status History >> " + messageStatusesForChannel);
+                            + getMessageID() + " Channel Status History >> " + messageStatusesForChannel);
                 }
             }
 

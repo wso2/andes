@@ -622,17 +622,8 @@ public class AbstractHeadersExchangeTestBase extends InternalBrokerBaseCase
             return getKey().toString();
         }
 
-        private Object getKey()
-        {
-            try
-            {
-                return getMessagePublishInfo().getRoutingKey();
-            }
-            catch (AMQException e)
-            {
-                _log.error("Error getting routing key: " + e, e);
-                return null;
-            }
+        private Object getKey() {
+            return getMessagePublishInfo().getRoutingKey();
         }
     }
 }

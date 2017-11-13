@@ -18,6 +18,7 @@
 
 package org.wso2.andes.kernel.dtx;
 
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 
 /**
@@ -32,9 +33,9 @@ public class AndesPreparedMessageMetadata extends AndesMessageMetadata {
     private long oldMessageId;
 
     public AndesPreparedMessageMetadata(AndesMessageMetadata messageMetadata) {
-        super(messageMetadata.getMessageID(), messageMetadata.getMetadata(), true);
+        super(messageMetadata.getBytes());
         oldMessageId = getMessageID();
-        setStorageQueueName(messageMetadata.getStorageQueueName());
+        setStorageDestination(messageMetadata.getStorageDestination());
         setExpirationTime(messageMetadata.getExpirationTime());
     }
 

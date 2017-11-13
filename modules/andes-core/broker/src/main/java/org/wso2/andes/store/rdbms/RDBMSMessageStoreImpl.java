@@ -418,9 +418,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
             for (AndesMessage message : messageList) {
 
-                addMetadataToBatch(storeMetadataPS, message.getMetadata(), message.getMetadata().getStorageQueueName());
+                addMetadataToBatch(storeMetadataPS, message.getMetadata(), message.getMetadata().getStorageDestination());
                 //if message has expiration time store it into expiration table
-                if (message.getMetadata().isExpirationDefined()) {
+                if (message.getMetadata().getExpirationTime() > 0) {
                     messageWithExpirationDetected = true;
                     addExpiryTableEntryToBatch(storeExpiryMetadataPS, message.getMetadata());
                 }
@@ -463,18 +463,18 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
             AndesMessageMetadata metadata = message.getMetadata();
             storeMetadataPS.setLong(1, metadata.getMessageID());
-            storeMetadataPS.setInt(2, getCachedQueueID(metadata.getStorageQueueName()));
-            storeMetadataPS.setBytes(3, metadata.getMetadata());
+            storeMetadataPS.setInt(2, getCachedQueueID(metadata.getStorageDestination()));
+            storeMetadataPS.setBytes(3, metadata.getBytes());
             storeMetadataPS.execute();
 
             for (AndesMessagePart messagePart : message.getContentChunkList()) {
                 addContentToBatch(storeContentPS, messagePart);
             }
             storeContentPS.executeBatch();
-            if (metadata.isExpirationDefined()) {
+            if (metadata.getExpirationTime() > 0) {
                 storeExpiryMetadataPS.setLong(1, metadata.getMessageID());
                 storeExpiryMetadataPS.setLong(2, metadata.getExpirationTime());
-                storeExpiryMetadataPS.setString(3, metadata.getStorageQueueName());
+                storeExpiryMetadataPS.setString(3, metadata.getStorageDestination());
                 storeExpiryMetadataPS.execute();
             }
             connection.commit();
@@ -487,7 +487,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     .convertSQLException("Error occurred while inserting message to queue ", e);
             if (AndesDataIntegrityViolationException.class.isInstance(andesException)) {
                 log.warn("Dropped message with ID: " + message.getMetadata().getMessageID() + " since queue: " + message
-                        .getMetadata().getStorageQueueName() + " does not exist", e);
+                        .getMetadata().getStorageDestination() + " does not exist", e);
             } else {
                 rollback(connection, RDBMSConstants.TASK_ADDING_MESSAGE);
                 throw andesException;
@@ -638,8 +638,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_UPDATE_METADATA);
 
             for (AndesMessageMetadata metadata : metadataList) {
-                preparedStatement.setInt(1, getCachedQueueID(metadata.getStorageQueueName()));
-                preparedStatement.setBytes(2, metadata.getMetadata());
+                preparedStatement.setInt(1, getCachedQueueID(metadata.getStorageDestination()));
+                preparedStatement.setBytes(2, metadata.getBytes());
                 preparedStatement.setLong(3, metadata.getMessageID());
                 preparedStatement.setInt(4, getCachedQueueID(currentQueueName));
                 preparedStatement.addBatch();
@@ -680,7 +680,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         try {
             preparedStatement.setLong(1, metadata.getMessageID());
             preparedStatement.setInt(2, getCachedQueueID(queueName));
-            preparedStatement.setBytes(3, metadata.getMetadata());
+            preparedStatement.setBytes(3, metadata.getBytes());
             preparedStatement.addBatch();
         } catch (SQLException e) {
             throw rdbmsStoreUtils.convertSQLException(
@@ -703,7 +703,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             throws SQLException {
         preparedStatement.setLong(1, metadata.getMessageID());
         preparedStatement.setLong(2, metadata.getExpirationTime());
-        preparedStatement.setString(3, metadata.getStorageQueueName());
+        preparedStatement.setString(3, metadata.getStorageDestination());
         preparedStatement.addBatch();
     }
 
@@ -733,8 +733,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             preparedStatement.setLong(1, messageId);
             results = preparedStatement.executeQuery();
             if (results.next()) {
-                byte[] b = results.getBytes(RDBMSConstants.METADATA);
-                md = new AndesMessageMetadata(messageId, b, true);
+                byte[] metadata = results.getBytes(RDBMSConstants.METADATA);
+                md = new AndesMessageMetadata(metadata);
             }
         } catch (SQLException e) {
             throw rdbmsStoreUtils.convertSQLException("error occurred while retrieving message " +
@@ -781,10 +781,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             }
 
             while (resultSet.next()) {
-                DeliverableAndesMetadata md = new DeliverableAndesMetadata(
-                        resultSet.getLong(RDBMSConstants.MESSAGE_ID), resultSet.getBytes(RDBMSConstants.METADATA),
-                        true);
-                md.setStorageQueueName(storageQueueName);
+                DeliverableAndesMetadata md = new DeliverableAndesMetadata(resultSet.getBytes(RDBMSConstants.METADATA));
                 metadataList.add(md);
                 //Tracing message
                 MessageTracer.trace(md, MessageTracer.METADATA_READ_FROM_DB);
@@ -901,9 +898,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     break;
                 }
 
-                AndesMessageMetadata md = new AndesMessageMetadata(results.getLong(RDBMSConstants.MESSAGE_ID),
-                        results.getBytes(RDBMSConstants.METADATA), true);
-                md.setStorageQueueName(storageQueueName);
+                AndesMessageMetadata md = new AndesMessageMetadata(results.getBytes(RDBMSConstants.METADATA));
                 mdList.add(md);
                 resultCount++;
             }
@@ -948,9 +943,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     break;
                 }
 
-                AndesMessageMetadata md = new AndesMessageMetadata(results.getLong(RDBMSConstants.MESSAGE_ID),
-                        results.getBytes(RDBMSConstants.METADATA), true);
-                md.setStorageQueueName(storageQueueName);
+                AndesMessageMetadata md = new AndesMessageMetadata(results.getBytes(RDBMSConstants.METADATA));
                 mdList.add(md);
                 resultCount++;
             }
@@ -994,9 +987,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     break;
                 }
 
-                AndesMessageMetadata md = new AndesMessageMetadata(results.getLong(RDBMSConstants.MESSAGE_ID),
-                        results.getBytes(RDBMSConstants.METADATA), true);
-                md.setStorageQueueName(dlcQueueName);
+                AndesMessageMetadata md = new AndesMessageMetadata(results.getBytes(RDBMSConstants.METADATA));
                 mdList.add(md);
                 resultCount++;
             }
@@ -2031,7 +2022,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
             // update metadata
             updateMetadataPreparedStatement.setLong(1, metadata.getMessageID());
-            updateMetadataPreparedStatement.setBytes(2, metadata.getMetadata());
+            updateMetadataPreparedStatement.setBytes(2, metadata.getBytes());
             updateMetadataPreparedStatement.setInt(3, retainedItemData.topicID);
             updateMetadataPreparedStatement.addBatch();
 
@@ -2101,7 +2092,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             preparedStatementForMetadata.setInt(1, topicID);
             preparedStatementForMetadata.setString(2, destination);
             preparedStatementForMetadata.setLong(3, messageID);
-            preparedStatementForMetadata.setBytes(4, metadata.getMetadata());
+            preparedStatementForMetadata.setBytes(4, metadata.getBytes());
             preparedStatementForMetadata.addBatch();
 
             // create content
@@ -2178,9 +2169,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             results = preparedStatement.executeQuery();
 
             if (results.next()) {
-                byte[] b = results.getBytes(RDBMSConstants.METADATA);
-                long messageId = results.getLong(RDBMSConstants.MESSAGE_ID);
-                metadata = new DeliverableAndesMetadata(messageId, b, true);
+                byte[] bytes = results.getBytes(RDBMSConstants.METADATA);
+                metadata = new DeliverableAndesMetadata(bytes);
             }
         } catch (SQLException e) {
             throw rdbmsStoreUtils.convertSQLException("error occurred while retrieving retained message " +
