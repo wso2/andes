@@ -17,7 +17,6 @@ package org.wso2.andes.kernel.router;
 
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.mqtt.utils.MQTTUtils;
 
 /**
  * Factory for creating message routers
@@ -44,8 +43,6 @@ public class MessageRouterFactory {
             messageRouter = new QueueMessageRouter(messageRouterName, type, autoDelete);
         } else if (messageRouterName.equals(AMQPUtils.TOPIC_EXCHANGE_NAME)) {
             messageRouter = new TopicMessageRouter(messageRouterName, type, autoDelete);
-        } else if (messageRouterName.equals(MQTTUtils.MQTT_EXCHANGE_NAME)) {
-            messageRouter = new MQTTMessageRouter(messageRouterName, type, autoDelete);
         } else if (messageRouterName.equals(AMQPUtils.DLC_EXCHANGE_NAME)) {
             messageRouter = new DiscardMessageRouter(messageRouterName, type, autoDelete);
         } else {    //default one will be a queue exchange
@@ -73,8 +70,6 @@ public class MessageRouterFactory {
             messageRouter = new QueueMessageRouter(messageRouterInfo);
         } else if (messageRouterName.equals(AMQPUtils.TOPIC_EXCHANGE_NAME)) {
             messageRouter = new TopicMessageRouter(messageRouterInfo);
-        } else if (messageRouterName.equals(MQTTUtils.MQTT_EXCHANGE_NAME)) {
-            messageRouter = new MQTTMessageRouter(messageRouterInfo);
         } else if (messageRouterName.equals(AMQPUtils.DLC_EXCHANGE_NAME)) {
             messageRouter = new DiscardMessageRouter(messageRouterInfo);
         } else {    //default one will be a queue exchange

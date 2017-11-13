@@ -576,13 +576,6 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
                 .getTransport().getAmqpConfiguration().getDefaultConnection().getEnabled();
     }
 
-    public boolean getMQTTSSLOnly() {
-        return (Boolean) BrokerConfigurationService.getInstance().getBrokerConfiguration().getTransport()
-                .getMqttConfiguration().getSslConnection().getEnabled() && !(Boolean) BrokerConfigurationService
-                .getInstance().getBrokerConfiguration().getTransport().getMqttConfiguration().getDefaultConnection()
-                .getEnabled();
-    }
-
     /**
      * Retrieve SSL Port from Andes configurations(broker.xml).
      *

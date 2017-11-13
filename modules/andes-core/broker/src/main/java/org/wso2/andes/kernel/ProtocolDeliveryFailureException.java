@@ -20,7 +20,7 @@ package org.wso2.andes.kernel;
 
 /**
  * This exception represents an error occurred while delivering message
- * to a protocol (AMQP/MQTT). The block which catches this exception should
+ * to a protocol. The block which catches this exception should
  * handle the failure state (i.e re-queuing/discarding/DLC)
  */
 public class ProtocolDeliveryFailureException extends AndesException {

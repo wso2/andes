@@ -19,7 +19,6 @@ package org.wso2.andes.kernel.subscription;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
-import org.wso2.andes.mqtt.utils.MQTTUtils;
 
 import java.util.UUID;
 
@@ -29,7 +28,6 @@ import java.util.UUID;
  * use subscription ID coming with subscription event
  */
 public class AndesSubscriptionFactory {
-
 
     /**
      * Validate and create an AndesSubscription for inbound subscription event

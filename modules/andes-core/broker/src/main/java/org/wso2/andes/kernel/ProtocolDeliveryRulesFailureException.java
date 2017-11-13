@@ -20,7 +20,7 @@ package org.wso2.andes.kernel;
 
 /**
  * This exception represents an error occurred while evaluating delivery rules
- * specific to a protocol (AMQP/MQTT). The block which catch this exception should
+ * specific to a protocol. The block which catch this exception should
  * handle the failure state (i.e re-queuing/discarding/DLC).
  */
 public class ProtocolDeliveryRulesFailureException extends AndesException{

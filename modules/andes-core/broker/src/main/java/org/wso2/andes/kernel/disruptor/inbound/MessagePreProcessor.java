@@ -230,13 +230,6 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
             isMessageRouted = true;
         }
 
-        // TODO: validate this
-        // If retain enabled, need to store the retained message. Set the retained message
-        // so the message writer will persist the retained message
-        if (message.getMetadata().isRetain()) {
-            event.retainMessage = message;
-        }
-
         // If there is no matching subscriber at the moment there is no point of storing the message
         if (!isMessageRouted) {
 

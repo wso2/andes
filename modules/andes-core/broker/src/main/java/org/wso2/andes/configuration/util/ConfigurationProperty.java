@@ -20,7 +20,7 @@ package org.wso2.andes.configuration.util;
 
 /**
  * Interface used to abstract common attributes and behaviour of similar enums.
- * The use case is that we have different types of configurations (mqtt,qpid,
+ * The use case is that we have different types of configurations (qpid,
  * virtual-host related) But all config properties have the same attributes.
  * the key, default value, and data type. By implementing this interface hierarchy,
  * we can avoid code duplication of repeating these properties and their access logic.

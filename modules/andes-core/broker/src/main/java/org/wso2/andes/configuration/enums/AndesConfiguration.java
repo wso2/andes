@@ -90,14 +90,9 @@ public enum AndesConfiguration implements ConfigurationProperty {
             "org.wso2.carbon.business.messaging.core.internal.AuthenticationServiceImpl", String.class),
 
     /**
-     * The IP address to which mqtt/amqp channels should be bound.
+     * The IP address to which amqp channels should be bound.
      */
     TRANSPORTS_BIND_ADDRESS("transports/bindAddress", "*", String.class),
-
-    /**
-     * The IP address to which mqtt channels should be bound.
-     */
-    TRANSPORTS_MQTT_BIND_ADDRESS("transports/mqtt/bindAddress", "*", String.class),
 
     /**
      * The IP address to which amqp channels should be bound.
@@ -169,100 +164,6 @@ public enum AndesConfiguration implements ConfigurationProperty {
     ALLOW_STRICT_NAME_VALIDATION("transports/amqp/allowStrictNameValidation",
             "true", Boolean.class),
 
-    /**
-     * Enable this to support lightweight messaging with the MQTT protocol.
-     */
-    TRANSPORTS_MQTT_ENABLED("transports/mqtt/@enabled", "true", Boolean.class),
-
-    /**
-     * The port used to listen for mqtt messages/commands by the MB server.
-     */
-    TRANSPORTS_MQTT_DEFAULT_CONNECTION_PORT("transports/mqtt/defaultConnection/@port", "1883", Integer.class),
-
-    /**
-     * Enable/disable the default, non-secure MQTT connection.
-     */
-    TRANSPORTS_MQTT_DEFAULT_CONNECTION_ENABLED("transports/mqtt/defaultConnection/@enabled", "true", Boolean.class),
-
-    /**
-     * The SSL port used to listen for mqtt messages/commands by the MB server.
-     */
-    TRANSPORTS_MQTT_SSL_CONNECTION_PORT("transports/mqtt/sslConnection/@port", "8883", Integer.class),
-
-    /**
-     * Enable/disable the secure MQTT connection.
-     */
-    TRANSPORTS_MQTT_SSL_CONNECTION_ENABLED("transports/mqtt/sslConnection/@enabled", "true", Boolean.class),
-
-    /**
-     * The key store used for MQTT SSL connection.
-     */
-    TRANSPORTS_MQTT_SSL_CONNECTION_KEYSTORE("transports/mqtt/sslConnection/keyStore", "", JKSStore.class),
-
-    /**
-     * The trust store used for MQTT SSL connection.
-     */
-    TRANSPORTS_MQTT_SSL_CONNECTION_TRUSTSTORE("transports/mqtt/sslConnection/trustStore", "", JKSStore.class),
-
-    /**
-     * Ring buffer size of MQTT inbound event Disruptor. Default is set to 32768 (1024 * 32)
-     */
-    TRANSPORTS_MQTT_INBOUND_BUFFER_SIZE("transports/mqtt/inboundBufferSize", "32768", Integer.class),
-
-    /**
-     * Ring buffer size of MQTT delivery event Disruptor. Default is set to 32768 (1024 * 32)
-     */
-    TRANSPORTS_MQTT_DELIVERY_BUFFER_SIZE("transports/mqtt/deliveryBufferSize", "32768", Integer.class),
-
-    /**
-     * This is a temporary list of user elements to enable user-authentication for MQTT.
-     */
-    LIST_TRANSPORTS_MQTT_USERNAMES("transports/mqtt/users/user/@userName", "",
-            List.class),
-
-    /**
-     * Class name of the authenticator to use. class should inherit from {@link org.dna.mqtt.moquette.server.IAuthenticator}
-     * <p>Note: default implementation authenticates against carbon user store based on supplied username/password
-     */
-    TRANSPORTS_MQTT_USER_AUTHENTICATOR_CLASS("transports/mqtt/security/authenticator/@class",
-            "org.wso2.carbon.andes.authentication.andes.CarbonBasedMQTTAuthenticator", String.class),
-
-    /**
-     * Instructs the MQTT server to sending credential is required or optional.
-     * This behavior is subject to change in mqtt specification v 3.1.1
-     */
-    TRANSPORTS_MQTT_USER_AUTHENTICATION("transports/mqtt/security/authentication", "OPTIONAL", MQTTUserAuthenticationScheme.class),
-
-    /**
-     * List of properties that can define how the server will authenticate the user with the authentication service.
-     */
-    LIST_TRANSPORT_MQTT_AUTHENTICATION_PROPERTIES("transports/mqtt/security/authenticator/property/@name", "", List.class),
-
-    /**
-     * This can be used to access a property by giving its key. e.g. hosturl
-     */
-    TRANSPORT_MQTT_AUTHENTICATION_PROPERTIES("transports/mqtt/security/authenticator/property[@name = '{key}']", "", String.class),
-    /**
-     * Instructs the MQTT server whether authorization is required or not.
-     */
-    TRANSPORTS_MQTT_USER_AUTHORIZATION("transports/mqtt/security/authorization", "NOT_REQUIRED", MQTTUserAuthorizationScheme.class),
-
-    /**
-     * Class name of the authorizer to use. class should inherit from {@link org.dna.mqtt.moquette.server.IAuthorizer}
-     * <p>Note: default implementation authorize against carbon permission
-     */
-    TRANSPORTS_MQTT_USER_AUTHORIZATION_CLASS("transports/mqtt/security/authorizer/@class",
-            "org.wso2.carbon.andes.authorization.andes.CarbonPermissionBasedMQTTAuthorizer", String.class),
-
-    /**
-     * List of properties that can define how the server will authorizer the user with the authorizer service.
-     */
-    LIST_TRANSPORT_MQTT_AUTHORIZATION_PROPERTIES("transports/mqtt/security/authorizer/property/@name", "", List.class),
-
-    /**
-     * This can be used to access a property by giving its key. e.g. hosturl
-     */
-    TRANSPORT_MQTT_AUTHORIZATION_PROPERTIES("transports/mqtt/security/authorizer/property[@name = '{key}']", "", String.class),
     /**
      * The class that is used to access an external RDBMS database to operate on messages.
      */

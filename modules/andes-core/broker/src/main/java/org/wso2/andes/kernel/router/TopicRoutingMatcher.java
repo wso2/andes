@@ -23,7 +23,6 @@ import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.ProtocolType;
 import org.wso2.andes.kernel.subscription.StorageQueue;
-import org.wso2.andes.mqtt.utils.MQTTUtils;
 
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -96,10 +95,6 @@ public class TopicRoutingMatcher {
             // AMQPUtils keep wildcard concatenated with constituent delimiter, hence removing them get wildcard only
             multiLevelWildCard = AMQPUtils.TOPIC_AND_CHILDREN_WILDCARD.replace(constituentsDelimiter, "");
             singleLevelWildCard = AMQPUtils.IMMEDIATE_CHILDREN_WILDCARD.replace(constituentsDelimiter, "");
-        } else if (ProtocolType.MQTT == protocolType) {
-            constituentsDelimiter = "/";
-            multiLevelWildCard = MQTTUtils.MULTI_LEVEL_WILDCARD;
-            singleLevelWildCard = MQTTUtils.SINGLE_LEVEL_WILDCARD;
         } else {
             throw new RuntimeException("Protocol type " + protocolType + " is not recognized.");
         }
@@ -357,8 +352,6 @@ public class TopicRoutingMatcher {
 
         if (ProtocolType.AMQP == protocolType) {
             matching = AMQPUtils.isTargetQueueBoundByMatchingToRoutingKey(wildCardDestination, nonWildCardDestination);
-        } else if (ProtocolType.MQTT == protocolType) {
-            matching = MQTTUtils.isTargetQueueBoundByMatchingToRoutingKey(wildCardDestination, nonWildCardDestination);
         } else {
             throw new AndesException("Protocol type " + protocolType + " is not recognized.");
         }

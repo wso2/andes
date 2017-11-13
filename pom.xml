@@ -374,23 +374,6 @@
                 <artifactId>ant</artifactId>
                 <version>${ant.version}</version>
             </dependency>
-            <!--MQTT Dependencies-->
-            <dependency>
-                <groupId>io.netty.wso2</groupId>
-                <artifactId>netty-all</artifactId>
-                <version>${netty-all.version}</version>
-                <optional>true</optional>
-            </dependency>
-            <dependency>
-                <groupId>org.fusesource.hawtdb</groupId>
-                <artifactId>hawtdb</artifactId>
-                <version>${hawtdb.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.fusesource.hawtbuf</groupId>
-                <artifactId>hawtbuf</artifactId>
-                <version>${hawtbuf.version}</version>
-            </dependency>
             <!--Hzelcast Dependencies-->
             <dependency>
                 <groupId>org.wso2.orbit.com.hazelcast</groupId>

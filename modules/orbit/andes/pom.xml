@@ -115,16 +115,6 @@
             <groupId>com.goldmansachs</groupId>
             <artifactId>gs-collections</artifactId>
         </dependency>
-
-        <!--MQTT Dependencies -->
-        <dependency>
-            <groupId>org.fusesource.hawtdb</groupId>
-            <artifactId>hawtdb</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.fusesource.hawtbuf</groupId>
-            <artifactId>hawtbuf</artifactId>
-        </dependency>
         <dependency>
             <groupId>commons-jxpath</groupId>
             <artifactId>commons-jxpath</artifactId>
@@ -181,11 +171,8 @@
             org.apache.derby.jdbc,
             org.apache.commons.configuration.*,
             org.apache.commons.jxpath.*,
-            org.fusesource.hawtbuf.*,
-            org.fusesource.hawtdb*,
             org.wso2.andes.*;-split-package:=merge-last,
             org.apache.mina.*;-split-package:=merge-last,
-            org.dna.mqtt.*;-split-package:=merge-last,
             com.gs.collections.*;-split-package:=merge-last,
             net.jpountz.*;-split-package:=merge-last
         </export.package>

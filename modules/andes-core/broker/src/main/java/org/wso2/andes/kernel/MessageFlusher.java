@@ -27,7 +27,6 @@ import org.wso2.andes.configuration.util.TopicMessageDeliveryStrategy;
 import org.wso2.andes.kernel.disruptor.delivery.DisruptorBasedFlusher;
 import org.wso2.andes.kernel.subscription.AndesSubscription;
 import org.wso2.andes.kernel.subscription.StorageQueue;
-import org.wso2.andes.mqtt.utils.MQTTUtils;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -140,9 +139,8 @@ public class MessageFlusher {
      */
     public int sendMessagesToSubscriptions(StorageQueue storageQueue) throws AndesException {
         int noOfSentMessages;
-        if((!storageQueue.isDurable()) &&
-                (storageQueue.getMessageRouter().getName().equals(AMQPUtils.TOPIC_EXCHANGE_NAME) ||
-                 storageQueue.getMessageRouter().getName().equals(MQTTUtils.MQTT_EXCHANGE_NAME)) ) {
+        if ((!storageQueue.isDurable()) &&
+                (storageQueue.getMessageRouter().getName().equals(AMQPUtils.TOPIC_EXCHANGE_NAME))) {
 
             noOfSentMessages = topicMessageFlusher.
                     deliverMessageToSubscriptions(storageQueue);
@@ -151,7 +149,6 @@ public class MessageFlusher {
             noOfSentMessages = queueMessageFlusher.
                     deliverMessageToSubscriptions(storageQueue);
         }
-
         return noOfSentMessages;
     }
 

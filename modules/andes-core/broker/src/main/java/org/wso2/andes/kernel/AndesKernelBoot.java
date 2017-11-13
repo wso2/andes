@@ -23,13 +23,11 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.BrokerConfigurationService;
 import org.wso2.andes.configuration.StoreConfiguration;
 import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
-import org.wso2.andes.kernel.disruptor.inbound.InboundExchangeEvent;
 import org.wso2.andes.kernel.dtx.DtxRegistry;
 import org.wso2.andes.kernel.registry.MessageRouterRegistry;
 import org.wso2.andes.kernel.registry.StorageQueueRegistry;
 import org.wso2.andes.kernel.registry.SubscriptionRegistry;
 import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
-import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.ClusterManagementInformationMBean;
 import org.wso2.andes.server.cluster.ClusterManager;
@@ -112,7 +110,6 @@ public class AndesKernelBoot {
         andesRecoveryTaskScheduler = Executors.newScheduledThreadPool(threadPoolCount);
         expiryMessageDeletionTaskScheduler = Executors.newScheduledThreadPool(threadPoolCount);
         startHouseKeepingThreads();
-        createDefinedProtocolArtifacts();
         syncNodeWithClusterState();
         registerMBeans();
     }
@@ -287,19 +284,6 @@ public class AndesKernelBoot {
             clusterNotificationListenerManager.initializeListener(inboundEventManager, subscriptionManager,
                     contextInformationManager);
         }
-    }
-
-    /**
-     * Create Pre-defined exchanges, queues, bindings and subscriptions and other artifacts
-     * at the startup
-     *
-     * @throws AndesException
-     */
-    private static void createDefinedProtocolArtifacts() throws AndesException {
-        //Create MQTT exchange
-        InboundExchangeEvent inboundExchangeEvent = new
-                InboundExchangeEvent(MQTTUtils.MQTT_EXCHANGE_NAME, "topic", false);
-        Andes.getInstance().createExchange(inboundExchangeEvent);
     }
 
     /**

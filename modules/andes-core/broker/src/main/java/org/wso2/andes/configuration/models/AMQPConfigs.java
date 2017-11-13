@@ -26,10 +26,10 @@ import org.wso2.carbon.config.annotation.Element;
         + "configurations.")
 public class AMQPConfigs {
 
-    @Element(description = "Enable MQTT transport")
+    @Element(description = "Enable AMQP transport")
     private boolean enabled = true;
 
-    @Element(description = "MQTT bind address")
+    @Element(description = "AMQP bind address")
     private String bindAddress = "0.0.0.0";
 
     @Element(description = "Enable default connection")
