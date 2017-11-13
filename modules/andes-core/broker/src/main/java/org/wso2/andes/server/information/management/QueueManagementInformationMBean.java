@@ -1115,8 +1115,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                 // Set the new destination queue
                 metadata.setDestination(targetQueue);
                 metadata.setStorageDestination(targetQueue);
-//                metadata.setMessageRouterName(newStorageQueue.getMessageRouter().getName());
-//                metadata.updateMetadata(targetQueue, newStorageQueue.getMessageRouter().getName());
+                metadata.setMessageRouterName(newStorageQueue.getMessageRouter().getName());
             }
 
             AndesMessageMetadata clonedMetadata = metadata.shallowCopy(metadata.getMessageID());
