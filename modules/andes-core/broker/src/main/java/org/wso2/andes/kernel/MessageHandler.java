@@ -300,4 +300,12 @@ public class MessageHandler {
         }
         return messageCount;
     }
+
+    /**
+     * Reset the starting message Id to 0,
+     * so that messages can be read from the store from beginning.
+     */
+    public void resetLastBufferedMessageId() {
+        lastBufferedMessageId = 0;
+    }
 }
