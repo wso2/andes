@@ -24,14 +24,15 @@ import org.apache.mina.common.ByteBuffer;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.client.util.ClassLoadingAwareObjectInputStream;
 
-import javax.jms.JMSException;
-import javax.jms.MessageFormatException;
-import javax.jms.ObjectMessage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+
+import javax.jms.JMSException;
+import javax.jms.MessageFormatException;
+import javax.jms.ObjectMessage;
 
 public class JMSObjectMessage extends AbstractJMSMessage implements ObjectMessage
 {
@@ -174,5 +175,32 @@ public class JMSObjectMessage extends AbstractJMSMessage implements ObjectMessag
         }
         catch (IOException ignore)
         { }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isBodyAssignableTo(Class c) throws JMSException {
+          //java.io.Serializable.class or another type to which the body is assignable
+        return (c == java.io.Serializable.class || c == java.lang.Object.class);
+    }
+
+    /**
+     * {@inheritDoc}
+     * Suppressed "unchecked cast" warning since check happens in {@link #isBodyAssignableTo(Class)}
+     */
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T> T getBody(Class<T> c) throws JMSException {
+        if (this._data == null) {
+            return null;
+        }
+
+        if (isBodyAssignableTo(c)) {
+            return (T) this.getObject();
+        } else {
+            throw new MessageFormatException("Cannot Assign Body to Type " + c);
+        }
     }
 }

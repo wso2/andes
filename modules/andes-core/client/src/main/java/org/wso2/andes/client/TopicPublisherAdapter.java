@@ -21,6 +21,7 @@
 
 package org.wso2.andes.client;
 
+import javax.jms.CompletionListener;
 import javax.jms.Destination;
 import javax.jms.IllegalStateException;
 import javax.jms.InvalidDestinationException;
@@ -127,6 +128,11 @@ public class TopicPublisherAdapter implements TopicPublisher
         _delegate.send(dest, msg);
     }
 
+    @Override
+    public void send(Message message, CompletionListener completionListener) throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
     public void send(Message msg, int deliveryMode, int priority, long timeToLive)
             throws JMSException
     {
@@ -140,6 +146,49 @@ public class TopicPublisherAdapter implements TopicPublisher
         checkPreConditions();
         checkTopic(dest);
         _delegate.send(dest, msg, deliveryMode, priority, timeToLive);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void send(Destination destination, Message message,
+                     CompletionListener completionListener) throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void send(Message message, int deliveryMode, int priority, long timeToLive,
+                     CompletionListener completionListener) throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void send(Destination destination, Message message, int deliveryMode, int priority,
+                     long timeToLive, CompletionListener completionListener) throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getDeliveryDelay() throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setDeliveryDelay(long deliveryDelay) throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
     }
 
     public void setDeliveryMode(int deliveryMode) throws JMSException

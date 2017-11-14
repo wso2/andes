@@ -20,18 +20,17 @@
  */
 package org.wso2.andes.client.message;
 
+import org.apache.mina.common.ByteBuffer;
+import org.wso2.andes.AMQException;
+import org.wso2.andes.client.CustomJMSXProperty;
+import org.wso2.andes.util.Strings;
+
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 
 import javax.jms.JMSException;
-
-import org.apache.mina.common.ByteBuffer;
-import org.wso2.andes.AMQException;
-import org.wso2.andes.client.CustomJMSXProperty;
-import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.framing.BasicContentHeaderProperties;
-import org.wso2.andes.util.Strings;
+import javax.jms.MessageFormatException;
 
 public class JMSTextMessage extends AbstractJMSMessage implements javax.jms.TextMessage
 {
@@ -185,5 +184,29 @@ public class JMSTextMessage extends AbstractJMSMessage implements javax.jms.Text
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isBodyAssignableTo(Class c) throws JMSException {
+        return (c == String.class);
+    }
 
+    /**
+     * {@inheritDoc}
+     * Suppressed "unchecked cast" warning since check happens in {@link #isBodyAssignableTo(Class)}
+     */
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T> T getBody(Class<T> c) throws JMSException {
+        if (this._data == null) {
+            return null;
+        }
+
+        if (isBodyAssignableTo(c)) {
+            return (T) this.getText();
+        } else {
+            throw new MessageFormatException("Cannot Assign Body to Type " + c);
+        }
+    }
 }

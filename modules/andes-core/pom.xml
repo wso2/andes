@@ -98,8 +98,8 @@
             <artifactId>FastInfoset</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.apache.geronimo.specs.wso2</groupId>
-            <artifactId>geronimo-jms_1.1_spec</artifactId>
+            <groupId>org.apache.geronimo.specs</groupId>
+            <artifactId>geronimo-jms_2.0_spec</artifactId>
         </dependency>
         <dependency>
             <groupId>com.github.stephenc.high-scale-lib</groupId>

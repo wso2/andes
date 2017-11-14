@@ -20,6 +20,8 @@
  */
 package org.wso2.andes.unit.message;
 
+import org.wso2.andes.client.JmsNotImplementedRuntimeException;
+
 import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.Message;
@@ -415,5 +417,37 @@ public class NonQpidMessage implements Message
     public void clearBody() throws JMSException
     {
 
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getJMSDeliveryTime() throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setJMSDeliveryTime(long deliveryTime) throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public <T> T getBody(Class<T> c) throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isBodyAssignableTo(Class c) throws JMSException {
+        throw new JmsNotImplementedRuntimeException();
     }
 }

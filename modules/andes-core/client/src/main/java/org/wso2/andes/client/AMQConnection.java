@@ -45,6 +45,7 @@ import org.wso2.andes.jms.Connection;
 import org.wso2.andes.jms.ConnectionListener;
 import org.wso2.andes.jms.ConnectionURL;
 import org.wso2.andes.jms.FailoverPolicy;
+import org.wso2.andes.jms.Session;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.url.URLSyntaxException;
 
@@ -64,12 +65,14 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+
 import javax.jms.ConnectionConsumer;
 import javax.jms.ConnectionMetaData;
 import javax.jms.Destination;
 import javax.jms.ExceptionListener;
 import javax.jms.IllegalStateException;
 import javax.jms.JMSException;
+import javax.jms.JMSRuntimeException;
 import javax.jms.Queue;
 import javax.jms.QueueConnection;
 import javax.jms.QueueSession;
@@ -685,18 +688,58 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
         }
     }
 
-    public org.wso2.andes.jms.Session createSession(final boolean transacted, final int acknowledgeMode) throws JMSException
+    /**
+     * Method introduced with JMS 2.0 to create a Session setting whether the session is transacted
+     * to false and the acknowledge mode to the default AUTO_ACKNOWLEDGE mode.
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public Session createSession() throws JMSException {
+        return createSession(false, Session.AUTO_ACKNOWLEDGE);
+    }
+
+    /**
+     * Method introduced with JMS 2.0 to create a Session with the specified session mode,
+     * setting whether the session is transacted accordingly.
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public Session createSession(final int acknowledgeMode) throws JMSException {
+        if (acknowledgeMode == Session.SESSION_TRANSACTED) {
+            return createSession(true, acknowledgeMode);
+        } else {
+            return createSession(false, acknowledgeMode);
+        }
+    }
+
+    /**
+     * Method to create a Session specifying whether the session is transacted and the
+     * acknowledgement mode, setting prefetch limit to maximum.
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public Session createSession(final boolean transacted, final int acknowledgeMode) throws JMSException
     {
         return createSession(transacted, acknowledgeMode, _maxPrefetch);
     }
 
-    public org.wso2.andes.jms.Session createSession(final boolean transacted, final int acknowledgeMode, final int prefetch)
-            throws JMSException
+    /**
+     * Method to create session specifying whether the session is transacted, the
+     * acknowledgement mode and the maximum prefetch limit.
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public Session createSession(final boolean transacted, final int acknowledgeMode,
+                                 final int prefetch) throws JMSException
     {
         return createSession(transacted, acknowledgeMode, prefetch, prefetch);
     }
 
-    public org.wso2.andes.jms.Session createSession(final boolean transacted, final int acknowledgeMode,
+    public Session createSession(final boolean transacted, final int acknowledgeMode,
                                                      final int prefetchHigh, final int prefetchLow) throws JMSException
     {
         synchronized (_sessionCreationLock)
@@ -1083,6 +1126,32 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
         checkNotClosed();
 
         return null;
+    }
+
+    /**
+     * Method to create a connection consumer (an optional operation) for the specified topic
+     * using a shared durable subscription.
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public ConnectionConsumer createSharedDurableConnectionConsumer(Topic topic,
+            String subscriptionName, String messageSelector, ServerSessionPool sessionPool,
+            int maxMessages) throws JMSRuntimeException {
+        throw new JmsNotImplementedRuntimeException();
+    }
+
+    /**
+     * Method to create a connection consumer (an optional operation) for the specified topic
+     * using a shared non-durable subscription.
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public ConnectionConsumer createSharedConnectionConsumer(Topic topic, String subscriptionName,
+            String messageSelector, ServerSessionPool sessionPool, int maxMessages)
+            throws JMSRuntimeException {
+        throw new JmsNotImplementedRuntimeException();
     }
 
     public long getMaximumChannelCount() throws JMSException
