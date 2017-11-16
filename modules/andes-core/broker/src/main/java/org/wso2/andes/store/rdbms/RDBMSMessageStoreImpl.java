@@ -49,6 +49,7 @@ import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.store.AndesDataIntegrityViolationException;
 import org.wso2.andes.store.cache.AndesMessageCache;
+import org.wso2.andes.store.cache.AndesMetadataCache;
 import org.wso2.andes.store.cache.MessageCacheFactory;
 import org.wso2.andes.tools.utils.MessageTracer;
 
@@ -85,6 +86,12 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     private AndesMessageCache messageCache;
 
+    
+    /**
+     * The meta data cache (intension is to optimize meta data retrieval)
+     */
+    private AndesMetadataCache metadataCache;
+    
     /**
      * Interval between two consecutive stat logs in milliseconds for slot recovery process
      */
@@ -122,7 +129,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         this.rdbmsConnection.initialize(connectionProperties);
         this.rdbmsStoreUtils = new RDBMSStoreUtils(connectionProperties);
 
-        this.messageCache = (new MessageCacheFactory()).create();
+        this.messageCache = (new MessageCacheFactory()).createMessageCache();
         initializeQueueMappingCache();
         dtxStore = new RDBMSDtxStoreImpl(this, rdbmsStoreUtils);
         log.info("Message Store initialised");

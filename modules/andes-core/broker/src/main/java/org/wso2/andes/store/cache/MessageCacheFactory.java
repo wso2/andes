@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -21,12 +21,11 @@ package org.wso2.andes.store.cache;
 import org.wso2.andes.configuration.BrokerConfigurationService;
 
 /**
- * Factory to create a {@link AndesMessageCache} based on the configurations in broker.xml 
+ * Factory to create a {@link AndesMessageCache} based on the configurations in broker.xml
  *
  */
 public class MessageCacheFactory {
 
-    
     /***
      * Create a {@link AndesMessageCache} with the configurations passed.
      * currently it will either returns a {@link GuavaBasedMessageCacheImpl} or
@@ -37,20 +36,46 @@ public class MessageCacheFactory {
      *            configuration options
      * @return a {@link AndesMessageCache}
      */
-    public AndesMessageCache create() {
+    public AndesMessageCache createMessageCache() {
 
         int cacheSizeInMegaBytes = BrokerConfigurationService.getInstance().getBrokerConfiguration().getPersistence()
                 .getCache().getSize();
-                                    
+
         AndesMessageCache cache = null;
-        
-        if ( cacheSizeInMegaBytes <= 0){
+
+        if (cacheSizeInMegaBytes <= 0) {
             cache = new DisabledMessageCacheImpl();
         } else {
             cache = new GuavaBasedMessageCacheImpl();
         }
-        
+
         return cache;
     }
-    
+
+    /***
+     * Create a {@link AndesMetadataCache } with the configurations passed.
+     * currently it will either returns a {@link GuavaBasedMetadataCacheImpl} or
+     * {@link DisabledMetadataCacheImpl} if cacheSize is configured as '0' in
+     * broker.xml
+     * 
+     * @param connectionProperties
+     *            configuration options
+     * @return a {@link AndesMessageCache}
+     */
+    public AndesMessageCache createMetaDataCache() {
+
+        int cacheSizeInMegaBytes = BrokerConfigurationService.getInstance().getBrokerConfiguration().getPersistence()
+                .getCache().getSize();
+
+        AndesMessageCache cache = null;
+
+        if (cacheSizeInMegaBytes <= 0) {
+            cache = new DisabledMessageCacheImpl();
+        } else {
+            cache = new GuavaBasedMessageCacheImpl();
+        }
+
+        return cache;
+    }
+
 }

@@ -159,7 +159,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      *
      * @return length in bytes
      */
-    private int getStorableSize() {
+    public int getStorableSize() {
 
         return AndesEncodingUtil.getEncodedLongLength() + // message id
                 AndesEncodingUtil.getEncodedIntLength() + //  message content length
