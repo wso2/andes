@@ -231,15 +231,11 @@ public class Andes {
         inboundEventManager.messageReceived(message, andesChannel, pubAckHandler);
 
         //Adding metrics meter for message rate
-        Meter messageMeter = MetricManager.meter(MetricsConstants.MSG_RECEIVE_RATE
-                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getMessageRouterName()
-                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getDestination(), Level.INFO);
+        Meter messageMeter = MetricManager.meter(MetricsConstants.MSG_RECEIVE_RATE, Level.INFO);
         messageMeter.mark();
 
         //Adding metrics counter for enqueue messages
-        Counter counter = MetricManager.counter(MetricsConstants.ENQUEUE_MESSAGES
-                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getMessageRouterName()
-                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getDestination(), Level.INFO);
+        Counter counter = MetricManager.counter(MetricsConstants.ENQUEUE_MESSAGES, Level.INFO);
         counter.inc();
     }
 
@@ -250,6 +246,14 @@ public class Andes {
      * @throws AndesException on an issue publishing ack event into disruptor
      */
     public void ackReceived(AndesAckData ackData) throws AndesException {
+       //Adding metrics meter for ack rate
+        Meter ackMeter = MetricManager.meter(MetricsConstants.ACK_RECEIVE_RATE, Level.INFO);
+        ackMeter.mark();
+
+        //Adding metrics counter for ack messages
+        Counter counter = MetricManager.counter(MetricsConstants.ACK_MESSAGES, Level.INFO);
+        counter.inc();
+
         inboundEventManager.ackReceived(ackData);
     }
 
