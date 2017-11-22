@@ -466,6 +466,17 @@
                 <artifactId>org.wso2.carbon.config</artifactId>
                 <version>${carbon.config.version}</version>
             </dependency>
+            <!-- File based database-->
+            <dependency>
+                <groupId>org.iq80.leveldb</groupId>
+                <artifactId>leveldb-api</artifactId>
+                <version>${leveldb-version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.iq80.leveldb</groupId>
+                <artifactId>leveldb</artifactId>
+                <version>${leveldb-version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -675,7 +686,8 @@
         <org.apache.commons.pool.version>2.4.2</org.apache.commons.pool.version>
         <commons-lang.imp.pkg.version>[2.6, 3.0)</commons-lang.imp.pkg.version>
         <carbon.config.version>2.0.5</carbon.config.version>
-
+        <leveldb-api-version>0.9</leveldb-api-version>
+        <leveldb-version>0.9</leveldb-version>
     </properties>
 
     <mailingLists>
