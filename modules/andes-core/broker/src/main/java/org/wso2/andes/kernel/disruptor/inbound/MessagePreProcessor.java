@@ -267,9 +267,7 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
             event.pubAckHandler.ack(message.getMetadata());
 
             // Adding metrics meter for ack rate
-            Meter ackMeter = MetricManager.meter(MetricsConstants.ACK_SENT_RATE
-                    + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getMessageRouterName()
-                    + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMetadata().getDestination(), Level.INFO);
+            Meter ackMeter = MetricManager.meter(MetricsConstants.ACK_SENT_RATE, Level.INFO);
             ackMeter.mark();
 
             // Since inbound message has no routes, inbound message list will be cleared.
