@@ -250,15 +250,11 @@ public class AndesSubscription {
             throws AndesException {
         DeliverableAndesMetadata rejectedMessage = subscriberConnection.onMessageReject(messageID);
         //Adding metrics meter for ack rate
-        Meter ackMeter = MetricManager.meter(MetricsConstants.REJECT_RECEIVE_RATE
-                + MetricsConstants.METRICS_NAME_SEPARATOR + rejectedMessage.getMessageRouterName()
-                + MetricsConstants.METRICS_NAME_SEPARATOR + rejectedMessage.getDestination(), Level.INFO);
+        Meter ackMeter = MetricManager.meter(MetricsConstants.REJECT_RECEIVE_RATE, Level.INFO);
         ackMeter.mark();
 
         //Adding metrics counter for reject messages
-        Counter counter = MetricManager.counter(MetricsConstants.REJECT_MESSAGES
-                + MetricsConstants.METRICS_NAME_SEPARATOR + rejectedMessage.getMessageRouterName()
-                + MetricsConstants.METRICS_NAME_SEPARATOR + rejectedMessage.getDestination(), Level.INFO);
+        Counter counter = MetricManager.counter(MetricsConstants.REJECT_MESSAGES, Level.INFO);
         counter.inc();
         if(reQueue) {
             if(log.isDebugEnabled()) {

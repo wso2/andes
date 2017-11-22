@@ -100,14 +100,10 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                         MessageTracer.trace(message, MessageTracer.DISPATCHED_TO_PROTOCOL);
 
                         //Adding metrics meter for ack rate
-                        Meter messageMeter = MetricManager.meter(MetricsConstants.MSG_SENT_RATE
-                                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMessageRouterName()
-                                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getDestination(), Level.INFO);
+                        Meter messageMeter = MetricManager.meter(MetricsConstants.MSG_SENT_RATE, Level.INFO);
                         messageMeter.mark();
                         //Adding metrics counter for dequeue messages
-                        Counter counter = MetricManager.counter(MetricsConstants.DEQUEUE_MESSAGES
-                                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getMessageRouterName()
-                                + MetricsConstants.METRICS_NAME_SEPARATOR + message.getDestination(), Level.INFO);
+                        Counter counter = MetricManager.counter(MetricsConstants.DEQUEUE_MESSAGES, Level.INFO);
                         counter.inc();
 
                         subscription.getSubscriberConnection().writeMessageToConnection(protocolMessage,
