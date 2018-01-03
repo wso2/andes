@@ -52,11 +52,11 @@ public class BasicMessageProducer_0_8 extends BasicMessageProducer
 
     void declareDestination(AMQDestination destination)
     {
-
+        String exchangeName = destination.getExchangeName().toString();
         ExchangeDeclareBody body = getSession().getMethodRegistry().createExchangeDeclareBody(_session.getTicket(),
                                                                                               destination.getExchangeName(),
                                                                                               destination.getExchangeClass(),
-                                                                                              false,
+                                                                                              exchangeName.startsWith("amq."),
                                                                                               false,
                                                                                               false,
                                                                                               false,
