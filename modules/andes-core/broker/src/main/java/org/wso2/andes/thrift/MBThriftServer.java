@@ -26,6 +26,8 @@ import org.apache.thrift.server.TServer;
 import org.apache.thrift.server.TThreadPoolServer;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TTransportException;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.thrift.slot.gen.SlotManagementService;
 
@@ -78,7 +80,8 @@ public class MBThriftServer {
             throw new AndesException("Invalid thrift server host 0.0.0.0");
         }
         try {
-            TServerSocket socket = new TServerSocket(new InetSocketAddress(hostName, port));
+            int socketTimeout = AndesConfigurationManager.readValue(AndesConfiguration.COORDINATION_THRIFT_SO_TIMEOUT);
+            TServerSocket socket = new TServerSocket(new InetSocketAddress(hostName, port), socketTimeout);
             SlotManagementService.Processor<SlotManagementServiceImpl> processor =
                     new SlotManagementService.Processor<SlotManagementServiceImpl>(slotManagementServerHandler);
             TProtocolFactory protocolFactory = new TBinaryProtocol.Factory();
