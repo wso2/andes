@@ -20,7 +20,10 @@ package org.wso2.andes.server.subscription;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.log4j.Logger;
+import org.wso2.andes.AMQChannelClosedException;
+import org.wso2.andes.AMQConnectionClosedException;
 import org.wso2.andes.AMQException;
+import org.wso2.andes.AMQSubscriptionClosedException;
 import org.wso2.andes.common.AMQPFilterTypes;
 import org.wso2.andes.common.ClientProperties;
 import org.wso2.andes.configuration.qpid.ConfigStore;
@@ -285,8 +288,9 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                                 + entry.getMessage().getMessageNumber());
 
                     }
-                    throw new SubscriptionAlreadyClosedException("Channel " + getChannel().getId() + " is already"
-                            + " closed. Delivery failed message id = " + entry.getMessage().getMessageNumber());
+                    throw new AMQSubscriptionClosedException("Channel " + getChannel().getId() + " is already"
+                                                             + " closed. Delivery failed message id = "
+                                                             + entry.getMessage().getMessageNumber());
                 }
 
                 if (log.isDebugEnabled()) {
@@ -305,7 +309,9 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                  in a loaded environment
                  */
                 entry.dispose();
-
+            } catch (AMQSubscriptionClosedException | AMQChannelClosedException | AMQConnectionClosedException e) {
+                throw new AMQSubscriptionClosedException("SEND FAILED >> Exception occurred while sending message "
+                                                         + "out", e);
             } catch (Exception e) {
 
                 // Try and shed more light about the exact context of the error (only in debug mode)

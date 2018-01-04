@@ -112,7 +112,6 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                     } else {
                         onSendError(message, subscription);
                         onSubscriptionAlreadyClosed(message, subscription);
-                        reQueueMessageIfDurable(message, subscription);
                     }
                 } else {
                     // Stale only happens when last subscription is closed and slot is returned. No need to re-queue
