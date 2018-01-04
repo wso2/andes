@@ -29,6 +29,7 @@ import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.ProtocolDeliveryFailureException;
 import org.wso2.andes.kernel.ProtocolDeliveryRulesFailureException;
 import org.wso2.andes.kernel.ProtocolMessage;
+import org.wso2.andes.kernel.SubscriptionAlreadyClosedException;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.message.AMQMessage;
@@ -40,6 +41,8 @@ import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionImpl;
 import org.wso2.andes.kernel.subscription.OutboundSubscription;
 import org.wso2.andes.tools.utils.MessageTracer;
+import org.wso2.andes.AMQSubscriptionClosedException;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -261,6 +264,13 @@ public class AMQPLocalSubscription implements OutboundSubscription {
                 throw new AndesException("Error occurred while delivering message. Unexpected Subscription type for "
                         + "message with ID : " + messageID);
             }
+        } catch (AMQSubscriptionClosedException e) {
+            ProtocolMessage protocolMessage = ((AMQMessage) queueEntry.getMessage()).getAndesMetadataReference();
+            log.error("AMQP Protocol Error while delivering message to the subscriber subID= "
+                      + amqpSubscription.getSubscriptionID() + " message id= " + messageID + " slot= "
+                      + protocolMessage.getMessage().getSlot().getId(), e);
+            throw new SubscriptionAlreadyClosedException(
+                    "Error occurred while delivering message with ID : " + msgHeaderStringID, e);
         } catch (AMQException e) {
             // The error is not logged here since this will be caught safely higher up in the execution plan :
             // MessageFlusher.deliverAsynchronously. If we have more context, its better to log here too,
