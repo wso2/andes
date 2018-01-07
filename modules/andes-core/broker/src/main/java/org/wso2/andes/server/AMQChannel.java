@@ -668,7 +668,12 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         try {
             //tell Andes Kernel to register a subscription
             queue.registerSubscription(subscription, exclusive);
-            QpidAndesBridge.createAMQPSubscription(subscription, queue);
+            try {
+                QpidAndesBridge.createAMQPSubscription(subscription, queue);
+            } catch (AMQException e) {
+                queue.unregisterSubscription(subscription);
+                throw e;
+            }
         } catch (AMQException e) {
             _tag2SubscriptionMap.remove(tag);
             throw e;
