@@ -1201,18 +1201,6 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
                     // if the queue is bound to the exchange but NOT for this topic and selector, then the JMS spec
                     // says we must trash the subscription.
                     //TODO: as we understand we should not trash the subscription. We should not allow new one to connect
-                    boolean isQueueBound = isQueueBound(dest.getExchangeName(), dest.getAMQQueueName());
-                    boolean isQueueBoundForTopicAndSelector = 
-                                isQueueBound(dest.getExchangeName().asString(), dest.getAMQQueueName().asString(), topicName.asString(), args);
-
-                    if (isQueueBound && !isQueueBoundForTopicAndSelector)
-                    {
-                        /**
-                         * We simply do not disturb the original subscription. We should not allow the new.
-                         * Else part below is handling that only when same jvm but different apps run.
-                         */
-                        //deleteQueue(dest.getAMQQueueName());
-                    }
                 }
             }
             else 
