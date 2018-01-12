@@ -346,7 +346,6 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
             JMSException jmse = new JMSException("Error creating connection: " + e.getMessage());
             jmse.setLinkedException(e);
             jmse.initCause(e);
-            log.error("Error while creating connection", e);
             throw jmse;
         }
 
