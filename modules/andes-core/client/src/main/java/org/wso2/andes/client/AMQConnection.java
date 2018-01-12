@@ -1354,7 +1354,7 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
         if (_exceptionListener != null) {
             _exceptionListener.onException(je);
         } else {
-            _logger.error("Throwable Received but no listener set: " + cause);
+            _logger.warn("Throwable Received but no listener set: " + cause);
         }
 
         // if we are closing the connection, close sessions first
