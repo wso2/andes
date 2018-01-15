@@ -716,9 +716,7 @@ public class AMQProtocolHandler implements ProtocolEngine
             }
             catch (AMQTimeoutException e)
             {
-                String error = "AMQP timed out when attempting to close the connection ";
-                _logger.error(error,e);
-                throw new AMQException(error,e);
+                throw new AMQException("AMQP timed out when attempting to close the connection ", e);
             }
             catch (FailoverException e)
             {
