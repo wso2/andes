@@ -109,9 +109,9 @@
                             org.wso2.securevault.*,
                             org.ietf.jgss*,
                             javax.*,
-                            com.google.common.base;version="19.0.0",
-                            com.google.common.util.concurrent;version="19.0.0",  
-                            com.google.common.cache;version="19.0.0"
+                            com.google.common.base;version="20.0.0",
+                            com.google.common.util.concurrent;version="20.0.0",
+                            com.google.common.cache;version="20.0.0"
                         </Import-Package>
                     </instructions>
                 </configuration>
