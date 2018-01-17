@@ -62,6 +62,11 @@ public class MBThriftClient {
     private PooledObjectFactory<SlotManagementService.Client> thriftClientFactory = new ThriftClientFactory();
 
     /**
+     * Thrift socket timeout value from broker.xml file
+     */
+    private int socketTimeout = 0;
+
+    /**
      * The thrift client pool.
      */
     private ObjectPool<SlotManagementService.Client> thriftClientPool;
@@ -78,6 +83,7 @@ public class MBThriftClient {
     private long lastReconnectionSuccessTimestamp = 0;
 
     public MBThriftClient() {
+        socketTimeout = AndesConfigurationManager.readValue(AndesConfiguration.COORDINATION_THRIFT_SO_TIMEOUT);
         initializeThriftConnectionPool();
     }
 
@@ -429,11 +435,17 @@ public class MBThriftClient {
      */
     private void initializeThriftConnectionPool() {
 
-        int thriftClientPoolSize = AndesConfigurationManager.readValue
-                (AndesConfiguration.PERFORMANCE_TUNING_THRIFT_CLIENT_POOL_SIZE);
+        int thriftClientPoolSize = AndesConfigurationManager
+                .readValue(AndesConfiguration.PERFORMANCE_TUNING_THRIFT_CLIENT_POOL_SIZE);
 
-        GenericObjectPool<SlotManagementService.Client> thriftConnectionPool = new GenericObjectPool<>(thriftClientFactory);
+        GenericObjectPool<SlotManagementService.Client> thriftConnectionPool = new GenericObjectPool<>(
+                thriftClientFactory);
         thriftConnectionPool.setMaxTotal(thriftClientPoolSize);
+        thriftConnectionPool.setTestOnBorrow(true);
+        if (socketTimeout > 0) {
+            thriftConnectionPool.setTimeBetweenEvictionRunsMillis(socketTimeout / 2);
+            thriftConnectionPool.setMinEvictableIdleTimeMillis(socketTimeout);
+        }
         thriftClientPool = thriftConnectionPool;
     }
 
@@ -447,7 +459,7 @@ public class MBThriftClient {
         try {
             return thriftClientPool.borrowObject();
         } catch (Exception e) {
-            throw new ConnectionException("Error burrowing a connection from thrift connection pool", e);
+            throw new ConnectionException("Error borrowing a connection from thrift connection pool", e);
         }
     }
 
