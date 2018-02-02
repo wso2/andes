@@ -408,6 +408,13 @@ public enum AndesConfiguration implements ConfigurationProperty {
             Integer.class),
 
     /**
+     * The idle time of a delivery task. Decreasing value might effect on increasing message delivery when the
+     * publisher is slow. But system load could go up.
+     */
+    PERFORMANCE_TUNING_SLOTS_IDLE_TASK_DELAY("performanceTuning/slots/idleTaskDelay", "100",
+            Long.class),
+
+    /**
      * Number of maximum thrift clients connections that should be created when utilizing the thrift client
      * connection pool.
      */

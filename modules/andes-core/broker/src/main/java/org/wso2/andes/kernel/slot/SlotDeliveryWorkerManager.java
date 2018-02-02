@@ -45,11 +45,6 @@ public final class SlotDeliveryWorkerManager implements StoreHealthListener, Net
     private static Log log = LogFactory.getLog(SlotDeliveryWorkerManager.class);
 
     /**
-     * Delay for waiting for an idle task
-     */
-    private static final long IDLE_TASK_DELAY_MILLIS = 100;
-
-    /**
      * Slot Delivery Worker Manager instance
      */
     private static SlotDeliveryWorkerManager slotDeliveryWorkerManager = new SlotDeliveryWorkerManager();
@@ -59,11 +54,13 @@ public final class SlotDeliveryWorkerManager implements StoreHealthListener, Net
     private SlotDeliveryWorkerManager() {
         int numberOfThreads = AndesConfigurationManager
                 .readValue(AndesConfiguration.PERFORMANCE_TUNING_SLOTS_WORKER_THREAD_COUNT);
+        long idleTaskDelay = AndesConfigurationManager
+                .readValue(AndesConfiguration.PERFORMANCE_TUNING_SLOTS_IDLE_TASK_DELAY);
 
         ThreadFactory threadFactory = new ThreadFactoryBuilder()
                 .setNameFormat("MessageDeliveryTaskThreadPool-%d").build();
 
-        taskManager = new TaskExecutorService<>(numberOfThreads, IDLE_TASK_DELAY_MILLIS, threadFactory);
+        taskManager = new TaskExecutorService<>(numberOfThreads, idleTaskDelay, threadFactory);
         taskManager.setExceptionHandler(new DeliveryTaskExceptionHandler());
         AndesContext andesContext = AndesContext.getInstance();
 
