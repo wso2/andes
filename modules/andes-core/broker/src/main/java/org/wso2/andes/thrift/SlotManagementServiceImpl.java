@@ -87,6 +87,17 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
         }
     }
 
+    /**
+     * Upon receiving the health-check call return true
+     *
+     * @return always true
+     * @throws TException thrift exception
+     */
+    @Override
+    public boolean healthCheck() throws TException {
+        return true;
+    }
+
     @Override
     public void reAssignSlotWhenNoSubscribers(String nodeId, String queueName) throws TException {
         if (AndesContext.getInstance().getClusterAgent().isCoordinator()) {

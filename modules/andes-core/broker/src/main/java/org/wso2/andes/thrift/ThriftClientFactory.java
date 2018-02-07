@@ -23,6 +23,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.commons.pool2.BasePooledObjectFactory;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
+import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TSocket;
@@ -95,5 +96,23 @@ public class ThriftClientFactory extends BasePooledObjectFactory<SlotManagementS
     public void destroyObject(PooledObject<SlotManagementService.Client> client) throws Exception {
         client.getObject().getInputProtocol().getTransport().close();
         super.destroyObject(client);
+    }
+
+    /**
+     * When setTestOnBorrow is set to true in thrift connection pool. This validation method is called on each
+     * connection object taken from the pool. This method do a bogus thrift call and validate the connection is
+     * usable for next intended task.
+     *
+     * @param client client
+     * @return connection's usability
+     */
+    @Override
+    public boolean validateObject(PooledObject<SlotManagementService.Client> client) {
+        try {
+            return client.getObject().healthCheck();
+        } catch (TException e) {
+            log.error("exception occurs while validating the thrift connection" + e);
+        }
+        return false;
     }
 }
