@@ -99,7 +99,8 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
 
                 boolean allTopicSubscriptionsSaturated = true;
                 for (AndesSubscription subscription : subscriptionsToDeliver) {
-                    if (subscription.getSubscriberConnection().hasRoomToAcceptMessages()) {
+                    if (subscription.getSubscriberConnection().hasRoomToAcceptMessages()
+                            & subscription.getSubscriberConnection().isReadyToDeliver()) {
                         allTopicSubscriptionsSaturated = false;
                         break;
                     }

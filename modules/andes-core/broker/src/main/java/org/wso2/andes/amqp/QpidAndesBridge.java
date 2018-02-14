@@ -326,9 +326,11 @@ public class QpidAndesBridge {
      *
      * @param subscription qpid subscription
      * @param queue        qpid queue
+     * @param consumeCallback A thread to send Consume_ok frame to consumer.
      * @throws AMQException
      */
-    public static void createAMQPSubscription(Subscription subscription, AMQQueue queue) throws AMQException {
+    public static void createAMQPSubscription(Subscription subscription, AMQQueue queue, Runnable consumeCallback)
+            throws AMQException {
         try {
             if (log.isDebugEnabled()) {
                 log.debug("AMQP BRIDGE: create AMQP Subscription subID " + subscription.getSubscriptionID() + " from queue "
@@ -342,7 +344,7 @@ public class QpidAndesBridge {
                 if (log.isDebugEnabled()) {
                     log.debug("Adding Subscription " + subscription.getSubscriptionID() + " to queue " + queue.getName());
                 }
-                addLocalSubscriptionsForAllBindingsOfQueue(queue, subscription);
+                addLocalSubscriptionsForAllBindingsOfQueue(queue, subscription, consumeCallback);
             }
         } catch (SubscriptionAlreadyExistsException e) {
             log.error("Error occurred while adding an already existing subscription", e);
@@ -534,9 +536,11 @@ public class QpidAndesBridge {
      *
      * @param queue        AMQ queue
      * @param subscription subscription
+     * @param sendConsumeOk A thread to send Consume_ok frame to consumer.
      * @throws AndesException
      */
-    private static void addLocalSubscriptionsForAllBindingsOfQueue(AMQQueue queue, Subscription subscription) throws AndesException {
+    private static void addLocalSubscriptionsForAllBindingsOfQueue(AMQQueue queue, Subscription subscription,
+                                                                   Runnable sendConsumeOk) throws AndesException {
 
         String localNodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         List<Binding> bindingList = queue.getBindings();
@@ -573,7 +577,7 @@ public class QpidAndesBridge {
 
                         InboundSubscriptionEvent subscriptionEvent = new InboundSubscriptionEvent(protocol,
                                 subscriptionIdentifier, storageQueueToBind, bindingKey,
-                                subscriberConnection);
+                                subscriberConnection, sendConsumeOk);
 
                         Andes.getInstance().openLocalSubscription(subscriptionEvent);
                         alreadyAddedSubscriptions.add(subscriptionEvent);

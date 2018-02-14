@@ -108,8 +108,9 @@ public class SlowestSubscriberTopicMessageDeliveryImpl implements MessageDeliver
                  */
                 boolean allTopicSubscriptionsHasRoom = true;
                 for (AndesSubscription subscription : subscriptionsToDeliver) {
-                    if (!subscription.getSubscriberConnection().hasRoomToAcceptMessages()
-                        || subscription.getSubscriberConnection().isSuspended()) {
+                    if ((!subscription.getSubscriberConnection().hasRoomToAcceptMessages()
+                            & !subscription.getSubscriberConnection().isReadyToDeliver())
+                            || subscription.getSubscriberConnection().isSuspended()) {
                         allTopicSubscriptionsHasRoom = false;
                         break;
                     }
