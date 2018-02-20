@@ -269,6 +269,14 @@ public class SubscriberConnection {
         return outBoundMessageTracker.hasRoomToAcceptMessages();
     }
 
+    public boolean isReadyToDeliver() {
+        return outBoundMessageTracker.isReadyToDeliver();
+    }
+
+    public void setIsReadyToDeliver(boolean value) {
+        outBoundMessageTracker.setReadyToDeliver(value);
+    }
+
     /**
      * Returns if the subscription is marked as suspended.
      *

@@ -85,7 +85,8 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
                         suspendedSubFound = true;
                         continue;
                     }
-                    if (localSubscription.getSubscriberConnection().hasRoomToAcceptMessages()) {
+                    if (localSubscription.getSubscriberConnection().hasRoomToAcceptMessages()
+                            & localSubscription.getSubscriberConnection().isReadyToDeliver()) {
 
                         if (!localSubscription.getSubscriberConnection().
                                 isMessageAcceptedByConnectionSelector(message)) {

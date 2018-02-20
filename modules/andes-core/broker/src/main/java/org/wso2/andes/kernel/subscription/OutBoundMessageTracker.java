@@ -32,6 +32,16 @@ import java.util.List;
  */
 public class OutBoundMessageTracker {
 
+    /*
+        This parameter is used to keep hasRoomToAcceptMessages check in fault state, until we send the
+        consume-ok frame to the consumer.
+    */
+    private boolean readyToDeliver = false;
+
+    public void setReadyToDeliver(boolean ready) {
+        readyToDeliver = ready;
+    }
+
     /**
      * Map to track messages being sent <message id, MsgData reference>. This map bares message
      * reference at kernel side
@@ -102,6 +112,15 @@ public class OutBoundMessageTracker {
 
             return false;
         }
+    }
+
+    /**
+     * To check whether consume-ok frame is sent.
+     *
+     * @return true if consume-ok frame is sent.
+     */
+    public boolean isReadyToDeliver() {
+        return readyToDeliver;
     }
 
     /**

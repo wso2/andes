@@ -60,6 +60,13 @@ public class InternalBrokerBaseCase extends QpidTestCase
     private XMLConfiguration _configXml = new XMLConfiguration();
     private boolean _started = false;
 
+    Runnable tempRunnable = new Runnable() {
+        @Override
+        public void run() {
+            //created without implementation since test methods are not used.
+        }
+    };
+
     public void setUp() throws Exception
     {
         super.setUp();
@@ -165,7 +172,7 @@ public class InternalBrokerBaseCase extends QpidTestCase
     {
         try
         {
-            return channel.subscribeToQueue(null, queue, true, null, false, true);
+            return channel.subscribeToQueue(null, queue, true, null, false, true, tempRunnable);
         }
         catch (AMQException e)
         {
@@ -184,7 +191,7 @@ public class InternalBrokerBaseCase extends QpidTestCase
             FieldTable filters = new FieldTable();
             filters.put(AMQPFilterTypes.NO_CONSUME.getValue(), true);
 
-            return channel.subscribeToQueue(null, queue, true, filters, false, true);
+            return channel.subscribeToQueue(null, queue, true, filters, false, true, tempRunnable);
         }
         catch (AMQException e)
         {

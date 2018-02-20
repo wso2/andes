@@ -642,16 +642,13 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
      *
      * @param noLocal   Flag stopping own messages being receivied.
      * @param exclusive Flag requesting exclusive access to the queue
+     * @param sendConsumeOk A thread to send Consume_ok frame to consumer.
      * @return the consumer tag. This is returned to the subscriber and used in subsequent unsubscribe requests
-     *
-     * @throws AMQException                  if something goes wrong
+     * @throws AMQException if something goes wrong
      */
     public AMQShortString subscribeToQueue(AMQShortString tag, AMQQueue queue, boolean acks,
-                                           FieldTable filters, boolean noLocal, boolean exclusive) throws AMQException {
-        if (tag == null)
-        {
-            tag = new AMQShortString("sgen_" + getNextConsumerTag());
-        }
+                                           FieldTable filters, boolean noLocal, boolean exclusive,
+                                           Runnable sendConsumeOk) throws AMQException {
 
         if (_tag2SubscriptionMap.size() > 0)
         {
@@ -669,7 +666,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             //tell Andes Kernel to register a subscription
             queue.registerSubscription(subscription, exclusive);
             try {
-                QpidAndesBridge.createAMQPSubscription(subscription, queue);
+                QpidAndesBridge.createAMQPSubscription(subscription, queue, sendConsumeOk);
             } catch (AMQException e) {
                 queue.unregisterSubscription(subscription);
                 throw e;

@@ -32,6 +32,15 @@ import java.util.concurrent.ExecutionException;
  */
 public class InboundSubscriptionEvent implements AndesInboundStateEvent {
 
+    /**
+     * A thread to send consume-ok frame after opening the subscription.
+     */
+    private Runnable postOpenSubscriptionAction;
+
+    public Runnable getPostOpenSubscriptionAction() {
+        return postOpenSubscriptionAction;
+    }
+
     private static Log log = LogFactory.getLog(InboundSubscriptionEvent.class);
 
     /**
@@ -82,6 +91,19 @@ public class InboundSubscriptionEvent implements AndesInboundStateEvent {
 
     private String routingKey;
 
+    public InboundSubscriptionEvent(ProtocolType protocol,
+                                    String subscriptionIdentifier,
+                                    String boundStorageQueueName,
+                                    String routingKey,
+                                    SubscriberConnection subscription,
+                                    Runnable sendConsumeOk) {
+        this.protocol = protocol;
+        this.subscriptionIdentifier = subscriptionIdentifier;
+        this.boundStorageQueueName = boundStorageQueueName;
+        this.routingKey = routingKey;
+        this.subscriberConnection = subscription;
+        this.postOpenSubscriptionAction = sendConsumeOk;
+    }
 
     public InboundSubscriptionEvent(ProtocolType protocol,
                                     String subscriptionIdentifier,
