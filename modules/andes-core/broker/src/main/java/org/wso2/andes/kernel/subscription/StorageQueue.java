@@ -420,17 +420,6 @@ public class StorageQueue {
         return messageHandler.messageBufferHasRoom();
     }
 
-
-    /**
-     * Clear all messages that read to buffer for delivery. This call
-     * will clear up all read slots so far as well.
-     *
-     * @return number of messages removed from memory
-     */
-    public int clearMessagesReadToBufferForDelivery() {
-        return messageHandler.clearReadButUndeliveredMessages();
-    }
-
     /**
      * Purge all messages in the queue including messages in the store and slots for the queue.
      *

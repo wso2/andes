@@ -133,7 +133,7 @@ final class MessageDeliveryTask extends Task {
      */
     @Override
     public void onRemove() {
-        onStopDelivery();
+
     }
 
     /**
@@ -163,12 +163,5 @@ final class MessageDeliveryTask extends Task {
             log.debug((endTime - startTime) + " milli seconds to get a slot from slot manager");
         }
         return currentSlot;
-    }
-
-    /**
-     * Update slot states when delivery stop
-     */
-    private void onStopDelivery() {
-        storageQueue.clearMessagesReadToBufferForDelivery();
     }
 }
