@@ -136,7 +136,7 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 	 */
 	@Override
 	public void storeOperational(HealthAwareStore store) {
-		if (store.getClass().getSuperclass().isInstance(AndesContextStore.class)) {
+		if (store instanceof AndesContextStore) {
 			isContextStoreOperational.set(true);
 			log.info("AndesRecoveryTask became operational. Recovering broker artifacts.");
             try {
