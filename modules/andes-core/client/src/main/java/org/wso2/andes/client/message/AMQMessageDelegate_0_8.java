@@ -21,17 +21,6 @@
 
 package org.wso2.andes.client.message;
 
-import java.net.URISyntaxException;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.Map;
-import java.util.UUID;
-
-import javax.jms.Destination;
-import javax.jms.JMSException;
-import javax.jms.MessageNotWriteableException;
-import javax.jms.Session;
-
 import org.wso2.andes.client.AMQDestination;
 import org.wso2.andes.client.AMQQueue;
 import org.wso2.andes.client.AMQSession;
@@ -44,6 +33,16 @@ import org.wso2.andes.framing.BasicContentHeaderProperties;
 import org.wso2.andes.framing.ContentHeaderProperties;
 import org.wso2.andes.url.AMQBindingURL;
 import org.wso2.andes.url.BindingURL;
+
+import java.net.URISyntaxException;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.Map;
+import java.util.UUID;
+import javax.jms.Destination;
+import javax.jms.JMSException;
+import javax.jms.MessageNotWriteableException;
+import javax.jms.Session;
 
 public class AMQMessageDelegate_0_8 extends AbstractAMQMessageDelegate
 {
@@ -302,71 +301,36 @@ public class AMQMessageDelegate_0_8 extends AbstractAMQMessageDelegate
 
     public boolean getBooleanProperty(String propertyName) throws JMSException
     {
-        if (STRICT_AMQP_COMPLIANCE)
-        {
-            throw new UnsupportedOperationException("JMS Proprerties not supported in AMQP");
-        }
-
         return getJmsHeaders().getBoolean(propertyName);
     }
 
     public byte getByteProperty(String propertyName) throws JMSException
     {
-        if (STRICT_AMQP_COMPLIANCE)
-        {
-            throw new UnsupportedOperationException("JMS Proprerties not supported in AMQP");
-        }
-
         return getJmsHeaders().getByte(propertyName);
     }
 
     public short getShortProperty(String propertyName) throws JMSException
     {
-        if (STRICT_AMQP_COMPLIANCE)
-        {
-            throw new UnsupportedOperationException("JMS Proprerties not supported in AMQP");
-        }
-
         return getJmsHeaders().getShort(propertyName);
     }
 
     public int getIntProperty(String propertyName) throws JMSException
     {
-        if (STRICT_AMQP_COMPLIANCE)
-        {
-            throw new UnsupportedOperationException("JMS Proprerties not supported in AMQP");
-        }
-
         return getJmsHeaders().getInteger(propertyName);
     }
 
     public long getLongProperty(String propertyName) throws JMSException
     {
-        if (STRICT_AMQP_COMPLIANCE)
-        {
-            throw new UnsupportedOperationException("JMS Proprerties not supported in AMQP");
-        }
-
         return getJmsHeaders().getLong(propertyName);
     }
 
     public float getFloatProperty(String propertyName) throws JMSException
     {
-        if (STRICT_AMQP_COMPLIANCE)
-        {
-            throw new UnsupportedOperationException("JMS Proprerties not supported in AMQP");
-        }
-
         return getJmsHeaders().getFloat(propertyName);
     }
 
     public double getDoubleProperty(String propertyName) throws JMSException
     {
-        if (STRICT_AMQP_COMPLIANCE)
-        {
-            throw new UnsupportedOperationException("JMS Proprerties not supported in AMQP");
-        }
-
         return getJmsHeaders().getDouble(propertyName);
     }
 
@@ -379,11 +343,6 @@ public class AMQMessageDelegate_0_8 extends AbstractAMQMessageDelegate
         }
         else
         {
-            if (STRICT_AMQP_COMPLIANCE)
-            {
-                throw new UnsupportedOperationException("JMS Proprerties not supported in AMQP");
-            }
-
             return getJmsHeaders().getString(propertyName);
         }
     }
@@ -400,33 +359,18 @@ public class AMQMessageDelegate_0_8 extends AbstractAMQMessageDelegate
 
     public void setBooleanProperty(String propertyName, boolean b) throws JMSException
     {
-        if (STRICT_AMQP_COMPLIANCE)
-        {
-            throw new UnsupportedOperationException("JMS Proprerties not supported in AMQP");
-        }
-
         checkWritableProperties();
         getJmsHeaders().setBoolean(propertyName, b);
     }
 
     public void setByteProperty(String propertyName, byte b) throws JMSException
     {
-        if (STRICT_AMQP_COMPLIANCE)
-        {
-            throw new UnsupportedOperationException("JMS Proprerties not supported in AMQP");
-        }
-
         checkWritableProperties();
         getJmsHeaders().setByte(propertyName, new Byte(b));
     }
 
     public void setShortProperty(String propertyName, short i) throws JMSException
     {
-        if (STRICT_AMQP_COMPLIANCE)
-        {
-            throw new UnsupportedOperationException("JMS Proprerties not supported in AMQP");
-        }
-
         checkWritableProperties();
         getJmsHeaders().setShort(propertyName, new Short(i));
     }
@@ -439,33 +383,18 @@ public class AMQMessageDelegate_0_8 extends AbstractAMQMessageDelegate
 
     public void setLongProperty(String propertyName, long l) throws JMSException
     {
-        if (STRICT_AMQP_COMPLIANCE)
-        {
-            throw new UnsupportedOperationException("JMS Proprerties not supported in AMQP");
-        }
-
         checkWritableProperties();
         getJmsHeaders().setLong(propertyName, new Long(l));
     }
 
     public void setFloatProperty(String propertyName, float f) throws JMSException
     {
-        if (STRICT_AMQP_COMPLIANCE)
-        {
-            throw new UnsupportedOperationException("JMS Proprerties not supported in AMQP");
-        }
-
         checkWritableProperties();
         getJmsHeaders().setFloat(propertyName, new Float(f));
     }
 
     public void setDoubleProperty(String propertyName, double v) throws JMSException
     {
-        if (STRICT_AMQP_COMPLIANCE)
-        {
-            throw new UnsupportedOperationException("JMS Proprerties not supported in AMQP");
-        }
-
         checkWritableProperties();
         getJmsHeaders().setDouble(propertyName, new Double(v));
     }
