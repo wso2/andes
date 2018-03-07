@@ -1138,8 +1138,10 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             // Update Andes message with all the chunk details
             if(!messageContent.isEmpty()) {
                 List<AndesMessagePart> messageParts = messageContent.get(messageId);
-                for (AndesMessagePart messagePart : messageParts) {
-                    andesMessage.addMessagePart(messagePart);
+                if (messageParts != null) {
+                    for (AndesMessagePart messagePart : messageParts) {
+                        andesMessage.addMessagePart(messagePart);
+                    }
                 }
             }
 
