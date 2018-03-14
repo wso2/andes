@@ -111,7 +111,9 @@ public class ThriftClientFactory extends BasePooledObjectFactory<SlotManagementS
         try {
             return client.getObject().healthCheck();
         } catch (TException e) {
-            log.debug("exception occurs while validating the thrift connection" + e);
+            if (log.isDebugEnabled()) {
+                log.debug("Connection is not active. Hence removing the connection from pool.", e);
+            }
         }
         return false;
     }
