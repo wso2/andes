@@ -133,7 +133,7 @@ public enum MessageStatus {
         ACKED_BY_ALL.next = EnumSet.of(PREPARED_TO_DELETE, SLOT_RETURNED);
         ACKED_BY_ALL.previous = EnumSet.of(SCHEDULED_TO_SEND);
 
-        EXPIRED.next = EnumSet.of(PREPARED_TO_DELETE, SLOT_RETURNED);
+        EXPIRED.next = EnumSet.of(PREPARED_TO_DELETE, SLOT_RETURNED, DLC_MESSAGE);
         EXPIRED.previous = EnumSet.allOf(MessageStatus.class);
 
         DLC_MESSAGE.next = EnumSet.of(EXPIRED, BUFFERED, SLOT_REMOVED, SLOT_RETURNED);
