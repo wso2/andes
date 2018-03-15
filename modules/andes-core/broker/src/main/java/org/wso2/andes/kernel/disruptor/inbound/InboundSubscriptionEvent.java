@@ -21,7 +21,9 @@ package org.wso2.andes.kernel.disruptor.inbound;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.ProtocolType;
+import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.kernel.subscription.SubscriberConnection;
 
@@ -115,6 +117,12 @@ public class InboundSubscriptionEvent implements AndesInboundStateEvent {
         this.boundStorageQueueName = boundStorageQueueName;
         this.routingKey = routingKey;
         this.subscriberConnection = subscription;
+        this.postOpenSubscriptionAction = new Runnable() {
+            @Override
+            public void run() {
+                //Setting empty runnable to avoid NPE when try to run post subscription action later.
+            }
+        };
     }
 
     public SubscriberConnection getSubscriber() {
