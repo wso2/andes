@@ -19,6 +19,8 @@ package org.wso2.andes.kernel;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
@@ -50,10 +52,19 @@ public class PreDeliveryExpiryMessageDeletionTask implements Runnable, StoreHeal
     private volatile SettableFuture<Boolean> messageStoresUnavailable;
 
     /**
+     * Indicates to expired messages should move to DLC
+     */
+    private Boolean moveExpiredToDLC;
+
+
+    /**
      * Create a task that keeps expired messages and delete them in batches.
      */
     PreDeliveryExpiryMessageDeletionTask() {
         this.messageStoresUnavailable = null;
+        this.messageStoresUnavailable = null;
+        this.moveExpiredToDLC = AndesConfigurationManager.
+                readValue(AndesConfiguration.PERFORMANCE_TUNING_MOVE_EXPIRED_MESSAGES_TO_DLC);
         this.expiredMessages = new LinkedBlockingDeque<>();
         // Register AndesRecoveryTask class as a StoreHealthListener
         FailureObservingStoreManager.registerStoreHealthListener(this);
@@ -99,7 +110,11 @@ public class PreDeliveryExpiryMessageDeletionTask implements Runnable, StoreHeal
             try {
                 List<DeliverableAndesMetadata> expiredMessagesList = new ArrayList<>();
                 expiredMessages.drainTo(expiredMessagesList);
-                MessagingEngine.getInstance().deleteMessages(expiredMessagesList);
+                if (moveExpiredToDLC) {
+                    MessagingEngine.getInstance().moveMessageToDeadLetterChannel(expiredMessagesList);
+                } else {
+                    MessagingEngine.getInstance().deleteMessages(expiredMessagesList);
+                }
             } catch (AndesException e) {
                 log.error("Error running message expiration checker ", e);
             }

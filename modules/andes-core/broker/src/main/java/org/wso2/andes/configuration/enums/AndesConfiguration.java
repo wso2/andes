@@ -595,6 +595,13 @@ public enum AndesConfiguration implements ConfigurationProperty {
     PERFORMANCE_TUNING_EXPIRE_MESSAGES_IN_DLC
             ("performanceTuning/messageExpiration/expireMessagesInDLC", "false", Boolean.class),
 
+    /**
+     * Enable/Disable moving expired messages to DLC.
+     */
+    PERFORMANCE_TUNING_MOVE_EXPIRED_MESSAGES_TO_DLC
+            ("performanceTuning/messageExpiration/moveExpiredMessagesToDLC", "false", Boolean.class),
+
+
      /**
      * In order to have a batch delete for the expired messages captured at the message flusher, accumulate them
      * in to a queue and delete them periodically as a batch. specified in seconds
