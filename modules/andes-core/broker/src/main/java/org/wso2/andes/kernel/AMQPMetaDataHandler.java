@@ -18,6 +18,7 @@
 package org.wso2.andes.kernel;
 
 import org.wso2.andes.framing.AMQShortString;
+import org.wso2.andes.framing.BasicContentHeaderProperties;
 import org.wso2.andes.framing.ContentHeaderBody;
 import org.wso2.andes.framing.abstraction.MessagePublishInfo;
 import org.wso2.andes.server.message.CustomMessagePublishInfo;
@@ -42,11 +43,16 @@ public class AMQPMetaDataHandler {
      * @return copy of the metadata as a byte array
      */
     public static byte[] constructMetadata(String routingKey, ByteBuffer buf, StorableMessageMetaData originalMetadata,
-                                           String exchange) {
+                                           String exchange, long arrivalTime) {
         ContentHeaderBody contentHeaderBody = ((MessageMetaData) originalMetadata).getContentHeaderBody();
         int contentChunkCount = ((MessageMetaData) originalMetadata).getContentChunkCount();
-        long arrivalTime = ((MessageMetaData) originalMetadata).getArrivalTime();
         long sessionID = ((MessageMetaData) originalMetadata).getPublisherSessionID();
+
+        //Set expiration value to 0 to indicate no expiration
+        BasicContentHeaderProperties props = (BasicContentHeaderProperties) contentHeaderBody.getProperties();
+        if (props.getExpiration() != 0) {
+            props.setExpiration(0);
+        }
 
         // modify routing key to the binding name
         MessagePublishInfo messagePublishInfo = new CustomMessagePublishInfo(originalMetadata);

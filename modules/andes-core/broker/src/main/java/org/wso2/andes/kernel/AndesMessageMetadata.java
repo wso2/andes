@@ -301,8 +301,8 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      * @param newDestination  new routing key to set
      * @param newExchangeName new exchange name to set
      */
-    public void updateMetadata(String newDestination, String newExchangeName) {
-        this.metadata = createNewMetadata(this.metadata, newDestination, newExchangeName);
+    public void updateMetadata(String newDestination, String newExchangeName, long newArrivalTime) {
+        this.metadata = createNewMetadata(this.metadata, newDestination, newExchangeName, newArrivalTime);
         this.destination = newDestination;
         if (log.isDebugEnabled()) {
             log.debug("updated andes message metadata id= " + messageID + " new destination = " + newDestination);
@@ -374,7 +374,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      * @param exchangeName     exchange of the message
      * @return copy of the metadata as a byte array
      */
-    private byte[] createNewMetadata(byte[] originalMetadata, String routingKey, String exchangeName) {
+    private byte[] createNewMetadata(byte[] originalMetadata, String routingKey, String exchangeName, long arrivalTime) {
         ByteBuffer buf = ByteBuffer.wrap(originalMetadata);
         buf.position(1);
         buf = buf.slice();
@@ -387,7 +387,8 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         if ((MessageMetaDataType.META_DATA_MQTT).equals(type)) {
             underlying = MQTTMetaDataHandler.constructMetadata(routingKey, buf, originalMessageMetadata, exchangeName);
         } else {
-            underlying = AMQPMetaDataHandler.constructMetadata(routingKey, buf, originalMessageMetadata, exchangeName);
+            underlying = AMQPMetaDataHandler.constructMetadata(routingKey, buf,
+                    originalMessageMetadata, exchangeName, arrivalTime);
         }
 
         return underlying;

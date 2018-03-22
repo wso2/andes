@@ -1121,14 +1121,19 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             }
             AndesMessageMetadata metadata = Andes.getInstance().getMessageMetaData(messageId);
             if (!restoreToOriginalQueue) {
-                StorageQueue newStorageQueue = AndesContext.getInstance().getStorageQueueRegistry()
-                        .getStorageQueue(targetQueue);
-
                 // Set the new destination queue
+                StorageQueue newStorageQueue = AndesContext.getInstance().
+                        getStorageQueueRegistry().getStorageQueue(targetQueue);
                 metadata.setDestination(targetQueue);
                 metadata.setStorageQueueName(targetQueue);
                 metadata.setMessageRouterName(newStorageQueue.getMessageRouter().getName());
-                metadata.updateMetadata(targetQueue, newStorageQueue.getMessageRouter().getName());
+                //update metadata with new queue, router and publish time
+                metadata.updateMetadata(targetQueue,
+                        newStorageQueue.getMessageRouter().getName(), System.currentTimeMillis());
+            } else {
+                //update metadata with new publish time
+                metadata.updateMetadata(metadata.getDestination(),
+                        metadata.getMessageRouterName(), System.currentTimeMillis());
             }
 
             //set new expiration time. This will be time now + original TTL
