@@ -31,6 +31,7 @@ import org.wso2.andes.client.message.MessageFactoryRegistry;
 import org.wso2.andes.client.protocol.AMQProtocolHandler;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
+import org.wso2.andes.jms.ConnectionURL;
 import org.wso2.andes.jms.MessageConsumer;
 import org.wso2.andes.jms.Session;
 
@@ -65,8 +66,11 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
     private final boolean _noLocal;
 
     /**
-     * The delay amount in milliseconds for redelivered messages. Value can be overwritten by setting
-     * "AndesRedeliveryDelay" property.
+     * The delay amount in milliseconds for redelivered messages.
+     * This value can be overwritten by setting "AndesRedeliveryDelay" property or by setting the connection option
+     * {{ConnectionURL.OPTIONS_CONNECTION_REDELIVERY_DELAY}}. The property
+     * {{ConnectionURL.OPTIONS_CONNECTION_REDELIVERY_DELAY}} has high precedence over the system property
+     * "AndesRedeliveryDelay".
      */
     private long redeliveryDelay = 0L;
 
@@ -227,13 +231,29 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
             _acknowledgeMode = acknowledgeMode;
         }
 
-        // Get the andes redelivery delay value from system properties. Value is milliseconds.
-        String andesDeliveryDelayString = System.getProperty("AndesRedeliveryDelay");
-        if (null != andesDeliveryDelayString && !andesDeliveryDelayString.isEmpty()) {
-            redeliveryDelay = Long.parseLong(andesDeliveryDelayString);
-            // Validating redelivery delay value.
-            if (redeliveryDelay < 0) {
-                throw new IllegalArgumentException("AndesRedeliveryDelay property should be greater than 0.");
+        /*Get the redelivery delay from the connection string. Value in milliseconds. If its not available read from
+        system property AndesRedeliveryDelay.*/
+        String redeliveryDelayString = ((AMQConnectionURL) _connection.getConnectionURL()).getOptions()
+                .get(ConnectionURL.OPTIONS_CONNECTION_REDELIVERY_DELAY);
+        if (redeliveryDelayString == null || redeliveryDelayString.isEmpty()) {
+            redeliveryDelayString = System.getProperty("AndesRedeliveryDelay");
+        }
+
+        if (redeliveryDelayString != null && !redeliveryDelayString.isEmpty()) {
+            try {
+                redeliveryDelay = Long.parseLong(redeliveryDelayString);
+                if (redeliveryDelay < 0) {
+                    throw new IllegalArgumentException("Redelivery property (AndesRedeliveryDelay/redeliverydelay) "
+                            + "should be greater than 0.");
+                }
+                if (_logger.isDebugEnabled()) {
+                    _logger.debug(
+                            "Added a redelivery delay of " + redeliveryDelay + " milliseconds for the destination "
+                                    + destination.toString());
+                }
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Please set a proper Long value for redelivery delay "
+                        + "(AndesRedeliveryDelay/redeliverydelay) in milliseconds.");
             }
         }
     }
