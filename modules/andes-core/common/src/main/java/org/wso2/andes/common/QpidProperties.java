@@ -87,7 +87,9 @@ public class QpidProperties
             InputStream propertyStream = QpidProperties.class.getClassLoader().getResourceAsStream(VERSION_RESOURCE);
             if (propertyStream == null)
             {
-                _logger.warn("Unable to find resource " + VERSION_RESOURCE + " from classloader");
+                if (_logger.isDebugEnabled()) {
+                    _logger.debug("Unable to find resource " + VERSION_RESOURCE + " from classloader");
+                }
             }
             else
             {
