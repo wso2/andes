@@ -233,11 +233,12 @@ public class AMQProtocolHandler implements ProtocolEngine
     {
         if (_connection.isClosed())
         {
-            _logger.debug("Session closed called by client");
+            _logger.debug("Session closed called by client", _network.getLocalAddress());
         }
         else
         {
-            _logger.debug("Session closed called with failover state currently " + _failoverState);
+            _logger.debug("Session closed called with failover state currently in {}. Local address ",
+                          _failoverState, _network.getLocalAddress());
 
             // reconnetablility was introduced here so as not to disturb the client as they have made their intentions
             // known through the policy settings.
@@ -252,7 +253,7 @@ public class AMQProtocolHandler implements ProtocolEngine
                 }
                 else
                 {
-                    _logger.debug("Not starting failover as state currently " + _failoverState);
+                    _logger.debug("Not starting failover as state currently {}", _failoverState);
                 }
             }
             else
@@ -278,7 +279,7 @@ public class AMQProtocolHandler implements ProtocolEngine
             }
         }
 
-        _logger.debug("Protocol Session [" + this + "] closed");
+        _logger.debug("Protocol Session [ {} ] closed", this);
     }
 
     /** See {@link FailoverHandler} to see rationale for separate thread. */
@@ -495,6 +496,10 @@ public class AMQProtocolHandler implements ProtocolEngine
                         catch (Exception e)
                         {
                             _logger.error("Exception processing frame", e);
+                            // When error handling we assume this is a network driver error and do the necessary cleanup
+                            // on client side. If the underlying network connection is not closed, we forcefully
+                            // disconnect from the server first on hard errors.
+                            closeNetworkConnection(e);
                             propagateExceptionToFrameListeners(e);
                             exception(e);
                         }
@@ -504,9 +509,23 @@ public class AMQProtocolHandler implements ProtocolEngine
         }
         catch (Exception e)
         {
+            closeNetworkConnection(e);
             propagateExceptionToFrameListeners(e);
             exception(e);
         }
+    }
+
+    /**
+     * Close the underlying network connection if the error thrown doesn't close the underlying network connection.
+     *
+     * @param e Exception thrown
+     */
+    private void closeNetworkConnection(Exception e) {
+        if (_connection.hardError(e)) {
+            _network.close();
+            _logger.info("Network connection closed successfully. Local address: {}", _network.getLocalAddress());
+        }
+
     }
 
     public void methodBodyReceived(final int channelId, final AMQBody bodyFrame)

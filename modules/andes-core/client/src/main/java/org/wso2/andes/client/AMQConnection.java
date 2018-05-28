@@ -877,7 +877,7 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
         }
     }
 
-    public void     close() throws JMSException
+    public void close() throws JMSException
     {
         close(DEFAULT_TIMEOUT);
     }
@@ -945,7 +945,7 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
                             }
                             catch (InterruptedException e)
                             {
-                                _logger.info("Interrupted while shutting down connection thread pool.");
+                                _logger.info("Interrupted while shutting down connection thread pool.", e);
                             }
                         }
 
@@ -967,7 +967,7 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
                     catch (AMQException e)
                     {
                         _logger.error("error:", e);
-                        JMSException jmse = new JMSException("Error closing connection: " + e);
+                        JMSException jmse = new JMSException("Error closing connection.");
                         jmse.setLinkedException(e);
                         jmse.initCause(e);
                         throw jmse;
@@ -1293,7 +1293,7 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
 
             if (code != null)
             {
-                je = new JMSException(Integer.toString(code.getCode()), "Exception thrown against " + toString() + ": " + cause);
+                je = new JMSException(Integer.toString(code.getCode()), "Exception thrown against " + toString());
             }
             else
             {
@@ -1311,7 +1311,7 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
                         cause = last;
                     }
                 }
-                je = new JMSException("Exception thrown against " + toString() + ": " + cause);
+                je = new JMSException("Exception thrown against " + toString());
             }
 
             if (cause instanceof Exception)
@@ -1333,7 +1333,7 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
             _closing.set(false);
             closer = !_closed.getAndSet(true);
 
-            _protocolHandler.getProtocolSession().notifyError(je);
+            _protocolHandler.propagateExceptionToAllWaiters(je);
         }
 
         // decide if we are going to close the session
@@ -1341,12 +1341,12 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
             closer = (!_closed.getAndSet(true)) || closer;
             {
                 if (_logger.isDebugEnabled()) {
-                    _logger.debug("Closing AMQConnection due to :" + cause);
+                    _logger.debug("Closing AMQConnection.", cause);
                 }
             }
         } else {
             if (_logger.isDebugEnabled()) {
-                _logger.debug("Not a hard-error connection not closing: " + cause);
+                _logger.debug("Not a hard-error connection not closing.", cause);
             }
         }
 
@@ -1354,7 +1354,7 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
         if (_exceptionListener != null) {
             _exceptionListener.onException(je);
         } else {
-            _logger.warn("Throwable Received but no listener set: " + cause);
+            _logger.warn("Throwable Received but no listener set.", cause);
         }
 
         // if we are closing the connection, close sessions first
@@ -1364,13 +1364,13 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
                 try {
                     closeAllSessions(cause, -1, -1); // FIXME: when doing this end up with RejectedExecutionException from executor.
                 } catch (JMSException e) {
-                    _logger.error("Error closing all sessions: " + e, e);
+                    _logger.error("Error closing all sessions.", e);
                 }
             }
         }
     }
 
-    private boolean hardError(Throwable cause)
+    public boolean hardError(Throwable cause)
     {
         if (cause instanceof AMQException)
         {
