@@ -122,6 +122,15 @@ import javax.jms.TransactionRolledBackException;
  */
 public abstract class AMQSession<C extends BasicMessageConsumer, P extends BasicMessageProducer> extends Closeable implements Session, QueueSession, TopicSession
 {
+    /**
+     * Provided mutual exclusion when starting the dispatcher thread.
+     *
+     * NOTE: AMQSession object is not used as a monitor object since AMQSession object is used as the JMS Session object as well.
+     * JMS session objects are not thread safe. Hence JMS application developers will use the JMS session object as a
+     * monitor object when assuring mutual exclusion of the session. This might lead to deadlocks in failover
+     * scenarios, hence avoiding using the session object as a monitor object.
+     */
+    private final Lock dispatcherInitLock = new ReentrantLock();
 
     public static final class IdToConsumerMap<C extends BasicMessageConsumer>
     {
@@ -583,36 +592,34 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
         scheduler.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {
-                synchronized (this) {
-                    try {
-                        Iterator<Map.Entry<Long, Long>> iterator = ackWaitTimeOutTrackingMap.entrySet().iterator();
-                        while (iterator.hasNext()) {
-                            Map.Entry<Long, Long> entry = iterator.next();
-                            Long deliveryTag = entry.getKey();
-                            Long deliveredTimeStamp = entry.getValue();
-                            // The delivered timestamp read here is updated when dispatching and updating messages
-                            // Therefore, even though we expect the 'deliveredTimeStamp' to be updated right after the
-                            // following if condition gets evaluated to true, there is an inevitable delay
-                            // This will cause 'System.currentTimeMillis() - deliveredTimeStamp' to be slightly less
-                            // than 'messageRejectionTaskPeriod' even though we expect them to be equal
-                            // and will result in an additional iteration
-                            // To avoid this situation, we make it deliberately run 1 iteration before the planned
-                            // execution
-                            if ((System.currentTimeMillis() - deliveredTimeStamp) > (effectiveAckWaitTimeOut)) {
-                                //reject the message
-                                rejectMessage(deliveryTag, true);
-                                iterator.remove();
-                                log.info("Reject message sent for deliveryTag = " + deliveryTag);
-                            } else {
-                                break;
-                            }
+                try {
+                    Iterator<Map.Entry<Long, Long>> iterator = ackWaitTimeOutTrackingMap.entrySet().iterator();
+                    while (iterator.hasNext()) {
+                        Map.Entry<Long, Long> entry = iterator.next();
+                        Long deliveryTag = entry.getKey();
+                        Long deliveredTimeStamp = entry.getValue();
+                        // The delivered timestamp read here is updated when dispatching and updating messages
+                        // Therefore, even though we expect the 'deliveredTimeStamp' to be updated right after the
+                        // following if condition gets evaluated to true, there is an inevitable delay
+                        // This will cause 'System.currentTimeMillis() - deliveredTimeStamp' to be slightly less
+                        // than 'messageRejectionTaskPeriod' even though we expect them to be equal
+                        // and will result in an additional iteration
+                        // To avoid this situation, we make it deliberately run 1 iteration before the planned
+                        // execution
+                        if ((System.currentTimeMillis() - deliveredTimeStamp) > (effectiveAckWaitTimeOut)) {
+                            //reject the message
+                            rejectMessage(deliveryTag, true);
+                            iterator.remove();
+                            log.info("Reject message sent for deliveryTag = " + deliveryTag);
+                        } else {
+                            break;
                         }
-                    }catch (Exception ex){
-                        _dispatcherLogger.error("Exception occurred when sending the reject message to the server : " + ex);
                     }
+                } catch (Exception ex) {
+                    _dispatcherLogger.error("Exception occurred when sending the reject message to the server : " + ex);
                 }
             }
-        },  5, messageRejectionTaskPeriod, TimeUnit.SECONDS);
+        }, 5, messageRejectionTaskPeriod, TimeUnit.SECONDS);
     }
 
     /**
@@ -2421,38 +2428,36 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
         startDispatcherIfNecessary(false);
     }
 
-    synchronized void startDispatcherIfNecessary(final boolean initiallyStopped)
+    void startDispatcherIfNecessary(final boolean initiallyStopped)
     {
-        if (_dispatcher == null)
-        {
-            _dispatcher = new Dispatcher();
-            try
-            {
-                _dispatcherThread = Threading.getThreadFactory().createThread(_dispatcher);
+        dispatcherInitLock.lock();
+        try {
+            if (_dispatcher == null) {
+                _dispatcher = new Dispatcher();
+                try {
+                    _dispatcherThread = Threading.getThreadFactory().createThread(_dispatcher);
 
-            }
-            catch(Exception e)
-            {
-                throw new Error("Error creating Dispatcher thread",e);
-            }
-            // Requires permission java.lang.RuntimePermission "modifyThreadGroup"
-            AccessController.doPrivileged(new PrivilegedAction<Void>() {
-                public Void run() {
-                    _dispatcherThread.setName("Dispatcher-Channel-" + _channelId);
-                    _dispatcherThread.setDaemon(true);
-                    _dispatcher.setConnectionStopped(initiallyStopped);
-                    _dispatcherThread.start();
-                    return null; // nothing to return
+                } catch (Exception e) {
+                    throw new Error("Error creating Dispatcher thread", e);
                 }
-            });
-            if (_dispatcherLogger.isDebugEnabled())
-            {
-                _dispatcherLogger.debug(_dispatcherThread.getName() + " created");
+                // Requires permission java.lang.RuntimePermission "modifyThreadGroup"
+                AccessController.doPrivileged(new PrivilegedAction<Void>() {
+                    public Void run() {
+                        _dispatcherThread.setName("Dispatcher-Channel-" + _channelId);
+                        _dispatcherThread.setDaemon(true);
+                        _dispatcher.setConnectionStopped(initiallyStopped);
+                        _dispatcherThread.start();
+                        return null; // nothing to return
+                    }
+                });
+                if (_dispatcherLogger.isDebugEnabled()) {
+                    _dispatcherLogger.debug(_dispatcherThread.getName() + " created");
+                }
+            } else {
+                _dispatcher.setConnectionStopped(initiallyStopped);
             }
-        }
-        else
-        {
-            _dispatcher.setConnectionStopped(initiallyStopped);
+        } finally {
+            dispatcherInitLock.unlock();
         }
     }
 
