@@ -39,7 +39,6 @@ import org.wso2.andes.framing.TxSelectOkBody;
 import org.wso2.andes.jms.BrokerDetails;
 import org.wso2.andes.jms.ChannelLimitReachedException;
 import org.wso2.andes.jms.Session;
-import org.wso2.andes.transport.Connection;
 import org.wso2.andes.transport.ConnectionSettings;
 import org.wso2.andes.transport.network.NetworkConnection;
 import org.wso2.andes.transport.network.OutgoingNetworkTransport;
@@ -60,7 +59,6 @@ public class AMQConnectionDelegate_8_0 implements AMQConnectionDelegate
 {
     private static final Logger _logger = LoggerFactory.getLogger(AMQConnectionDelegate_8_0.class);
     private AMQConnection _conn;
-    private Connection qpidConnection;
 
     public void closeConnection(long timeout) throws JMSException, AMQException
     {
@@ -131,35 +129,31 @@ public class AMQConnectionDelegate_8_0 implements AMQConnectionDelegate
             }
         }
 
-        AMQState state = null;
+        AMQState state;
         NetworkConnection network = null;
 
         try {
             OutgoingNetworkTransport transport = Transport.getOutgoingTransportInstance(getProtocolVersion());
-            network = transport.connect(settings,_conn._protocolHandler, null);
+            network = transport.connect(settings, _conn._protocolHandler, null);
             _conn._protocolHandler.setNetworkConnection(network);
             _conn._protocolHandler.getProtocolSession().init();
             // this blocks until the connection has been set up or when an error
             // has prevented the connection being set up
 
             state = waiter.await();
-        } catch (Exception e) {
-
-            if(null != network){
-                   //We need to close the network connection to shut down the IOProcessor created by Mina
-                   network.close();
+            if (state == AMQState.CONNECTION_OPEN) {
+                _conn._failoverPolicy.attainedConnection();
+                _conn._connected = true;
+                return null;
+            } else {
+                return _conn._protocolHandler.getSuggestedProtocolVersion();
             }
-        }
-
-        if(state == AMQState.CONNECTION_OPEN)
-        {
-            _conn._failoverPolicy.attainedConnection();
-            _conn._connected = true;
-            return null;
-        } 
-        else 
-        {
-            return _conn._protocolHandler.getSuggestedProtocolVersion();
+        } catch (Exception e) {
+            if (null != network) {
+                //We need to close the network connection to shut down the IOProcessor created by Mina
+                network.close();
+            }
+            throw e;
         }
 
     }

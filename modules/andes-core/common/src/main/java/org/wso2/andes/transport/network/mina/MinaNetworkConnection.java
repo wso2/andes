@@ -20,17 +20,23 @@
  */
 package org.wso2.andes.transport.network.mina;
 
-import java.net.SocketAddress;
-import java.nio.ByteBuffer;
-
+import org.apache.mina.common.CloseFuture;
 import org.apache.mina.common.IdleStatus;
 import org.apache.mina.common.IoSession;
-import org.apache.mina.common.TrafficMask;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.wso2.andes.transport.Sender;
 import org.wso2.andes.transport.network.NetworkConnection;
 
+import java.net.SocketAddress;
+import java.nio.ByteBuffer;
+
 public class MinaNetworkConnection implements NetworkConnection
 {
+    private static final Logger LOGGER = LoggerFactory.getLogger(MinaNetworkConnection.class);
+
+    private static final int TIMEOUT = Integer.getInteger("amqj.networkTimeout", 30 * 1000);
+
     private IoSession _session;
     private Sender<ByteBuffer> _sender;
     private volatile boolean _blocked = false;
@@ -48,7 +54,11 @@ public class MinaNetworkConnection implements NetworkConnection
     
     public void close()
     {
-        _session.close();
+        CloseFuture closeFuture = _session.close();
+        closeFuture.join(TIMEOUT);
+        if (!closeFuture.isClosed()) {
+            LOGGER.error("Couldn't close network connection within {} milliseconds", TIMEOUT);
+        }
     }
 
     public SocketAddress getRemoteAddress()

@@ -220,12 +220,14 @@ public class FailoverHandler implements Runnable
                 {
                     if (_amqProtocolHandler.getConnection().firePreResubscribe())
                     {
-                        _logger.info("Resubscribing on new connection");
+                        _logger.info("Resubscribing on new connection Local address: {}",
+                                     _amqProtocolHandler.getLocalAddress());
                         _amqProtocolHandler.getConnection().resubscribeSessions();
                     }
                     else
                     {
-                        _logger.info("Client vetoed automatic resubscription");
+                        _logger.info("Client vetoed automatic re-subscription. Local address: {}",
+                                     _amqProtocolHandler.getLocalAddress());
                     }
 
                     _amqProtocolHandler.getConnection().fireFailoverComplete();
@@ -234,11 +236,14 @@ public class FailoverHandler implements Runnable
                     _amqProtocolHandler.getIsFailoverStart().getAndSet(false);
                     //disable flow control and allow publisher to send messages
                     _amqProtocolHandler.getConnection().disableFlowControl();
-                    _logger.info("Connection failover completed successfully");
+                    _logger.info("Connection failover completed successfully. Local address: {}",
+                                 _amqProtocolHandler.getLocalAddress());
                 }
                 catch (Exception e)
                 {
-                    _logger.info("Failover process failed - exception being propagated by protocol handler");
+                    _logger.info("Failover process failed - exception being propagated by protocol "
+                                         + "handler. Local address: {}",
+                                 _amqProtocolHandler.getLocalAddress());
                     _amqProtocolHandler.setFailoverState(FailoverState.FAILED);
                     /*try
                     {*/

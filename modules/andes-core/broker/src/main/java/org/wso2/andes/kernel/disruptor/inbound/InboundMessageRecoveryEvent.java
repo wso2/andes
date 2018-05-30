@@ -79,12 +79,11 @@ public class InboundMessageRecoveryEvent implements AndesInboundStateEvent {
 
         // Subscription can be null if we send a recover call without subscribing. In this case we do not have
         // to recover any messages.
-        if (null == subscription) {
+        if (null != subscription) {
+            subscription.recoverMessages();
+        } else {
             log.warn("Cannot handle recover. No subscriptions found for channel " + channelID);
-            return;
         }
-
-        subscription.recoverMessages();
         recoverOKCallback.execute();
     }
 

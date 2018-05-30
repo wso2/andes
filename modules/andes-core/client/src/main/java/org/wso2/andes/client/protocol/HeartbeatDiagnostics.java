@@ -26,7 +26,8 @@ class HeartbeatDiagnostics
 
     private static Diagnostics init()
     {
-        return Boolean.getBoolean("amqj.heartbeat.diagnostics") ? new On() : new Off();
+        String value = System.getProperty("amqj.heartbeat.diagnostics", "true");
+        return Boolean.parseBoolean(value) ? new On() : new Off();
     }
 
     static void sent()
