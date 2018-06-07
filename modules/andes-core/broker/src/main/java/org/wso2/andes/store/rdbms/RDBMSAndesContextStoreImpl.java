@@ -2047,7 +2047,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             preparedStatement.setInt(1, RDBMSConstants.COORDINATOR_ANCHOR);
             preparedStatement.setString(2, nodeId);
             preparedStatement.setLong(3, System.currentTimeMillis());
-            preparedStatement.setString(4, thriftAddress.getHostName());
+            preparedStatement.setString(4, thriftAddress.getAddress().getHostAddress());
             preparedStatement.setInt(5, thriftAddress.getPort());
 
             int updateCount = preparedStatement.executeUpdate();
