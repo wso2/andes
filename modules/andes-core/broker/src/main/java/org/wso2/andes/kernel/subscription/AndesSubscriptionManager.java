@@ -584,7 +584,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
                     filteredSubscriptions.add(subscription);
                 } else if (subscription.isDurable() && subscription.getStorageQueue().getMessageRouter().getName()
                         .equals(AMQPUtils.TOPIC_EXCHANGE_NAME)) {
-                    if (subscriptionIdPattern.equalsIgnoreCase(subscription.getSubscriptionId())) {
+                    if (subscriptionIdPattern.equalsIgnoreCase(subscription.getStorageQueue().getName())) {
                         filteredSubscriptions.add(subscription);
                     }
                 }
@@ -595,7 +595,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
                     filteredSubscriptions.add(subscription);
                 } else if (subscription.isDurable() && subscription.getStorageQueue().getMessageRouter().getName()
                         .equals(AMQPUtils.TOPIC_EXCHANGE_NAME)) {
-                    if (StringUtils.containsIgnoreCase(subscription.getSubscriptionId(), subscriptionIdPattern)) {
+                    if (StringUtils.containsIgnoreCase(subscription.getStorageQueue().getName(), subscriptionIdPattern)) {
                         filteredSubscriptions.add(subscription);
                     }
                 }
