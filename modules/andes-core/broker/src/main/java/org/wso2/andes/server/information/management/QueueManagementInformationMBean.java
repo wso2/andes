@@ -596,30 +596,6 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
     }
 
     /**
-     * Extract ByteMessage from ByteBuffer
-     *
-     * @param wrapMsgContent ByteBuffer which contains data
-     * @param byteMsgContent byte[] of message content
-     * @return extracted content as text
-     */
-    private String extractByteMessageContent(ByteBuffer wrapMsgContent, byte[] byteMsgContent) {
-        String wholeMsg;
-        if (byteMsgContent == null) {
-            throw new IllegalArgumentException("byte array must not be null");
-        }
-        int count = (wrapMsgContent.remaining() >= byteMsgContent.length ?
-                byteMsgContent.length :
-                wrapMsgContent.remaining());
-        if (count == 0) {
-            wholeMsg = String.valueOf(-1);
-        } else {
-            wrapMsgContent.get(byteMsgContent, 0, count);
-            wholeMsg = String.valueOf(count);
-        }
-        return wholeMsg;
-    }
-
-    /**
      * Extract TextMessage from ByteBuffer
      *
      * @param wrapMsgContent ByteBuffer which contains data
@@ -1058,10 +1034,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             if (mimeType.equals(MIME_TYPE_TEXT_PLAIN) || mimeType.equals(MIMI_TYPE_TEXT_XML)) {
                 wholeMsg = extractTextMessageContent(wrapMsgContent, encoding);
                 //get ByteMessage content to display
-            } else if (mimeType.equals(MIME_TYPE_APPLICATION_OCTET_STREAM)) {
-                wholeMsg = extractByteMessageContent(wrapMsgContent, messageContent);
-                //get ObjectMessage content to display
-            } else if (mimeType.equals(MIME_TYPE_APPLICATION_JAVA_OBJECT_STREAM)) {
+            } else if (mimeType.equals(MIME_TYPE_APPLICATION_JAVA_OBJECT_STREAM)
+                       || mimeType.equals(MIME_TYPE_APPLICATION_OCTET_STREAM)) {
                 wholeMsg = "This Operation is Not Supported!";
                 //get StreamMessage content to display
             } else if (mimeType.equals(MIME_TYPE_JMS_STREAM_MESSAGE)) {
