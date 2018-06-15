@@ -662,12 +662,6 @@ public enum AndesConfiguration implements ConfigurationProperty {
             "/maximumMessageDisplayLength", "100000", Integer.class),
 
     /**
-     * Enable users to all reroute messages from a specific destination(queue or durable topic) to a specific queue.
-     */
-    MANAGEMENT_CONSOLE_ALLOW_REREOUTE_ALL_IN_DLC("managementConsole" +
-                                                "/allowReRouteAllInDLC", "false", Boolean.class),
-
-    /**
      * This is the per publisher buffer size low limit which disable the flow control for a channel if the flow-control
      * was enabled previously.
      */
