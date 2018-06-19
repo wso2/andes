@@ -15,12 +15,15 @@
 
 package org.wso2.andes.kernel.subscription;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.googlecode.cqengine.query.Query;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.python.antlr.op.And;
 import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextInformationManager;
 import org.wso2.andes.kernel.AndesContextStore;
@@ -54,10 +57,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
 
 import static com.googlecode.cqengine.query.QueryFactory.and;
 import static com.googlecode.cqengine.query.QueryFactory.contains;
 import static com.googlecode.cqengine.query.QueryFactory.equal;
+import static org.wso2.andes.exchange.ExchangeDefaults.TOPIC_EXCHANGE_NAME;
 
 /**
  * Managers subscription add/remove and subscription query tasks inside Andes kernel
@@ -113,6 +120,17 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
     private boolean storeUnavailable;
 
     /**
+     * Executor service to run task to disconnect local subscriptions in the case of a conflict of the connected node.
+     */
+    ScheduledExecutorService executorService;
+
+    /**
+     * Holds if 'shared durable subscriptions' is enabled in broker.xml.
+     */
+    private final boolean sharedSubscribersAllowed = AndesConfigurationManager
+            .readValue(AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
+
+    /**
      * Create a AndesSubscription manager instance. This is a static class managing
      * subscriptions.
      *
@@ -129,6 +147,9 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
         this.andesContextStore = andesContextStore;
         this.localNodeId = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         storeUnavailable = false;
+        executorService = Executors.newScheduledThreadPool(1,
+                new ThreadFactoryBuilder().setNameFormat("AndesSubscriptionManager-SubscriptionDisconnectTask")
+                        .build());
 
         CoordinationComponentFactory coordinationComponentFactory = new CoordinationComponentFactory();
         this.clusterNotificationAgent = coordinationComponentFactory.createClusterNotificationAgent();
@@ -928,26 +949,49 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
 
         //if DB does not have the local subscription add it
         localSubscriptions.removeAll(dbSubscriptions);
+        final List<AndesSubscription> subscriptionsToBeDisconnected = new ArrayList<>();
         for (AndesSubscription subscription : localSubscriptions) {
 
             //If there are 2 subscriptions with the same subscription identifier but a different connected node,
             // disconnect local subscription.
+            boolean conflictingSubscriberFound = false;
             for (AndesSubscription dbSubscription : dbSubscriptions) {
-                if (subscription.getStorageQueue().equals(dbSubscription.getStorageQueue())
-                    && !(subscription.getSubscriberConnection().getConnectedNode()
-                        .equals(dbSubscription.getSubscriberConnection().getConnectedNode()))) {
-                    SubscriberConnection connection = subscription.getSubscriberConnection();
-                    log.warn("Conflicting subscriptions detected with same subscription id and different connected "
-                             + "nodes. Thus disconnecting local subscription=" + subscription.toString());
-                    subscription.closeConnection(connection.getProtocolChannelID(), connection.getConnectedNode());
+                if (!sharedSubscribersAllowed
+                    && (TOPIC_EXCHANGE_NAME.equals(subscription.getStorageQueue().getMessageRouter().getName()))) {
+                    if (subscription.getStorageQueue().equals(dbSubscription.getStorageQueue())
+                        && !(subscription.getSubscriberConnection().getConnectedNode()
+                            .equals(dbSubscription.getSubscriberConnection().getConnectedNode()))) {
+                        conflictingSubscriberFound = true;
+                        subscriptionsToBeDisconnected.add(subscription);
+                        break;
+                    }
                 }
             }
-            log.warn("Subscriptions are not in sync. Local Subscription available "
-                    + "in subscription registry of node " + localNodeId
-                    + " but not in DB. Thus adding to DB subscription="
-                    + subscription.toString());
-            andesContextStore.storeDurableSubscription(subscription);
+            if (!conflictingSubscriberFound) {
+                log.warn("Subscriptions are not in sync. Local Subscription available "
+                         + "in subscription registry of node " + localNodeId
+                         + " but not in DB. Thus adding to DB subscription="
+                         + subscription.toString());
+                andesContextStore.storeDurableSubscription(subscription);
+            }
         }
+
+        executorService.execute(new Runnable() {
+            @Override
+            public void run() {
+                for (AndesSubscription subscription : subscriptionsToBeDisconnected) {
+                    try {
+                        log.warn("Conflicting subscriptions detected with same subscription id and different connected "
+                                 + "nodes. Thus disconnecting local subscription=" + subscription.toString());
+                        SubscriberConnection connection = subscription.getSubscriberConnection();
+                        subscription.closeConnection(connection.getProtocolChannelID(), connection.getConnectedNode());
+
+                    } catch (AndesException e) {
+                        log.error("Could not disconnect subscription=" + subscription.toString(), e);
+                    }
+                }
+            }
+        });
 
         //if DB has additional local subscription that are not in registry, delete it
         dbSubscriptions.removeAll(copyOfLocalSubscriptions);
