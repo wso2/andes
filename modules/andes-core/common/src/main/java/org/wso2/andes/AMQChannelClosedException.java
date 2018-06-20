@@ -38,4 +38,8 @@ public class AMQChannelClosedException extends AMQException
     {
         super(errorCode, msg, cause);
     }
+
+    public boolean isHardError() {
+        return false;
+    }
 }
