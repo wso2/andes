@@ -45,9 +45,7 @@ import org.wso2.andes.server.store.StoredMessage;
 import org.wso2.andes.store.StoredAMQPMessage;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -315,7 +313,7 @@ public class AMQPUtils {
      * @param routingKey routing key
      * @return InboundBindingEvent binding event that wrap AndesBinding
      */
-    public static InboundBindingEvent createAndesBinding(Exchange exchange, AMQQueue queue, AMQShortString routingKey) {
+    public static InboundBindingEvent createAndesBindingEvent(Exchange exchange, AMQQueue queue, AMQShortString routingKey) {
 
 
         /**

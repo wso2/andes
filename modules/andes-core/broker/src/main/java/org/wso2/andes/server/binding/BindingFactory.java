@@ -243,6 +243,10 @@ public class BindingFactory {
         removeBinding(b.getBindingKey(), b.getQueue(), b.getExchange(), b.getArguments(), true);
     }
 
+    public void removeBinding(final Binding b, final boolean isLocal) throws AMQException {
+        removeBinding(b.getBindingKey(), b.getQueue(), b.getExchange(), b.getArguments(), isLocal);
+    }
+
     public synchronized Binding removeBinding(String bindingKey, AMQQueue queue, Exchange exchange,
                                  Map<String, Object> arguments, boolean isLocal) throws AMQSecurityException, AMQInternalException {
         assert queue != null;

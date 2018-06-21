@@ -23,14 +23,19 @@ import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.configuration.qpid.*;
+import org.wso2.andes.configuration.qpid.ConfigStore;
+import org.wso2.andes.configuration.qpid.ConfiguredObject;
+import org.wso2.andes.configuration.qpid.QueueConfigType;
+import org.wso2.andes.configuration.qpid.QueueConfiguration;
+import org.wso2.andes.configuration.qpid.SessionConfig;
+import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 import org.wso2.andes.framing.AMQShortString;
+import org.wso2.andes.kernel.AndesConstants;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.pool.ReadWriteRunnable;
 import org.wso2.andes.pool.ReferenceCountingExecutorService;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.binding.Binding;
-import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.logging.LogActor;
 import org.wso2.andes.server.logging.LogSubject;
@@ -49,11 +54,15 @@ import org.wso2.andes.server.subscription.SubscriptionList;
 import org.wso2.andes.server.txn.AutoCommitTransaction;
 import org.wso2.andes.server.txn.LocalTransaction;
 import org.wso2.andes.server.txn.ServerTransaction;
-import org.wso2.andes.kernel.AndesConstants;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 
-import javax.management.JMException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -62,6 +71,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.management.JMException;
 
 public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
 {
@@ -1384,8 +1394,19 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
         _deleteTaskList.remove(task);
     }
 
-    // TODO list all thrown exceptions
-    public int delete() throws AMQSecurityException, AMQException
+    public void remoteDelete() throws AMQException {
+        if (!_deleted.getAndSet(true)) {
+
+            for (Binding b : getBindings()) {
+                _virtualHost.getBindingFactory().removeBinding(b, false);
+            }
+
+            postDelete();
+        }
+
+    }
+
+    public int delete() throws AMQException
     {
         // Check access
         if (!_virtualHost.getSecurityManager().authoriseDelete(this))
@@ -1401,139 +1422,115 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
                 _virtualHost.getBindingFactory().removeBinding(b);
             }
 
-            SubscriptionList.SubscriptionNodeIterator subscriptionIter = _subscriptionList.iterator();
-
-            while (subscriptionIter.advance())
-            {
-                Subscription s = subscriptionIter.getNode().getSubscription();
-                if (s != null)
-                {
-                    s.queueDeleted(this);
-                }
-            }
-
-            _virtualHost.getQueueRegistry().unregisterQueue(_name);
-            getConfigStore().removeConfiguredObject(this);
-
-            List<QueueEntry> entries = getMessagesOnTheQueue(new QueueEntryFilter()
-            {
-
-                public boolean accept(QueueEntry entry)
-                {
-                    return entry.acquire();
-                }
-
-                public boolean filterComplete()
-                {
-                    return false;
-                }
-            });
-
-            ServerTransaction txn = new LocalTransaction(getVirtualHost().getTransactionLog());
-
-            if(_alternateExchange != null)
-            {
-
-                InboundMessageAdapter adapter = new InboundMessageAdapter();
-                for(final QueueEntry entry : entries)
-                {
-                    adapter.setEntry(entry);
-                    final List<? extends BaseQueue> rerouteQueues = _alternateExchange.route(adapter);
-                    final ServerMessage message = entry.getMessage();
-                    if(rerouteQueues != null && rerouteQueues.size() != 0)
-                    {
-                        txn.enqueue(rerouteQueues, entry.getMessage(),
-                                    new ServerTransaction.Action()
-                                    {
-
-                                        public void postCommit()
-                                        {
-                                            try
-                                            {
-                                                for(BaseQueue queue : rerouteQueues)
-                                                {
-                                                    queue.enqueue(message);
-                                                }
-                                            }
-                                            catch (AMQException e)
-                                            {
-                                                throw new RuntimeException(e);
-                                            }
-
-                                        }
-
-                                        public void onRollback()
-                                        {
-
-                                        }
-                                    });
-                        txn.dequeue(this, entry.getMessage(),
-                                    new ServerTransaction.Action()
-                                    {
-
-                                        public void postCommit()
-                                        {
-                                            entry.discard();
-                                        }
-
-                                        public void onRollback()
-                                        {
-                                        }
-                                    });
-                    }
-
-                }
-
-                _alternateExchange.removeReference(this);
-            }
-            else
-            {
-                // TODO log discard
-
-                for(final QueueEntry entry : entries)
-                {
-                    final ServerMessage message = entry.getMessage();
-                    if(message != null)
-                    {
-                        txn.dequeue(this, message,
-                                    new ServerTransaction.Action()
-                                    {
-
-                                        public void postCommit()
-                                        {
-                                            entry.discard();
-                                        }
-
-                                        public void onRollback()
-                                        {
-                                        }
-                                    });
-                    }
-                }
-            }
-
-            txn.commit();
-
-
-            if(_managedObject!=null)
-            {
-                _managedObject.unregister();
-            }
-
-            for (Task task : _deleteTaskList)
-            {
-                task.doTask(this);
-            }
-
-            _deleteTaskList.clear();
-            stop();
-
-            //Log Queue Deletion
-            CurrentActor.get().message(_logSubject, QueueMessages.DELETED());
+            postDelete();
 
         }
         return getMessageCount();
 
+    }
+
+    private void postDelete() throws AMQException {
+        SubscriptionList.SubscriptionNodeIterator subscriptionIter = _subscriptionList.iterator();
+
+        while (subscriptionIter.advance()) {
+            Subscription s = subscriptionIter.getNode().getSubscription();
+            if (s != null) {
+                s.queueDeleted(this);
+            }
+        }
+
+        _virtualHost.getQueueRegistry().unregisterQueue(_name);
+        getConfigStore().removeConfiguredObject(this);
+
+        List<QueueEntry> entries = getMessagesOnTheQueue(new QueueEntryFilter() {
+
+            public boolean accept(QueueEntry entry) {
+                return entry.acquire();
+            }
+
+            public boolean filterComplete() {
+                return false;
+            }
+        });
+
+        ServerTransaction txn = new LocalTransaction(getVirtualHost().getTransactionLog());
+
+        if (_alternateExchange != null) {
+
+            InboundMessageAdapter adapter = new InboundMessageAdapter();
+            for (final QueueEntry entry : entries) {
+                adapter.setEntry(entry);
+                final List<? extends BaseQueue> rerouteQueues = _alternateExchange.route(adapter);
+                final ServerMessage message = entry.getMessage();
+                if (rerouteQueues != null && rerouteQueues.size() != 0) {
+                    txn.enqueue(rerouteQueues, entry.getMessage(),
+                                new ServerTransaction.Action() {
+
+                                    public void postCommit() {
+                                        try {
+                                            for (BaseQueue queue : rerouteQueues) {
+                                                queue.enqueue(message);
+                                            }
+                                        } catch (AMQException e) {
+                                            throw new RuntimeException(e);
+                                        }
+
+                                    }
+
+                                    public void onRollback() {
+
+                                    }
+                                });
+                    txn.dequeue(this, entry.getMessage(),
+                                new ServerTransaction.Action() {
+
+                                    public void postCommit() {
+                                        entry.discard();
+                                    }
+
+                                    public void onRollback() {
+                                    }
+                                });
+                }
+
+            }
+
+            _alternateExchange.removeReference(this);
+        } else {
+            // TODO log discard
+
+            for (final QueueEntry entry : entries) {
+                final ServerMessage message = entry.getMessage();
+                if (message != null) {
+                    txn.dequeue(this, message,
+                                new ServerTransaction.Action() {
+
+                                    public void postCommit() {
+                                        entry.discard();
+                                    }
+
+                                    public void onRollback() {
+                                    }
+                                });
+                }
+            }
+        }
+
+        txn.commit();
+
+        if (_managedObject != null) {
+            _managedObject.unregister();
+        }
+
+        for (Task task : _deleteTaskList) {
+            task.doTask(this);
+        }
+
+        _deleteTaskList.clear();
+        stop();
+
+        //Log Queue Deletion
+        CurrentActor.get().message(_logSubject, QueueMessages.DELETED());
     }
 
     public void stop()

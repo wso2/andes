@@ -359,7 +359,7 @@ public class VirtualHostConfigSynchronizer implements
                  * 2. unregister queue
                  */
                 try {
-                    q.delete();
+                    q.remoteDelete();
                 } catch (AMQException e) {
                     _logger.error("Error while removing the queue " + queueName);
                     throw new AndesException(e);

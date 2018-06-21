@@ -103,6 +103,9 @@ public class MockAMQQueue implements AMQQueue
         }; 
     }
 
+    @Override
+    public void remoteDelete() {}
+
     public ConfigStore getConfigStore()
     {
         return getVirtualHost().getConfigStore();
