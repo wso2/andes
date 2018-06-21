@@ -488,7 +488,7 @@ public class QpidAndesBridge {
              * durable topic case is handled inside qpid itself.
              * So we do not check for it here
              */
-            InboundBindingEvent binding = AMQPUtils.createAndesBinding(exchange, queue, routingKey);
+            InboundBindingEvent binding = AMQPUtils.createAndesBindingEvent(exchange, queue, routingKey);
             Andes.getInstance().addBinding(binding);
         } catch (AndesException e) {
             log.error("error while creating binding", e);
@@ -526,8 +526,8 @@ public class QpidAndesBridge {
             log.debug("AMQP BRIDGE: removeBinding binding key: " + binding.getBindingKey() + " exchange: "
                     + binding.getExchange().getName() + " queue: " + binding.getQueue().getName());
         }
-        InboundBindingEvent inboundBindingEvent = AMQPUtils.createAndesBinding(binding.getExchange(),
-                binding.getQueue(), new AMQShortString(binding.getBindingKey()));
+        InboundBindingEvent inboundBindingEvent = AMQPUtils.createAndesBindingEvent(binding.getExchange(),
+                                                                                    binding.getQueue(), new AMQShortString(binding.getBindingKey()));
         Andes.getInstance().removeBinding(inboundBindingEvent);
     }
 
