@@ -30,6 +30,7 @@ import org.wso2.andes.kernel.disruptor.inbound.QueueInfo;
 import org.wso2.andes.kernel.router.AndesMessageRouter;
 import org.wso2.andes.kernel.router.MessageRouterFactory;
 import org.wso2.andes.kernel.router.QueueMessageRouter;
+import org.wso2.andes.kernel.subscription.AndesSubscription;
 import org.wso2.andes.kernel.subscription.AndesSubscriptionManager;
 import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.server.ClusterResourceHolder;
@@ -37,6 +38,7 @@ import org.wso2.andes.server.cluster.coordination.ClusterNotificationAgent;
 import org.wso2.andes.server.cluster.coordination.CoordinationComponentFactory;
 import org.wso2.andes.server.queue.DLCQueueUtils;
 
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -324,25 +326,38 @@ public class AndesContextInformationManager {
      * @throws AndesException
      */
     public void syncQueueDelete(InboundQueueSyncEvent queueDeleteSyncEvent) throws AndesException {
-        StorageQueue queueWithEvent = queueDeleteSyncEvent.toStorageQueue();
-        String storageQueueName = queueWithEvent.getName();
+        StorageQueue storageQueue = queueDeleteSyncEvent.toStorageQueue();
+        String storageQueueName = storageQueue.getName();
 
-        //clear in-memory messages buffered for queue
-        handleQueuePurgeNotification(queueDeleteSyncEvent);
+        // Check whether active subscriptions exists for the given storage queue
+        // At this point subscriptions exist means there was some disorder in the events. Therefore notify add queue
+        // and binding instead of proceeding with delete.
+        if (subscriptionManager.isActiveLocalSubscriptionsExistForQueue(storageQueueName)) {
+            AndesBinding binding = new AndesBinding(storageQueue.getMessageRouter().getName(),
+                    storageQueue, storageQueue.getMessageRouterBindingKey());
 
-        //remove all bindings from memory if not removed
-        amqpConstructStore.removeAllBindingsForQueue(storageQueueName);
+            clusterNotificationAgent.notifyQueueChange(storageQueue, ClusterNotificationListener.QueueChange.Added);
+            clusterNotificationAgent.notifyBindingsChange(binding, ClusterNotificationListener.BindingChange.Added);
 
-        //remove queue mapping
-        messageStore.removeLocalQueueData(storageQueueName);
+            log.info("Queue Add and Binding Add notification sent due to active subscription.");
+        } else {
+            //clear in-memory messages buffered for queue
+            handleQueuePurgeNotification(queueDeleteSyncEvent);
 
-        //identify storage queue and delete from queue registry
-        StorageQueue queueToDelete = AndesContext.getInstance().
-                getStorageQueueRegistry().removeStorageQueue(storageQueueName);
-        //remove queue inside Qpid
-        ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterQueueRemoved(queueToDelete);
+            //remove all bindings from memory if not removed
+            amqpConstructStore.removeAllBindingsForQueue(storageQueueName);
 
-        log.info("Queue Sync [delete]: " + queueToDelete.toString());
+            //remove queue mapping
+            messageStore.removeLocalQueueData(storageQueueName);
+
+            //identify storage queue and delete from queue registry
+            StorageQueue queueToDelete = AndesContext.getInstance().
+                    getStorageQueueRegistry().removeStorageQueue(storageQueueName);
+            //remove queue inside Qpid
+            ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterQueueRemoved(queueToDelete);
+
+            log.info("Queue Sync [delete]: " + storageQueueName);
+        }
     }
 
     /**
@@ -473,20 +488,25 @@ public class AndesContextInformationManager {
 
         AndesBinding binding = new AndesBinding(bindingSyncEvent.getEncodedBindingInfo());
 
-        //find and remove binding
-        AndesBinding removedBinding = amqpConstructStore.removeBinding(binding.getMessageRouterName(), binding
-                .getBoundQueue().getName(), true);
+        if (!subscriptionManager.isActiveLocalSubscriptionsExistForQueue(binding.getBoundQueue().getName())) {
+            //find and remove binding
+            AndesBinding removedBinding = amqpConstructStore.removeBinding(binding.getMessageRouterName(), binding
+                    .getBoundQueue().getName(), true);
 
-        if (null != removedBinding) {
-            //unbind queue from messageRouter
-            StorageQueue boundQueue = removedBinding.getBoundQueue();
+            if (null != removedBinding) {
+                //unbind queue from messageRouter
+                StorageQueue boundQueue = removedBinding.getBoundQueue();
 
-            boundQueue.unbindQueueFromMessageRouter();
+                boundQueue.unbindQueueFromMessageRouter();
 
-            //remove binding inside Qpid
-            ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterBindingRemoved(removedBinding);
+                //remove binding inside Qpid
+                ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer()
+                        .clusterBindingRemoved(removedBinding);
 
-            log.info("Binding Sync [delete]: " + binding.toString());
+                log.info("Binding Sync [delete]: " + binding.toString());
+            }
+        } else {
+            log.info("Binding not deleted due to active subscription.");
         }
     }
 

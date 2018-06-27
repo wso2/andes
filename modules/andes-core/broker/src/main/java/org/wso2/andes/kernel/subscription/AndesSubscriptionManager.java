@@ -741,6 +741,26 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
         return subscriptionRegistry.exucuteQuery(subscriptionQuery);
     }
 
+    /**
+     * Check whether active subscriptions exist for given storage queue
+     *
+     * @param storageQueueName name of queue subscriber is bound to
+     * @return true if subscription exists otherwise false
+     */
+    public boolean isActiveLocalSubscriptionsExistForQueue(String storageQueueName) {
+        boolean isActiveSubscriptionExist = false;
+        Query<AndesSubscription> subscriptionQuery = and(equal(AndesSubscription.NODE_ID, localNodeId),
+                                                     equal(AndesSubscription.STORAGE_QUEUE_NAME, storageQueueName));
+        Iterable<AndesSubscription> subscriptions = subscriptionRegistry.exucuteQuery(subscriptionQuery);
+        for (AndesSubscription subscription : subscriptions) {
+            if (subscription.isActive()) {
+                isActiveSubscriptionExist = true;
+                break;
+            }
+        }
+        return isActiveSubscriptionExist;
+    }
+
     public Iterable<AndesSubscription> getAllLocalSubscriptionsByRoutingKey(ProtocolType protocolType, String
             routingKey) {
         Query<AndesSubscription> subscriptionQuery = and
