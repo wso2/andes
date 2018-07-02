@@ -133,6 +133,17 @@ public enum AndesConfiguration implements ConfigurationProperty {
     TRANSPORTS_AMQP_SSL_CONNECTION_TRUSTSTORE("transports/amqp/sslConnection/trustStore", "", JKSStore.class),
 
     /**
+     * SSL protocols for AMQP SSL connection.
+     */
+    TRANSPORTS_AMQP_SSL_CONNECTION_PROTOCOLS("transports/amqp/sslConnection/sslEnabledProtocols", "TLSv1",
+            String.class),
+
+    /**
+     * Preferred ciphers for AMQP SSL connection.
+     */
+    TRANSPORTS_AMQP_SSL_CONNECTION_CIPHERS("transports/amqp/sslConnection/ciphers", "", String.class),
+
+    /**
      * By default, expired messages are sent to the Dead Letter Channel for later revival/reference. But,
      * in cases where expired messages can pile up in the DLC, this behaviour can be disabled.
      */
@@ -196,6 +207,16 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * The trust store used for MQTT SSL connection.
      */
     TRANSPORTS_MQTT_SSL_CONNECTION_TRUSTSTORE("transports/mqtt/sslConnection/trustStore", "", JKSStore.class),
+
+    /**
+     * SSL protocols for MQTT SSL connection.
+     */
+    TRANSPORTS_MQTT_SSL_CONNECTION_PROTOCOLS("transports/mqtt/sslConnection/sslEnabledProtocols", "", String.class),
+
+    /**
+     * Preferred ciphers for MQTT SSL connection.
+     */
+    TRANSPORTS_MQTT_SSL_CONNECTION_CIPHERS("transports/mqtt/sslConnection/ciphers", "", String.class),
 
     /**
      * Ring buffer size of MQTT inbound event Disruptor. Default is set to 32768 (1024 * 32)

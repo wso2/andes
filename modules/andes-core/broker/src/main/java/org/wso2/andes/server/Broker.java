@@ -212,9 +212,14 @@ public class Broker
                     JKSStore trustStore = AndesConfigurationManager
                             .readValue(AndesConfiguration.TRANSPORTS_AMQP_SSL_CONNECTION_TRUSTSTORE);
 
-                    SSLContextFactory sslFactory =
-                            new SSLContextFactory(trustStore.getStoreLocation(), trustStore.getPassword(), trustStore.getStoreAlgorithm(),
-                                                  keyStore.getStoreLocation(), keyStore.getPassword(), keyStore.getStoreAlgorithm());
+                    String sslProtocols = AndesConfigurationManager
+                            .readValue(AndesConfiguration.TRANSPORTS_AMQP_SSL_CONNECTION_PROTOCOLS);
+                    String ciphers = AndesConfigurationManager
+                            .readValue(AndesConfiguration.TRANSPORTS_AMQP_SSL_CONNECTION_CIPHERS);
+
+                    SSLContextFactory sslFactory = new SSLContextFactory(trustStore.getStoreLocation(),
+                            trustStore.getPassword(), trustStore.getStoreAlgorithm(), keyStore.getStoreLocation(),
+                            keyStore.getPassword(), keyStore.getStoreAlgorithm(), sslProtocols, ciphers);
 
                     for(int sslPort : sslPorts)
                     {
