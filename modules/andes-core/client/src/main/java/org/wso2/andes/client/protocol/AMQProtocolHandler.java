@@ -72,6 +72,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import javax.jms.JMSException;
 
 /**
  * AMQProtocolHandler is the client side protocol handler for AMQP, it handles all protocol events received from the
@@ -360,7 +361,14 @@ public class AMQProtocolHandler implements ProtocolEngine
         // know since we cannot recover the situation
         else if (_failoverState == FailoverState.FAILED)
         {
-            _logger.error("Exception caught by protocol handler: " + cause, cause);
+            _logger.error("Exception caught by protocol handler", cause);
+
+            // We explicitly try to close the connection after a failover failure to avoid connection leaks.
+            try {
+                _connection.close();
+            } catch (JMSException e) {
+                _logger.warn("Exception caught while closing the stale connection due to failover failure.");
+            }
 
             // we notify the state manager of the error in case we have any clients waiting on a state
             // change. Those "waiters" will be interrupted and can handle the exception
