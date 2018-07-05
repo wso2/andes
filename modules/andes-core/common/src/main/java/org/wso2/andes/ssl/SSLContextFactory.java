@@ -69,6 +69,16 @@ public class SSLContextFactory {
     private String _trustStoreCertType;
     
 	private KeyManager customKeyManager;
+
+    /**
+     * Enabled SSL protocols
+     */
+    private String _sslProtocols;
+
+    /**
+     * Cipher suites applied for SSL protocols
+     */
+    private String _cipherSuites;
     
     public SSLContextFactory(String trustStorePath, String trustStorePassword,
             String trustStoreCertType) 
@@ -84,8 +94,7 @@ public class SSLContextFactory {
 	 * @param certType certificate type
 	 */
 	public SSLContextFactory(String trustStorePath, String trustStorePassword, String trustStoreCertType,
-            String keyStorePath, String keyStorePassword, String keyStoreCertType) 
-	{
+            String keyStorePath, String keyStorePassword, String keyStoreCertType) {
 
 	    _trustStorePath = trustStorePath;
         _trustStorePassword = trustStorePassword;
@@ -112,10 +121,17 @@ public class SSLContextFactory {
 			throw new IllegalArgumentException("Cert type must be specified");
 		}
 	}
-	
-	public SSLContextFactory(String trustStorePath, String trustStorePassword, String trustStoreCertType,
-	                         KeyManager customKeyManager) 
-    {
+
+    public SSLContextFactory(String trustStorePath, String trustStorePassword, String trustStoreCertType,
+            String keyStorePath, String keyStorePassword, String keyStoreCertType, String sslProtocols,
+            String cipherSuites) {
+        this(trustStorePath, trustStorePassword, trustStoreCertType, keyStorePath, keyStorePassword, keyStoreCertType);
+        _sslProtocols = sslProtocols;
+        _cipherSuites = cipherSuites;
+    }
+
+    public SSLContextFactory(String trustStorePath, String trustStorePassword, String trustStoreCertType,
+	                         KeyManager customKeyManager) {
 
         _trustStorePath = trustStorePath;
         _trustStorePassword = trustStorePassword;
@@ -188,5 +204,23 @@ public class SSLContextFactory {
         context.init(null, tmf.getTrustManagers(), null);
         return context;		
 	}
-	
+
+    /**
+     * Return enabled SSL protocols.
+     *
+     * @return SSL protocols defined in broker.xml
+     */
+    public String getSslProtocols() {
+        return _sslProtocols;
+    }
+
+    /**
+     * Return cipher suites defined for SSL protocols.
+     *
+     * @return Cipher suite defined in broker.xml
+     */
+    public String getCipherSuites() {
+        return _cipherSuites;
+    }
+
 }

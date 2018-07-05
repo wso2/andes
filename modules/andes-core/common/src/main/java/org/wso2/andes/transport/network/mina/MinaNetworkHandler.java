@@ -106,8 +106,20 @@ public class MinaNetworkHandler extends IoHandlerAdapter
 
       if (_sslFactory != null)
         {
-            // at the time of initializing sslfactory no 'protocolFilter' is created. Hence we need to add 'sslFilter' as first in filter chain.
-            chain.addFirst("sslFilter", new SSLFilter(_sslFactory.buildServerContext()));
+            // At the time of initializing sslfactory no 'protocolFilter' is created.
+            // Hence we need to add 'sslFilter' as first in filter chain.
+            SSLFilter sslFilter = new SSLFilter(_sslFactory.buildServerContext());
+
+            String sslProtocols = _sslFactory.getSslProtocols();
+            if (!sslProtocols.isEmpty()) {
+                sslFilter.setEnabledProtocols(sslProtocols.split(","));
+            }
+
+            String cipherSuites = _sslFactory.getCipherSuites();
+            if (!cipherSuites.isEmpty()) {
+                sslFilter.setEnabledCipherSuites(cipherSuites.split(","));
+            }
+            chain.addFirst("sslFilter", sslFilter);
 
         }
 

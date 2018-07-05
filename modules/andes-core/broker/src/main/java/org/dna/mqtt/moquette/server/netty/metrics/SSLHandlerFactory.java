@@ -125,6 +125,18 @@ public class SSLHandlerFactory {
     public ChannelHandler create() {
         SSLEngine sslEngine = sslContext.createSSLEngine();
         sslEngine.setUseClientMode(false);
+
+        String protocols = AndesConfigurationManager
+                .readValue(AndesConfiguration.TRANSPORTS_MQTT_SSL_CONNECTION_PROTOCOLS);
+        if (!protocols.isEmpty()) {
+            sslEngine.setEnabledProtocols(protocols.split(","));
+        }
+
+        String ciphers = AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_MQTT_SSL_CONNECTION_CIPHERS);
+        if (!ciphers.isEmpty()) {
+            sslEngine.setEnabledCipherSuites(ciphers.split(","));
+        }
+
         return new SslHandler(sslEngine);
     }
 
