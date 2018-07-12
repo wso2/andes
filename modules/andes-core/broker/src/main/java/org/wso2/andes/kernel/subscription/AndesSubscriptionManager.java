@@ -272,31 +272,30 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
 
         StorageQueue storageQueue = subscription.getStorageQueue();
 
-
-        if (!storeUnavailable) {
-            try {
-                storageQueue.unbindSubscription(subscription);
+        try {
+            storageQueue.unbindSubscription(subscription);
+            if (!storeUnavailable) {
                 andesContextStore.removeDurableSubscription(subscription);
-                clusterNotificationAgent.notifySubscriptionsChange(subscription,
-                        ClusterNotificationListener.SubscriptionChange.Closed);
-            } catch (AndesStoreUnavailableException exception) {
-                log.warn("Could not remove subscription from store since the store is unavailable", exception);
+            } else {
+                log.warn("Cannot not remove subscription from store since the store is non-operational");
             }
-        } else {
-            log.warn("Cannot not remove subscription from store since the store is non-operational");
+            clusterNotificationAgent.notifySubscriptionsChange(subscription,
+                    ClusterNotificationListener.SubscriptionChange.Closed);
+
+            // If there are no subscriptions for this queue, then delete it
+            if (!storageQueue.isDurable() && storageQueue.getBoundSubscriptions().isEmpty()) {
+
+                AndesContextInformationManager contextInformationManager
+                        = AndesContext.getInstance().getAndesContextInformationManager();
+
+                contextInformationManager.deleteQueue(storageQueue);
+            }
+            log.info("Remove Local Subscription " + subscription.getProtocolType() + " " + subscription.toString());
+
+        } catch (AndesStoreUnavailableException exception) {
+            log.warn("Store became unavailable while removing local subscription " + subscription.toString(),
+                    exception);
         }
-
-
-        // If there are no subscriptions for this queue, then delete it
-        if (!storageQueue.isDurable() && storageQueue.getBoundSubscriptions().isEmpty() ) {
-
-            AndesContextInformationManager contextInformationManager = AndesContext.getInstance()
-                    .getAndesContextInformationManager();
-
-            contextInformationManager.deleteQueue(storageQueue);
-        }
-
-        log.info("Remove Local Subscription " + subscription.getProtocolType() + " " + subscription.toString());
     }
 
     /**

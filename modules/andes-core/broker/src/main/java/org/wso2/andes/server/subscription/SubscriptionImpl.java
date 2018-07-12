@@ -276,10 +276,6 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                             MessageTracer.SENDING_MESSAGE_TO_SUBSCRIBER);
                 }
 
-                //  This method will record that this message is delivered in AMQChannel level
-                //  Re-queueing and ack handling will be affected by this.
-                recordMessageDelivery(entry, deliveryTag);
-
                 // no point of trying to deliver if channel is closed ReQueue the message to
                 // be resent when channel is available
                 if (getChannel().isClosing()) {
@@ -292,6 +288,10 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                                                              + " closed. Delivery failed message id = "
                                                              + entry.getMessage().getMessageNumber());
                 }
+
+                //  This method will record that this message is delivered in AMQChannel level
+                //  Re-queueing and ack handling will be affected by this.
+                recordMessageDelivery(entry, deliveryTag);
 
                 if (log.isDebugEnabled()) {
                     log.debug("sent message : " + entry.getMessage().getMessageNumber()
