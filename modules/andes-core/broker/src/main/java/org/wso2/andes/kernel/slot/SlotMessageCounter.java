@@ -311,6 +311,15 @@ public class SlotMessageCounter implements StoreHealthListener {
     }
 
     /**
+     * Sets the underlying slot coordinator.
+     *
+     * @param slotCoordinator {@link SlotCoordinator} instance
+     */
+    public void setSlotCoordinator(SlotCoordinator slotCoordinator) {
+        this.slotCoordinator = slotCoordinator;
+    }
+
+    /**
      * Message counter periodic task used to update the coordinator with timed-out slots and new safezone values
      */
     private class SlotTimeoutTask implements Runnable {
