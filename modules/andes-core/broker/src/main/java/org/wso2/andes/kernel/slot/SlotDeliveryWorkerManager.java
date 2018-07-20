@@ -62,15 +62,6 @@ public final class SlotDeliveryWorkerManager implements StoreHealthListener, Net
 
         taskManager = new TaskExecutorService<>(numberOfThreads, idleTaskDelay, threadFactory);
         taskManager.setExceptionHandler(new DeliveryTaskExceptionHandler());
-        AndesContext andesContext = AndesContext.getInstance();
-
-        if (andesContext.isClusteringEnabled()) {
-            // network partition detection and thrift client works only when clustered.
-            andesContext.getClusterAgent().addNetworkPartitionListener(50, this);
-            MessagingEngine.getInstance().getSlotCoordinator().addCoordinatorConnectionListener(this);
-        }
-
-        FailureObservingStoreManager.registerStoreHealthListener(this);
     }
 
     /**
@@ -188,5 +179,16 @@ public final class SlotDeliveryWorkerManager implements StoreHealthListener, Net
     public void onCoordinatorReconnect() {
         log.info("Coordinator connection re-established");
         taskManager.start();
+    }
+
+    public void initialise(SlotCoordinator slotCoordinator) {
+        AndesContext andesContext = AndesContext.getInstance();
+        if (andesContext.isClusteringEnabled()) {
+            // network partition detection and thrift client works only when clustered.
+            andesContext.getClusterAgent().addNetworkPartitionListener(50, this);
+            slotCoordinator.addCoordinatorConnectionListener(this);
+        }
+
+        FailureObservingStoreManager.registerStoreHealthListener(this);
     }
 }

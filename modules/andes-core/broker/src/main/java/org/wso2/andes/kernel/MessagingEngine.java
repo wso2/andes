@@ -133,6 +133,8 @@ public class MessagingEngine {
         } else {
             slotCoordinator = new SlotCoordinatorStandalone();
         }
+        SlotMessageCounter.getInstance().setSlotCoordinator(slotCoordinator);
+        SlotDeliveryWorkerManager.getInstance().initialise(slotCoordinator);
     }
 
     /**
