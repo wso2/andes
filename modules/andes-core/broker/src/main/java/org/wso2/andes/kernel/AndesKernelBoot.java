@@ -21,6 +21,7 @@ package org.wso2.andes.kernel;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.StoreConfiguration;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
@@ -154,6 +155,8 @@ public class AndesKernelBoot {
             try {
                 hazelcastAgent.acquireInitializationLock();
                 if (!hazelcastAgent.isClusterInitializedSuccessfully()) {
+                    removeNonDurableQueues();
+
                     clearSlotStorage();
 
                     // Initialize current node's last published ID
@@ -168,6 +171,19 @@ public class AndesKernelBoot {
             }
         } else {
             recoverMapsForEachQueue();
+        }
+    }
+
+    private static void removeNonDurableQueues() throws AndesException {
+        List<StorageQueue> queueList = contextStore.getAllQueuesStored();
+        for (StorageQueue storageQueue : queueList) {
+            String queueName = storageQueue.getName();
+            if (!storageQueue.isDurable() && queueName.startsWith(AndesUtils.AMQP_TOPIC_STORAGE_QUEUE_PREFIX)) {
+                messageStore.deleteAllMessageMetadata(queueName);
+                contextStore.deleteBindingInformation(AMQPUtils.TOPIC_EXCHANGE_NAME, queueName);
+                contextStore.deleteQueueInformation(queueName);
+                messageStore.removeQueue(queueName);
+            }
         }
     }
 
