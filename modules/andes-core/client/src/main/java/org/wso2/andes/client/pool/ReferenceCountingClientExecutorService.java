@@ -25,7 +25,6 @@ import org.wso2.andes.pool.ReadWriteJobQueue;
 import org.wso2.andes.pool.ReferenceCountingService;
 
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -89,7 +88,8 @@ public class ReferenceCountingClientExecutorService implements ReferenceCounting
     /**
      * Thread Factory used to create Job thread pool.
      */
-    private ThreadFactory _threadFactory = Executors.defaultThreadFactory();
+    private ThreadFactory _threadFactory = new NamedThreadFactoryBuilder().setNameFormat("AndesJobPoolThread-%d")
+                                                                          .build();
 
     private final boolean _useBiasedPool = Boolean.getBoolean("org.apache.qpid.use_write_biased_pool");
 
