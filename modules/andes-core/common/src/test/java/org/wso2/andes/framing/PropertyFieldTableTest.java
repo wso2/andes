@@ -23,7 +23,7 @@ package org.wso2.andes.framing;
 import junit.framework.Assert;
 import junit.framework.TestCase;
 
-import org.apache.mina.common.ByteBuffer;
+import org.wso2.org.apache.mina.common.ByteBuffer;
 
 import org.wso2.andes.AMQPInvalidClassException;
 

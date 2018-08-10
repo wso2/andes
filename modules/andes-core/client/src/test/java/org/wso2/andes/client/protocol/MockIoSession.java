@@ -20,10 +20,10 @@
  */
 package org.wso2.andes.client.protocol;
 
-import org.apache.mina.common.*;
-import org.apache.mina.common.support.AbstractIoFilterChain;
-import org.apache.mina.common.support.DefaultCloseFuture;
-import org.apache.mina.common.support.DefaultWriteFuture;
+import org.wso2.org.apache.mina.common.*;
+import org.wso2.org.apache.mina.common.support.AbstractIoFilterChain;
+import org.wso2.org.apache.mina.common.support.DefaultCloseFuture;
+import org.wso2.org.apache.mina.common.support.DefaultWriteFuture;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;

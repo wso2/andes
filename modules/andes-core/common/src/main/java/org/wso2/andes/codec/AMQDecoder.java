@@ -20,11 +20,11 @@
  */
 package org.wso2.andes.codec;
 
-import org.apache.mina.common.ByteBuffer;
-import org.apache.mina.common.IoSession;
-import org.apache.mina.common.SimpleByteBufferAllocator;
-import org.apache.mina.filter.codec.CumulativeProtocolDecoder;
-import org.apache.mina.filter.codec.ProtocolDecoderOutput;
+import org.wso2.org.apache.mina.common.ByteBuffer;
+import org.wso2.org.apache.mina.common.IoSession;
+import org.wso2.org.apache.mina.common.SimpleByteBufferAllocator;
+import org.wso2.org.apache.mina.filter.codec.CumulativeProtocolDecoder;
+import org.wso2.org.apache.mina.filter.codec.ProtocolDecoderOutput;
 import org.wso2.andes.framing.*;
 import org.wso2.andes.protocol.AMQVersionAwareProtocolSession;
 

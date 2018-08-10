@@ -20,9 +20,9 @@
  */
 package org.wso2.andes.framing;
 
-import org.apache.mina.common.ByteBuffer;
-import org.apache.mina.common.IoSession;
-import org.apache.mina.filter.codec.ProtocolDecoderOutput;
+import org.wso2.org.apache.mina.common.ByteBuffer;
+import org.wso2.org.apache.mina.common.IoSession;
+import org.wso2.org.apache.mina.filter.codec.ProtocolDecoderOutput;
 
 import org.wso2.andes.protocol.AMQVersionAwareProtocolSession;
 

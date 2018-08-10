@@ -28,7 +28,7 @@ import javax.security.sasl.AuthorizeCallback;
 import javax.security.sasl.SaslException;
 import javax.security.sasl.SaslServer;
 
-import org.apache.mina.common.ByteBuffer;
+import org.wso2.org.apache.mina.common.ByteBuffer;
 import org.wso2.andes.framing.AMQFrameDecodingException;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.framing.FieldTableFactory;

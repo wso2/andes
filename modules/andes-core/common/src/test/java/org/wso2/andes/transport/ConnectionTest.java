@@ -20,7 +20,7 @@
  */
 package org.wso2.andes.transport;
 
-import org.apache.mina.util.AvailablePortFinder;
+import org.wso2.org.apache.mina.util.AvailablePortFinder;
 
 import org.wso2.andes.test.utils.QpidTestCase;
 import org.wso2.andes.transport.network.ConnectionBinding;

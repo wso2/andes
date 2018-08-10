@@ -38,7 +38,7 @@ import org.wso2.andes.server.subscription.SubscriptionFactoryImpl;
 import org.wso2.andes.server.protocol.InternalTestProtocolSession;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.store.TestableMemoryMessageStore;
-import org.apache.mina.common.ByteBuffer;
+import org.wso2.org.apache.mina.common.ByteBuffer;
 
 import javax.management.JMException;
 

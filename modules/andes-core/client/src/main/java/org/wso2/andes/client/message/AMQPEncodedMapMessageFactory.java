@@ -23,7 +23,7 @@ package org.wso2.andes.client.message;
 
 import javax.jms.JMSException;
 
-import org.apache.mina.common.ByteBuffer;
+import org.wso2.org.apache.mina.common.ByteBuffer;
 import org.wso2.andes.AMQException;
 
 public class AMQPEncodedMapMessageFactory extends AbstractJMSMessageFactory

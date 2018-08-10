@@ -48,7 +48,7 @@ package org.apache.qpid.framing.amqp_$version.getMajor()_$version.getMinor();
 
 import java.util.HashMap;
 
-import org.apache.mina.common.ByteBuffer;
+import org.wso2.org.apache.mina.common.ByteBuffer;
 import org.apache.qpid.framing.*;
 
 public class ${javaClassName} extends AMQMethodBody_$version.getMajor()_$version.getMinor() implements $interfaceName

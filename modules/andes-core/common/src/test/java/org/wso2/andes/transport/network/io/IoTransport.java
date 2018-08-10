@@ -46,9 +46,9 @@ public final class IoTransport<E>
 
     static
     {
-        org.apache.mina.common.ByteBuffer.setAllocator
-            (new org.apache.mina.common.SimpleByteBufferAllocator());
-        org.apache.mina.common.ByteBuffer.setUseDirectBuffers
+        org.wso2.org.apache.mina.common.ByteBuffer.setAllocator
+            (new org.wso2.org.apache.mina.common.SimpleByteBufferAllocator());
+        org.wso2.org.apache.mina.common.ByteBuffer.setUseDirectBuffers
             (Boolean.getBoolean("amqj.enableDirectBuffers"));
     }
 

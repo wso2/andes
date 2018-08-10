@@ -20,8 +20,8 @@
  */
 package org.wso2.andes.client.protocol;
 
-import org.apache.mina.common.IoFilterAdapter;
-import org.apache.mina.common.IoSession;
+import org.wso2.org.apache.mina.common.IoFilterAdapter;
+import org.wso2.org.apache.mina.common.IoSession;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -21,13 +21,13 @@
 package org.apache.qpid.mina;
 
 import org.apache.log4j.Logger;
-import org.apache.mina.common.ByteBuffer;
-import org.apache.mina.common.IoAcceptor;
-import org.apache.mina.common.IoHandlerAdapter;
-import org.apache.mina.common.IoSession;
-import org.apache.mina.transport.socket.nio.SocketAcceptor;
-import org.apache.mina.transport.socket.nio.SocketAcceptorConfig;
-import org.apache.mina.transport.socket.nio.SocketSessionConfig;
+import org.wso2.org.apache.mina.common.ByteBuffer;
+import org.wso2.org.apache.mina.common.IoAcceptor;
+import org.wso2.org.apache.mina.common.IoHandlerAdapter;
+import org.wso2.org.apache.mina.common.IoSession;
+import org.wso2.org.apache.mina.transport.socket.nio.SocketAcceptor;
+import org.wso2.org.apache.mina.transport.socket.nio.SocketAcceptorConfig;
+import org.wso2.org.apache.mina.transport.socket.nio.SocketSessionConfig;
 import org.apache.qpid.pool.ReadWriteThreadModel;
 
 import java.io.IOException;

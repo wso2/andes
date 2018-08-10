@@ -20,10 +20,10 @@
  */
 package org.wso2.andes.transport.network.mina;
 
-import org.apache.mina.common.ByteBuffer;
-import org.apache.mina.common.CloseFuture;
-import org.apache.mina.common.IoSession;
-import org.apache.mina.common.WriteFuture;
+import org.wso2.org.apache.mina.common.ByteBuffer;
+import org.wso2.org.apache.mina.common.CloseFuture;
+import org.wso2.org.apache.mina.common.IoSession;
+import org.wso2.org.apache.mina.common.WriteFuture;
 import org.wso2.andes.transport.Sender;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

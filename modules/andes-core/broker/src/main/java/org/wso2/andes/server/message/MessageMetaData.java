@@ -182,7 +182,7 @@ public class MessageMetaData implements StorableMessageMetaData
     {
         ByteBuffer src = ByteBuffer.allocate((int)getStorableSize());
 
-        org.apache.mina.common.ByteBuffer minaSrc = org.apache.mina.common.ByteBuffer.wrap(src);
+        org.wso2.org.apache.mina.common.ByteBuffer minaSrc = org.wso2.org.apache.mina.common.ByteBuffer.wrap(src);
         EncodingUtils.writeInteger(minaSrc, _contentHeaderBody.getSize());
         _contentHeaderBody.writePayload(minaSrc);
         EncodingUtils.writeShortStringBytes(minaSrc, _messagePublishInfo.getExchange());
@@ -241,7 +241,7 @@ public class MessageMetaData implements StorableMessageMetaData
         {
             try
             {
-                org.apache.mina.common.ByteBuffer minaSrc = org.apache.mina.common.ByteBuffer.wrap(buf);
+                org.wso2.org.apache.mina.common.ByteBuffer minaSrc = org.wso2.org.apache.mina.common.ByteBuffer.wrap(buf);
                 int size = EncodingUtils.readInteger(minaSrc);
                 ContentHeaderBody chb = ContentHeaderBody.createFromBuffer(minaSrc, size);
                 final AMQShortString exchange = EncodingUtils.readAMQShortString(minaSrc);

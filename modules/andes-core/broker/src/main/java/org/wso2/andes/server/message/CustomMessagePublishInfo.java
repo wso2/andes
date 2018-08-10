@@ -29,7 +29,7 @@ import java.nio.ByteBuffer;
 
 public class CustomMessagePublishInfo implements org.wso2.andes.framing.abstraction.MessagePublishInfo {
 
-    private org.apache.mina.common.ByteBuffer minaSrc;
+    private org.wso2.org.apache.mina.common.ByteBuffer minaSrc;
     private int size;
     public ContentHeaderBody chb;
     private AMQShortString exchange;
@@ -87,7 +87,7 @@ public class CustomMessagePublishInfo implements org.wso2.andes.framing.abstract
 
     private void createMetaData(ByteBuffer buf) {
         try {
-            minaSrc = org.apache.mina.common.ByteBuffer.wrap(buf);
+            minaSrc = org.wso2.org.apache.mina.common.ByteBuffer.wrap(buf);
             size = EncodingUtils.readInteger(minaSrc);
             chb = ContentHeaderBody.createFromBuffer(minaSrc, size);
             exchange = EncodingUtils.readAMQShortString(minaSrc);

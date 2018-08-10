@@ -20,10 +20,10 @@
  */
 package org.wso2.andes.framing;
 
-import org.apache.mina.common.ByteBuffer;
-import org.apache.mina.common.IoSession;
-import org.apache.mina.filter.codec.ProtocolEncoderOutput;
-import org.apache.mina.filter.codec.demux.MessageEncoder;
+import org.wso2.org.apache.mina.common.ByteBuffer;
+import org.wso2.org.apache.mina.common.IoSession;
+import org.wso2.org.apache.mina.filter.codec.ProtocolEncoderOutput;
+import org.wso2.org.apache.mina.filter.codec.demux.MessageEncoder;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -20,8 +20,8 @@
  */
 package org.wso2.andes.codec;
 
-import org.apache.mina.filter.codec.ProtocolCodecFactory;
-import org.apache.mina.filter.codec.ProtocolEncoder;
+import org.wso2.org.apache.mina.filter.codec.ProtocolCodecFactory;
+import org.wso2.org.apache.mina.filter.codec.ProtocolEncoder;
 import org.wso2.andes.protocol.AMQVersionAwareProtocolSession;
 
 /**

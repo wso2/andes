@@ -20,7 +20,7 @@
  */
 package org.wso2.andes.server.failover;
 
-import org.apache.mina.common.WriteTimeoutException;
+import org.wso2.org.apache.mina.common.WriteTimeoutException;
 import org.wso2.andes.client.AMQConnection;
 import org.wso2.andes.client.protocol.AMQProtocolSession;
 import org.wso2.andes.jms.ConnectionListener;

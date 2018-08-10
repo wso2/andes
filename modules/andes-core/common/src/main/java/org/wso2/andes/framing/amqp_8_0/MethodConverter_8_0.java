@@ -28,7 +28,7 @@ import org.wso2.andes.framing.abstraction.AbstractMethodConverter;
 import org.wso2.andes.framing.abstraction.MessagePublishInfoImpl;
 import org.wso2.andes.framing.*;
 
-import org.apache.mina.common.ByteBuffer;
+import org.wso2.org.apache.mina.common.ByteBuffer;
 
 public class MethodConverter_8_0 extends AbstractMethodConverter implements ProtocolVersionMethodConverter
 {
