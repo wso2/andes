@@ -561,7 +561,7 @@
         <commons-configuration.version>1.10</commons-configuration.version>
         <commons-lang.version>2.6</commons-lang.version>
         <geronimo-jms_1.1_spec.version>1.1.0</geronimo-jms_1.1_spec.version>
-        <mina.version>1.1.7-wso2v4-SNAPSHOT</mina.version>
+        <mina.version>1.1.7-wso2v4</mina.version>
         <derby.version>10.4.2.0</derby.version>
         <version.commons.logging>1.1.1</version.commons.logging>
         <org.eclipse.osgi.version>3.9.1.v20140110-1610</org.eclipse.osgi.version>
