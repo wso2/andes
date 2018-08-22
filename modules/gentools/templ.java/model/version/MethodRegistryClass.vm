@@ -36,7 +36,7 @@ import org.apache.qpid.framing.ProtocolVersion;
 
 
 import org.apache.log4j.Logger;
-import org.apache.mina.common.ByteBuffer;
+import org.wso2.org.apache.mina.common.ByteBuffer;
 
 public class MethodRegistry_$version.getMajor()_$version.getMinor() extends MethodRegistry
 {

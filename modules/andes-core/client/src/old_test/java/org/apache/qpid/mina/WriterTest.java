@@ -21,10 +21,10 @@
 package org.apache.qpid.mina;
 
 import org.apache.log4j.Logger;
-import org.apache.mina.common.*;
-import org.apache.mina.transport.socket.nio.SocketConnector;
-import org.apache.mina.transport.socket.nio.SocketConnectorConfig;
-import org.apache.mina.transport.socket.nio.SocketSessionConfig;
+import org.wso2.org.apache.mina.common.*;
+import org.wso2.org.apache.mina.transport.socket.nio.SocketConnector;
+import org.wso2.org.apache.mina.transport.socket.nio.SocketConnectorConfig;
+import org.wso2.org.apache.mina.transport.socket.nio.SocketSessionConfig;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;

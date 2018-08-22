@@ -21,10 +21,10 @@
 package org.apache.qpid.codec;
 
 import org.apache.qpid.framing.*;
-import org.apache.mina.common.*;
-import org.apache.mina.common.support.BaseIoSession;
-import org.apache.mina.filter.codec.ProtocolDecoderOutput;
-import org.apache.mina.filter.codec.ProtocolEncoderOutput;
+import org.wso2.org.apache.mina.common.*;
+import org.wso2.org.apache.mina.common.support.BaseIoSession;
+import org.wso2.org.apache.mina.filter.codec.ProtocolDecoderOutput;
+import org.wso2.org.apache.mina.filter.codec.ProtocolEncoderOutput;
 
 import java.net.SocketAddress;
 

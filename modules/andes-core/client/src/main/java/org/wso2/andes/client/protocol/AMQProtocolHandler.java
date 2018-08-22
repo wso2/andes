@@ -20,7 +20,7 @@
  */
 package org.wso2.andes.client.protocol;
 
-import org.apache.mina.filter.codec.ProtocolCodecException;
+import org.wso2.org.apache.mina.filter.codec.ProtocolCodecException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wso2.andes.AMQConnectionClosedException;

@@ -20,7 +20,7 @@
  */
 package org.wso2.andes.test.unit.basic;
 
-import org.apache.mina.common.ByteBuffer;
+import org.wso2.org.apache.mina.common.ByteBuffer;
 
 import org.wso2.andes.client.AMQConnection;
 import org.wso2.andes.client.AMQDestination;

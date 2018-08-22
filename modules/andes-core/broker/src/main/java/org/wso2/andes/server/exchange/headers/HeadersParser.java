@@ -309,7 +309,7 @@ public class HeadersParser
         table.setInteger("k",1);
         table.setInteger("l",1);
 
-        org.apache.mina.common.ByteBuffer buffer = org.apache.mina.common.ByteBuffer.allocate( (int) table.getEncodedSize());
+        org.wso2.org.apache.mina.common.ByteBuffer buffer = org.wso2.org.apache.mina.common.ByteBuffer.allocate( (int) table.getEncodedSize());
         EncodingUtils.writeFieldTableBytes(buffer, table);
         buffer.flip();
 

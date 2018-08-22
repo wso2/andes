@@ -20,9 +20,9 @@
  */
 package org.wso2.andes.transport.network.mina;
 
-import org.apache.mina.common.CloseFuture;
-import org.apache.mina.common.IdleStatus;
-import org.apache.mina.common.IoSession;
+import org.wso2.org.apache.mina.common.CloseFuture;
+import org.wso2.org.apache.mina.common.IdleStatus;
+import org.wso2.org.apache.mina.common.IoSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wso2.andes.transport.Sender;

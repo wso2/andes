@@ -33,7 +33,7 @@ import junit.framework.TestCase;
 import junit.framework.TestResult;
 
 import org.apache.log4j.Logger;
-import org.apache.mina.util.AvailablePortFinder;
+import org.wso2.org.apache.mina.util.AvailablePortFinder;
 
 public class QpidTestCase extends TestCase
 {

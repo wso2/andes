@@ -21,15 +21,15 @@
 
 package org.wso2.andes.transport.network.mina;
 
-import org.apache.mina.common.ByteBuffer;
-import org.apache.mina.common.IdleStatus;
-import org.apache.mina.common.IoFilterChain;
-import org.apache.mina.common.IoHandlerAdapter;
-import org.apache.mina.common.IoSession;
-import org.apache.mina.common.SimpleByteBufferAllocator;
-import org.apache.mina.filter.ReadThrottleFilterBuilder;
-import org.apache.mina.filter.SSLFilter;
-import org.apache.mina.util.SessionUtil;
+import org.wso2.org.apache.mina.common.ByteBuffer;
+import org.wso2.org.apache.mina.common.IdleStatus;
+import org.wso2.org.apache.mina.common.IoFilterChain;
+import org.wso2.org.apache.mina.common.IoHandlerAdapter;
+import org.wso2.org.apache.mina.common.IoSession;
+import org.wso2.org.apache.mina.common.SimpleByteBufferAllocator;
+import org.wso2.org.apache.mina.filter.ReadThrottleFilterBuilder;
+import org.wso2.org.apache.mina.filter.SSLFilter;
+import org.wso2.org.apache.mina.util.SessionUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wso2.andes.protocol.ProtocolEngine;

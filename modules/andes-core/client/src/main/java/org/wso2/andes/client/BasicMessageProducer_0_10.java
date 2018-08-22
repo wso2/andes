@@ -219,7 +219,7 @@ public class BasicMessageProducer_0_10 extends BasicMessageProducer
             boolean unreliable = (destination.getDestSyntax() == DestSyntax.ADDR) &&
                                  (destination.getLink().getReliability() == Reliability.UNRELIABLE);
             
-            org.apache.mina.common.ByteBuffer data = message.getData();
+            org.wso2.org.apache.mina.common.ByteBuffer data = message.getData();
             ByteBuffer buffer = data == null ? ByteBuffer.allocate(0) : data.buf().slice();
             
             ssn.messageTransfer(destination.getExchangeName() == null ? "" : destination.getExchangeName().toString(), 

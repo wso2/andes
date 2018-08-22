@@ -25,7 +25,7 @@ import java.util.Enumeration;
 import javax.jms.JMSException;
 import javax.jms.MessageFormatException;
 
-import org.apache.mina.common.ByteBuffer;
+import org.wso2.org.apache.mina.common.ByteBuffer;
 import org.wso2.andes.AMQPInvalidClassException;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;

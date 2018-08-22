@@ -16,7 +16,7 @@
    limitations under the License.
 -->
 <dep>
-  <groupId>org.apache.mina</groupId>
+  <groupId>org.wso2.org.apache.mina</groupId>
   <artifactId>mina-filter-ssl</artifactId>
   <version>1.1.7</version>
 </dep>

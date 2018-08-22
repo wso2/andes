@@ -20,7 +20,7 @@
  */
 package org.wso2.andes.session;
 
-import org.apache.mina.common.*;
+import org.wso2.org.apache.mina.common.*;
 
 import java.net.SocketAddress;
 import java.util.Set;

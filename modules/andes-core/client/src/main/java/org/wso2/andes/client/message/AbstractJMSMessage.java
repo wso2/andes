@@ -28,7 +28,7 @@ import javax.jms.JMSException;
 import javax.jms.MessageNotReadableException;
 import javax.jms.MessageNotWriteableException;
 
-import org.apache.mina.common.ByteBuffer;
+import org.wso2.org.apache.mina.common.ByteBuffer;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.client.AMQSession;
 import org.wso2.andes.framing.AMQShortString;

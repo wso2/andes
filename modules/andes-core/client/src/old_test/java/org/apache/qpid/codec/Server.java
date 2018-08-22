@@ -20,11 +20,11 @@
  */
 package org.apache.qpid.codec;
 
-import org.apache.mina.common.IoHandlerAdapter;
-import org.apache.mina.common.IoSession;
-import org.apache.mina.transport.socket.nio.SocketAcceptor;
-import org.apache.mina.util.SessionUtil;
-import org.apache.mina.filter.codec.ProtocolCodecFilter;
+import org.wso2.org.apache.mina.common.IoHandlerAdapter;
+import org.wso2.org.apache.mina.common.IoSession;
+import org.wso2.org.apache.mina.transport.socket.nio.SocketAcceptor;
+import org.wso2.org.apache.mina.util.SessionUtil;
+import org.wso2.org.apache.mina.filter.codec.ProtocolCodecFilter;
 import org.apache.qpid.framing.AMQFrame;
 import org.apache.qpid.framing.CompositeAMQDataBlock;
 

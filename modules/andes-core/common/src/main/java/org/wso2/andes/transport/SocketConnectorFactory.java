@@ -1,6 +1,6 @@
 package org.wso2.andes.transport;
 
-import org.apache.mina.common.IoConnector;
+import org.wso2.org.apache.mina.common.IoConnector;
 
 public interface SocketConnectorFactory
 {

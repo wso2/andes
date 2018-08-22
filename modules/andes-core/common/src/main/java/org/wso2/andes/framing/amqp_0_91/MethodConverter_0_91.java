@@ -21,7 +21,7 @@
 
 package org.wso2.andes.framing.amqp_0_91;
 
-import org.apache.mina.common.ByteBuffer;
+import org.wso2.org.apache.mina.common.ByteBuffer;
 
 import org.wso2.andes.framing.abstraction.AbstractMethodConverter;
 import org.wso2.andes.framing.abstraction.ProtocolVersionMethodConverter;

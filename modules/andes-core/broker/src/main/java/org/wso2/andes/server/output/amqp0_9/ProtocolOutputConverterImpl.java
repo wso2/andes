@@ -19,7 +19,7 @@
 package org.wso2.andes.server.output.amqp0_9;
 
 
-import org.apache.mina.common.ByteBuffer;
+import org.wso2.org.apache.mina.common.ByteBuffer;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.*;
 import org.wso2.andes.framing.abstraction.MessagePublishInfo;

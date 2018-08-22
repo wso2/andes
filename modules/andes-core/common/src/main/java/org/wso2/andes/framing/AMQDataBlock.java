@@ -20,7 +20,7 @@
  */
 package org.wso2.andes.framing;
 
-import org.apache.mina.common.ByteBuffer;
+import org.wso2.org.apache.mina.common.ByteBuffer;
 
 /**
  * A data block represents something that has a size in bytes and the ability to write itself to a byte

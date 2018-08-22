@@ -20,9 +20,9 @@
  */
 package org.wso2.andes.codec;
 
-import org.apache.mina.common.IoSession;
-import org.apache.mina.filter.codec.ProtocolEncoder;
-import org.apache.mina.filter.codec.ProtocolEncoderOutput;
+import org.wso2.org.apache.mina.common.IoSession;
+import org.wso2.org.apache.mina.filter.codec.ProtocolEncoder;
+import org.wso2.org.apache.mina.filter.codec.ProtocolEncoderOutput;
 
 import org.wso2.andes.framing.AMQDataBlockEncoder;
 

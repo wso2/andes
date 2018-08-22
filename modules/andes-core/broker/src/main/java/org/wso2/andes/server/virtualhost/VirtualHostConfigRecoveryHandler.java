@@ -232,7 +232,7 @@ public class VirtualHostConfigRecoveryHandler implements ConfigurationRecoveryHa
                 FieldTable argumentsFT = null;
                 if(buf != null)
                 {
-                    argumentsFT = new FieldTable(org.apache.mina.common.ByteBuffer.wrap(buf),buf.limit());
+                    argumentsFT = new FieldTable(org.wso2.org.apache.mina.common.ByteBuffer.wrap(buf),buf.limit());
                 }
 
                 BindingFactory bf = _virtualHost.getBindingFactory();

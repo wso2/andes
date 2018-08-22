@@ -157,7 +157,7 @@
                             org.fusesource.hawtbuf.*,
                             org.fusesource.hawtdb*,
                             org.wso2.andes.*;-split-package:=merge-last,
-                            org.apache.mina.*;-split-package:=merge-last,
+                            org.wso2.org.apache.mina.*;-split-package:=merge-last,
                             org.dna.mqtt.*;-split-package:=merge-last,
                             com.gs.collections.*;-split-package:=merge-last,
                             net.jpountz.*;-split-package:=merge-last

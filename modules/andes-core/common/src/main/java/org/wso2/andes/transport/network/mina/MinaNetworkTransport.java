@@ -20,17 +20,17 @@
  */
 package org.wso2.andes.transport.network.mina;
 
-import org.apache.mina.common.ConnectFuture;
-import org.apache.mina.common.ExecutorThreadModel;
-import org.apache.mina.common.IoConnector;
-import org.apache.mina.common.IoSession;
-import org.apache.mina.filter.SSLFilter;
-import org.apache.mina.transport.socket.nio.SocketAcceptor;
-import org.apache.mina.transport.socket.nio.SocketAcceptorConfig;
-import org.apache.mina.transport.socket.nio.SocketConnector;
-import org.apache.mina.transport.socket.nio.SocketConnectorConfig;
-import org.apache.mina.transport.socket.nio.SocketSessionConfig;
-import org.apache.mina.util.NewThreadExecutor;
+import org.wso2.org.apache.mina.common.ConnectFuture;
+import org.wso2.org.apache.mina.common.ExecutorThreadModel;
+import org.wso2.org.apache.mina.common.IoConnector;
+import org.wso2.org.apache.mina.common.IoSession;
+import org.wso2.org.apache.mina.filter.SSLFilter;
+import org.wso2.org.apache.mina.transport.socket.nio.SocketAcceptor;
+import org.wso2.org.apache.mina.transport.socket.nio.SocketAcceptorConfig;
+import org.wso2.org.apache.mina.transport.socket.nio.SocketConnector;
+import org.wso2.org.apache.mina.transport.socket.nio.SocketConnectorConfig;
+import org.wso2.org.apache.mina.transport.socket.nio.SocketSessionConfig;
+import org.wso2.org.apache.mina.util.NewThreadExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wso2.andes.protocol.ProtocolEngineFactory;

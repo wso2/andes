@@ -20,7 +20,7 @@
  */
 package org.wso2.andes.framing;
 
-import org.apache.mina.common.ByteBuffer;
+import org.wso2.org.apache.mina.common.ByteBuffer;
 
 /**
  * There will be an implementation of this interface for each content type. All content types have associated

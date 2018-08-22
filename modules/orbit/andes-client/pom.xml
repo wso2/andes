@@ -100,7 +100,7 @@
                         <Bundle-Name>${project.artifactId}</Bundle-Name>
                         <Export-Package>
                             org.wso2.andes.*;-split-package:=merge-last;version="${project.version}",
-                            org.apache.mina.*;-split-package:=merge-last,
+                            org.wso2.org.apache.mina.*;-split-package:=merge-last,
                         </Export-Package>
                         <Import-Package>
                             org.apache.commons.lang.*;version="${commons-lang.imp.pkg.version}",

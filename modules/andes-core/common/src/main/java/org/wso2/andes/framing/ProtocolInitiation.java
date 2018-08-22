@@ -73,7 +73,7 @@ public class ProtocolInitiation extends AMQDataBlock implements EncodableAMQData
         _protocolMinor = in.get();
     }
 
-    public void writePayload(org.apache.mina.common.ByteBuffer buffer)
+    public void writePayload(org.wso2.org.apache.mina.common.ByteBuffer buffer)
     {
         writePayload(buffer.buf());
     }

@@ -23,13 +23,13 @@ package org.wso2.andes.test.utils.protocol;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 
-import org.apache.mina.common.IoFilterChain;
-import org.apache.mina.common.IoHandler;
-import org.apache.mina.common.IoService;
-import org.apache.mina.common.IoServiceConfig;
-import org.apache.mina.common.IoSessionConfig;
-import org.apache.mina.common.TransportType;
-import org.apache.mina.common.support.BaseIoSession;
+import org.wso2.org.apache.mina.common.IoFilterChain;
+import org.wso2.org.apache.mina.common.IoHandler;
+import org.wso2.org.apache.mina.common.IoService;
+import org.wso2.org.apache.mina.common.IoServiceConfig;
+import org.wso2.org.apache.mina.common.IoSessionConfig;
+import org.wso2.org.apache.mina.common.TransportType;
+import org.wso2.org.apache.mina.common.support.BaseIoSession;
 
 public class TestIoSession extends BaseIoSession {
 

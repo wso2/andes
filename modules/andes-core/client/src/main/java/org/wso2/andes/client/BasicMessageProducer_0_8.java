@@ -27,7 +27,7 @@ import javax.jms.Message;
 import javax.jms.Topic;
 import javax.jms.Queue;
 
-import org.apache.mina.common.ByteBuffer;
+import org.wso2.org.apache.mina.common.ByteBuffer;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.client.message.AbstractJMSMessage;
 import org.wso2.andes.client.message.AMQMessageDelegate_0_8;
