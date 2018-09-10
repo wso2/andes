@@ -1071,15 +1071,15 @@ public abstract class BasicMessageConsumer<U> extends Closeable implements Messa
         return _noConsume || _destination.isBrowseOnly() ;
     }
 
-    public void rollback()
-    {
-            rollbackPendingMessages();
+    public void rollback() {
+        // Nothing to do.
+        // this is discussed at https://github.com/wso2/product-ei/issues/2548
     }
 
-    public void rollbackPendingMessages()
+    public void clearPendingMessages()
     {
 
-        if (_synchronousQueue.size() > 0)
+        if (!_synchronousQueue.isEmpty())
         {
             _logger.debug("dest="+ _destination.getQueueName()+  " rolling back messages [" + _synchronousQueue.size() + "]");
 
