@@ -128,7 +128,9 @@ public class BindingFactory {
             throws AMQSecurityException, AMQInternalException {
         boolean bindingAdded = makeBinding(bindingKey, queue, exchange, arguments, false, false);
         //tell Andes kernel to create binding
-        QpidAndesBridge.createBinding(exchange, new AMQShortString(bindingKey), queue);
+        if (bindingAdded) {
+            QpidAndesBridge.createBinding(exchange, new AMQShortString(bindingKey), queue);
+        }
         return bindingAdded;
     }
 
@@ -139,7 +141,9 @@ public class BindingFactory {
                                   AMQInternalException {
         boolean isBindingAdded = makeBinding(bindingKey, queue, exchange, arguments, false, true);
         //tell Andes kernel to create binding
-        QpidAndesBridge.createBinding(exchange, new AMQShortString(bindingKey), queue);
+        if (isBindingAdded) {
+            QpidAndesBridge.createBinding(exchange, new AMQShortString(bindingKey), queue);
+        }
         return isBindingAdded;
     }
 
@@ -171,12 +175,12 @@ public class BindingFactory {
         }
 
         BindingImpl binding = new BindingImpl(bindingKey, queue, exchange, arguments);
-        BindingImpl existingMapping = _bindings.putIfAbsent(binding, binding);
+        boolean isBindingExist = _bindings.contains(binding);
         /**
          * For the durable topic, subscribers subscribe with the same subId but different topic, we do not replace
          * binding rather keep the old and not allow to changed the binding.
          */
-        if (existingMapping == null || force) {
+        if (!isBindingExist || force) {
 
             if (_logger.isDebugEnabled()) {
                 _logger.debug("bindingKey: " + bindingKey + ", queue: " + queue + ", exchange: " + exchange);
@@ -204,6 +208,7 @@ public class BindingFactory {
                         (exchange, new AMQShortString(bindingKey), queue, FieldTable.convertToFieldTable(arguments));
             }
 
+            _bindings.put(binding, binding);
             queue.addQueueDeleteTask(binding);
             exchange.addCloseTask(binding);
             queue.addBinding(binding);
@@ -213,6 +218,10 @@ public class BindingFactory {
 
             return true;
         } else {
+
+            if (!getVirtualHost().getSecurityManager().authoriseBind(exchange, queue, new AMQShortString(bindingKey))) {
+                throw new AMQSecurityException("Permission denied: binding " + bindingKey);
+            }
             return false;
         }
     }
