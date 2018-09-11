@@ -174,6 +174,8 @@ public class BindingFactory {
             }
         }
 
+        authoriseBind(bindingKey, queue, exchange);
+
         BindingImpl binding = new BindingImpl(bindingKey, queue, exchange, arguments);
         boolean isBindingExist = _bindings.contains(binding);
         /**
@@ -197,11 +199,6 @@ public class BindingFactory {
                 }
             }
 
-            //Perform ACLs ONLY after removing/updating any existing bindings.
-            if (!getVirtualHost().getSecurityManager().authoriseBind(exchange, queue, new AMQShortString(bindingKey))) {
-                throw new AMQSecurityException("Permission denied: binding " + bindingKey);
-            }
-
             //save only durable bindings
             if (binding.isDurable() && !restore) {
                 _configSource.getDurableConfigurationStore().bindQueue
@@ -218,11 +215,14 @@ public class BindingFactory {
 
             return true;
         } else {
-
-            if (!getVirtualHost().getSecurityManager().authoriseBind(exchange, queue, new AMQShortString(bindingKey))) {
-                throw new AMQSecurityException("Permission denied: binding " + bindingKey);
-            }
             return false;
+        }
+    }
+
+    public void authoriseBind(String bindingKey, AMQQueue queue, Exchange exchange) throws AMQSecurityException {
+        //Perform ACLs ONLY after removing/updating any existing bindings.
+        if (!getVirtualHost().getSecurityManager().authoriseBind(exchange, queue, new AMQShortString(bindingKey))) {
+            throw new AMQSecurityException("Permission denied: binding " + bindingKey);
         }
     }
 
@@ -320,4 +320,6 @@ public class BindingFactory {
         BindingImpl b = new BindingImpl(bindingKey, queue, exchange, arguments);
         return _bindings.get(b);
     }
+
+
 }

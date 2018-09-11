@@ -120,9 +120,9 @@ public class QueueBindHandler implements StateAwareMethodListener<QueueBindBody>
                 }
             }
 
+            String bindingKey = String.valueOf(routingKey);
             if (!exch.isBound(routingKey, null, queue))
             {
-                String bindingKey = String.valueOf(routingKey);
                 Map<String,Object> arguments = FieldTable.convertToMap(body.getArguments());
 
                 if(!virtualHost.getBindingFactory().addBinding(bindingKey, queue, exch, arguments))
@@ -132,9 +132,11 @@ public class QueueBindHandler implements StateAwareMethodListener<QueueBindBody>
                     Map<String, Object> oldArgs = oldBinding.getArguments();
                     if((oldArgs == null && !arguments.isEmpty()) || (oldArgs != null && !oldArgs.equals(arguments)))
                     {
-                        virtualHost.getBindingFactory().replaceBinding(bindingKey, queue, exch, arguments);    
+                        virtualHost.getBindingFactory().replaceBinding(bindingKey, queue, exch, arguments);
                     }
                 }
+            } else {
+                virtualHost.getBindingFactory().authoriseBind(bindingKey, queue, exch);
             }
         }
         catch (AMQException e)
