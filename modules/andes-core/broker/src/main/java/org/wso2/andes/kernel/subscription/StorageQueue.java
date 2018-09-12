@@ -326,6 +326,7 @@ public class StorageQueue {
                     //return slots back to coordinator
                     messageHandler.releaseAllSlots();
                     messageHandler.clearReadButUndeliveredMessages();
+                    subscription.clearUnackedMessages();
                 }
 
                 messageHandler.stopMessageDelivery(this);
