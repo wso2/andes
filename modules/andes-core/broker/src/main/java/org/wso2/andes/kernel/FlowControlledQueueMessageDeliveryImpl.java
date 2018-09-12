@@ -23,15 +23,12 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.subscription.AndesSubscription;
 import org.wso2.andes.kernel.subscription.StorageQueue;
-import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Strategy definition for queue message delivery
@@ -107,7 +104,6 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
                             message.setDestination(storageQueue.getName());
                         }
 
-                        message.markAsScheduledToDeliver(localSubscription);
                         iterator.remove();
                         MessageFlusher.getInstance().deliverMessageAsynchronously(localSubscription, message);
                         numOfCurrentMsgDeliverySchedules++;

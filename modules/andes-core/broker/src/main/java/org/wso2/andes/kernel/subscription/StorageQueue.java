@@ -318,17 +318,20 @@ public class StorageQueue {
      * @throws AndesException
      */
     public void unbindSubscription(AndesSubscription subscription) throws AndesException {
-        boundedSubscriptions.remove(subscription);
-        if (boundedSubscriptions.isEmpty()) {
-            if (isDurable) {
-                //return slots back to coordinator
-                messageHandler.releaseAllSlots();
-                messageHandler.clearReadButUndeliveredMessages();
-            }
+        synchronized (subscription.getSubscriberConnection().getProtocolChannelID().toString().intern()) {
+            subscription.detach();
+            boundedSubscriptions.remove(subscription);
+            if (boundedSubscriptions.isEmpty()) {
+                if (isDurable) {
+                    //return slots back to coordinator
+                    messageHandler.releaseAllSlots();
+                    messageHandler.clearReadButUndeliveredMessages();
+                }
 
-            messageHandler.stopMessageDelivery(this);
-        } else {
-            subscription.rebufferUnackedMessages();
+                messageHandler.stopMessageDelivery(this);
+            } else {
+                subscription.rebufferUnackedMessages();
+            }
         }
     }
 

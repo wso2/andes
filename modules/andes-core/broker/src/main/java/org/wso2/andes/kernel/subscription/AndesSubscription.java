@@ -80,6 +80,8 @@ public class AndesSubscription {
 
     private static Log log = LogFactory.getLog(AndesSubscription.class);
 
+    private volatile boolean attachedToQueue = true;
+
     /**
      * Create a AndesSubscription.
      *
@@ -591,5 +593,13 @@ public class AndesSubscription {
                 + ",protocolType=" + protocolType.toString()
                 + ",isActive=" + Boolean.toString(isActive)
                 + ",subscriberConnection=" + encodedConnectionInfo;
+    }
+
+    public boolean isAttached() {
+        return attachedToQueue;
+    }
+
+    void detach() {
+        attachedToQueue = false;
     }
 }

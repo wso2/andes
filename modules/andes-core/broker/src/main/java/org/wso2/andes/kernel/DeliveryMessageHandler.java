@@ -34,17 +34,25 @@ public class DeliveryMessageHandler extends DeliveryResponsibility {
      * {@inheritDoc}
      */
     @Override
-    protected boolean performResponsibility(AndesSubscription subscription,
-                                            DeliverableAndesMetadata message) throws AndesException {
-        if (log.isDebugEnabled()) {
-            log.debug("Scheduled message id= " + message.getMessageID() + " to be sent to subscription= " + subscription);
+    protected boolean performResponsibility(final AndesSubscription subscription,
+                                            DeliverableAndesMetadata message) {
+        synchronized (subscription.getSubscriberConnection().getProtocolChannelID().toString().intern()) {
+            if (!subscription.isAttached()) {
+                subscription.getStorageQueue().bufferMessageForDelivery(message);
+               return false;
+            }
+
+            if (log.isDebugEnabled()) {
+                log.debug("Scheduled message id= " + message.getMessageID() + " to be sent to subscription= " + subscription);
+            }
+            // Mark message as came into the subscription for deliver.
+            message.markAsScheduledToDeliver(subscription);
+            UUID subscriptionChannelID = subscription.getSubscriberConnection().getProtocolChannelID();
+            message.markAsDispatchedToDeliver(subscriptionChannelID);
+            ProtocolMessage protocolMessage = message.generateProtocolDeliverableMessage(subscriptionChannelID);
+            subscription.getSubscriberConnection().addMessageToSendingTracker(protocolMessage);
+            MessageFlusher.getInstance().getFlusherExecutor().submit(subscription, protocolMessage);
+            return true;
         }
-        // Mark message as came into the subscription for deliver.
-        UUID subscriptionChannelID = subscription.getSubscriberConnection().getProtocolChannelID();
-        message.markAsDispatchedToDeliver(subscriptionChannelID);
-        ProtocolMessage protocolMessage = message.generateProtocolDeliverableMessage(subscriptionChannelID);
-        subscription.getSubscriberConnection().addMessageToSendingTracker(protocolMessage);
-        MessageFlusher.getInstance().getFlusherExecutor().submit(subscription, protocolMessage);
-        return true;
     }
 }
