@@ -37,7 +37,7 @@ public class DeliveryMessageHandler extends DeliveryResponsibility {
     protected boolean performResponsibility(final AndesSubscription subscription,
                                             DeliverableAndesMetadata message) {
         synchronized (subscription.getSubscriberConnection().getProtocolChannelID().toString().intern()) {
-            if (!subscription.isAttached()) {
+            if (!subscription.isAttached() && !message.isStale()) {
                 subscription.getStorageQueue().bufferMessageForDelivery(message);
                return false;
             }
