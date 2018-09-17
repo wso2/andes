@@ -267,7 +267,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             if (results.next()) {
                 messagePart = createMessagePart(results, messageId, offsetValue);
             }
+            connection.commit();
         } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_RETRIEVING_MESSAGE_PARTS);
             throw rdbmsStoreUtils.convertSQLException("Error occurred while retrieving message content from DB" +
                     " [msg_id= " + messageId + " ]", e);
         } finally {
@@ -338,8 +340,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 AndesMessagePart msgPart = createMessagePart(resultSet, messageID, offset);
                 partList.add(msgPart);
             }
-
+            connection.commit();
         } catch (SQLException e) {
+            rollback(connection, TASK_RETRIEVING_CONTENT_FOR_MESSAGES);
             throw rdbmsStoreUtils.convertSQLException("Error occurred while retrieving message content from DB for " +
                     messageIDList.size() + " messages ", e);
         } finally {
@@ -743,7 +746,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 byte[] b = results.getBytes(RDBMSConstants.METADATA);
                 md = new AndesMessageMetadata(messageId, b, true);
             }
+            connection.commit();
         } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_RETRIEVING_METADATA);
             throw rdbmsStoreUtils.convertSQLException("error occurred while retrieving message " +
                     "metadata for msg id:" + messageId, e);
         } finally {
@@ -800,7 +805,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 log.debug("request: metadata range (" + firstMsgId + " , " + lastMsgID + ") in destination queue "
                         + storageQueueName + ", response: metadata count " + metadataList.size());
             }
+            connection.commit();
         } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_RETRIEVING_METADATA_RANGE_FROM_QUEUE);
             throw rdbmsStoreUtils.convertSQLException(
                     "Error occurred while retrieving messages between msg id " + firstMsgId + " and " + lastMsgID
                             + " from queue " + storageQueueName, e);
@@ -842,8 +849,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             if (resultSet.next()) {
                 messageCount = resultSet.getInt(RDBMSConstants.PS_ALIAS_FOR_COUNT);
             }
-
+            connection.commit();
         } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_RETRIEVING_RANGED_QUEUE_MSG_COUNT);
             throw rdbmsStoreUtils.convertSQLException("Error occurred while retrieving ranged message count for " +
                     "message ids between " + firstMessageId + " and " + lastMessageId + " from queue "
                     + storageQueueName, e);
@@ -911,7 +919,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 callBack.initializeSlotMapForQueue(storageQueueName, batchStartMessageID, currentMessageId,
                                                    messageLimitPerSlot);
             }
+            connection.commit();
         } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_RETRIEVING_NEXT_N_IDS_FROM_QUEUE);
             throw rdbmsStoreUtils.convertSQLException("error occurred while retrieving message ids from queue ", e);
         } finally {
             nextMessageIdsRetrievalContext.stop();
@@ -979,7 +989,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 mdList.add(md);
                 resultCount++;
             }
+            connection.commit();
         } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_FROM_QUEUE);
             throw rdbmsStoreUtils
                     .convertSQLException("error occurred while retrieving message metadata from queue ", e);
         } finally {
@@ -1026,7 +1038,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 mdList.add(md);
                 resultCount++;
             }
+            connection.commit();
         } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_IN_DLC_FOR_QUEUE);
             throw rdbmsStoreUtils
                     .convertSQLException("error occurred while retrieving message metadata from queue ", e);
         } finally {
@@ -1072,7 +1086,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 mdList.add(md);
                 resultCount++;
             }
+            connection.commit();
         } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_FROM_DLC);
             throw rdbmsStoreUtils
                     .convertSQLException("error occurred while retrieving message metadata from queue ", e);
         } finally {
@@ -1300,8 +1316,10 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             while (resultSet.next()) {
                 list.add(resultSet.getLong(RDBMSConstants.MESSAGE_ID));
             }
+            connection.commit();
             return list;
         } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_RETRIEVING_EXPIRED_MESSAGES);
             throw rdbmsStoreUtils.convertSQLException("error occurred while retrieving expired messages.", e);
         } finally {
             contextRead.stop();
@@ -1334,8 +1352,10 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 list.add(resultSet.getLong(RDBMSConstants.MESSAGE_ID));
                 resultCount++;
             }
+            connection.commit();
             return list;
         } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_RETRIEVING_EXPIRED_MESSAGES);
             throw rdbmsStoreUtils.convertSQLException("error occurred while retrieving expired messages.", e);
         } finally {
             contextRead.stop();
@@ -1412,8 +1432,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             if (resultSet.next()) {
                 queueID = resultSet.getInt(RDBMSConstants.QUEUE_ID);
             }
-
+            connection.commit();
         } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_RETRIEVING_QUEUE_ID);
             log.error("Error occurred while retrieving destination queue id " +
                     "for destination queue " + destinationQueueName, e);
             throw e;
@@ -1679,8 +1700,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             while (results.next()) {
                 messageIDs.add(results.getLong(RDBMSConstants.MESSAGE_ID));
             }
-
+            connection.commit();
         } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_RETRIEVING_NEXT_N_MESSAGE_IDS_OF_QUEUE);
             throw rdbmsStoreUtils
                     .convertSQLException("Error while getting message IDs for queue : " + storageQueueName, e);
         } finally {
@@ -1702,7 +1724,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         try {
             connection = getConnection();
             getCachedQueueID(destinationQueueName);
+            connection.commit();
         } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_CREATING_QUEUE);
             throw rdbmsStoreUtils.convertSQLException("Error while creating queue: " + destinationQueueName, e);
         } finally {
             close(connection, RDBMSConstants.TASK_CREATING_QUEUE + destinationQueueName);
@@ -1735,8 +1759,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     queueMessageCountForName.put(queueName, results.getInt(RDBMSConstants.PS_ALIAS_FOR_COUNT));
                 }
             }
-
+            connection.commit();
         } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT);
             throw rdbmsStoreUtils.convertSQLException("Error while getting message count for all queues", e);
         } finally {
             contextRead.stop();
@@ -1765,8 +1790,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             while (results.next()) {
                 messageCount = results.getLong(RDBMSConstants.PS_ALIAS_FOR_COUNT);
             }
-
+            connection.commit();
         } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT);
             throw rdbmsStoreUtils
                     .convertSQLException("Error while getting message count from queue " + storageQueueName, e);
         } finally {
@@ -1807,8 +1833,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             while (results.next()) {
                 messageCount = results.getLong(RDBMSConstants.PS_ALIAS_FOR_COUNT);
             }
-
+            connection.commit();
         } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT);
             throw rdbmsStoreUtils
                     .convertSQLException("Error while getting message count from queue " + storageQueueName, e);
         } finally {
@@ -1851,8 +1878,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             while (results.next()) {
                 messageCount = results.getLong(RDBMSConstants.PS_ALIAS_FOR_COUNT);
             }
-
+            connection.commit();
         } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT_IN_DLC);
             throw rdbmsStoreUtils
                     .convertSQLException("Error while getting message count in DLC from queue " + storageQueueName, e);
         } finally {
@@ -1882,8 +1910,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             while (results.next()) {
                 messageCount = results.getLong(RDBMSConstants.PS_ALIAS_FOR_COUNT);
             }
-
+            connection.commit();
         } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT_IN_DLC);
             throw rdbmsStoreUtils.convertSQLException("Error while getting message count in DLC from queue ", e);
         } finally {
             contextRead.stop();
@@ -2124,23 +2153,31 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * @return Retained item data
      * @throws SQLException
      */
-    private RetainedItemData getRetainedTopicID(Connection connection, String destination) throws SQLException {
+    private RetainedItemData getRetainedTopicID(Connection connection, String destination) throws AndesException {
         PreparedStatement preparedStatementForMetadataSelect = null;
         RetainedItemData itemData = null;
         Context contextRead = MetricManager.timer(MetricsConstants.DB_READ, Level.INFO).start();
+        ResultSet results = null;
         try {
             preparedStatementForMetadataSelect = connection
                     .prepareStatement(RDBMSConstants.PS_SELECT_RETAINED_MESSAGE_ID);
             preparedStatementForMetadataSelect.setString(1, destination);
-            ResultSet results = preparedStatementForMetadataSelect.executeQuery();
+            results = preparedStatementForMetadataSelect.executeQuery();
 
             if (results.next()) {
                 int topicID = results.getInt(RDBMSConstants.TOPIC_ID);
                 long messageID = results.getLong(RDBMSConstants.MESSAGE_ID);
                 itemData = new RetainedItemData(topicID, messageID);
             }
+            connection.commit();
+
+        } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_RETRIEVING_RETAINED_TOPIC_ID);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while "
+                                                      + RDBMSConstants.TASK_RETRIEVING_RETAINED_TOPIC_ID, e);
         } finally {
             contextRead.stop();
+            close(results, RDBMSConstants.TASK_RETRIEVING_RETAINED_TOPIC_ID);
             close(preparedStatementForMetadataSelect, RDBMSConstants.TASK_RETRIEVING_RETAINED_TOPIC_ID);
         }
 
@@ -2213,8 +2250,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             while (results.next()) {
                 topicList.add(results.getString(RDBMSConstants.TOPIC_NAME));
             }
-
+            connection.commit();
         } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_RETRIEVING_RETAINED_TOPICS);
             throw rdbmsStoreUtils.convertSQLException("Error occurred while reading retained topics ", e);
         } finally {
             close(connection, preparedStatementForTopicSelect, results, RDBMSConstants.TASK_RETRIEVING_RETAINED_TOPICS);
@@ -2251,7 +2289,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 long messageId = results.getLong(RDBMSConstants.MESSAGE_ID);
                 metadata = new DeliverableAndesMetadata(null, messageId, b, true);
             }
+            connection.commit();
         } catch (SQLException e) {
+            rollback(connection, "Retrieve retained message for destination");
             throw rdbmsStoreUtils.convertSQLException("error occurred while retrieving retained message " +
                     "for destination:" + destination, e);
         } finally {
@@ -2294,7 +2334,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 messagePart.setOffSet(offset);
                 contentParts.put(offset, messagePart);
             }
+            connection.commit();
         } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_RETRIEVING_RETAINED_MESSAGE_PARTS);
             throw rdbmsStoreUtils
                     .convertSQLException("Error occurred while retrieving retained message content from DB" +
                             " [msg_id=" + messageID + "]", e);
@@ -2427,8 +2469,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 messageIds.add(results.getLong(RDBMSConstants.MESSAGE_ID));
                 resultCount++;
             }
-
+            connection.commit();
         } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_RETRIEVING_NEXT_N_MESSAGE_IDS_IN_DLC_OF_QUEUE);
             throw rdbmsStoreUtils
                     .convertSQLException("Error while getting message IDs in DLC for queue : " + sourceQueueName, e);
         } finally {
@@ -2475,8 +2518,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 messageIds.add(results.getLong(RDBMSConstants.MESSAGE_ID));
                 resultCount++;
             }
-
+            connection.commit();
         } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_RETRIEVING_NEXT_N_MESSAGE_IDS_IN_DLC);
             throw rdbmsStoreUtils.convertSQLException("Error while getting message IDs in DLC", e);
         } finally {
             contextRead.stop();
