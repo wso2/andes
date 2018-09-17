@@ -298,7 +298,7 @@ public class RDBMSDtxStoreImpl implements DtxStore {
             }
             recoverEnqueueMessages(internalXid, branch, connection);
             recoverDequeueMessages(internalXid, branch, connection);
-
+            connection.commit();
             return internalXid;
         } catch (SQLException e) {
             rdbmsMessageStore.rollback(connection, task);
@@ -331,6 +331,7 @@ public class RDBMSDtxStoreImpl implements DtxStore {
                         );
                         xidSet.add(xid);
             }
+            connection.commit();
             return xidSet;
         } catch (SQLException e) {
             rdbmsMessageStore.rollback(connection, task);
