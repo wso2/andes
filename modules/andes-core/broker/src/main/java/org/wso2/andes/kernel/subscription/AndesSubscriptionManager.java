@@ -276,11 +276,11 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
             storageQueue.unbindSubscription(subscription);
             if (!storeUnavailable) {
                 andesContextStore.removeDurableSubscription(subscription);
+                clusterNotificationAgent.notifySubscriptionsChange(subscription,
+                        ClusterNotificationListener.SubscriptionChange.Closed);
             } else {
                 log.warn("Cannot not remove subscription from store since the store is non-operational");
             }
-            clusterNotificationAgent.notifySubscriptionsChange(subscription,
-                    ClusterNotificationListener.SubscriptionChange.Closed);
 
             // If there are no subscriptions for this queue, then delete it
             if (!storageQueue.isDurable() && storageQueue.getBoundSubscriptions().isEmpty()) {
