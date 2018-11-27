@@ -362,7 +362,7 @@ public class QpidAndesBridge {
      * @param subscription qpid subscription
      * @throws AndesException
      */
-    public static void closeAMQPSubscription(AMQQueue queue, Subscription subscription) throws AndesException {
+    public static void closeAMQPSubscription(AMQQueue queue, Subscription subscription) {
         if (log.isDebugEnabled()) {
             log.debug("AMQP BRIDGE: close AMQP Subscription subID " + subscription.getSubscriptionID() + " from queue " +
                     queue.getName());
@@ -600,8 +600,7 @@ public class QpidAndesBridge {
      * @param subscription subscription to remove
      * @throws AndesException
      */
-    private static void closeLocalSubscriptionsForAllBindingsOfQueue(AMQQueue queue, Subscription subscription)
-            throws AndesException {
+    private static void closeLocalSubscriptionsForAllBindingsOfQueue(AMQQueue queue, Subscription subscription) {
 
         String localNodeID =  ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
 
@@ -640,7 +639,11 @@ public class QpidAndesBridge {
                             subscriptionIdentifier, storageQueueToBind, bindingKey,
                             subscriberConnection);
 
-                    Andes.getInstance().closeLocalSubscription(subscriptionEvent);
+                    try {
+                        Andes.getInstance().closeLocalSubscription(subscriptionEvent);
+                    } catch (AndesException e) {
+                        log.warn("Error occurred while closing the subscription", e);
+                    }
                 }
 
             }
