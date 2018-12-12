@@ -2432,14 +2432,14 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             return nodeDataList;
 
         } catch (SQLException e) {
-            rollback(connection, RDBMSConstants.TASK_GET_ALL_QUEUES);
+            rollback(connection, RDBMSConstants.TASK_GET_ALL_NODE_HEARTBEAT_DATA);
             String errMsg =
-                    RDBMSConstants.TASK_GET_ALL_QUEUES;
+                    RDBMSConstants.TASK_GET_ALL_NODE_HEARTBEAT_DATA;
             throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
-            close(resultSet, RDBMSConstants.TASK_GET_ALL_QUEUES);
-            close(preparedStatement, RDBMSConstants.TASK_GET_ALL_QUEUES);
-            close(connection, RDBMSConstants.TASK_GET_ALL_QUEUES);
+            close(resultSet, RDBMSConstants.TASK_GET_ALL_NODE_HEARTBEAT_DATA);
+            close(preparedStatement, RDBMSConstants.TASK_GET_ALL_NODE_HEARTBEAT_DATA);
+            close(connection, RDBMSConstants.TASK_GET_ALL_NODE_HEARTBEAT_DATA);
         }
     }
 

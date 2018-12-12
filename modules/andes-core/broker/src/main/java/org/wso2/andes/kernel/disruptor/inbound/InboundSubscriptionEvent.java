@@ -227,7 +227,7 @@ public class InboundSubscriptionEvent implements AndesInboundStateEvent {
             } else {
                 // No point in throwing an exception here and disrupting the server. A warning is sufficient.
                 log.warn("Error occurred while processing event '" + eventType  + "' for channel id "
-                        + subscriberConnection.getProtocolChannelID());
+                        + subscriberConnection.getProtocolChannelID(), originalException);
             }
         }
         return false;

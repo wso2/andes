@@ -1270,6 +1270,7 @@ public class RDBMSConstants {
     protected static final String TASK_UPDATE_NODE_HEARTBEAT = "updating node heartbeat";
     protected static final String TASK_CREATE_NODE_HEARTBEAT = "creating node heartbeat";
     protected static final String TASK_REMOVE_COORDINATOR = "removing coordinator heartbeat";
+    protected static final String TASK_GET_ALL_NODE_HEARTBEAT_DATA = "getting all node heartbeat data";
 
     protected static final String TASK_REMOVE_NODE_HEARTBEAT = "removing node heartbeat entry";
     protected static final String TASK_MARK_NODE_NOT_NEW = "marking node as not new";
