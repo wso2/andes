@@ -496,4 +496,22 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         return 0L < expirationTime;
     }
 
+    public String toString() {
+        return "messageID : " + messageID
+                + "\nmetadata array length (bytes) : " + metadata.length
+                + "\nexpirationTime : " + expirationTime
+                + "\nisTopic : " + isTopic
+                + "\nmessageRouterName : " + messageRouterName
+                + "\narrivalTime : " + arrivalTime
+                + "\ndestination : " + destination
+                + "\nstorageQueueName : " + storageQueueName
+                + "\nisPersistent : " + isPersistent
+                + "\nmessageContentLength : " + messageContentLength
+                + "\nqosLevel : " + qosLevel
+                + "\nmetaDataType : " + metaDataType
+                + "\nisCompressed : " + isCompressed
+                + "\npropertyMap : " + propertyMap.toString()
+                + "\nretain : " + retain;
+    }
+
 }
