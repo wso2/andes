@@ -114,8 +114,6 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
                     break;
                 }
 
-                message.markAsScheduledToDeliver(subscriptionsToDeliver);
-
                 iterator.remove();
                 for (AndesSubscription localSubscription : subscriptionsToDeliver) {
                     MessageFlusher.getInstance().deliverMessageAsynchronously(localSubscription, message);

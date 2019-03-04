@@ -388,6 +388,7 @@ public class AndesSubscription {
      */
     private void reDeliverMessage(DeliverableAndesMetadata messageMetadata) throws AndesException {
         if (!messageMetadata.isOKToDispose()) {
+            messageMetadata.addMessageStatus(MessageStatus.RECOVERED);
             MessageFlusher.getInstance().scheduleMessageForSubscription(this, messageMetadata);
             MessageTracer.trace(messageMetadata, MessageTracer.MESSAGE_REQUEUED_SUBSCRIBER);
         } else {
