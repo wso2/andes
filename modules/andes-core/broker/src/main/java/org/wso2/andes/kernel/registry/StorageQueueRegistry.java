@@ -15,14 +15,21 @@
 
 package org.wso2.andes.kernel.registry;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesConstants;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.subscription.StorageQueue;
+import org.wso2.andes.server.information.management.DurableTopicSubscriptionInformationMBean;
 
 import java.io.File;
+import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
+import javax.management.ObjectName;
 
 /**
  * This is the storage queue registry. Every storage queue created
@@ -31,6 +38,10 @@ import java.util.Map;
 public class StorageQueueRegistry {
 
     private Map<String, StorageQueue> storageQueueMap;
+
+    private static final String ANDES_DOMAIN = "org.wso2.andes";
+    private static final String TOPIC_INFO_MBEAN_TYPE = "DurableTopicSubscriptionInformation";
+    private static Log log = LogFactory.getLog(StorageQueueRegistry.class);
 
     /**
      * Create a in-memory registry for keeping storage queues created in broker
@@ -60,6 +71,16 @@ public class StorageQueueRegistry {
             storageQueue = new StorageQueue(queueName, isDurable, isShared, queueOwner, isExclusive);
             storageQueueMap.put(queueName, storageQueue);
         }
+        //register subscription mbean for a durable subscription
+        if (storageQueue.getName().startsWith(AndesConstants.DURABLE_SUBSCRIPTION_QUEUE_PREFIX)) {
+            try {
+                DurableTopicSubscriptionInformationMBean mBean = new DurableTopicSubscriptionInformationMBean(
+                        storageQueue.getName());
+                mBean.register();
+            } catch (Exception e) {
+                log.error("Unable to register subscription mbean!", e);
+            }
+        }
         return storageQueue;
     }
 
@@ -73,6 +94,15 @@ public class StorageQueueRegistry {
     public StorageQueue removeStorageQueue(String queueName) throws AndesException {
         StorageQueue storageQueue = storageQueueMap.remove(queueName);
         storageQueue.unbindQueueFromMessageRouter();
+        //unregister subscription mbean of a durable subscription
+        if (queueName.startsWith(AndesConstants.DURABLE_SUBSCRIPTION_QUEUE_PREFIX) && isMbeanRegistered(queueName)) {
+            Hashtable<String, String> tab = getMbeanObjectnameProp(queueName);
+            try {
+                ManagementFactory.getPlatformMBeanServer().unregisterMBean(new ObjectName(ANDES_DOMAIN, tab));
+            } catch (Exception e) {
+                log.error("Unable to unregister subscription mbean!", e);
+            }
+        }
         return storageQueue;
     }
 
@@ -115,5 +145,25 @@ public class StorageQueueRegistry {
         for (StorageQueue storageQueue : storageQueueMap.values()) {
             storageQueue.dumpAllSlotInformationToFile(fileToWrite);
         }
+    }
+
+    //Check if an mbean is registered
+    private boolean isMbeanRegistered(String storageQueue) {
+        Hashtable<String, String> tab = getMbeanObjectnameProp(storageQueue);
+        boolean isRegistered = false;
+        try {
+            isRegistered = ManagementFactory.getPlatformMBeanServer()
+                    .isRegistered(new ObjectName(ANDES_DOMAIN, tab));
+        } catch (Exception e) {
+            log.error("Unable to check if an mbean is registered!", e);
+        }
+        return isRegistered;
+    }
+
+    private Hashtable<String, String> getMbeanObjectnameProp(String storageQueue) {
+        Hashtable<String, String> tab = new Hashtable<>();
+        tab.put("type", TOPIC_INFO_MBEAN_TYPE);
+        tab.put("name", ObjectName.quote(storageQueue));
+        return tab;
     }
 }
