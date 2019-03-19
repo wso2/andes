@@ -103,7 +103,7 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
 
                             message.setDestination(storageQueue.getName());
                         }
-
+                        message.markAsScheduledToDeliver(localSubscription);
                         iterator.remove();
                         MessageFlusher.getInstance().deliverMessageAsynchronously(localSubscription, message);
                         numOfCurrentMsgDeliverySchedules++;

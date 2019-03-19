@@ -158,7 +158,7 @@ public enum MessageStatus {
 
         //TODO: ideally this should be EnumSet.complementOf(EnumSet.allOf(MessageStatus.class)) but we need to solve
         //TODO: concurrency problem between slot removal task and message deleting task
-        SLOT_REMOVED.next = EnumSet.of(DELETED);
+        SLOT_REMOVED.next = EnumSet.of(DELETED, SLOT_RETURNED);
         SLOT_REMOVED.previous = EnumSet.of(PREPARED_TO_DELETE, DELETED);
 
         /*

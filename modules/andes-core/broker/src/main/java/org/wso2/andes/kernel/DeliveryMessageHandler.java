@@ -46,7 +46,6 @@ public class DeliveryMessageHandler extends DeliveryResponsibility {
                 log.debug("Scheduled message id= " + message.getMessageID() + " to be sent to subscription= " + subscription);
             }
             // Mark message as came into the subscription for deliver.
-            message.markAsScheduledToDeliver(subscription);
             UUID subscriptionChannelID = subscription.getSubscriberConnection().getProtocolChannelID();
             message.markAsDispatchedToDeliver(subscriptionChannelID);
             ProtocolMessage protocolMessage = message.generateProtocolDeliverableMessage(subscriptionChannelID);
