@@ -42,11 +42,6 @@ public enum MessageStatus {
     SCHEDULED_TO_SEND,
 
     /**
-     * Message has been recovered by the client it was sent to
-     */
-    RECOVERED,
-
-    /**
      * In a topic scenario, all subscribed consumers have acknowledged receipt of message
      */
     ACKED_BY_ALL,
@@ -132,11 +127,8 @@ public enum MessageStatus {
         NO_MATCHING_CONSUMER.next = EnumSet.of(DLC_MESSAGE);
         NO_MATCHING_CONSUMER.previous = EnumSet.of(BUFFERED);
 
-        SCHEDULED_TO_SEND.next = EnumSet.of(EXPIRED, RECOVERED, ACKED_BY_ALL, BUFFERED, DLC_MESSAGE, SLOT_RETURNED);
+        SCHEDULED_TO_SEND.next = EnumSet.of(EXPIRED, ACKED_BY_ALL, BUFFERED, DLC_MESSAGE, SLOT_RETURNED);
         SCHEDULED_TO_SEND.previous = EnumSet.of(BUFFERED);
-
-        RECOVERED.next = EnumSet.of(SCHEDULED_TO_SEND, EXPIRED, DLC_MESSAGE, SLOT_RETURNED);
-        RECOVERED.previous = EnumSet.of(SCHEDULED_TO_SEND);
 
         ACKED_BY_ALL.next = EnumSet.of(PREPARED_TO_DELETE, SLOT_RETURNED);
         ACKED_BY_ALL.previous = EnumSet.of(SCHEDULED_TO_SEND);
@@ -158,7 +150,7 @@ public enum MessageStatus {
 
         //TODO: ideally this should be EnumSet.complementOf(EnumSet.allOf(MessageStatus.class)) but we need to solve
         //TODO: concurrency problem between slot removal task and message deleting task
-        SLOT_REMOVED.next = EnumSet.of(DELETED);
+        SLOT_REMOVED.next = EnumSet.of(DELETED, SLOT_RETURNED);
         SLOT_REMOVED.previous = EnumSet.of(PREPARED_TO_DELETE, DELETED);
 
         /*
