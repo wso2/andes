@@ -161,9 +161,10 @@ public class StorageQueueRegistry {
     }
 
     private Hashtable<String, String> getMbeanObjectnameProp(String storageQueue) {
+        int index = storageQueue.indexOf(':');
         Hashtable<String, String> tab = new Hashtable<>();
         tab.put("type", TOPIC_INFO_MBEAN_TYPE);
-        tab.put("name", ObjectName.quote(storageQueue));
+        tab.put("name", ObjectName.quote(storageQueue.substring(index + 1)));
         return tab;
     }
 }
