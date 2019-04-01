@@ -47,6 +47,7 @@ public class DurableTopicSubscriptionInformationMBean extends DefaultManagedObje
 
     @Override
     public String getObjectInstanceName() {
-        return ObjectName.quote(storageQueue);
+        int index = storageQueue.indexOf(':');
+        return ObjectName.quote(storageQueue.substring(index + 1));
     }
 }
