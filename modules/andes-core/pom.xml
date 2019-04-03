@@ -343,10 +343,6 @@
             <artifactId>mysql-connector-java</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.google.code.gson</groupId>
-            <artifactId>gson</artifactId>
-        </dependency>
-        <dependency>
             <groupId>com.goldmansachs</groupId>
             <artifactId>gs-collections-api</artifactId>
         </dependency>
