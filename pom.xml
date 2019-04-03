@@ -445,11 +445,6 @@
                 <scope>test</scope>
             </dependency>
             <dependency>
-                <groupId>com.google.code.gson</groupId>
-                <artifactId>gson</artifactId>
-                <version>${gson.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.eclipse.osgi</groupId>
                 <artifactId>org.eclipse.osgi</artifactId>
                 <version>${org.eclipse.osgi.version}</version>
@@ -629,7 +624,6 @@
         <naming-factory.version>5.5.15</naming-factory.version>
         <naming-resources.version>5.5.15</naming-resources.version>
         <mysql-connector-java.version>5.1.31</mysql-connector-java.version>
-        <gson.version>2.7</gson.version>
         <securevault.version>1.0.0-wso2v2</securevault.version>
         <guava.version>20.0</guava.version>
         <cqengine.version>2.7.0</cqengine.version>
