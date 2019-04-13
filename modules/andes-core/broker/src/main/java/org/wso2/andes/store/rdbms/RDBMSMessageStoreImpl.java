@@ -464,6 +464,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         PreparedStatement storeMetadataPS = null;
         PreparedStatement storeContentPS = null;
         PreparedStatement storeExpiryMetadataPS = null;
+        AndesMessageMetadata metadata = null;
 
         try {
             connection = getConnection();
@@ -471,7 +472,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             storeExpiryMetadataPS = connection.prepareStatement(PS_INSERT_EXPIRY_DATA);
             storeContentPS = connection.prepareStatement(PS_INSERT_MESSAGE_PART);
 
-            AndesMessageMetadata metadata = message.getMetadata();
+            metadata = message.getMetadata();
             storeMetadataPS.setLong(1, metadata.getMessageID());
             storeMetadataPS.setInt(2, getCachedQueueID(metadata.getStorageQueueName()));
             storeMetadataPS.setBytes(3, metadata.getMetadata());
@@ -493,6 +494,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             rollback(connection, RDBMSConstants.TASK_ADDING_MESSAGE);
             throw e;
         } catch (SQLException e) {
+            if (metadata != null) {
+                log.warn("Dropped message with metadata :: " + metadata.toString());
+            }
             AndesException andesException = rdbmsStoreUtils
                     .convertSQLException("Error occurred while inserting message to queue ", e);
             if (AndesDataIntegrityViolationException.class.isInstance(andesException)) {

@@ -26,19 +26,52 @@ import org.wso2.andes.client.AMQConnectionURL;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.url.URLHelper;
 import org.wso2.andes.url.URLSyntaxException;
+import org.wso2.securevault.SecretResolver;
+import org.wso2.securevault.SecretResolverFactory;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Properties;
 import java.util.StringTokenizer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class URLParser
 {
     private AMQConnectionURL _url;
 
+    private static final String SECRET_ALIAS = "secretAlias:";
+
+    private static final String RANDOM_PASSWORD_KEY = "password";
+
     public URLParser(AMQConnectionURL url)throws URLSyntaxException
     {
         _url = url;
-        parseURL(_url.getURL());
+        String amqpUrl = resolveAlias(_url.getURL());
+        parseURL(amqpUrl);
+    }
+
+    /**
+     * Provided an AMQP URL this method will resolve secrets Ex:- {secretAlias:example}.
+     *
+     * @param amqpUrl URL which needs to be resolved.
+     * @return secret resolved url.
+     */
+    private String resolveAlias(String amqpUrl) {
+        Pattern p = Pattern.compile("\\{(.*?)\\}");
+        Matcher m = p.matcher(amqpUrl);
+        while (m.find()) {
+            String password = m.group(1);
+            if (password.startsWith(SECRET_ALIAS)) {
+                password = password.split(SECRET_ALIAS)[1];
+                Properties properties = new Properties();
+                properties.setProperty(RANDOM_PASSWORD_KEY, password);
+                SecretResolver secretResolver = SecretResolverFactory.create(properties);
+                password = secretResolver.resolve(password);
+                amqpUrl = amqpUrl.replace("{" + m.group(1) + "}", password);
+            }
+        }
+        return amqpUrl;
     }
 
     private void parseURL(String fullURL) throws URLSyntaxException

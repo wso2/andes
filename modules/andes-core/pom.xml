@@ -21,7 +21,7 @@
     <parent>
         <groupId>org.wso2.andes</groupId>
         <artifactId>andes-parent</artifactId>
-        <version>3.2.83-SNAPSHOT</version>
+        <version>3.2.96-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
@@ -341,10 +341,6 @@
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.google.code.gson</groupId>
-            <artifactId>gson</artifactId>
         </dependency>
         <dependency>
             <groupId>com.goldmansachs</groupId>

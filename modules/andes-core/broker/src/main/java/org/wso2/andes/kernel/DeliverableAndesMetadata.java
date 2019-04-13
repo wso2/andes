@@ -533,7 +533,6 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
         if (messageStatus.isEmpty()) {
             if (MessageStatus.READ.equals(state)) {
                 isValidTransition = true;
-                messageStatus.add(state);
             } else {
                 log.warn(
                         "Invalid message state transition suggested: " + state + " Message ID: " + messageID + "slot = "
@@ -541,15 +540,15 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
             }
         } else {
             isValidTransition = messageStatus.get(messageStatus.size() - 1).isValidNextTransition(state);
-            if (isValidTransition) {
-                messageStatus.add(state);
-            } else {
+            if (!isValidTransition) {
                 log.warn("Invalid message state transition from " + messageStatus.get(messageStatus.size() - 1)
-                        + " suggested: " + state + " Message ID: " + messageID + " slot = " + slot.getId()
-                        + " Message Status History >> " + messageStatus);
+                         + " suggested: " + state + " Message ID: " + messageID + " slot = " + slot.getId()
+                         + " Message Status History >> " + messageStatus);
             }
         }
-
+        //Adds the message status to the message regardless of it being an invalid state since we need track the
+        // history of message statuses
+        messageStatus.add(state);
         return isValidTransition;
     }
 

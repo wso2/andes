@@ -266,7 +266,7 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
      * @param subscription AndesSubscription to close
      * @throws AndesException
      */
-    private void removeLocalSubscriptionAndNotify(AndesSubscription subscription) throws AndesException {
+    private void removeLocalSubscriptionAndNotify(AndesSubscription subscription) {
 
         subscriptionRegistry.removeSubscription(subscription);
 
@@ -292,8 +292,8 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
             }
             log.info("Remove Local Subscription " + subscription.getProtocolType() + " " + subscription.toString());
 
-        } catch (AndesStoreUnavailableException exception) {
-            log.warn("Store became unavailable while removing local subscription " + subscription.toString(),
+        } catch (AndesException exception) {
+            log.warn("An error occurred while removing local subscription " + subscription.toString(),
                     exception);
         }
     }
@@ -914,12 +914,16 @@ public class AndesSubscriptionManager implements NetworkPartitionListener, Store
         }
     }
 
-    public void closeAllActiveLocalSubscriptions() throws AndesException {
+    public void closeAllActiveLocalSubscriptions() {
         Iterable<AndesSubscription> subscriptionsOfNode = getSubscriptionsByNode(localNodeId);
         for (AndesSubscription sub : subscriptionsOfNode) {
             SubscriberConnection connectionInfo = sub.getSubscriberConnection();
             UUID channelID = connectionInfo.getProtocolChannelID();
-            sub.closeConnection(channelID, localNodeId);
+            try {
+                sub.closeConnection(channelID, localNodeId);
+            } catch (AndesException e) {
+                log.warn("Error occurred while closing the connection", e);
+            }
             removeLocalSubscriptionAndNotify(sub);
         }
     }
