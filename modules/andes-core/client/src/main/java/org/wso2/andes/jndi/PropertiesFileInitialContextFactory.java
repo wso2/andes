@@ -35,6 +35,7 @@ import org.wso2.andes.url.URLSyntaxException;
 import org.wso2.andes.util.Strings;
 import org.wso2.securevault.SecretResolver;
 import org.wso2.securevault.SecretResolverFactory;
+import org.wso2.securevault.commons.MiscellaneousUtil;
 
 import javax.jms.ConnectionFactory;
 import javax.jms.Destination;
@@ -203,18 +204,22 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
      * @param environment property values which need to construct the InitialContext
      */
     private static void resolveEncryptedProperties(Hashtable environment) {
+
         if (environment != null) {
             Properties properties = convertToProperties(environment);
             SecretResolver secretResolver = SecretResolverFactory.create(properties);
             for (Object key : environment.keySet()) {
                 if (secretResolver != null && secretResolver.isInitialized()) {
                     String value = environment.get(key.toString()).toString();
-                    if(value != null && value.startsWith(SECRET_ALIAS_PREFIX)) {
-                        value = value.split(SECRET_ALIAS_PREFIX)[1];
+                    if (value != null) {
+                        if (value.startsWith(SECRET_ALIAS_PREFIX)) {
+                            value = value.split(SECRET_ALIAS_PREFIX)[1];
+                            value = secretResolver.isTokenProtected(value) ? secretResolver.resolve(value) : value;
+                        } else {
+                            value = MiscellaneousUtil.resolve(value, secretResolver);
+                        }
                     }
-                    if (secretResolver.isTokenProtected(value)) {
-                        environment.put(key.toString(), secretResolver.resolve(value));
-                    }
+                    environment.put(key.toString(), value);
                 }
             }
         }
