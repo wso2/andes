@@ -168,8 +168,10 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
     private AMQShortString _temporaryQueueExchangeName = ExchangeDefaults.DIRECT_EXCHANGE_NAME;
 
     /** Thread Pool for executing connection level processes. Such as returning bounced messages. */
-    private final ExecutorService _taskPool = Executors.newCachedThreadPool();
-    private static final long DEFAULT_TIMEOUT = 1000 * 30;
+    private final ExecutorService _taskPool =
+            Executors.newCachedThreadPool(new NamedThreadFactoryBuilder()
+                                                  .setNameFormat("amq-connection-task-pool-%d").build());
+    private static final long DEFAULT_TIMEOUT = 1000 * 30L;
 
     protected AMQConnectionDelegate _delegate;
 
