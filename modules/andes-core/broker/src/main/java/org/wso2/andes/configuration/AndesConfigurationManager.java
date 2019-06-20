@@ -31,8 +31,10 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.axiom.om.OMElement;
@@ -57,6 +59,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.carbon.utils.ServerConstants;
 import org.wso2.securevault.SecretResolver;
 import org.wso2.securevault.SecretResolverFactory;
+import org.wso2.securevault.commons.MiscellaneousUtil;
 import org.wso2.securevault.secret.SecretLoadingModule;
 import org.wso2.securevault.secret.SingleSecretCallback;
 
@@ -64,6 +67,8 @@ import javax.xml.namespace.QName;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.stream.XMLStreamException;
+
+import static org.wso2.carbon.core.util.Utils.replaceSystemProperty;
 
 /**
  * This class acts as a singleton access point for all config parameters used within MB.
@@ -500,28 +505,48 @@ public class AndesConfigurationManager {
 
         //Initialize the SecretResolver providing the configuration element.
         SecretResolver secretResolver = SecretResolverFactory.create(dom, false);
-
-        AXIOMXPath xpathExpression = new AXIOMXPath("//*[@*[local-name() = 'secretAlias']]");
-        List nodeList = xpathExpression.selectNodes(dom);
-
-        for (Object o : nodeList) {
-
-            String secretAlias = ((OMElement) o).getAttributeValue(SECURE_VAULT_QNAME);
-            String decryptedValue = "";
-
-            if (secretResolver != null && secretResolver.isInitialized()) {
-                if (secretResolver.isTokenProtected(secretAlias)) {
-                    decryptedValue = secretResolver.resolve(secretAlias);
-                }
-            } else {
-                log.warn("Error while trying to decipher secure property with secretAlias : " + secretAlias);
-            }
-
-            cipherValueMap.put(secretAlias, decryptedValue);
-        }
-
+        Stack<String> nameStack = new Stack<String>();
+        readChildElements(dom, nameStack, secretResolver);
     }
 
+    private static void readChildElements(OMElement serverConfig, Stack<String> nameStack, SecretResolver secretResolver) {
+
+        for (Iterator childElements = serverConfig.getChildElements(); childElements.hasNext(); ) {
+            OMElement element = (OMElement) childElements.next();
+            nameStack.push(element.getLocalName());
+            if (elementHasText(element)) {
+                String key = getKey(nameStack);
+                String value;
+                String resolvedValue = MiscellaneousUtil.resolve(element, secretResolver);
+
+                if (resolvedValue != null && !resolvedValue.isEmpty()) {
+                    value = resolvedValue;
+                } else {
+                    value = element.getText();
+                }
+                value = replaceSystemProperty(value);
+                cipherValueMap.put(key,value);
+            }
+            readChildElements(element, nameStack, secretResolver);
+            nameStack.pop();
+        }
+    }
+
+    private static String getKey(Stack<String> nameStack) {
+        StringBuffer key = new StringBuffer();
+        for (int i = 0; i < nameStack.size(); i++) {
+            String name = nameStack.elementAt(i);
+            key.append(name).append(".");
+        }
+        key.deleteCharAt(key.lastIndexOf("."));
+
+        return key.toString();
+    }
+
+    private static boolean elementHasText(OMElement element) {
+        String text = element.getText();
+        return text != null && text.trim().length() != 0;
+    }
     /**
      * If the property is contained in the cipherValueMap, replace the raw value with that value.
      *
