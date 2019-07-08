@@ -190,6 +190,20 @@ public class FailureObservingAndesContextStore extends FailureObservingStore<And
      * {@inheritDoc}
      */
     @Override
+    public void removeAllSubscriptions() throws AndesException {
+        try {
+            wrappedInstance.removeAllSubscriptions();
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public Map<String, String> getAllStoredNodeData() throws AndesException {
         try {
             return wrappedInstance.getAllStoredNodeData();

@@ -114,6 +114,13 @@ public interface AndesContextStore extends HealthAwareStore {
     void removeDurableSubscription(AndesSubscription subscription) throws AndesException;
 
     /**
+     * Remove all durable and non-durable subscriptions from the cluster.
+     *
+     * @throws AndesException if an error occurs while removing subscriptions
+     */
+    void removeAllSubscriptions() throws AndesException;
+
+    /**
      * Store details of node.
      *
      * @param nodeID id of the node
