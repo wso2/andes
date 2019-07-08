@@ -393,6 +393,32 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
+    public void removeAllSubscriptions() throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+
+        String task = RDBMSConstants.TASK_REMOVING_ALL_SUBSCRIPTIONS;
+        Context contextWrite = MetricManager.timer(MetricsConstants.DB_WRITE, Level.INFO).start();
+
+        try {
+            connection = getConnection();
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_FROM_DURABLE_SUB_TABLE);
+            preparedStatement.executeUpdate();
+            connection.commit();
+        } catch (SQLException e) {
+            rollback(connection, task);
+            throw rdbmsStoreUtils.convertSQLException("error occurred while " + task, e);
+        } finally {
+            contextWrite.stop();
+            close(preparedStatement, task);
+            close(connection, task);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public Map<String, String> getAllStoredNodeData() throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;

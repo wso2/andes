@@ -156,6 +156,7 @@ public class AndesKernelBoot {
                 hazelcastAgent.acquireInitializationLock();
                 if (!hazelcastAgent.isClusterInitializedSuccessfully()) {
                     removeNonDurableQueues();
+                    removeAllSubscriptions();
 
                     clearSlotStorage();
 
@@ -170,6 +171,8 @@ public class AndesKernelBoot {
                 hazelcastAgent.releaseInitializationLock();
             }
         } else {
+            removeNonDurableQueues();
+            removeAllSubscriptions();
             recoverMapsForEachQueue();
         }
     }
@@ -185,6 +188,10 @@ public class AndesKernelBoot {
                 messageStore.removeQueue(queueName);
             }
         }
+    }
+
+    private static void removeAllSubscriptions() throws AndesException {
+        contextStore.removeAllSubscriptions();
     }
 
     /**
