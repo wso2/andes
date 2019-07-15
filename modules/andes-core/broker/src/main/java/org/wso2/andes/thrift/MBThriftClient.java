@@ -50,6 +50,11 @@ public class MBThriftClient {
      */
     private boolean reconnecting = false;
 
+    /**
+     * Holds n, when the thrift client is attempting for the nth time to reconnect to the thrift server.
+     */
+    private int reconnectionAttemptCounter = 0;
+
     private final Log log = LogFactory.getLog(MBThriftClient.class);
 
     private final Queue<CoordinatorConnectionListener> connectionListenerQueue = new ConcurrentLinkedQueue<>();
@@ -405,12 +410,15 @@ public class MBThriftClient {
     private void startReconnecting() {
         while (reconnecting) {
 
+            reconnectionAttemptCounter++;
             try {
                 reConnectToServer();
                 // If re connect to server is successful, following code segment will be executed
                 reconnecting = false;
+                reconnectionAttemptCounter = 0;
             } catch (Throwable e) {
-                log.error("Error occurred while reconnecting to slot coordinator", e);
+                log.error("Error occurred while reconnecting to slot coordinator. Reconnection attempt "
+                        + reconnectionAttemptCounter, e);
 
                 try {
                     TimeUnit.SECONDS.sleep(2);

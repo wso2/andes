@@ -479,12 +479,14 @@ class RDBMSCoordinationStrategy implements CoordinationStrategy, RDBMSMembership
 
                 // Reduce the time spent in updating membership events from wait time
                 long endTime = System.currentTimeMillis();
-                long timeToWait = heartBeatInterval - (endTime - startTime);
+                long timeSpent = endTime - startTime;
+                long timeToWait = heartBeatInterval - timeSpent;
 
                 if (timeToWait > 0) {
                     TimeUnit.MILLISECONDS.sleep(timeToWait);
                 } else {
-                    logger.warn("Sending membership events took more than the heart beat interval");
+                    logger.warn("Sending membership events took more than the heart beat interval. Time taken "
+                            + timeSpent + "ms");
                 }
 
                 return NodeState.COORDINATOR;
