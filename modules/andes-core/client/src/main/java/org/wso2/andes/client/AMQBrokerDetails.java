@@ -24,6 +24,8 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.wso2.andes.jms.BrokerDetails;
 import org.wso2.andes.url.URLHelper;
@@ -31,6 +33,30 @@ import org.wso2.andes.url.URLSyntaxException;
 
 public class AMQBrokerDetails implements BrokerDetails
 {
+
+    /**
+     * URL pattern
+     */
+    private static final Pattern URL_PATTERN = Pattern.compile("([a-z]+://.*)|([a-z]+:/.*)");
+    /**
+     * Password pattern in JMS URL
+     */
+    private static final Pattern PASSWORD_PATTERN = Pattern.compile("transport.jms.Password=([^/&]+)(&|$)");
+
+    private static final Pattern KEYSTORE_PWD_PATTERN = Pattern.compile("key_store_password=([^/&]+)(&|$)");
+    private static final Pattern TRUSTSTORE_PWD_PATTERN = Pattern.compile("trust_store_password=([^/&]+)(&|$)");
+    /**
+     * Security credential pattern in JMS URL
+     */
+    private static final Pattern SECURITY_CREDENTIAL_PATTERN = Pattern
+            .compile("java.naming.security.credentials=" + "([^/&]+)(&|$)");
+    private static final String URL_PASSWORD_SUB_STRING = "transport.jms.Password=***&";
+    private static final String URL_CREDENTIALS_SUB_STRING = "java.naming.security.credentials=***&";
+    private static final String KEYSTORE_PWD_SUBSTRING = "key_store_password=***&";
+    private static final String TRUSTSTORE_PWD_SUBSTRING = "trust_store_password=***&";
+    private static final String PATTERN_END = "&";
+    private static final String MASKING_STRING = "***";
+
     private String _host;
     private int _port;
     private String _transport;
@@ -302,7 +328,7 @@ public class AMQBrokerDetails implements BrokerDetails
 
         sb.append(printOptionsURL());
 
-        return sb.toString();
+        return maskURLPasswordAndCredentials(sb.toString());
     }
 
     public boolean equals(Object o)
@@ -397,5 +423,33 @@ public class AMQBrokerDetails implements BrokerDetails
     public void setProperties(Map<String, String> props)
     {
         _options = props;
+    }
+
+    /**
+     * Mask the password and Security credentials of the connection url.
+     *
+     * @param url the actual url
+     * @return the masked url
+     */
+    public String maskURLPasswordAndCredentials(String url) {
+
+        final Matcher urlMatcher = URL_PATTERN.matcher(url);
+        if (urlMatcher.find()) {
+            final Matcher credentialMatcher = SECURITY_CREDENTIAL_PATTERN.matcher(url);
+            String maskurl = credentialMatcher.replaceFirst(URL_CREDENTIALS_SUB_STRING);
+            final Matcher pwdMatcher = PASSWORD_PATTERN.matcher(maskurl);
+            maskurl = pwdMatcher.replaceAll(URL_PASSWORD_SUB_STRING);
+            final Matcher keyStorePwdMatcher = KEYSTORE_PWD_PATTERN.matcher(maskurl);
+            maskurl = keyStorePwdMatcher.replaceAll(KEYSTORE_PWD_SUBSTRING);
+            final Matcher trustStorePwdMatcher = TRUSTSTORE_PWD_PATTERN.matcher(maskurl);
+            maskurl = trustStorePwdMatcher.replaceAll(TRUSTSTORE_PWD_SUBSTRING);
+            if (maskurl.endsWith(PATTERN_END)) {
+                int end = maskurl.lastIndexOf(PATTERN_END);
+                return maskurl.substring(0, end);
+            }
+
+            return maskurl;
+        }
+        return url;
     }
 }
