@@ -81,6 +81,11 @@ public class AndesSubscription {
     private static Log log = LogFactory.getLog(AndesSubscription.class);
 
     /**
+     * Indicate whether this subscription is in the bounded map of the storage queue.
+     */
+    private volatile boolean attachedToQueue = true;
+
+    /**
      * Create a AndesSubscription.
      *
      * @param subscriptionId       ID of subscription. This is unique cluster-wide for a subscription
@@ -590,5 +595,30 @@ public class AndesSubscription {
                 + ",protocolType=" + protocolType.toString()
                 + ",isActive=" + Boolean.toString(isActive)
                 + ",subscriberConnection=" + encodedConnectionInfo;
+    }
+
+    /**
+     * Check whether the subscription is an attached subscription of the storage queue. Typically the subscription is
+     * detached from the storage queue when the subscription i disconnected.
+     *
+     * @return true if attached to the storage queue, false otherwise
+     */
+    public boolean isAttached() {
+        return attachedToQueue;
+    }
+
+    /**
+     * Notify that the subscription is detached from the storage queue.
+     */
+    void detach() {
+        attachedToQueue = false;
+    }
+
+    /**
+     * Clear all unacked messages in the subscription. This is done when the last subscription for a storage queue
+     * leaves.
+     */
+    void clearUnackedMessages() {
+        subscriberConnection.clearAndReturnUnackedMessages();
     }
 }

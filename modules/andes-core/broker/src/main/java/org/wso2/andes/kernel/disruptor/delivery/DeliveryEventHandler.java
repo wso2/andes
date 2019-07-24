@@ -91,6 +91,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
             try {
                 if (deliveryEventData.isErrorOccurred()) {
                     onSendError(message, subscription);
+                    subscription.getSubscriberConnection().onWriteToConnectionError(message.getMessageID());
                     routeMessageToDLC(message, subscription);
                     return;
                 }
@@ -125,6 +126,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                 }
             } catch (ProtocolDeliveryRulesFailureException e) {
                 onSendError(message, subscription);
+                subscription.getSubscriberConnection().onWriteToConnectionError(message.getMessageID());
                 routeMessageToDLC(message, subscription);
 
             } catch (SubscriptionAlreadyClosedException ex) {
@@ -202,7 +204,6 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
         //Send failed. Rollback changes done that assumed send would be success
         UUID channelID = localSubscription.getSubscriberConnection().getProtocolChannelID();
         messageMetadata.markDeliveryFailureOfASentMessage(channelID);
-        localSubscription.getSubscriberConnection().onWriteToConnectionError(messageMetadata.getMessageID());
     }
 
     /**

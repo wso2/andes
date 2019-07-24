@@ -43,6 +43,7 @@ import org.wso2.andes.client.message.JMSStreamMessage;
 import org.wso2.andes.client.message.JMSTextMessage;
 import org.wso2.andes.client.message.MessageFactoryRegistry;
 import org.wso2.andes.client.message.UnprocessedMessage;
+import org.wso2.andes.client.pool.NamedThreadFactoryBuilder;
 import org.wso2.andes.client.protocol.AMQProtocolHandler;
 import org.wso2.andes.client.util.FlowControllingBlockingQueue;
 import org.wso2.andes.common.AMQPFilterTypes;
@@ -71,6 +72,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -348,8 +350,13 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
     /** fixed delay in seconds for the task that rejects message to run periodically*/
     private long messageRejectionTaskPeriod = 10;
 
+    private static final int DEFAULT_CORE_POOL_SIZE = 2;
     /** executor to run scheduler task rejecting messages which have passed the ack_wait_time*/
-    private ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    private static final ScheduledExecutorService REJECT_MESSAGE_SCHEDULER =
+            Executors.newScheduledThreadPool(DEFAULT_CORE_POOL_SIZE,
+                                             new NamedThreadFactoryBuilder()
+                                                     .setNameFormat("andes-message-reject-handler-%d").build());
+
 
     /** All the delivered message tags */
     protected ConcurrentLinkedQueue<Long> _deliveredMessageTags = new ConcurrentLinkedQueue<Long>();
@@ -442,6 +449,8 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
     private boolean _dirty;
     /** Has failover occured on this session with outstanding actions to commit? */
     private boolean _failedOverDirty;
+
+    private final ScheduledFuture rejectHandlerTask;
     
     private static final class FlowControlIndicator
     {
@@ -589,7 +598,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
         effectiveAckWaitTimeOut = ackWaitTimeOut - messageRejectionTaskPeriod * 1000;
 
         //start a separate task that inspect and reject messages for which we have not acked within ack_wait_timeout
-        scheduler.scheduleAtFixedRate(new Runnable() {
+        rejectHandlerTask = REJECT_MESSAGE_SCHEDULER.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {
                 try {
@@ -651,7 +660,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
         // Requires permission java.lang.RuntimePermission "modifyThread"
         AccessController.doPrivileged(new PrivilegedAction<Void>() {
             public Void run() {
-                scheduler.shutdown();
+                rejectHandlerTask.cancel(true);
                 return null; // nothing to return
             }
         });
@@ -3308,7 +3317,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
                 }
 
                 // Reject messages on pre-receive queue
-                consumer.rollbackPendingMessages();
+                consumer.clearPendingMessages();
 
                 // Reject messages on pre-dispatch queue
                 rejectMessagesForConsumerTag(consumer.getConsumerTag(), true, false);

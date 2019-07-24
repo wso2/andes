@@ -162,6 +162,9 @@ public class MBThriftClient {
         boolean updateSuccess = false;
 
         for (int i = 0; i <= RETRY_COUNT; i++) {
+            if (updateSuccess) {
+                break;
+            }
             SlotManagementService.Client client = null;
 
             try {
@@ -231,6 +234,9 @@ public class MBThriftClient {
         boolean reassignSuccess = false;
 
         for (int i = 0; i <= RETRY_COUNT; i++) {
+            if (reassignSuccess) {
+                break;
+            }
             SlotManagementService.Client client = null;
 
             try {
@@ -264,6 +270,9 @@ public class MBThriftClient {
         boolean success = false;
 
         for (int i = 0; i <= RETRY_COUNT; i++) {
+            if (success) {
+                break;
+            }
             SlotManagementService.Client client = null;
 
             try {
