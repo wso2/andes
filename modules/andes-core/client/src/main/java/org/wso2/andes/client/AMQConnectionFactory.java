@@ -377,13 +377,31 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
         } else {
             System.getProperties().remove("qpid.dest_syntax");
         }
+        
+
+        /**
+         * In AMQP it is not possible to change the client ID. If one is not specified upon connection
+         * construction, an id is generated automatically. Therefore we can always throw an exception.
+         *
+         * We can bypass this illegal state exception by setting the following system property. So we
+         * are setting it up here to fix the issue https://wso2.org/jira/browse/MB-162. 
+         * */
+        
+        //This to add
+	    // Requires permission java.util.PropertyPermission "ignore_setclientID", "write";
+	    AccessController.doPrivileged(new PrivilegedAction<Void>() {
+	        public Void run() {
+	            System.setProperty(ClientProperties.IGNORE_SET_CLIENTID_PROP_NAME, "true");
+	            return null; // nothing to return
+	        }
+	    });
+	    
         try
         {
             if (_connectionDetails != null)
             {
                 _connectionDetails.setUsername(userName);
                 _connectionDetails.setPassword(password);
-                _connectionDetails.setClientName(id);
 
                 AMQConnection amqConnection = new AMQConnection(_connectionDetails, _sslConfig);
                 if (logger.isDebugEnabled()) {
