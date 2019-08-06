@@ -232,11 +232,7 @@ public class AndesContextInformationManager {
                 queueEvent.isDurable(), queueEvent.isShared(), queueEvent.getQueueOwner(),
                 queueEvent.isExclusive());
 
-        contextStore.storeQueueInformation(queueEvent.getName(), queueEvent.encodeAsString());
-        //create a space to keep message counter on this queue
-        messageStore.addQueue(queue.getName());
-        clusterNotificationAgent.notifyQueueChange(queueEvent, ClusterNotificationListener.QueueChange.Added);
-
+        storeAndNotifyQueueAddition(queueEvent);
         log.info("Queue Created: " + queue.getName());
     }
 
@@ -336,9 +332,8 @@ public class AndesContextInformationManager {
             AndesBinding binding = new AndesBinding(storageQueue.getMessageRouter().getName(),
                     storageQueue, storageQueue.getMessageRouterBindingKey());
 
-            clusterNotificationAgent.notifyQueueChange(storageQueue, ClusterNotificationListener.QueueChange.Added);
-            clusterNotificationAgent.notifyBindingsChange(binding, ClusterNotificationListener.BindingChange.Added);
-
+            storeAndNotifyQueueAddition(storageQueue);
+            storeAndNotifyBindingAddition(binding);
             log.info("Queue Add and Binding Add notification sent due to active subscription.");
         } else {
             //clear in-memory messages buffered for queue
@@ -399,8 +394,7 @@ public class AndesContextInformationManager {
             AndesBinding binding = new AndesBinding(bindingEvent.getBoundMessageRouterName(),
                     queue, bindingEvent.getBindingKey());
 
-            amqpConstructStore.addBinding(binding, true);
-            clusterNotificationAgent.notifyBindingsChange(binding, ClusterNotificationListener.BindingChange.Added);
+            storeAndNotifyBindingAddition(binding);
             log.info("Binding Created: " + binding.toString());
         }
     }
@@ -510,4 +504,28 @@ public class AndesContextInformationManager {
         }
     }
 
+    /**
+     * Store and notify queue addition
+     *
+     * @param  storageQueue   storage queue used to add and notify queue addition
+     * @throws AndesException issue on add and notifying queue
+     */
+    private void storeAndNotifyQueueAddition(StorageQueue storageQueue) throws AndesException {
+        String storageQueueName = storageQueue.getName();
+        contextStore.storeQueueInformation(storageQueueName, storageQueue.encodeAsString());
+        messageStore.addQueue(storageQueueName);
+        clusterNotificationAgent.notifyQueueChange(storageQueue, ClusterNotificationListener.QueueChange.Added);
+    }
+
+    /**
+     * Add and notify binding addition
+     *
+     * @param binding         Andes queue binding
+     * @throws AndesException issue on add and notifying binding
+     */
+    private void storeAndNotifyBindingAddition(AndesBinding binding) throws AndesException {
+        amqpConstructStore.addBinding(binding, true);
+        clusterNotificationAgent.notifyBindingsChange(binding, ClusterNotificationListener.BindingChange.Added);
+    }
+    
 }

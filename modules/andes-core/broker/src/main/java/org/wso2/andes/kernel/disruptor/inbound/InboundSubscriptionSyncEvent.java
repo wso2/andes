@@ -169,7 +169,7 @@ public class InboundSubscriptionSyncEvent implements AndesInboundStateEvent {
             } else {
                 // No point in throwing an exception here and disrupting the server. A warning is sufficient.
                 log.warn("Error occurred while processing event '" + eventType + "' for subscriber "
-                        + encodedSubscriptionEventInfo);
+                        + encodedSubscriptionEventInfo, e);
             }
         }
         return false;
