@@ -40,4 +40,6 @@ public class AndesConstants {
      */
     public static final String DURABLE_SUBSCRIPTION_QUEUE_PREFIX = "carbon:";
 
+    public static final String JMSX_DELIVERY_COUNT_HEADER = "JMSXDeliveryCount";
+
 }

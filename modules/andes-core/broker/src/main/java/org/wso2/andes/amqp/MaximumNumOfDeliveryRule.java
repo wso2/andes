@@ -21,6 +21,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.AMQPMetaDataHandler;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.server.message.AMQMessage;
@@ -53,6 +54,9 @@ public class MaximumNumOfDeliveryRule implements AMQPDeliveryRule {
         //since we set the limit on maxRedeliveryTries rather than maxDeliveryTries
         ProtocolMessage protocolMessage = ((AMQMessage)message.getMessage()).getAndesMetadataReference();
         int numOfDeliveriesOfCurrentMsg = protocolMessage.getNumberOfDeliveriesForProtocolChannel();
+
+        //set delivery count as JMSXDeliveryCount property
+        AMQPMetaDataHandler.setIntProperty((AMQMessage)message.getMessage(), numOfDeliveriesOfCurrentMsg);
 
         MessageTracer.trace(messageID, numOfDeliveriesOfCurrentMsg, protocolMessage.getChannelID(), "Delivery count "
                 + "evaluated");

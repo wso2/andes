@@ -20,12 +20,17 @@ package org.wso2.andes.kernel;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.BasicContentHeaderProperties;
 import org.wso2.andes.framing.ContentHeaderBody;
+import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.framing.abstraction.MessagePublishInfo;
+import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.message.CustomMessagePublishInfo;
 import org.wso2.andes.server.message.MessageMetaData;
+import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.store.StorableMessageMetaData;
 
 import java.nio.ByteBuffer;
+
+import static org.wso2.andes.kernel.AndesConstants.JMSX_DELIVERY_COUNT_HEADER;
 
 /**
  * Will handle cloning of metadata at an even where AMQP message is published
@@ -93,6 +98,10 @@ public class AMQPMetaDataHandler {
         MessageMetaData modifiedMetaData = new MessageMetaData(messagePublishInfo, contentHeaderBody, sessionID,
                 contentChunkCount, arrivalTime, newCompressedMessageValue);
 
+        BasicContentHeaderProperties cdf = (BasicContentHeaderProperties)contentHeaderBody.getProperties();
+        FieldTable headers = cdf.getHeaders();
+        headers.setInteger("JMSXDeliveryCount", 5);
+
         //bodySize = (1 for metadata type) + (size of metadata)
         final int bodySize = modifiedMetaData.getStorableSize() + 1;
 
@@ -115,5 +124,25 @@ public class AMQPMetaDataHandler {
         modifiedMetaData.writeToBuffer(0, buf);
 
         return underlying;
+    }
+
+    /**
+     * Set Integer property to message.
+     *
+     * @param message AMQMessage to set the property
+     * @param count count to set
+     */
+    public static void setIntProperty(AMQMessage message, int count) {
+        StorableMessageMetaData metaData = message.getMessageMetaData();
+        ContentHeaderBody contentHeaderBody = ((MessageMetaData) metaData).getContentHeaderBody();
+        BasicContentHeaderProperties cdf = (BasicContentHeaderProperties)contentHeaderBody.getProperties();
+        FieldTable headers = cdf.getHeaders();
+        headers.setInteger(JMSX_DELIVERY_COUNT_HEADER, count);
+        /*
+         * This step is mandatory as clearEncodedForm() needs
+         * to be called to clear buffer and rebuild it from updated headers
+         */
+        ((BasicContentHeaderProperties)message.getMessageMetaData()
+                .getContentHeaderBody().getProperties()).setHeaders(headers);
     }
 }
