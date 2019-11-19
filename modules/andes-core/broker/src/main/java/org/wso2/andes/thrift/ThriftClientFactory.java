@@ -63,14 +63,16 @@ public class ThriftClientFactory extends BasePooledObjectFactory<SlotManagementS
 
         int soTimeout = AndesConfigurationManager.readValue(AndesConfiguration.COORDINATION_THRIFT_SO_TIMEOUT);
 
-        TTransport transport = new TSocket(thriftAddressOfCoordinator.getHostName(), thriftAddressOfCoordinator.getPort(),
-                soTimeout);
+        String thriftHost = thriftAddressOfCoordinator.getHostName();
+        int thriftPort = thriftAddressOfCoordinator.getPort();
+        TTransport transport = new TSocket(thriftHost, thriftPort, soTimeout);
         try {
             transport.open();
             TProtocol protocol = new TBinaryProtocol(transport);
             return new SlotManagementService.Client(protocol);
         } catch (TTransportException e) {
-            throw new TTransportException("Could not initialize the Thrift client", e);
+            throw new TTransportException("Could not initialize the Thrift client to connect to Thrift server at, "
+                    + thriftHost + ":" + thriftPort, e);
         }
     }
 
