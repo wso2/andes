@@ -251,10 +251,14 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata {
         channelInformation.addChannelStatus(ChannelMessageStatus.DISPATCHED);
 
         if (!this.isBeyondLastRollbackedMessage) {
-            channelInformation.incrementDeliveryCount();
+            int i = channelInformation.incrementDeliveryCount();
+            MessageTracer.trace(getMessageID(), getDestination(), "Message within rollback id. "
+                    + "Current count " + i);
         } else {
             // No need to increase deliveryCount if this message is beyond the last rollback.
             MessageTracer.trace(getMessageID(), getDestination(), MessageTracer.MESSAGE_BEYOND_LAST_ROLLBACK);
+            MessageTracer.trace(getMessageID(), getDestination(), MessageTracer.MESSAGE_BEYOND_LAST_ROLLBACK
+                    + " current count = " + channelInformation.getDeliveryCount());
         }
     }
 

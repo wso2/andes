@@ -98,8 +98,8 @@ public class InboundMessageRejectEvent implements AndesInboundStateEvent {
         AndesSubscription subscription = AndesContext.getInstance().
                 getAndesSubscriptionManager().getSubscriptionByProtocolChannel(channelId);
         if (subscription != null) {
-            DeliverableAndesMetadata rejectedMessage = subscription.onMessageReject(messageId, reQueue);
-            rejectedMessage.setIsBeyondLastRollbackedMessage(isMessageBeyondLastRollback);
+            DeliverableAndesMetadata rejectedMessage = subscription.onMessageReject(messageId, reQueue,
+                    isMessageBeyondLastRollback);
             //Tracing message activity
             MessageTracer.trace(rejectedMessage, MessageTracer.MESSAGE_REJECTED);
         } else {
