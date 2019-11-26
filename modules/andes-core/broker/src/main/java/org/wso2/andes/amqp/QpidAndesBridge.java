@@ -307,7 +307,7 @@ public class QpidAndesBridge {
             boolean isMessageBeyondLastRollback = channel.isMessageBeyondLastRollback(message.getMessageNumber());
 
             log.info("Reject received id = " + message.getMessageId() + " channel id= " + channel.getChannelId()
-                    + "regueue = " + reQueue);
+                    + "requeue = " + reQueue);
 
             Andes.getInstance().messageRejected(message.getMessageId(), channel.getId(),
                     reQueue, isMessageBeyondLastRollback);

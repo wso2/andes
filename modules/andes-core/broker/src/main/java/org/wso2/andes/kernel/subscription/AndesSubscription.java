@@ -248,12 +248,14 @@ public class AndesSubscription {
      *
      * @param messageID id of the message acknowledged
      * @param reQueue true if message should be re-queued to subscriber
+     * @param isMessageBeyondLastRollback true if message was rejected after last rollback
      * @throws AndesException on a message re-schedule issue
      * @return DeliverableAndesMetadata reference of rejected message
      */
-    public DeliverableAndesMetadata onMessageReject(long messageID, boolean reQueue)
-            throws AndesException {
+    public DeliverableAndesMetadata onMessageReject(long messageID, boolean reQueue,
+                                                    boolean isMessageBeyondLastRollback) throws AndesException {
         DeliverableAndesMetadata rejectedMessage = subscriberConnection.onMessageReject(messageID);
+        rejectedMessage.setIsBeyondLastRollbackedMessage(isMessageBeyondLastRollback);
         //Adding metrics meter for ack rate
         Meter ackMeter = MetricManager.meter(MetricsConstants.REJECT_RECEIVE_RATE, Level.INFO);
         ackMeter.mark();

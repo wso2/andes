@@ -1968,7 +1968,10 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
      * @return true if the message is placed after the last rollbacked message.
      */
     public boolean isMessageBeyondLastRollback(long messageId) {
-
+        if (_logger.isDebugEnabled()) {
+            _logger.debug("check if message is beyond last rollback. Last rollback id " + lastRollbackedMessageId
+                    + " current message id " + messageId);
+        }
         if (lastRollbackedMessageId < 0) {
             // (1) Message is either within the last committed transaction or,
             // (2) this channel is not session-transacted.
