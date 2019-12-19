@@ -49,7 +49,7 @@ public class AMQBrokerDetails implements BrokerDetails
      * Security credential pattern in JMS URL
      */
     private static final Pattern SECURITY_CREDENTIAL_PATTERN = Pattern
-            .compile("java.naming.security.credentials=" + "([^/&]+)(&|$)");
+            .compile("java.naming.security.credentials=([^/&]+)(&|$)");
     private static final String URL_PASSWORD_SUB_STRING = "transport.jms.Password=***&";
     private static final String URL_CREDENTIALS_SUB_STRING = "java.naming.security.credentials=***&";
     private static final String KEYSTORE_PWD_SUBSTRING = "key_store_password=***&";
