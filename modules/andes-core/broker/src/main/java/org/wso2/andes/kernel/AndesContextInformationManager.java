@@ -328,9 +328,15 @@ public class AndesContextInformationManager {
         // Check whether active subscriptions exists for the given storage queue
         // At this point subscriptions exist means there was some disorder in the events. Therefore notify add queue
         // and binding instead of proceeding with delete.
+
         if (subscriptionManager.isActiveLocalSubscriptionsExistForQueue(storageQueueName)) {
-            AndesBinding binding = new AndesBinding(storageQueue.getMessageRouter().getName(),
-                    storageQueue, storageQueue.getMessageRouterBindingKey());
+            StorageQueue queue = AndesContext.getInstance().getStorageQueueRegistry()
+                                                 .getStorageQueue(storageQueueName);
+
+            String messageRouterName = queue.getMessageRouter().getName();
+            String bindingKey = queue.getMessageRouterBindingKey();
+
+            AndesBinding binding = new AndesBinding(messageRouterName, storageQueue, bindingKey);
 
             storeAndNotifyQueueAddition(storageQueue);
             storeAndNotifyBindingAddition(binding);
