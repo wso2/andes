@@ -57,6 +57,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static org.wso2.andes.jndi.Utils.resolveSystemProperty;
 
 
 public class PropertiesFileInitialContextFactory implements InitialContextFactory
@@ -123,6 +124,9 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
                 {
                     String key = (String) me.getKey();
                     String value = (String) me.getValue();
+                    if (value != null) {
+                        value = resolveSystemProperty(value);
+                    }
                     String expanded = Strings.expand(value, resolver);
                     environment.put(key, expanded);
                     if (System.getProperty(key) == null)
