@@ -68,8 +68,7 @@ public class Utils {
         while (indexOfStartingChars < text.indexOf(DYNAMIC_PROPERTY_PLACEHOLDER_PREFIX)
                 && (indexOfStartingChars = text.indexOf(DYNAMIC_PROPERTY_PLACEHOLDER_PREFIX)) != -1
                 && (indexOfClosingBrace = text.indexOf(PLACEHOLDER_SUFFIX)) != -1) {
-            String sysProp = text.substring(indexOfStartingChars + 2,
-                    indexOfClosingBrace);
+            String sysProp = text.substring(indexOfStartingChars + 2, indexOfClosingBrace);
             String propValue = System.getProperty(sysProp);
             if (propValue == null) {
                 propValue = System.getenv(sysProp);
