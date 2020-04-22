@@ -1112,7 +1112,9 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
             //set new expiration time. This will be time now + original TTL
             long now = System.currentTimeMillis();
-            metadata.setExpirationTime(now + (metadata.getExpirationTime() - metadata.getArrivalTime()));
+            if (metadata.getExpirationTime() > 0) {
+                metadata.setExpirationTime(now + (metadata.getExpirationTime() - metadata.getArrivalTime()));
+            }
 
             AndesMessageMetadata clonedMetadata = metadata.shallowCopy(metadata.getMessageID());
             AndesMessage andesMessage = new AndesMessage(clonedMetadata);
