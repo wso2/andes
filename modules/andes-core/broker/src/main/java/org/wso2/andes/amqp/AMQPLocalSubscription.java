@@ -256,7 +256,7 @@ public class AMQPLocalSubscription implements OutboundSubscription {
                 amqpSubscription.send(queueEntry);
 
                 // After sending message we simulate acknowledgment for NoAckSubscription
-                UUID channelID = ((SubscriptionImpl.NoAckSubscription) amqpSubscription).getChannel().getId();
+                UUID channelID = ((SubscriptionImpl) amqpSubscription).getChannel().getId();
                 AndesAckData andesAckData = new AndesAckData(channelID, messageID);
                 Andes.getInstance().ackReceived(andesAckData);
 

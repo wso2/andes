@@ -570,7 +570,7 @@ public class QpidAndesBridge {
                     if (uniqueStorageQueues.add(storageQueueToBind)) {
 
                         OutboundSubscription outboundSubscription = new AMQPLocalSubscription(subscription);
-                        String ipAddressOfSubscriber = ((SubscriptionImpl.AckSubscription) subscription).
+                        String ipAddressOfSubscriber = ((SubscriptionImpl) subscription).
                                 getChannel().getSessionName();
                         SubscriberConnection subscriberConnection = new SubscriberConnection(ipAddressOfSubscriber,
                                 localNodeID, subscription.getIdOfUnderlyingChannel(),outboundSubscription);
@@ -630,7 +630,7 @@ public class QpidAndesBridge {
                 if (uniqueStorageQueues.add(storageQueueToBind)) {
 
                     OutboundSubscription outboundSubscription = new AMQPLocalSubscription(subscription);
-                    String IPAddressOfSubscriber = ((SubscriptionImpl.AckSubscription) subscription)
+                    String IPAddressOfSubscriber = ((SubscriptionImpl) subscription)
                             .getChannel().getSessionName();
                     SubscriberConnection subscriberConnection = new SubscriberConnection(IPAddressOfSubscriber,
                             localNodeID, subscription.getIdOfUnderlyingChannel(), outboundSubscription);
