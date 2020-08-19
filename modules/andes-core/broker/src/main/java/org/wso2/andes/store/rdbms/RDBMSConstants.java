@@ -337,13 +337,19 @@ public class RDBMSConstants {
             "DELETE  FROM " + METADATA_TABLE
             + " WHERE " + MESSAGE_ID + "=?";
 
-    protected static final String PS_CLEAR_QUEUE_FROM_METADATA =
-            "DELETE  FROM " + METADATA_TABLE
-            + " WHERE " + QUEUE_ID + "=?";
+    protected static final String PS_DELETE_CONTENT =
+            "DELETE  FROM " + CONTENT_TABLE
+            + " WHERE " + MESSAGE_ID + "=?";
 
-    protected static final String PS_CLEAR_DLC_QUEUE =
-            "DELETE  FROM " + METADATA_TABLE
-            + " WHERE " + DLC_QUEUE_ID + "=?";
+    protected static final String PS_DELETE_EXPIRATION_DATA =
+            "DELETE  FROM " + EXPIRATION_TABLE
+                    + " WHERE " + MESSAGE_ID + "=?";
+
+    protected static final String PS_SELECT_MESSAGE_IDS_FROM_METADATA_FOR_DLC_QUEUE =
+            "SELECT " + MESSAGE_ID
+            + " FROM " + METADATA_TABLE
+            + " WHERE " + DLC_QUEUE_ID + "=?"
+            + " ORDER BY " + MESSAGE_ID ;
 
     protected static final String PS_SELECT_EXPIRED_MESSAGES =
             "SELECT " + MESSAGE_ID + "," + DESTINATION_QUEUE
