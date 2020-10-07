@@ -188,6 +188,7 @@ public class SlotMessageCounter implements StoreHealthListener {
         } finally {
             lock.writeLock().unlock();
         }
+    }
 
     /**
      * Submit last message ID in the slot to SlotManager.
@@ -195,30 +196,31 @@ public class SlotMessageCounter implements StoreHealthListener {
      * @param storageQueueName name of the queue which this slot belongs to
      */
     public synchronized void submitSlot(String storageQueueName) throws AndesException {
-            try {
-                lock.writeLock().lock();
-                Slot slot = queueToSlotMap.get(storageQueueName);
-                if (null != slot) {
-                    Long lastSlotUpdateTime = slotTimeOutMap.get(storageQueueName);
+        try {
+            lock.writeLock().lock();
+            Slot slot = queueToSlotMap.get(storageQueueName);
+            if (null != slot) {
+                Long lastSlotUpdateTime = slotTimeOutMap.get(storageQueueName);
 
-                    // Check if the number of messages in slot is greater than or equal to slot window size or slot timeout
-                    // has reached. This is to avoid timer task or disruptor creating smaller/overlapping slots.
-                    if (checkMessageLimitReached(slot) || checkTimeOutReached(lastSlotUpdateTime)) {
-                        try {
-                            long localSafeZone = inferLocalSafeZone(storageQueueName);
-                            slotTimeOutMap.remove(storageQueueName);
-                            queueToSlotMap.remove(storageQueueName);
-                            slotCoordinator.updateMessageId(storageQueueName, slot.getStartMessageId(),
-                                    slot.getEndMessageId(), localSafeZone);
-                        } catch (ConnectionException e) {
-                            // we only log here since this is called again from timer task if previous attempt failed
-                            log.error("Error occurred while connecting to the thrift coordinator.", e);
-                        }
-                    }
-            finally{
-                        lock.writeLock().unlock();
+                // Check if the number of messages in slot is greater than or equal to slot window size or slot timeout
+                // has reached. This is to avoid timer task or disruptor creating smaller/overlapping slots.
+                if (checkMessageLimitReached(slot) || checkTimeOutReached(lastSlotUpdateTime)) {
+                    try {
+                        long localSafeZone = inferLocalSafeZone(storageQueueName);
+                        slotTimeOutMap.remove(storageQueueName);
+                        queueToSlotMap.remove(storageQueueName);
+                        slotCoordinator.updateMessageId(storageQueueName, slot.getStartMessageId(),
+                                slot.getEndMessageId(), localSafeZone);
+                    } catch (ConnectionException e) {
+                        // we only log here since this is called again from timer task if previous attempt failed
+                        log.error("Error occurred while connecting to the thrift coordinator.", e);
                     }
                 }
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
 
     /**
      * Figure out if the currentStorageQueue's endMessageID is larger than startMessageID's of other queues. If yes,
@@ -228,7 +230,6 @@ public class SlotMessageCounter implements StoreHealthListener {
      * @return Local Safe Zone
      */
     private long inferLocalSafeZone(String currentStorageQueueName) {
-
         try {
             lock.readLock().lock();
             long localSafeZone = queueToSlotMap.get(currentStorageQueueName).getEndMessageId();
