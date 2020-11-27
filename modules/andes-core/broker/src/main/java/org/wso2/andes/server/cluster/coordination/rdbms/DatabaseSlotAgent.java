@@ -27,6 +27,7 @@ import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
+import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.SlotAgent;
 import org.wso2.andes.store.AndesDataIntegrityViolationException;
 import org.wso2.andes.store.AndesStoreUnavailableException;
@@ -690,6 +691,17 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
     @Override
     public void storeOperational(HealthAwareStore store) {
         log.info("Context store became operational. Therefore, resuming Database Slot Agent");
+        try {
+            String localNodeId = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
+            Set<String> queues = andesContextStore.getAllQueues();
+            for (String queueName : queues) {
+                andesContextStore.deleteSlotAssignmentByQueueName(localNodeId, queueName);
+                log.info("Slots re-assign to the slot manager on node: " + localNodeId + " and queue: " + queueName
+                        + " after the store became operational.");
+            }
+        } catch (AndesException e) {
+            log.error("Error occurred while re-assigning the slot to slot manager", e);
+        }
         messageStoresUnavailable.set(false);
     }
 
