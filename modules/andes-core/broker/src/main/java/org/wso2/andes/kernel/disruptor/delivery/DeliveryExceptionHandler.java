@@ -40,11 +40,11 @@ public class DeliveryExceptionHandler implements ExceptionHandler {
      */
     @Override
     public void handleEventException(final Throwable exception, final long sequence, final Object event) {
-        log.error("Exception processing: " + sequence + " " + event, exception);
 
         // Mark event data for error
         DeliveryEventData eventData = (DeliveryEventData) event;
         eventData.reportExceptionOccurred();
+        log.error("Exception processing: " + sequence + " " + event, exception);
     }
 
     /**

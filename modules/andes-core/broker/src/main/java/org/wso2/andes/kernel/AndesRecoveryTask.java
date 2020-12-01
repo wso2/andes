@@ -45,7 +45,7 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 
 	// set storeOperational to true since it can be assumed that the store is operational at startup
 	// if it is non-operational, the value will be updated immediately
-	AtomicBoolean isContextStoreOperational = new AtomicBoolean(true);
+	AtomicBoolean isStoreOperational = new AtomicBoolean(true);
 
 	private static final Log log = LogFactory.getLog(AndesRecoveryTask.class);
 
@@ -76,7 +76,7 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
             return;
         }
         try {
-            if (isContextStoreOperational.get()) {
+            if (isStoreOperational.get()) {
                 recoverBrokerArtifacts();
             } else {
                 log.warn("AndesRecoveryTask was paused due to non-operational context store.");
@@ -103,7 +103,7 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 	 * @throws AndesException
 	 */
 	public void recoverBrokerArtifacts() throws AndesException {
-		if (isContextStoreOperational.get()) {
+		if (isStoreOperational.get()) {
             InboundDBSyncRequestEvent dbSyncRequestEvent = new InboundDBSyncRequestEvent();
             dbSyncRequestEvent.prepareEvent(andesContextStore, amqpConstructStore,
                     contextInformationManager, subscriptionManager);
@@ -123,10 +123,8 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 	 */
 	@Override
 	public void storeNonOperational(HealthAwareStore store, Exception ex) {
-		if (store.getClass().getSuperclass().isInstance(AndesContextStore.class)) {
-			isContextStoreOperational.set(false);
-			log.info("AndesRecoveryTask paused due to non-operational context store.");
-		}
+		isStoreOperational.set(false);
+		log.info("AndesRecoveryTask paused due to non-operational context store.");
 	}
 
 	/**
@@ -136,14 +134,12 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 	 */
 	@Override
 	public void storeOperational(HealthAwareStore store) {
-		if (store instanceof AndesContextStore) {
-			isContextStoreOperational.set(true);
-			log.info("AndesRecoveryTask became operational. Recovering broker artifacts.");
-            try {
-                recoverBrokerArtifacts();
-            } catch (AndesException e) {
-                log.error("Error in running andes recovery task", e);
-            }
-        }
+		isStoreOperational.set(true);
+		log.info("AndesRecoveryTask became operational. Recovering broker artifacts.");
+		try {
+			recoverBrokerArtifacts();
+		} catch (AndesException e) {
+			log.error("Error in running andes recovery task", e);
+		}
 	}
 }
