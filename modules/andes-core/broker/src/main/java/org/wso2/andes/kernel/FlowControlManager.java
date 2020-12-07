@@ -33,7 +33,9 @@ import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.ArrayList;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
@@ -69,6 +71,11 @@ public class FlowControlManager  implements StoreHealthListener, NetworkPartitio
      * Executor used for flow control timeout tasks
      */
     private final ScheduledExecutorService executor;
+
+    /**
+     * Executor used for handling global flow control
+     */
+    private final ScheduledExecutorService flowExecutor;
 
     /**
      * Configured flow control high limit for local channel
@@ -139,6 +146,11 @@ public class FlowControlManager  implements StoreHealthListener, NetworkPartitio
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("AndesScheduledTaskManager-FlowControl")
                                                                      .build();
         executor = Executors.newSingleThreadScheduledExecutor(namedThreadFactory);
+
+        // Initialize executor service for state validity checking
+        ThreadFactory namedThreadFactoryForFlow =
+                new ThreadFactoryBuilder().setNameFormat("FlowControlTask-%d").build();
+        flowExecutor = Executors.newSingleThreadScheduledExecutor(namedThreadFactoryForFlow);
 
         //Will start the gauge
         MetricManager.gauge(MetricsConstants.ACTIVE_CHANNELS, Level.INFO, new ChannelGauge());
@@ -216,31 +228,22 @@ public class FlowControlManager  implements StoreHealthListener, NetworkPartitio
     /**
      * This method should be called when a message is put into the buffer
      *
-     * @param size
-     *         Number of items added to buffer
+     * @param size Number of items added to buffer
      */
-    public void notifyAddition(int size) {
-        int count = messagesOnGlobalBuffer.addAndGet(size);
-
-        if ((!globalBufferBasedFlowControlEnabled) && (count >= globalHighLimit)) {
-            blockListenersOnBufferBasedFlowControl();
-        }
+    public void notifyAddition(int size, AndesChannel channel) {
+        messagesOnGlobalBuffer.addAndGet(size);
+        flowExecutor.submit(new FlowControlTask(channel));
     }
 
     /**
      * This method should be called after a message is processed and no longer required in the buffer.
      *
-     * @param size
-     *         Number of items removed from buffer
+     * @param size Number of items removed from buffer
      */
-    public void notifyRemoval(int size) {
-        int count = messagesOnGlobalBuffer.addAndGet(-size);
-
-        if (globalBufferBasedFlowControlEnabled && count <= globalLowLimit) {
-            unblockListenersOnBufferBasedFlowControl();
-        }
+    public void notifyRemoval(int size, AndesChannel channel) {
+        messagesOnGlobalBuffer.addAndGet(-size);
+        flowExecutor.submit(new FlowControlTask(channel));
     }
-
     
     /**
      * Notify all the channels to enable buffer based flow control
@@ -459,6 +462,28 @@ public class FlowControlManager  implements StoreHealthListener, NetworkPartitio
         @Override
         public Integer getValue() {
             return channels.size();
+        }
+    }
+
+    private class FlowControlTask implements Runnable {
+
+        AndesChannel channel;
+
+        FlowControlTask(AndesChannel channel) {
+            this.channel = channel;
+        }
+
+        @Override
+        public void run() {
+            int count = messagesOnGlobalBuffer.get();
+
+            if ((count >= globalHighLimit) && (!globalBufferBasedFlowControlEnabled)) {
+                blockListenersOnBufferBasedFlowControl();
+            } else if (count <= globalLowLimit && globalBufferBasedFlowControlEnabled) {
+                unblockListenersOnBufferBasedFlowControl();
+            }
+
+            channel.handleFlowControl();
         }
     }
 
