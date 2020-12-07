@@ -71,6 +71,11 @@ public enum AndesConfiguration implements ConfigurationProperty {
     COORDINATOR_THRIFT_RECONNECT_TIMEOUT("coordination/thriftServerReconnectTimeout", "5", Long.class),
 
     /**
+     * Thrift server max server worker thread count.
+     */
+    COORDINATION_THRIFT_SERVER_MAX_THREADS("coordination/thriftServerMaxWorkerThreads", "200", Integer.class),
+
+    /**
      * We use Hazelcast reliable topics to share all notifications across the cluster (e.g. subscription changes).
      * And this property defines the time-to-live for a notification since its creation. (in Seconds)
      */
