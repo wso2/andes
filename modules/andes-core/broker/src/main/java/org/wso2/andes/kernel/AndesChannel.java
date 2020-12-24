@@ -239,20 +239,28 @@ public class AndesChannel {
      *         Number of items added to buffer
      */
     public void recordAdditionToBuffer(int size) {
-        flowControlManager.notifyAddition(size);
+        messagesOnBuffer.addAndGet(size);
+        flowControlManager.notifyAddition(size, this);
+    }
 
-        int count = messagesOnBuffer.addAndGet(size);
+    /**
+     * Method to enable/disable flow controlling on the channel
+     */
+    public void handleFlowControl() {
+        int count = messagesOnBuffer.get();
+        if (!flowControlEnabled && (globalBufferBasedFlowControlEnabled
+                                    || count >= flowControlHighLimit
+                                    || globalErrorBasedFlowControlEnabled)) {
 
-        if (!flowControlEnabled && 
-               (globalBufferBasedFlowControlEnabled 
-                 || count >= flowControlHighLimit 
-                 || globalErrorBasedFlowControlEnabled)) {
-            
             blockLocalChannel();
+        } else if (flowControlEnabled && (!globalBufferBasedFlowControlEnabled)
+                   && (count <= flowControlLowLimit)
+                   && (!globalErrorBasedFlowControlEnabled)) {
+            unblockLocalChannel();
         }
     }
 
- 
+
 
     /**
      * This method should be called after a message is processed and no longer required in the buffer.
@@ -261,15 +269,8 @@ public class AndesChannel {
      *         Number of items removed from buffer
      */
     public void recordRemovalFromBuffer(int size) {
-        flowControlManager.notifyRemoval(size);
-
-        int count = messagesOnBuffer.addAndGet(-size);
-
-        if (flowControlEnabled && (!globalBufferBasedFlowControlEnabled) 
-                               && (count <= flowControlLowLimit) 
-                               && (! globalErrorBasedFlowControlEnabled)) {
-            unblockLocalChannel();
-        }
+        messagesOnBuffer.addAndGet(-size);
+        flowControlManager.notifyRemoval(size, this);
     }
 
     /**
