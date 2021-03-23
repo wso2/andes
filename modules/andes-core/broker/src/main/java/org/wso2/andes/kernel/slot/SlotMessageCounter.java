@@ -35,6 +35,7 @@ import org.wso2.andes.kernel.subscription.StorageQueue;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
+import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.Collection;
 import java.util.List;
@@ -44,14 +45,18 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * This class is responsible of counting messages in a slot for each queue
  */
 public class SlotMessageCounter implements StoreHealthListener {
 
-    private ConcurrentHashMap<String, Slot> queueToSlotMap = new ConcurrentHashMap<>();
-    private ConcurrentHashMap<String, Long> slotTimeOutMap = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Slot> queueToSlotMap = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Long> slotTimeOutMap = new ConcurrentHashMap<>();
+
+    private final ReadWriteLock lock = new ReentrantReadWriteLock();
     /**
      * Timeout in milliseconds for messages in the slot. When this timeout is exceeded slot will be
      * submitted to the coordinator
@@ -63,8 +68,8 @@ public class SlotMessageCounter implements StoreHealthListener {
      */
     private final ScheduledExecutorService submitSlotToCoordinatorExecutor;
 
-    private Log log = LogFactory.getLog(SlotMessageCounter.class);
-    private static SlotMessageCounter slotMessageCounter = new SlotMessageCounter();
+    private final Log log = LogFactory.getLog(SlotMessageCounter.class);
+    private static final SlotMessageCounter slotMessageCounter = new SlotMessageCounter();
     private final int slotWindowSize;
     private long currentSlotDeleteSafeZone;
 
@@ -161,23 +166,28 @@ public class SlotMessageCounter implements StoreHealthListener {
      * @return Current slot which this metadata belongs to
      */
     private Slot updateQueueToSlotMap(AndesMessageMetadata metadata) {
-        String storageQueueName = metadata.getStorageQueueName();
-        Slot currentSlot = queueToSlotMap.get(storageQueueName);
-        if (currentSlot == null) {
-            currentSlot = new Slot();
-            currentSlot.setStartMessageId(metadata.getMessageID());
-            currentSlot.setEndMessageId(metadata.getMessageID());
-            currentSlot.setMessageCount(1L);
-            queueToSlotMap.put(storageQueueName, currentSlot);
-            slotTimeOutMap.put(storageQueueName, System.currentTimeMillis());
-        } else {
-            long currentMsgCount = currentSlot.getMessageCount();
-            long newMessageCount = currentMsgCount + 1;
-            currentSlot.setMessageCount(newMessageCount);
-            currentSlot.setEndMessageId(metadata.getMessageID());
-            queueToSlotMap.put(storageQueueName, currentSlot);
+        try {
+            lock.writeLock().lock();
+            String storageQueueName = metadata.getStorageQueueName();
+            Slot currentSlot = queueToSlotMap.get(storageQueueName);
+            if (currentSlot == null) {
+                currentSlot = new Slot();
+                currentSlot.setStartMessageId(metadata.getMessageID());
+                currentSlot.setEndMessageId(metadata.getMessageID());
+                currentSlot.setMessageCount(1L);
+                queueToSlotMap.put(storageQueueName, currentSlot);
+                slotTimeOutMap.put(storageQueueName, System.currentTimeMillis());
+            } else {
+                long currentMsgCount = currentSlot.getMessageCount();
+                long newMessageCount = currentMsgCount + 1;
+                currentSlot.setMessageCount(newMessageCount);
+                currentSlot.setEndMessageId(metadata.getMessageID());
+                queueToSlotMap.put(storageQueueName, currentSlot);
+            }
+            return currentSlot;
+        } finally {
+            lock.writeLock().unlock();
         }
-        return currentSlot;
     }
 
     /**
@@ -186,24 +196,29 @@ public class SlotMessageCounter implements StoreHealthListener {
      * @param storageQueueName name of the queue which this slot belongs to
      */
     public synchronized void submitSlot(String storageQueueName) throws AndesException {
-        Slot slot = queueToSlotMap.get(storageQueueName);
-        if (null != slot) {
-            Long lastSlotUpdateTime = slotTimeOutMap.get(storageQueueName);
+        try {
+            lock.writeLock().lock();
+            Slot slot = queueToSlotMap.get(storageQueueName);
+            if (null != slot) {
+                Long lastSlotUpdateTime = slotTimeOutMap.get(storageQueueName);
 
-            // Check if the number of messages in slot is greater than or equal to slot window size or slot timeout
-            // has reached. This is to avoid timer task or disruptor creating smaller/overlapping slots.
-            if (checkMessageLimitReached(slot) || checkTimeOutReached(lastSlotUpdateTime)) {
-                try {
-                    long localSafeZone = inferLocalSafeZone(storageQueueName);
-                    slotTimeOutMap.remove(storageQueueName);
-                    queueToSlotMap.remove(storageQueueName);
-                    slotCoordinator.updateMessageId(storageQueueName, slot.getStartMessageId(),
-                            slot.getEndMessageId(), localSafeZone);
-                } catch (ConnectionException e) {
-                    // we only log here since this is called again from timer task if previous attempt failed
-                    log.error("Error occurred while connecting to the thrift coordinator.", e);
+                // Check if the number of messages in slot is greater than or equal to slot window size or slot timeout
+                // has reached. This is to avoid timer task or disruptor creating smaller/overlapping slots.
+                if (checkMessageLimitReached(slot) || checkTimeOutReached(lastSlotUpdateTime)) {
+                    try {
+                        long localSafeZone = inferLocalSafeZone(storageQueueName);
+                        slotTimeOutMap.remove(storageQueueName);
+                        queueToSlotMap.remove(storageQueueName);
+                        slotCoordinator.updateMessageId(storageQueueName, slot.getStartMessageId(),
+                                slot.getEndMessageId(), localSafeZone);
+                    } catch (ConnectionException e) {
+                        // we only log here since this is called again from timer task if previous attempt failed
+                        log.error("Error occurred while connecting to the thrift coordinator.", e);
+                    }
                 }
             }
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 
@@ -215,17 +230,21 @@ public class SlotMessageCounter implements StoreHealthListener {
      * @return Local Safe Zone
      */
     private long inferLocalSafeZone(String currentStorageQueueName) {
+        try {
+            lock.readLock().lock();
+            long localSafeZone = queueToSlotMap.get(currentStorageQueueName).getEndMessageId();
 
-        long localSafeZone = queueToSlotMap.get(currentStorageQueueName).getEndMessageId();
+            for (Map.Entry<String, Slot> queueSlotEntry : queueToSlotMap.entrySet()) {
 
-        for (Map.Entry<String, Slot> queueSlotEntry : queueToSlotMap.entrySet()) {
-
-            if (!queueSlotEntry.getKey().equals(currentStorageQueueName)) {
-                localSafeZone = Math.min(queueSlotEntry.getValue().getStartMessageId(), localSafeZone);
+                if (!queueSlotEntry.getKey().equals(currentStorageQueueName)) {
+                    localSafeZone = Math.min(queueSlotEntry.getValue().getStartMessageId(), localSafeZone);
+                }
             }
-        }
 
-        return localSafeZone;
+            return localSafeZone;
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     public void updateSafeZoneForNode(long currentSafeZoneVal) {
@@ -326,13 +345,20 @@ public class SlotMessageCounter implements StoreHealthListener {
 
         @Override
         public void run() {
+            Set<Map.Entry<String, Long>> slotTimeoutEntries;
             try {
-                Set<Map.Entry<String, Long>> slotTimeoutEntries = slotTimeOutMap.entrySet();
-
+                try {
+                    lock.readLock().lock();
+                    slotTimeoutEntries = slotTimeOutMap.entrySet();
+                } finally {
+                    lock.readLock().unlock();
+                }
                 if (!slotTimeoutEntries.isEmpty()) {
                     updateCoordinatorWithTimedOutSlots(slotTimeoutEntries);
+                    MessageTracer.trace("Timed out slot sent to coordinator. " + slotTimeOutMap.size());
                 } else {
                     updateCoordinatorWithCurrentSafezone();
+                    MessageTracer.trace("Safe zone updated. " + slotTimeOutMap.size());
                 }
                 // This is to avoid subsequent executions being suppressed
             } catch (Throwable exception) {
@@ -370,6 +396,7 @@ public class SlotMessageCounter implements StoreHealthListener {
 
             //update current slot Deletion Safe Zone
             try {
+                lock.readLock().lock();
                 long evaluatedSafeZone = currentSlotDeleteSafeZone;
 
                 // If there are any slots pending submission to coordinator, we must lower the safe zone to their
@@ -390,6 +417,8 @@ public class SlotMessageCounter implements StoreHealthListener {
                 currentSlotDeleteSafeZone = evaluatedSafeZone;
             } catch (ConnectionException e) {
                 log.error("Error while sending slot deletion safe zone update", e);
+            } finally {
+                lock.readLock().unlock();
             }
 
         }
