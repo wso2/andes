@@ -20,7 +20,8 @@ package org.wso2.andes.store;
 
 import java.util.Collection;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.ClusterResourceHolder;
 
 /**
@@ -29,7 +30,7 @@ import org.wso2.andes.server.ClusterResourceHolder;
  */
 public class StoreHealthCheckTask implements Runnable {
 
-    private static final Logger logger = Logger.getLogger(StoreHealthCheckTask.class);
+    private static final Log logger = LogFactory.getLog(StoreHealthCheckTask.class);
 
     /**
      * the store which became in-operational. (therefore this task is checking

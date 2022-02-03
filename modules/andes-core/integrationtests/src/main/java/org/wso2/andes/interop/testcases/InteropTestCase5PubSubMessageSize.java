@@ -20,7 +20,8 @@
  */
 package org.wso2.andes.interop.testcases;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import org.wso2.andes.test.framework.FrameworkBaseCase;
 
@@ -39,7 +40,7 @@ import java.util.Properties;
 public class InteropTestCase5PubSubMessageSize extends FrameworkBaseCase
 {
     /** Used for debugging. */
-    private static final Logger log = Logger.getLogger(InteropTestCase5PubSubMessageSize.class);
+    private static final Log log = LogFactory.getLog(InteropTestCase5PubSubMessageSize.class);
 
     /**
      * Creates a new coordinating test case with the specified name.

@@ -27,7 +27,8 @@ import javax.management.JMException;
 import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.TabularData;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
@@ -49,13 +50,13 @@ import org.wso2.andes.server.virtualhost.VirtualHost;
  */
 public class DiagnosticExchange extends AbstractExchange
 {
-    private static final Logger _logger = Logger.getLogger(DiagnosticExchange.class);
+    private static final Log _logger = LogFactory.getLog(DiagnosticExchange.class);
 
     public static final AMQShortString DIAGNOSTIC_EXCHANGE_CLASS = new AMQShortString("x-diagnostic");
     public static final AMQShortString DIAGNOSTIC_EXCHANGE_NAME = new AMQShortString("diagnostic");
 
     /** The logger */
-    //private static final Logger _logger = Logger.getLogger(DiagnosticExchange.class);
+    //private static final Log _logger = LogFactory.getLog(DiagnosticExchange.class);
 
     /**
      * MBean class implementing the management interfaces.
@@ -163,7 +164,7 @@ public class DiagnosticExchange extends AbstractExchange
         return new DiagnosticExchange.DiagnosticExchangeMBean();
     }
 
-    public Logger getLogger()
+    public Log getLogger()
     {
         return _logger;
     }

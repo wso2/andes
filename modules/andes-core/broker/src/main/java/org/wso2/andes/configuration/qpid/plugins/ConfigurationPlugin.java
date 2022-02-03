@@ -20,7 +20,8 @@ package org.wso2.andes.configuration.qpid.plugins;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.ConversionException;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.qpid.ConfigurationManager;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.registry.IApplicationRegistry;
@@ -36,7 +37,7 @@ import java.util.Set;
 
 public abstract class ConfigurationPlugin
 {
-    protected static final Logger _logger = Logger.getLogger(ConfigurationPlugin.class);
+    protected static final Log _logger = LogFactory.getLog(ConfigurationPlugin.class);
 
     private Map<String, ConfigurationPlugin>
             _pluginConfiguration = new HashMap<String, ConfigurationPlugin>();

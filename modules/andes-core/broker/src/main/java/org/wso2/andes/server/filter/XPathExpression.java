@@ -20,7 +20,8 @@ package org.wso2.andes.server.filter;
 // Based on like named file from r450141 of the Apache ActiveMQ project <http://www.activemq.org/site/home.html>
 //
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.server.queue.Filterable;
 
@@ -32,7 +33,7 @@ import java.lang.reflect.InvocationTargetException;
  */
 public final class XPathExpression implements BooleanExpression {
 
-    private static final Logger log = Logger.getLogger(XPathExpression.class);
+    private static final Log log = LogFactory.getLog(XPathExpression.class);
     private static final String EVALUATOR_SYSTEM_PROPERTY = "org.wso2.andes.server.filter.XPathEvaluatorClassName";
     private static final String DEFAULT_EVALUATOR_CLASS_NAME=XalanXPathEvaluator.class.getName();
 

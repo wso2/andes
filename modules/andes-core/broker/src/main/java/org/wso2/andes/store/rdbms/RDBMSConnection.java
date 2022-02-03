@@ -19,7 +19,8 @@
 package org.wso2.andes.store.rdbms;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DurableStoreConnection;
@@ -36,7 +37,7 @@ import java.sql.SQLException;
  */
 public class RDBMSConnection extends DurableStoreConnection {
 
-    private static final Logger logger = Logger.getLogger(RDBMSConnection.class);
+    private static final Log logger = LogFactory.getLog(RDBMSConnection.class);
     private DataSource datasource;
 
     @Override

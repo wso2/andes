@@ -19,7 +19,8 @@ package org.wso2.andes.server.security;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPluginFactory;
@@ -50,7 +51,7 @@ import static org.wso2.andes.server.security.access.Operation.*;
  */
 public class SecurityManager
 {
-    private static final Logger _logger = Logger.getLogger(SecurityManager.class);
+    private static final Log _logger = LogFactory.getLog(SecurityManager.class);
     
     /** Container for the {@link Principal} that is using to this thread. */
     private static final ThreadLocal<Subject> _subject = new ThreadLocal<Subject>();
@@ -169,7 +170,7 @@ public class SecurityManager
         _hostPlugins.put(plugin.getClass().getName(), plugin);
     }
 
-    public static Logger getLogger()
+    public static Log getLogger()
     {
         return _logger;
     }

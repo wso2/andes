@@ -18,7 +18,8 @@
 package org.wso2.andes.server;
 
 import org.apache.commons.cli.*;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.org.apache.mina.util.SessionLog;
 import org.dna.mqtt.moquette.server.Server;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -34,7 +35,7 @@ public class Main {
     private final Options options = new Options();
     private CommandLine commandLine;
 
-    private static final Logger logger = Logger.getLogger(Main.class);
+    private static final Log logger = LogFactory.getLog(Main.class);
 
     public static void main(String[] args) {
         //if the -Dlog4j.configuration property has not been set, enable the init override

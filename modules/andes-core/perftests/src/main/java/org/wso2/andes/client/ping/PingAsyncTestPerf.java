@@ -23,7 +23,8 @@ package org.wso2.andes.client.ping;
 import junit.framework.Test;
 import junit.framework.TestSuite;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import org.wso2.andes.client.requestreply.PingPongProducer;
 
@@ -52,7 +53,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class PingAsyncTestPerf extends PingTestPerf implements TimingControllerAware
 {
-    private static Logger _logger = Logger.getLogger(PingAsyncTestPerf.class);
+    private static Log _logger = LogFactory.getLog(PingAsyncTestPerf.class);
 
     /** Holds the name of the property to get the test results logging batch size. */
     public static final String TEST_RESULTS_BATCH_SIZE_PROPNAME = "batchSize";

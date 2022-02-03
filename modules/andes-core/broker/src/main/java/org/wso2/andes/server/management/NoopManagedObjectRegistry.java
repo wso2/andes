@@ -19,7 +19,8 @@ package org.wso2.andes.server.management;
 
 import javax.management.JMException;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * This managed object registry does not actually register MBeans. This can be used in tests when management is
@@ -28,7 +29,7 @@ import org.apache.log4j.Logger;
  */
 public class NoopManagedObjectRegistry implements ManagedObjectRegistry
 {
-    private static final Logger _log = Logger.getLogger(NoopManagedObjectRegistry.class);
+    private static final Log _log = LogFactory.getLog(NoopManagedObjectRegistry.class);
 
     public NoopManagedObjectRegistry()
     {

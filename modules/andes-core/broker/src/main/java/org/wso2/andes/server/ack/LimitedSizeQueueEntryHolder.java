@@ -18,7 +18,8 @@
 
 package org.wso2.andes.server.ack;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.amqp.QpidAndesBridge;
@@ -35,7 +36,7 @@ import java.util.Map;
  */
 public class LimitedSizeQueueEntryHolder extends LinkedHashMap<Long, QueueEntry> {
 
-    protected static final Logger _logger = Logger.getLogger(LimitedSizeQueueEntryHolder.class);
+    protected static final Log _logger = LogFactory.getLog(LimitedSizeQueueEntryHolder.class);
 
     //after the map size reach this limit eldest elements are considered to be removed
     private int growLimit;

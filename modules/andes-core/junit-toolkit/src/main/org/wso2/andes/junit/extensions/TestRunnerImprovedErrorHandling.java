@@ -28,7 +28,8 @@ import junit.runner.Version;
 import junit.textui.ResultPrinter;
 import junit.textui.TestRunner;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.io.PrintStream;
 
@@ -46,7 +47,7 @@ import java.io.PrintStream;
 public class TestRunnerImprovedErrorHandling extends TestRunner
 {
     /** Used for logging. */
-    Logger log = Logger.getLogger(TestRunnerImprovedErrorHandling.class);
+    Log log = LogFactory.getLog(TestRunnerImprovedErrorHandling.class);
 
     /**
      * Delegates to the super constructor.

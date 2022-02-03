@@ -16,7 +16,8 @@
 package org.wso2.andes.server.cluster.coordination.rdbms;
 
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesBinding;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextStore;
@@ -41,7 +42,7 @@ public class RDBMSBasedNotificationAgentImpl implements ClusterNotificationAgent
     /**
      * Logger object to log information.
      */
-    private static final Logger log = Logger.getLogger(RDBMSBasedNotificationAgentImpl.class);
+    private static final Log log = LogFactory.getLog(RDBMSBasedNotificationAgentImpl.class);
 
     /**
      * The context store instance which is used to store events.

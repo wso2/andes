@@ -23,13 +23,14 @@ package org.wso2.andes.unit.client.connection;
 import org.apache.qpid.AMQException;
 import org.apache.qpid.url.URLSyntaxException;
 import org.wso2.andes.client.AMQConnection;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import junit.framework.TestCase;
 
 public class TestManyConnections extends TestCase
 {
-    private static final Logger _log = Logger.getLogger(TestManyConnections.class);
+    private static final Log _log = LogFactory.getLog(TestManyConnections.class);
 
     private AMQConnection[] _connections;
 

@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.virtualhost.plugins;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.virtualhost.HouseKeepingTask;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 
@@ -25,7 +26,7 @@ import java.util.concurrent.TimeUnit;
 
 public abstract class VirtualHostHouseKeepingPlugin extends HouseKeepingTask implements VirtualHostPlugin
 {
-    protected final Logger _logger = Logger.getLogger(getClass());
+    protected final Log _logger = LogFactory.getLog(getClass());
 
     public VirtualHostHouseKeepingPlugin(VirtualHost vhost)
     {

@@ -25,7 +25,8 @@ import junit.extensions.TestDecorator;
 import junit.framework.Test;
 import junit.framework.TestSuite;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -49,7 +50,7 @@ import java.util.List;
 public class WrappedSuiteTestDecorator extends TestDecorator
 {
     /** Used for logging. */
-    private static Logger log = Logger.getLogger(WrappedSuiteTestDecorator.class);
+    private static Log log = LogFactory.getLog(WrappedSuiteTestDecorator.class);
 
     /** Holds the test suite that this supplies access to. */
     protected Test suite;

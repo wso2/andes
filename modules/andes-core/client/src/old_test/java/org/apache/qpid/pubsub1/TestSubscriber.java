@@ -20,7 +20,8 @@
  */
 package org.apache.qpid.pubsub1;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.client.AMQConnection;
 import org.wso2.andes.client.AMQTopic;
 import org.wso2.andes.jms.Session;
@@ -34,7 +35,7 @@ import java.net.InetAddress;
 
 public class TestSubscriber
 {
-    private static final Logger _logger = Logger.getLogger(TestSubscriber.class);
+    private static final Log _logger = LogFactory.getLog(TestSubscriber.class);
 
     private static class TestMessageListener implements MessageListener
     {

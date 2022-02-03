@@ -23,7 +23,8 @@ package org.wso2.andes.server.security.access.plugins;
 import javax.security.auth.Subject;
 
 import org.apache.commons.configuration.ConfigurationException;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 import org.wso2.andes.server.security.AbstractPlugin;
 import org.wso2.andes.server.security.Result;
@@ -39,7 +40,7 @@ import org.wso2.andes.server.security.access.config.RuleSet;
  */
 public class AccessControl extends AbstractPlugin
 {
-    public static final Logger _logger = Logger.getLogger(AccessControl.class);
+    public static final Log _logger = LogFactory.getLog(AccessControl.class);
     
     private RuleSet _ruleSet;
     

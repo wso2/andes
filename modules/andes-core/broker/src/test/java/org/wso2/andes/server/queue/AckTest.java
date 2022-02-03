@@ -20,7 +20,8 @@
  */
 package org.wso2.andes.server.queue;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.BasicContentHeaderProperties;
 import org.wso2.andes.framing.ContentHeaderBody;
@@ -51,7 +52,7 @@ import java.util.Set;
  */
 public class AckTest extends InternalBrokerBaseCase
 {
-    private static final Logger _log = Logger.getLogger(AckTest.class);
+    private static final Log _log = LogFactory.getLog(AckTest.class);
 
     private Subscription _subscription;
 

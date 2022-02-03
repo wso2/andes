@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.handler;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.framing.AMQShortString;
@@ -45,7 +46,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class QueueDeclareHandler implements StateAwareMethodListener<QueueDeclareBody>
 {
-    private static final Logger _logger = Logger.getLogger(QueueDeclareHandler.class);
+    private static final Log _logger = LogFactory.getLog(QueueDeclareHandler.class);
 
     private static final QueueDeclareHandler _instance = new QueueDeclareHandler();
 

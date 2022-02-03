@@ -19,7 +19,8 @@ package org.wso2.andes.server.subscription;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQChannelClosedException;
 import org.wso2.andes.AMQConnectionClosedException;
 import org.wso2.andes.AMQException;
@@ -350,7 +351,7 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
     }
 
 
-    private static final Logger _logger = Logger.getLogger(SubscriptionImpl.class);
+    private static final Log _logger = LogFactory.getLog(SubscriptionImpl.class);
 
     private final AMQChannel _channel;
 

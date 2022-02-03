@@ -21,7 +21,8 @@
 
 package org.wso2.andes.client.ping;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.client.message.TestMessageFactory;
 import org.wso2.andes.util.CommandLineParser;
 
@@ -37,7 +38,7 @@ import java.util.Properties;
  */
 public class PingSendOnlyClient extends PingDurableClient
 {
-    private static final Logger log = Logger.getLogger(PingSendOnlyClient.class);
+    private static final Log log = LogFactory.getLog(PingSendOnlyClient.class);
 
     public PingSendOnlyClient(Properties overrides) throws Exception
     {

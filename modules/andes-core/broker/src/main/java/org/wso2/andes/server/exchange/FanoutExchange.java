@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.exchange;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import org.wso2.andes.AMQException;
 import org.wso2.andes.exchange.ExchangeDefaults;
@@ -35,7 +36,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class FanoutExchange extends AbstractExchange
 {
-    private static final Logger _logger = Logger.getLogger(FanoutExchange.class);
+    private static final Log _logger = LogFactory.getLog(FanoutExchange.class);
 
     private static final Integer ONE = Integer.valueOf(1);
 
@@ -49,7 +50,7 @@ public class FanoutExchange extends AbstractExchange
         return new FanoutExchangeMBean(this);
     }
 
-    public Logger getLogger()
+    public Log getLogger()
     {
         return _logger;
     }

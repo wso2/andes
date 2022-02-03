@@ -24,7 +24,8 @@ import junit.framework.AssertionFailedError;
 import junit.framework.Test;
 import junit.framework.TestCase;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import org.wso2.andes.junit.extensions.ShutdownHookable;
 
@@ -67,7 +68,7 @@ import java.util.*;
 public class XMLTestListener implements TKTestListener, ShutdownHookable
 {
     /** Used for debugging. */
-    private static final Logger log = Logger.getLogger(XMLTestListener.class);
+    private static final Log log = LogFactory.getLog(XMLTestListener.class);
 
     /** The results file writer. */
     protected Writer writer;

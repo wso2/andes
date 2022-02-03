@@ -23,7 +23,8 @@ package org.wso2.andes.junit.extensions;
 import junit.framework.Test;
 import junit.framework.TestResult;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * A test decorator that runs a test repeatedly until a specified length of time has passed.
@@ -45,7 +46,7 @@ import org.apache.log4j.Logger;
 public class DurationTestDecorator extends WrappedSuiteTestDecorator implements ShutdownHookable
 {
     /** Used for logging. */
-    private static final Logger log = Logger.getLogger(DurationTestDecorator.class);
+    private static final Log log = LogFactory.getLog(DurationTestDecorator.class);
 
     /** The test to run. */
     private Test test;
@@ -172,7 +173,7 @@ public class DurationTestDecorator extends WrappedSuiteTestDecorator implements 
 //    private class DurationTimerTask extends TimerTask
 //    {
 //        /** Used for debugging purposes. */
-//        private final Logger log = Logger.getLogger(DurationTimerTask.class);
+//        private final Logger log = LogFactory.getLog(DurationTimerTask.class);
 //
 //        /** Holds the test result for the test to which a duration limit is being applied. */
 //        TKTestResult testResult;

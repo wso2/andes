@@ -20,7 +20,8 @@ package org.wso2.andes.kernel;
 
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.dtx.AndesPreparedMessageMetadata;
@@ -54,7 +55,7 @@ public class MessagingEngine {
     /**
      * Logger for MessagingEngine
      */
-    private static final Logger log;
+    private static final Log log;
 
     /**
      * Static instance of MessagingEngine
@@ -92,7 +93,7 @@ public class MessagingEngine {
 
 
     static {
-        log = Logger.getLogger(MessagingEngine.class);
+        log = LogFactory.getLog(MessagingEngine.class);
         messagingEngine = new MessagingEngine();
     }
 

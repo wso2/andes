@@ -20,7 +20,8 @@
  */
 package org.wso2.andes.interop.clienttestcases;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.test.framework.distributedtesting.TestClientControlledTest;
 
 import javax.jms.JMSException;
@@ -43,7 +44,7 @@ import javax.jms.Session;
 public class TestCase1DummyRun implements TestClientControlledTest
 {
     /** Used for debugging. */
-    private static final Logger log = Logger.getLogger(TestCase1DummyRun.class);
+    private static final Log log = LogFactory.getLog(TestCase1DummyRun.class);
 
     /**
      * Should provide the name of the test case that this class implements. The exact names are defined in the

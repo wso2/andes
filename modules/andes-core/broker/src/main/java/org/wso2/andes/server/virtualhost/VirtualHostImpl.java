@@ -19,7 +19,8 @@ package org.wso2.andes.server.virtualhost;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQStoreException;
 import org.wso2.andes.amqp.QpidAndesBridge;
@@ -64,7 +65,7 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 public class VirtualHostImpl implements VirtualHost {
-    private static final Logger log = Logger.getLogger(VirtualHostImpl.class);
+    private static final Log log = LogFactory.getLog(VirtualHostImpl.class);
 
     private final String name;
 

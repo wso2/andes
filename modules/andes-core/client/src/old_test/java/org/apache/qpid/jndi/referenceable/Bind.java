@@ -20,6 +20,11 @@
  */
 package org.wso2.andes.jndi.referenceable;
 
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.Configuration;
+import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.wso2.andes.client.*;
 import org.apache.qpid.AMQException;
 import org.apache.qpid.url.URLSyntaxException;
@@ -110,11 +115,12 @@ public class Bind
     public static void main(String[] args) throws NameAlreadyBoundException, NoInitialContextException, URLSyntaxException, AMQException, JMSException
     {
 
+        LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+        Configuration config = ctx.getConfiguration();
+        LoggerConfig loggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
+        loggerConfig.setLevel(Level.OFF);
+        ctx.updateLoggers();
 
-        org.apache.log4j.Logger.getRootLogger().setLevel(org.apache.log4j.Level.OFF);
-
-//        org.apache.log4j.Logger _logger = org.apache.log4j.Logger.getLogger(AMQConnection.class);
-//        _logger.setLevel(org.apache.log4j.Level.OFF);
 
         boolean exit = false;
 

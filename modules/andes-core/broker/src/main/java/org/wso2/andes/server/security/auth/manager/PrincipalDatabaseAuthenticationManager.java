@@ -39,7 +39,8 @@ import javax.security.sasl.SaslServerFactory;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.PropertyException;
 import org.wso2.andes.configuration.PropertyUtils;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
@@ -78,7 +79,7 @@ import org.wso2.andes.server.security.auth.sasl.UsernamePrincipal;
  */
 public class PrincipalDatabaseAuthenticationManager implements AuthenticationManager
 {
-    private static final Logger _logger = Logger.getLogger(PrincipalDatabaseAuthenticationManager.class);
+    private static final Log _logger = LogFactory.getLog(PrincipalDatabaseAuthenticationManager.class);
 
     /** The list of mechanisms, in the order in which they are configured (i.e. preferred order) */
     private String _mechanisms;

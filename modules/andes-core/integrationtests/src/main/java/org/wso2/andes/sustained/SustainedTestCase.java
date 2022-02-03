@@ -20,7 +20,8 @@
  */
 package org.wso2.andes.sustained;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import org.wso2.andes.client.AMQSession;
 import org.wso2.andes.test.framework.DropInTest;
@@ -44,7 +45,7 @@ import java.util.Properties;
 public class SustainedTestCase extends FrameworkBaseCase implements DropInTest
 {
     /** Used for debugging. */
-    Logger log = Logger.getLogger(SustainedTestCase.class);
+    Log log = LogFactory.getLog(SustainedTestCase.class);
 
     /** Holds the root name of the topic on which to send the test messages. */
     private static final String SUSTAINED_KEY = "Perf_SustainedPubSub";

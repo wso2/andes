@@ -20,7 +20,8 @@ package org.wso2.andes.server.plugins;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.felix.framework.Felix;
 import org.apache.felix.framework.util.StringMap;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.common.Closeable;
 import org.wso2.andes.configuration.qpid.TopicConfiguration;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPluginFactory;
@@ -58,7 +59,7 @@ import static org.osgi.framework.Constants.*;
 @SuppressWarnings("unchecked")
 public class PluginManager implements Closeable
 {
-    private static final Logger _logger = Logger.getLogger(PluginManager.class);
+    private static final Log _logger = LogFactory.getLog(PluginManager.class);
 
     private static final int FELIX_STOP_TIMEOUT = 30000;
     private static final String QPID_VER_SUFFIX = "version=0.13,";

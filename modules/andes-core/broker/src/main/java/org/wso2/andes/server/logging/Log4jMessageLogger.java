@@ -17,8 +17,9 @@
  */
 package org.wso2.andes.server.logging;
 
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.wso2.andes.configuration.qpid.ServerConfiguration;
 
 public class Log4jMessageLogger extends AbstractRootMessageLogger
@@ -46,8 +47,8 @@ public class Log4jMessageLogger extends AbstractRootMessageLogger
     {
         if(isEnabled())
         {
-            Logger logger = Logger.getLogger(logHierarchy);
-            return logger.isEnabledFor(LEVEL);
+            Logger logger = LogManager.getLogger(logHierarchy);
+            return logger.isInfoEnabled();
         }
         else
         {
@@ -64,7 +65,7 @@ public class Log4jMessageLogger extends AbstractRootMessageLogger
     @Override
     public void rawMessage(String message, Throwable throwable, String logHierarchy)
     {
-        Logger logger = Logger.getLogger(logHierarchy);
+        Logger logger = LogManager.getLogger(logHierarchy);
         
         logger.log(LEVEL, message, throwable);
     }

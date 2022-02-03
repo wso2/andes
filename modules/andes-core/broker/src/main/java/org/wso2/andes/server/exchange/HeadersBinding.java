@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.exchange;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.framing.AMQTypedValue;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.server.binding.Binding;
@@ -33,7 +34,7 @@ import java.util.Set;
  */
 class HeadersBinding
 {
-    private static final Logger _logger = Logger.getLogger(HeadersBinding.class);
+    private static final Log _logger = LogFactory.getLog(HeadersBinding.class);
 
     private final FieldTable _mappings;
     private final Binding _binding;

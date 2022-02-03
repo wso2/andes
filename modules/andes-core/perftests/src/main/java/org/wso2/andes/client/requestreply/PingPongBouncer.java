@@ -20,7 +20,8 @@
  */
 package org.wso2.andes.client.requestreply;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.client.AMQConnection;
 import org.wso2.andes.client.AMQQueue;
 import org.wso2.andes.client.AMQTopic;
@@ -60,7 +61,7 @@ import java.util.Date;
  */
 public class PingPongBouncer implements MessageListener
 {
-    private static final Logger _logger = Logger.getLogger(PingPongBouncer.class);
+    private static final Log _logger = LogFactory.getLog(PingPongBouncer.class);
 
     /** The default prefetch size for the message consumer. */
     private static final int PREFETCH = 1;

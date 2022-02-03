@@ -46,7 +46,7 @@ import java.util.regex.Pattern;
 public class MathUtils
 {
     /** Used for debugging. */
-    // private static final Logger log = Logger.getLogger(MathUtils.class);
+    // private static final Log log = LogFactory.getLog(MathUtils.class);
 
     /** The sequence defintion matching regular expression. */
     public static final String SEQUENCE_REGEXP = "^(\\[[0-9:]+\\])(:samples=[0-9]+)?(:exp)?$";

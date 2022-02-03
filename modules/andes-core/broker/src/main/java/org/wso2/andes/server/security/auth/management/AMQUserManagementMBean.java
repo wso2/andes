@@ -33,7 +33,8 @@ import javax.management.openmbean.TabularDataSupport;
 import javax.management.openmbean.TabularType;
 import javax.security.auth.login.AccountNotFoundException;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.management.common.mbeans.UserManagement;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanDescription;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanOperation;
@@ -45,7 +46,7 @@ import org.wso2.andes.server.security.auth.sasl.UsernamePrincipal;
 @MBeanDescription("User Management Interface")
 public class AMQUserManagementMBean extends AMQManagedObject implements UserManagement
 {
-    private static final Logger _logger = Logger.getLogger(AMQUserManagementMBean.class);
+    private static final Log _logger = LogFactory.getLog(AMQUserManagementMBean.class);
 
     private PrincipalDatabase _principalDatabase;
 

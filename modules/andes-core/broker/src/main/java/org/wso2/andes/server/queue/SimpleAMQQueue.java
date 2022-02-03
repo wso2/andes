@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.queue;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.amqp.QpidAndesBridge;
@@ -75,7 +76,7 @@ import javax.management.JMException;
 
 public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
 {
-    private static final Logger _logger = Logger.getLogger(SimpleAMQQueue.class);
+    private static final Log _logger = LogFactory.getLog(SimpleAMQQueue.class);
 
 
     private final VirtualHost _virtualHost;

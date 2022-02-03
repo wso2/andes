@@ -18,7 +18,8 @@
 package org.wso2.andes.server.virtualhost.plugins.policies;
 
 import org.apache.commons.configuration.ConfigurationException;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.binding.Binding;
@@ -33,7 +34,7 @@ import org.wso2.andes.policies.SlowConsumerPolicyPluginFactory;
 
 public class TopicDeletePolicy implements SlowConsumerPolicyPlugin
 {
-    Logger _logger = Logger.getLogger(TopicDeletePolicy.class);
+    Log _logger = LogFactory.getLog(TopicDeletePolicy.class);
     private TopicDeletePolicyConfiguration _configuration;
 
     public static class TopicDeletePolicyFactory implements SlowConsumerPolicyPluginFactory

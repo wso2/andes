@@ -38,7 +38,8 @@ import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.AMQException;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.nio.ByteBuffer;
 
@@ -57,7 +58,7 @@ public class VirtualHostConfigRecoveryHandler implements ConfigurationRecoveryHa
                                                         TransactionLogRecoveryHandler,
                                                         TransactionLogRecoveryHandler.QueueEntryRecoveryHandler
 {
-    private static final Logger _logger = Logger.getLogger(VirtualHostConfigRecoveryHandler.class);
+    private static final Log _logger = LogFactory.getLog(VirtualHostConfigRecoveryHandler.class);
 
 
     private final VirtualHost _virtualHost;

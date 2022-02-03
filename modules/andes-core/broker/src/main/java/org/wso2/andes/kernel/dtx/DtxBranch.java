@@ -15,7 +15,8 @@
 
 package org.wso2.andes.kernel.dtx;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
@@ -44,7 +45,7 @@ public class DtxBranch {
     /**
      * Class logger
      */
-    private static final Logger LOGGER = Logger.getLogger(DtxBranch.class);
+    private static final Log LOGGER = LogFactory.getLog(DtxBranch.class);
 
     /**
      * Internal XID has this value when the branch is not in prepared state

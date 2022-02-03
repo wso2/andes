@@ -19,7 +19,8 @@ package org.wso2.andes.server.security.auth.database;
 
 import org.apache.commons.codec.EncoderException;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
@@ -28,7 +29,7 @@ import java.security.Principal;
 
 public class HashedUser implements Principal
 {
-    private static final Logger _logger = Logger.getLogger(HashedUser.class);
+    private static final Log _logger = LogFactory.getLog(HashedUser.class);
 
     String _name;
     char[] _password;

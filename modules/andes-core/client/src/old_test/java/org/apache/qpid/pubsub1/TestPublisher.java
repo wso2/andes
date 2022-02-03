@@ -20,7 +20,8 @@
  */
 package org.apache.qpid.pubsub1;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.client.AMQConnection;
 import org.apache.qpid.AMQException;
 import org.apache.qpid.framing.AMQShortString;
@@ -48,7 +49,7 @@ import java.net.UnknownHostException;
  */
 public class TestPublisher
 {
-    private static final Logger _log = Logger.getLogger(TestPublisher.class);
+    private static final Log _log = LogFactory.getLog(TestPublisher.class);
 
     private AMQConnection _connection;
 

@@ -17,7 +17,7 @@
  */
 package org.wso2.andes.server.exchange;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
 
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.AMQShortString;
@@ -142,7 +142,7 @@ public abstract class AbstractExchange implements Exchange, Managable
         return getVirtualHost().getConfigStore();
     }
 
-    public abstract Logger getLogger();
+    public abstract Log getLogger();
 
     public boolean isDurable()
     {

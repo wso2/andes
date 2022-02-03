@@ -18,7 +18,8 @@
 
 package org.wso2.andes.amqp;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.store.ForwardingStoredMessage;
@@ -34,7 +35,7 @@ import java.nio.ByteBuffer;
  *
  */
 public class QpidStoredMessage<T extends StorableMessageMetaData> extends ForwardingStoredMessage<T> {
-    private static final Logger log = Logger.getLogger(QpidStoredMessage.class);
+    private static final Log log = LogFactory.getLog(QpidStoredMessage.class);
 
     /**
      * Provide access to message content

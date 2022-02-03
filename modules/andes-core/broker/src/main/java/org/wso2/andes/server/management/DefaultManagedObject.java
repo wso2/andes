@@ -23,7 +23,8 @@ import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
 import javax.management.StandardMBean;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 
 /**
@@ -33,7 +34,7 @@ import org.wso2.andes.server.registry.ApplicationRegistry;
  */
 public abstract class DefaultManagedObject extends StandardMBean implements ManagedObject
 {
-    private static final Logger LOGGER = Logger.getLogger(ApplicationRegistry.class);
+    private static final Log LOGGER = LogFactory.getLog(ApplicationRegistry.class);
     
     private Class<?> _managementInterface;
 

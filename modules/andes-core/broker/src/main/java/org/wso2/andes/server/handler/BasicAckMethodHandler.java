@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.handler;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.BasicAckBody;
 import org.wso2.andes.server.AMQChannel;
@@ -27,7 +28,7 @@ import org.wso2.andes.server.state.StateAwareMethodListener;
 
 public class BasicAckMethodHandler implements StateAwareMethodListener<BasicAckBody>
 {
-    private static final Logger _log = Logger.getLogger(BasicAckMethodHandler.class);
+    private static final Log _log = LogFactory.getLog(BasicAckMethodHandler.class);
 
     private static final BasicAckMethodHandler _instance = new BasicAckMethodHandler();
 

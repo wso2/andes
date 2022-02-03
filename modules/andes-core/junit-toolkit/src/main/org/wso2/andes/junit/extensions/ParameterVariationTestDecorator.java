@@ -22,7 +22,8 @@ package org.wso2.andes.junit.extensions;
 
 import junit.framework.TestResult;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import org.wso2.andes.junit.extensions.util.MathUtils;
 
@@ -45,7 +46,7 @@ import org.wso2.andes.junit.extensions.util.MathUtils;
 public class ParameterVariationTestDecorator extends WrappedSuiteTestDecorator
 {
     /** Used for logging. */
-    private static final Logger log = Logger.getLogger(ParameterVariationTestDecorator.class);
+    private static final Log log = LogFactory.getLog(ParameterVariationTestDecorator.class);
 
     /** The int size parameters to run the test with. */
     private int[] params;

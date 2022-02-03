@@ -24,7 +24,8 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestResult;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import org.wso2.andes.junit.extensions.listeners.TKTestListener;
 
@@ -70,7 +71,7 @@ import java.util.Properties;
 public class TKTestResult extends TestResult
 {
     /** Used for logging. */
-    private static final Logger log = Logger.getLogger(TKTestResult.class);
+    private static final Log log = LogFactory.getLog(TKTestResult.class);
 
     /** The delay between two tests. */
     private int delay = 0;

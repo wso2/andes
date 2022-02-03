@@ -22,7 +22,8 @@ package org.wso2.andes.junit.extensions;
 
 import junit.framework.TestCase;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -65,7 +66,7 @@ import java.lang.reflect.Modifier;
 public class AsymptoticTestCase extends TestCase implements InstrumentedTest
 {
     /** Used for logging. */
-    private static final Logger log = Logger.getLogger(AsymptoticTestCase.class);
+    private static final Log log = LogFactory.getLog(AsymptoticTestCase.class);
 
     /** The name of the test case. */
     private String testCaseName;

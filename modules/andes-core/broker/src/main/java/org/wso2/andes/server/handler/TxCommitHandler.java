@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.handler;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.TxCommitBody;
 import org.wso2.andes.framing.MethodRegistry;
@@ -29,7 +30,7 @@ import org.wso2.andes.server.state.StateAwareMethodListener;
 
 public class TxCommitHandler implements StateAwareMethodListener<TxCommitBody>
 {
-    private static final Logger _log = Logger.getLogger(TxCommitHandler.class);
+    private static final Log _log = LogFactory.getLog(TxCommitHandler.class);
 
     private static TxCommitHandler _instance = new TxCommitHandler();
 

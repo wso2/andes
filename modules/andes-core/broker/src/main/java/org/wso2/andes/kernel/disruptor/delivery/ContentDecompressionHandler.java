@@ -19,7 +19,8 @@
 package org.wso2.andes.kernel.disruptor.delivery;
 
 import com.lmax.disruptor.EventHandler;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.DisruptorCachedContent;
@@ -39,7 +40,7 @@ public class ContentDecompressionHandler implements EventHandler<DeliveryEventDa
     /**
      * Class Logger for logging information, error and warning.
      */
-    private static final Logger log = Logger.getLogger(ContentDecompressionHandler.class);
+    private static final Log log = LogFactory.getLog(ContentDecompressionHandler.class);
 
     /**
      * Maximum content chunk size stored in DB

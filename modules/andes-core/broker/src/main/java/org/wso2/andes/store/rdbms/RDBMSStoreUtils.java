@@ -40,7 +40,8 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.store.AndesBatchUpdateException;
@@ -57,7 +58,7 @@ import com.google.common.base.Splitter;
  */
 public class RDBMSStoreUtils {
 
-    private static final Logger log = Logger.getLogger(RDBMSStoreUtils.class);
+    private static final Log log = LogFactory.getLog(RDBMSStoreUtils.class);
 
     /**
      * Keep track of SQL state code classes (i.e first two digits)

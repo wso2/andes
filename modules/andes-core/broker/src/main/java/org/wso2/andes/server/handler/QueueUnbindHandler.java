@@ -18,7 +18,8 @@
 
 package org.wso2.andes.server.handler;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.AMQMethodBody;
 import org.wso2.andes.framing.AMQShortString;
@@ -38,7 +39,7 @@ import org.wso2.andes.server.virtualhost.VirtualHost;
 
 public class QueueUnbindHandler implements StateAwareMethodListener<QueueUnbindBody>
 {
-    private static final Logger _log = Logger.getLogger(QueueUnbindHandler.class);
+    private static final Log _log = LogFactory.getLog(QueueUnbindHandler.class);
 
     private static final QueueUnbindHandler _instance = new QueueUnbindHandler();
 

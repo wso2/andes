@@ -18,7 +18,8 @@
 
 package org.wso2.andes.store.rdbms;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesBinding;
 import org.wso2.andes.kernel.AndesContextStore;
@@ -60,7 +61,7 @@ import javax.sql.DataSource;
 
 public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
-    private static final Logger logger = Logger.getLogger(RDBMSAndesContextStoreImpl.class);
+    private static final Log logger = LogFactory.getLog(RDBMSAndesContextStoreImpl.class);
 
     /**
      * Connection pooled sql data source object. Used to create connections in method scope

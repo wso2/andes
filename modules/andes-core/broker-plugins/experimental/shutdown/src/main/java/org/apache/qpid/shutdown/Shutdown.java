@@ -27,14 +27,15 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * Implementation of the JMX broker shutdown plugin.
  */
 public class Shutdown implements ShutdownMBean
 {
-    private static final Logger _logger = Logger.getLogger(Shutdown.class);
+    private static final Log _logger = LogFactory.getLog(Shutdown.class);
 
     private static final String FORMAT = "yyyyy/MM/dd hh:mm:ss";
     private static final int THREAD_COUNT = 1;

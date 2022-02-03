@@ -19,7 +19,8 @@
 package org.wso2.andes.server.handler;
 
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQChannelException;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.AMQMethodBody;
@@ -37,7 +38,7 @@ import org.wso2.andes.server.state.StateAwareMethodListener;
 
 public class BasicRecoverSyncMethodHandler implements StateAwareMethodListener<BasicRecoverSyncBody>
 {
-    private static final Logger _logger = Logger.getLogger(BasicRecoverSyncMethodHandler.class);
+    private static final Log _logger = LogFactory.getLog(BasicRecoverSyncMethodHandler.class);
 
     private static final BasicRecoverSyncMethodHandler _instance = new BasicRecoverSyncMethodHandler();
 

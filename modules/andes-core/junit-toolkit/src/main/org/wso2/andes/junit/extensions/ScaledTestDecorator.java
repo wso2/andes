@@ -41,7 +41,7 @@ import java.util.concurrent.CyclicBarrier;
 public class ScaledTestDecorator extends WrappedSuiteTestDecorator implements ShutdownHookable // TestDecorator
 {
     /** Used for logging. */
-    // private static final Logger log = Logger.getLogger(ScaledTestDecorator.class);
+    // private static final Log log = LogFactory.getLog(ScaledTestDecorator.class);
 
     /** Determines how long to wait for tests to cleanly exit on shutdown. */
     private static final long SHUTDOWN_PAUSE = 3000;

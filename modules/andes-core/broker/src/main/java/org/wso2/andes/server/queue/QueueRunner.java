@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.queue;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.pool.ReadWriteRunnable;
 import org.wso2.andes.server.logging.actors.CurrentActor;
@@ -30,7 +31,7 @@ import org.wso2.andes.server.logging.actors.CurrentActor;
  */
 public class QueueRunner implements ReadWriteRunnable
 {
-    private static final Logger _logger = Logger.getLogger(QueueRunner.class);
+    private static final Log _logger = LogFactory.getLog(QueueRunner.class);
 
     private final String _name;
     private final SimpleAMQQueue _queue;

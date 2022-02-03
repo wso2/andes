@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.queue;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import org.wso2.andes.AMQException;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -46,7 +47,7 @@ public class QueueEntryImpl implements QueueEntry
     /**
      * Used for debugging purposes.
      */
-    private static final Logger _log = Logger.getLogger(QueueEntryImpl.class);
+    private static final Log _log = LogFactory.getLog(QueueEntryImpl.class);
 
     private final SimpleQueueEntryList _queueEntryList;
 

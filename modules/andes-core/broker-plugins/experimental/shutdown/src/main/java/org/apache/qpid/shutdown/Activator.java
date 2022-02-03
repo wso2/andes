@@ -25,13 +25,14 @@ import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 
 public class Activator implements BundleActivator
 {
-    private static final Logger _logger = Logger.getLogger(Activator.class);
+    private static final Log _logger = LogFactory.getLog(Activator.class);
 
     private static final String SHUTDOWN_MBEAN_NAME = "org.apache.qpid:type=ShutdownMBean";
 

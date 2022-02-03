@@ -17,14 +17,15 @@
  */
 package org.wso2.andes.server.filter;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.queue.Filterable;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class SimpleFilterManager implements FilterManager
 {
-    private final Logger _logger = Logger.getLogger(SimpleFilterManager.class);
+    private final Log _logger = LogFactory.getLog(SimpleFilterManager.class);
 
     private final ConcurrentLinkedQueue<MessageFilter> _filters;
     private String _toString = "";

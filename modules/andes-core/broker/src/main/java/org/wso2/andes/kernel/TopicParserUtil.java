@@ -18,7 +18,8 @@
 
 package org.wso2.andes.kernel;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -32,7 +33,7 @@ public class TopicParserUtil {
     /**
      * Class Logger
      */
-    private static final Logger log = Logger.getLogger(TopicParserUtil.class);
+    private static final Log log = LogFactory.getLog(TopicParserUtil.class);
 
     /**
      * Character used to identify tokens in a topic name

@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.filter;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.common.AMQPFilterTypes;
 import org.wso2.andes.framing.FieldTable;
@@ -28,7 +29,7 @@ import java.util.Map;
 public class FilterManagerFactory
 {
  
-    private final static Logger _logger = Logger.getLogger(FilterManagerFactory.class);
+    private final static Log _logger = LogFactory.getLog(FilterManagerFactory.class);
 
     //fixme move to a common class so it can be refered to from client code.
 

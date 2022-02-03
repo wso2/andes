@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.filter;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQInvalidArgumentException;
 import org.wso2.andes.server.filter.jms.selector.SelectorParser;
@@ -26,7 +27,7 @@ import org.wso2.andes.server.queue.Filterable;
 
 public class JMSSelectorFilter implements MessageFilter
 {
-    private final static Logger _logger = org.apache.log4j.Logger.getLogger(JMSSelectorFilter.class);
+    private final static Log _logger = LogFactory.getLog(JMSSelectorFilter.class);
 
     private String _selector;
     private BooleanExpression _matcher;

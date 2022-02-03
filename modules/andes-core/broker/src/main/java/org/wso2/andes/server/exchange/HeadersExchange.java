@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.exchange;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.exchange.ExchangeDefaults;
 import org.wso2.andes.framing.AMQShortString;
@@ -67,7 +68,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 public class HeadersExchange extends AbstractExchange
 {
 
-    private static final Logger _logger = Logger.getLogger(HeadersExchange.class);
+    private static final Log _logger = LogFactory.getLog(HeadersExchange.class);
     
     private final ConcurrentHashMap<String, CopyOnWriteArraySet<Binding>> _bindingsByKey =
                             new ConcurrentHashMap<String, CopyOnWriteArraySet<Binding>>();
@@ -200,7 +201,7 @@ public class HeadersExchange extends AbstractExchange
         return new HeadersExchangeMBean(this);
     }
 
-    public Logger getLogger()
+    public Log getLogger()
     {
         return _logger;
     }

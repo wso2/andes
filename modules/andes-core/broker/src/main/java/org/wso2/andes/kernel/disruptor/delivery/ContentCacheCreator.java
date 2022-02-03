@@ -24,7 +24,8 @@ import com.gs.collections.api.iterator.MutableLongIterator;
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import com.gs.collections.impl.set.mutable.primitive.LongHashSet;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesException;
@@ -47,7 +48,7 @@ public class ContentCacheCreator {
     /**
      * Class Logger for logging information, error and warning.
      */
-    private static final Logger log = Logger.getLogger(ContentCacheCreator.class);
+    private static final Log log = LogFactory.getLog(ContentCacheCreator.class);
 
     /**
      * Maximum content chunk size stored in DB

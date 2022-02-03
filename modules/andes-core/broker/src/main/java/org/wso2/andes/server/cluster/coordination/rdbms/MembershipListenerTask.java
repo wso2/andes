@@ -19,7 +19,8 @@
 
 package org.wso2.andes.server.cluster.coordination.rdbms;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
@@ -35,7 +36,7 @@ class MembershipListenerTask implements Runnable {
     /**
      * Class logger
      */
-    private static final Logger logger = Logger.getLogger(MembershipListenerTask.class);
+    private static final Log logger = LogFactory.getLog(MembershipListenerTask.class);
 
     /**
      * Context store object to communicate with the database for the context store.

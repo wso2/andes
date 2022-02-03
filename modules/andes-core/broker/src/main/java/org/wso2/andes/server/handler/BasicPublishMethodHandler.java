@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.handler;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.exchange.ExchangeDefaults;
@@ -34,7 +35,7 @@ import org.wso2.andes.server.virtualhost.VirtualHost;
 
 public class BasicPublishMethodHandler implements StateAwareMethodListener<BasicPublishBody>
 {
-    private static final Logger _logger = Logger.getLogger(BasicPublishMethodHandler.class);
+    private static final Log _logger = LogFactory.getLog(BasicPublishMethodHandler.class);
 
     private static final BasicPublishMethodHandler _instance = new BasicPublishMethodHandler();
 
