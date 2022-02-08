@@ -31,12 +31,13 @@ import javax.jms.MessageConsumer;
 import javax.jms.MessageListener;
 import javax.jms.Session;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.wso2.andes.test.utils.QpidBrokerTestCase;
 
 public class MultipleTransactedBatchProducerTest extends QpidBrokerTestCase
 {
-    private static final Logger _logger = Logger.getLogger(MultipleTransactedBatchProducerTest.class);
+    private static final Logger _logger = LogManager.getLogger(MultipleTransactedBatchProducerTest.class);
 
     private static final int MESSAGE_COUNT = 1000;
     private static final int BATCH_SIZE = 50;

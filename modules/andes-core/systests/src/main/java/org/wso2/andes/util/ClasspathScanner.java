@@ -20,7 +20,8 @@
  */
 package org.wso2.andes.util;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import java.io.File;
 import java.util.*;
@@ -47,7 +48,7 @@ import java.util.regex.Pattern;
  */
 public class ClasspathScanner
 {
-    private static final Logger log = Logger.getLogger(ClasspathScanner.class);
+    private static final Logger log = LogManager.getLogger(ClasspathScanner.class);
 
     /**
      * Scans the classpath and returns all classes that extend a specified class and match a specified name.

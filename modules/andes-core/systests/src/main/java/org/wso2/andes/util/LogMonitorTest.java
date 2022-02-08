@@ -21,7 +21,7 @@
 package org.wso2.andes.util;
 
 import junit.framework.TestCase;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import java.io.File;
 import java.io.IOException;
@@ -137,7 +137,7 @@ public class LogMonitorTest extends TestCase
 
         String message = getName() + ": Test Message";
 
-        Logger.getRootLogger().warn(message);
+        LogManager.getRootLogger().warn(message);
 
         validateLogContainsMessage(_monitor, message);
     }
@@ -151,7 +151,7 @@ public class LogMonitorTest extends TestCase
     {
         String message = getName() + ": Test Message";
 
-        Logger.getRootLogger().warn(message);
+        LogManager.getRootLogger().warn(message);
 
         String notLogged = "This text was not logged";
 
@@ -179,7 +179,7 @@ public class LogMonitorTest extends TestCase
     {
         String message = getName() + ": Test Message";
 
-        Logger.getRootLogger().warn(message);
+        LogManager.getRootLogger().warn(message);
 
         validateLogContainsMessage(_monitor, message);
 
@@ -196,7 +196,7 @@ public class LogMonitorTest extends TestCase
     {
         String message = getName() + ": Test Message";
 
-        Logger.getRootLogger().warn(message);
+        LogManager.getRootLogger().warn(message);
 
         String fileContents = _monitor.readFile();
 
@@ -267,7 +267,7 @@ public class LogMonitorTest extends TestCase
                     //ignore
                 }
 
-                Logger.getRootLogger().warn(message);
+                LogManager.getRootLogger().warn(message);
             }
         }).start();
     }

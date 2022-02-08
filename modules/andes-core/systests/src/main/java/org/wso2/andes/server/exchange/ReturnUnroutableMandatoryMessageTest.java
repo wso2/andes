@@ -34,7 +34,8 @@ import javax.jms.MessageProducer;
 import javax.jms.Session;
 import javax.jms.TextMessage;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.wso2.andes.client.AMQHeadersExchange;
 import org.wso2.andes.client.AMQNoRouteException;
 import org.wso2.andes.client.AMQQueue;
@@ -49,7 +50,7 @@ import org.wso2.andes.url.BindingURL;
 
 public class ReturnUnroutableMandatoryMessageTest extends QpidBrokerTestCase implements ExceptionListener
 {
-    private static final Logger _logger = Logger.getLogger(ReturnUnroutableMandatoryMessageTest.class);
+    private static final Logger _logger = LogManager.getLogger(ReturnUnroutableMandatoryMessageTest.class);
 
     private final List<Message> _bouncedMessageList = Collections.synchronizedList(new ArrayList<Message>());
 

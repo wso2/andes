@@ -22,7 +22,7 @@ package ${package};
 
 import static org.wso2.andes.server.logging.AbstractRootMessageLogger.DEFAULT_LOG_HIERARCHY_PREFIX;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.wso2.andes.server.logging.LogMessage;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 
@@ -53,9 +53,9 @@ public class ${type.name}Messages
 
     static
     {
-        Logger.getLogger(${type.name.toUpperCase()}_LOG_HIERARCHY);
+        LogManager.getLogger(${type.name.toUpperCase()}_LOG_HIERARCHY);
 #foreach( $message in ${type.list} )
-        Logger.getLogger(${message.methodName.toUpperCase()}_LOG_HIERARCHY);
+        LogManager.getLogger(${message.methodName.toUpperCase()}_LOG_HIERARCHY);
 #end
 
         reload();

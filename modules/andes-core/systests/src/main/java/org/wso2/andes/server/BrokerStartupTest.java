@@ -22,8 +22,8 @@ package org.wso2.andes.server;
 
 import org.wso2.andes.server.logging.AbstractTestLogging;
 import org.wso2.andes.util.LogMonitor;
-import org.apache.log4j.Logger;
-import org.apache.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Level;
 
 import java.util.List;
 
@@ -85,9 +85,9 @@ public class BrokerStartupTest extends AbstractTestLogging
             setBrokerEnvironment("QPID_OPTS", "-Dlog4j.debug");
 
             // Disable all client logging so we can test for broker DEBUG only.
-            setLoggerLevel(Logger.getRootLogger(), Level.WARN);
-            setLoggerLevel(Logger.getLogger("qpid.protocol"), Level.WARN);
-            setLoggerLevel(Logger.getLogger("org.wso2.andes"), Level.WARN);
+            setLoggerLevel(LogManager.getRootLogger(), Level.WARN);
+            setLoggerLevel(LogManager.getLogger("qpid.protocol"), Level.WARN);
+            setLoggerLevel(LogManager.getLogger("org.wso2.andes"), Level.WARN);
 
             // Set the broker to use info level logging, which is the qpid-server
             // default. Rather than debug which is the test default.

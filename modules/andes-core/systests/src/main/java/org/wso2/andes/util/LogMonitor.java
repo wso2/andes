@@ -20,9 +20,14 @@
  */
 package org.wso2.andes.util;
 
-import org.apache.log4j.FileAppender;
-import org.apache.log4j.Logger;
-import org.apache.log4j.SimpleLayout;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.Appender;
+import org.apache.logging.log4j.core.Layout;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.appender.FileAppender;
+import org.apache.logging.log4j.core.config.AppenderRef;
+import org.apache.logging.log4j.core.config.Configuration;
+import org.apache.logging.log4j.core.layout.PatternLayout;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -76,12 +81,29 @@ public class LogMonitor
         else
         {
             // This is mostly for running the test outside of the ant setup
-            _logfile = File.createTempFile("LogMonitor", ".log");
-            _appender = new FileAppender(new SimpleLayout(),
-                                                     _logfile.getAbsolutePath());
-            _appender.setFile(_logfile.getAbsolutePath());
-            _appender.setImmediateFlush(true);
-            Logger.getRootLogger().addAppender(_appender);
+            final LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+            final Configuration config = ctx.getConfiguration();
+            Layout layout = PatternLayout.createDefaultLayout(config);
+
+            FileAppender.Builder builder = FileAppender.newBuilder();
+            builder.setConfiguration(config);
+            builder.withFileName("LogMonitor.log");
+            builder.withAppend(false);
+            builder.withLocking(false);
+            builder.withAdvertise(false);
+            builder.setName("File");
+            builder.setIgnoreExceptions(false);
+            builder.withImmediateFlush(true);
+            builder.withBufferedIo(false);
+            builder.withBufferSize(4000);
+            builder.setLayout(layout);
+            Appender appender = builder.build();
+
+            appender.start();
+            config.addAppender(appender);
+            AppenderRef.createAppenderRef("File", null, null);
+            config.getRootLogger().addAppender(appender, null, null);
+            ctx.updateLoggers();
         }
     }
 
@@ -225,7 +247,10 @@ public class LogMonitor
         //Remove the custom appender we added for this logger
         if (_appender != null)
         {
-            Logger.getRootLogger().removeAppender(_appender);
+            final LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+            final Configuration config = ctx.getConfiguration();
+            config.getRootLogger().removeAppender(_appender.getName());
+            ctx.updateLoggers();
         }
     }
 

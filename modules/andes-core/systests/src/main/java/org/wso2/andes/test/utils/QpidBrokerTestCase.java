@@ -52,8 +52,10 @@ import javax.naming.NamingException;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.XMLConfiguration;
 import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.config.Configurator;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.client.AMQConnectionFactory;
 import org.wso2.andes.client.AMQQueue;
@@ -86,7 +88,7 @@ public class QpidBrokerTestCase extends QpidTestCase
     protected final String QpidHome = System.getProperty("QPID_HOME");
     protected File _configFile = new File(System.getProperty("broker.config"));
 
-    protected static final Logger _logger = Logger.getLogger(QpidBrokerTestCase.class);
+    protected static final Logger _logger = LogManager.getLogger(QpidBrokerTestCase.class);
     protected static final int LOGMONITOR_TIMEOUT = 5000;
 
     protected long RECEIVE_TIMEOUT = 1000l;
@@ -927,7 +929,7 @@ public class QpidBrokerTestCase extends QpidTestCase
             _loggerLevelSetForTest.put(logger, logger.getLevel());
         }
 
-        logger.setLevel(level);
+        Configurator.setLevel(logger.getName(), level);
     }
 
     /**
@@ -937,7 +939,7 @@ public class QpidBrokerTestCase extends QpidTestCase
     {
         for (Logger logger : _loggerLevelSetForTest.keySet())
         {
-            logger.setLevel(_loggerLevelSetForTest.get(logger));
+            Configurator.setLevel(logger.getName(), _loggerLevelSetForTest.get(logger));
         }
 
         _loggerLevelSetForTest.clear();

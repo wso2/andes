@@ -20,7 +20,8 @@
 */
 package org.wso2.andes.server.queue;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.wso2.andes.client.AMQConnection;
 import org.wso2.andes.client.AMQSession;
 import org.wso2.andes.client.AMQQueue;
@@ -42,7 +43,7 @@ public class PriorityTest extends QpidBrokerTestCase
     private static final int TIMEOUT = 1500;
 
 
-    private static final Logger _logger = Logger.getLogger(PriorityTest.class);
+    private static final Logger _logger = LogManager.getLogger(PriorityTest.class);
 
     protected final String QUEUE = "PriorityQueue";
 
