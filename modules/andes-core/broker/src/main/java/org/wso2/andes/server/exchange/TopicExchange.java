@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.exchange;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQInvalidArgumentException;
 import org.wso2.andes.common.AMQPFilterTypes;
@@ -75,7 +76,7 @@ public class TopicExchange extends AbstractExchange
     };
 
 
-    private static final Logger _logger = Logger.getLogger(TopicExchange.class);
+    private static final Log _logger = LogFactory.getLog(TopicExchange.class);
 
 
 
@@ -318,7 +319,7 @@ public class TopicExchange extends AbstractExchange
         return new TopicExchangeMBean(this);
     }
 
-    public Logger getLogger()
+    public Log getLogger()
     {
         return _logger;
     }

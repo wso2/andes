@@ -19,7 +19,8 @@
 package org.wso2.andes.server.queue;
 
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.Andes;
@@ -46,7 +47,7 @@ import java.util.List;
  */
 public class DLCQueueUtils {
 
-    private static final Logger log = Logger.getLogger(DLCQueueUtils.class);
+    private static final Log log = LogFactory.getLog(DLCQueueUtils.class);
 
     /**
      * Derive the Dead Letter Queue name of the tenant with respect to a given queue of the same

@@ -24,7 +24,8 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.cache.Weigher;
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
@@ -75,7 +76,7 @@ import static org.wso2.andes.store.rdbms.RDBMSConstants.TASK_RETRIEVING_CONTENT_
  */
 public class RDBMSMessageStoreImpl implements MessageStore {
 
-    private static final Logger log = Logger.getLogger(RDBMSMessageStoreImpl.class);
+    private static final Log log = LogFactory.getLog(RDBMSMessageStoreImpl.class);
 
     /**
      * RDBMS connection source object

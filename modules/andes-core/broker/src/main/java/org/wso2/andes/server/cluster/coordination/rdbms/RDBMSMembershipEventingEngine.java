@@ -20,7 +20,8 @@
 package org.wso2.andes.server.cluster.coordination.rdbms;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
@@ -41,7 +42,7 @@ public class RDBMSMembershipEventingEngine {
     /**
      * Class logger
      */
-    private static final Logger logger = Logger.getLogger(RDBMSMembershipEventingEngine.class);
+    private static final Log logger = LogFactory.getLog(RDBMSMembershipEventingEngine.class);
 
     /**
      * Context store object to communicate with the database for the context store.

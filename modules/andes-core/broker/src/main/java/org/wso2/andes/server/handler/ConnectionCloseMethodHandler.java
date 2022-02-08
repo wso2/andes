@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.handler;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.AMQFrame;
 import org.wso2.andes.framing.ConnectionCloseBody;
@@ -30,7 +31,7 @@ import org.wso2.andes.server.state.StateAwareMethodListener;
 
 public class ConnectionCloseMethodHandler implements StateAwareMethodListener<ConnectionCloseBody>
 {
-    private static final Logger _logger = Logger.getLogger(ConnectionCloseMethodHandler.class);
+    private static final Log _logger = LogFactory.getLog(ConnectionCloseMethodHandler.class);
 
     private static ConnectionCloseMethodHandler _instance = new ConnectionCloseMethodHandler();
 

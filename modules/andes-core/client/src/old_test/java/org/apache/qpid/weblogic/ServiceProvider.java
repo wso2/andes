@@ -20,7 +20,8 @@
  */
 package org.apache.qpid.weblogic;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
@@ -32,7 +33,7 @@ public class ServiceProvider
     private static final String JNDI_FACTORY = "weblogic.jndi.WLInitialContextFactory";
     private static final String JMS_FACTORY = "transientJMSConnectionFactory";
 
-    private static final Logger _logger = Logger.getLogger(ServiceProvider.class);
+    private static final Log _logger = LogFactory.getLog(ServiceProvider.class);
 
     private static MessageProducer _destinationProducer;
 

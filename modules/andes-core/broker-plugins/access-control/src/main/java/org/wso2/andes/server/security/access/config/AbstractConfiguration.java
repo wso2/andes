@@ -23,11 +23,12 @@ package org.wso2.andes.server.security.access.config;
 import java.io.File;
 
 import org.apache.commons.configuration.ConfigurationException;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 public abstract class AbstractConfiguration implements ConfigurationFile
 {
-    protected static final Logger _logger = Logger.getLogger(ConfigurationFile.class);
+    protected static final Log _logger = LogFactory.getLog(ConfigurationFile.class);
     
     protected File _file;
     protected RuleSet _config;

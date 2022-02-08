@@ -54,7 +54,8 @@ import javax.rmi.ssl.SslRMIClientSocketFactory;
 import javax.rmi.ssl.SslRMIServerSocketFactory;
 
 import org.apache.commons.configuration.ConfigurationException;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.server.logging.actors.CurrentActor;
 import org.wso2.andes.server.logging.messages.ManagementConsoleMessages;
@@ -68,7 +69,7 @@ import org.wso2.andes.server.security.auth.rmi.RMIPasswordAuthenticator;
  */
 public class JMXManagedObjectRegistry implements ManagedObjectRegistry
 {
-    private static final Logger _log = Logger.getLogger(JMXManagedObjectRegistry.class);
+    private static final Log _log = LogFactory.getLog(JMXManagedObjectRegistry.class);
     
     public static final String MANAGEMENT_PORT_CONFIG_PATH = "management.jmxport";
     public static final int MANAGEMENT_PORT_DEFAULT = 8999;

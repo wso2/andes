@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.connection;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.common.Closeable;
 import org.wso2.andes.protocol.AMQConstant;
@@ -31,7 +32,7 @@ public class ConnectionRegistry implements IConnectionRegistry, Closeable
 {
     private List<AMQConnectionModel> _registry = new CopyOnWriteArrayList<AMQConnectionModel>();
 
-    private Logger _logger = Logger.getLogger(ConnectionRegistry.class);
+    private Log _logger = LogFactory.getLog(ConnectionRegistry.class);
 
     public void initialise()
     {

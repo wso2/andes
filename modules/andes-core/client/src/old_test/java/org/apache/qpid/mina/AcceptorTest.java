@@ -20,7 +20,8 @@
  */
 package org.apache.qpid.mina;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.org.apache.mina.common.ByteBuffer;
 import org.wso2.org.apache.mina.common.IoAcceptor;
 import org.wso2.org.apache.mina.common.IoHandlerAdapter;
@@ -41,7 +42,7 @@ import junit.framework.TestCase;
  */
 public class AcceptorTest extends TestCase
 {
-    private static final Logger _logger = Logger.getLogger(AcceptorTest.class);
+    private static final Log _logger = LogFactory.getLog(AcceptorTest.class);
 
     public static int PORT = 9999;
 

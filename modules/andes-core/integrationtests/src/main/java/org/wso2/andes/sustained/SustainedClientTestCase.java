@@ -20,7 +20,8 @@
  */
 package org.wso2.andes.sustained;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.client.AMQNoConsumersException;
 import org.wso2.andes.client.AMQNoRouteException;
 import org.wso2.andes.interop.clienttestcases.TestCase3BasicPubSub;
@@ -49,10 +50,10 @@ import java.util.concurrent.CountDownLatch;
 public class SustainedClientTestCase extends TestCase3BasicPubSub implements ExceptionListener, MessageListener
 {
     /** Used for debugging. */
-    private static final Logger log = Logger.getLogger(SustainedClientTestCase.class);
+    private static final Log log = LogFactory.getLog(SustainedClientTestCase.class);
 
     /** Used to log to the console. */
-    private static final Logger console = Logger.getLogger("SustainedTest");
+    private static final Log console = LogFactory.getLog("SustainedTest");
 
     /** The role to be played by the test. */
     private Roles role;

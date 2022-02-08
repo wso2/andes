@@ -20,7 +20,8 @@
  */
 package org.wso2.andes.client.topic;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.log4j.NDC;
 import org.wso2.andes.client.AMQConnection;
 import org.wso2.andes.client.AMQQueue;
@@ -50,7 +51,7 @@ import javax.jms.*;
  */
 public class Listener implements MessageListener
 {
-    private static Logger log = Logger.getLogger(Listener.class);
+    private static Log log = LogFactory.getLog(Listener.class);
 
     public static final String CONTROL_TOPIC = "topic_control";
     public static final String RESPONSE_QUEUE = "response";

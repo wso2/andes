@@ -20,7 +20,8 @@
  */
 package org.wso2.andes.junit.concurrency;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * An example to illustrate the use of the {@link ThreadTestCoordinator} and {@link TestRunnable}s.
@@ -35,7 +36,7 @@ import org.apache.log4j.Logger;
 public class ThreadTestExample
 {
     /** Used for logging. */
-    private static final Logger log = Logger.getLogger(ThreadTestExample.class);
+    private static final Log log = LogFactory.getLog(ThreadTestExample.class);
 
     /** Test thread 1. */
     TestRunnable testThread1 =

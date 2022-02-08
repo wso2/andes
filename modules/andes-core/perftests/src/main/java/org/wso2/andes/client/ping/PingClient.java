@@ -20,7 +20,8 @@
  */
 package org.wso2.andes.client.ping;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import org.wso2.andes.client.requestreply.PingPongProducer;
 
@@ -50,7 +51,7 @@ import java.util.Properties;
 public class PingClient extends PingPongProducer
 {
     /** Used for debugging. */
-    private final Logger log = Logger.getLogger(PingClient.class);
+    private final Log log = LogFactory.getLog(PingClient.class);
 
     /** Used to count the number of ping clients created. */
     private static int _pingClientCount;

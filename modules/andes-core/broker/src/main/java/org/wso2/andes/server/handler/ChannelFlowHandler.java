@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.handler;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQChannelException;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.QpidAndesBridge;
@@ -33,7 +34,7 @@ import org.wso2.andes.server.state.StateAwareMethodListener;
 
 public class ChannelFlowHandler implements StateAwareMethodListener<ChannelFlowBody>
 {
-    private static final Logger logger = Logger.getLogger(ChannelFlowHandler.class);
+    private static final Log logger = LogFactory.getLog(ChannelFlowHandler.class);
 
     private static ChannelFlowHandler _instance = new ChannelFlowHandler();
 

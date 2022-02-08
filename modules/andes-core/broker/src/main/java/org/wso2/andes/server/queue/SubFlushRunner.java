@@ -22,10 +22,11 @@ import org.wso2.andes.pool.ReadWriteRunnable;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.logging.actors.CurrentActor;
 import org.wso2.andes.AMQException;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 public class SubFlushRunner implements ReadWriteRunnable {
-    private static final Logger _logger = Logger.getLogger(SubFlushRunner.class);
+    private static final Log _logger = LogFactory.getLog(SubFlushRunner.class);
 
 
     private final Subscription _sub;

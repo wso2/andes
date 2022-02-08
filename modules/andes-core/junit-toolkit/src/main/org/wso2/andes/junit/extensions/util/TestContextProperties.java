@@ -52,7 +52,7 @@ import java.util.Properties;
 public class TestContextProperties extends ParsedProperties
 {
     /** Used for debugging. */
-    // Logger log = Logger.getLogger(TestContextProperties.class);
+    // Logger log = LogFactory.getLog(TestContextProperties.class);
 
     /** Holds all properties set or read through this property extension class. */
     private Properties accessedProps = new Properties();

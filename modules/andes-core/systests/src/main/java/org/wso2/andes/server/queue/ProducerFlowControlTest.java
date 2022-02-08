@@ -20,7 +20,8 @@
 */
 package org.wso2.andes.server.queue;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.wso2.andes.client.AMQSession;
 import org.wso2.andes.client.AMQDestination;
 import org.wso2.andes.AMQException;
@@ -41,7 +42,7 @@ public class ProducerFlowControlTest extends AbstractTestLogging
 {
     private static final int TIMEOUT = 10000;
 
-    private static final Logger _logger = Logger.getLogger(ProducerFlowControlTest.class);
+    private static final Logger _logger = LogManager.getLogger(ProducerFlowControlTest.class);
 
     private Connection producerConnection;
     private MessageProducer producer;

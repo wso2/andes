@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.queue;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.BasicContentHeaderProperties;
@@ -67,7 +68,7 @@ import java.util.*;
 public class AMQQueueMBean extends AMQManagedObject implements ManagedQueue, QueueNotificationListener
 {
     /** Used for debugging purposes. */
-    private static final Logger _logger = Logger.getLogger(AMQQueueMBean.class);
+    private static final Log _logger = LogFactory.getLog(AMQQueueMBean.class);
 
     private static final SimpleDateFormat _dateFormat = new SimpleDateFormat("MM-dd-yy HH:mm:ss.SSS z");
 

@@ -20,7 +20,8 @@
  */
 package org.apache.qpid.mina;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.org.apache.mina.common.*;
 import org.wso2.org.apache.mina.transport.socket.nio.SocketConnector;
 import org.wso2.org.apache.mina.transport.socket.nio.SocketConnectorConfig;
@@ -34,7 +35,7 @@ import junit.framework.TestCase;
 
 public class WriterTest extends TestCase
 {
-    private static final Logger _logger = Logger.getLogger(WriterTest.class);
+    private static final Log _logger = LogFactory.getLog(WriterTest.class);
 
     private static class RunnableWriterTest implements Runnable
     {

@@ -29,8 +29,9 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Level;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.logging.management.LoggingManagementMBean;
 import org.xml.sax.ErrorHandler;
 import org.xml.sax.SAXException;
@@ -49,7 +50,7 @@ public class QpidLog4JConfigurator
     //lock to protect access to the configuration file
     //shared with LoggingManagementMBean
     public static final ReentrantLock LOCK = new ReentrantLock();
-    private static Logger _logger;
+    private static Log _logger;
     private static DOMConfigurator domConfig = new DOMConfigurator();
 
     private QpidLog4JConfigurator()
@@ -71,7 +72,7 @@ public class QpidLog4JConfigurator
             
             if(_logger == null)
             {
-                _logger = Logger.getLogger(QpidLog4JConfigurator.class);
+                _logger = LogFactory.getLog(QpidLog4JConfigurator.class);
             }
         }
         finally
@@ -223,7 +224,7 @@ public class QpidLog4JConfigurator
                 //a configuration has now been applied, enable logging for future attempts
                 if(_logger == null)
                 {
-                    _logger = Logger.getLogger(QpidLog4JConfigurator.class);
+                    _logger = LogFactory.getLog(QpidLog4JConfigurator.class);
                 }
 
                 _logger.info("Applied log4j configuration from: " + filename);

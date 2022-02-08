@@ -19,7 +19,8 @@
 package org.wso2.andes.kernel.disruptor.delivery;
 
 import com.lmax.disruptor.EventHandler;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
@@ -50,7 +51,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
     /**
      * Class logger
      */
-    private static final Logger log = Logger.getLogger(DeliveryEventHandler.class);
+    private static final Log log = LogFactory.getLog(DeliveryEventHandler.class);
 
     /**
      * Used to identify the subscribers that need to be processed by this handler

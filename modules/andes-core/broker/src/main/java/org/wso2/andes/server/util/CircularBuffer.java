@@ -19,12 +19,13 @@ package org.wso2.andes.server.util;
 
 import java.util.Iterator;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 public class CircularBuffer implements Iterable
 {
 
-    private static final Logger _logger = Logger.getLogger(CircularBuffer.class);
+    private static final Log _logger = LogFactory.getLog(CircularBuffer.class);
 
     private final Object[] _log;
     private int _size;

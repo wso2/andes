@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.queue;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.framing.AMQShortString;
@@ -35,7 +36,7 @@ public class AMQQueueFactory
     public static final String QPID_LVQ_KEY = "qpid.LVQ_key";
     public static final String QPID_LAST_VALUE_QUEUE = "qpid.last_value_queue";
     public static final String QPID_LAST_VALUE_QUEUE_KEY = "qpid.last_value_queue_key";
-    private static final Logger _logger = Logger.getLogger(AMQQueueFactory.class);
+    private static final Log _logger = LogFactory.getLog(AMQQueueFactory.class);
 
     private abstract static class QueueProperty
     {

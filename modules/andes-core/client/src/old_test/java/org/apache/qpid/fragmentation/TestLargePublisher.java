@@ -29,7 +29,8 @@ import org.wso2.andes.client.AMQTopic;
 import org.wso2.andes.client.AMQSession;
 import org.wso2.andes.jms.MessageProducer;
 import org.wso2.andes.jms.Session;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import javax.jms.BytesMessage;
 import javax.jms.JMSException;
@@ -48,7 +49,7 @@ import java.net.UnknownHostException;
  */
 public class TestLargePublisher
 {
-    private static final Logger _log = Logger.getLogger(TestLargePublisher.class);
+    private static final Log _log = LogFactory.getLog(TestLargePublisher.class);
 
     private AMQConnection _connection;
 

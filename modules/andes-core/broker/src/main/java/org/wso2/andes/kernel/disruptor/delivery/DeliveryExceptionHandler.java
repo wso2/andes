@@ -20,13 +20,14 @@ package org.wso2.andes.kernel.disruptor.delivery;
 
 import com.lmax.disruptor.ExceptionHandler;
 import com.lmax.disruptor.IgnoreExceptionHandler;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 public class DeliveryExceptionHandler implements ExceptionHandler {
     /**
      * Class logger
      */
-    private final static Logger log = Logger.getLogger(IgnoreExceptionHandler.class);
+    private final static Log log = LogFactory.getLog(IgnoreExceptionHandler.class);
 
     /**
      * This method is called if an uncaught exception occurred in a handler

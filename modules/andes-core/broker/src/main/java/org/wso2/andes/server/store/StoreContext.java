@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.store;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * A context that the store can use to associate with a transactional context. For example, it could store
@@ -27,7 +28,7 @@ import org.apache.log4j.Logger;
  */
 public class StoreContext
 {
-    private static final Logger _logger = Logger.getLogger(StoreContext.class);
+    private static final Log _logger = LogFactory.getLog(StoreContext.class);
 
     private String _name;
     private Object _payload;

@@ -17,14 +17,15 @@
  */
 package org.wso2.andes.server.virtualhost;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.logging.RootMessageLogger;
 import org.wso2.andes.server.logging.actors.AbstractActor;
 import org.wso2.andes.server.logging.actors.CurrentActor;
 
 public abstract class HouseKeepingTask implements Runnable
 {
-    Logger _logger = Logger.getLogger(this.getClass());
+    Log _logger = LogFactory.getLog(this.getClass());
 
     private VirtualHost _virtualHost;
 

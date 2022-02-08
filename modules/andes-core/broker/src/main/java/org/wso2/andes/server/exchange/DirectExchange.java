@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.exchange;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import org.wso2.andes.AMQException;
 import org.wso2.andes.exchange.ExchangeDefaults;
@@ -36,7 +37,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 
 public class DirectExchange extends AbstractExchange
 {
-    private static final Logger _logger = Logger.getLogger(DirectExchange.class);
+    private static final Log _logger = LogFactory.getLog(DirectExchange.class);
 
     private final ConcurrentHashMap<String, CopyOnWriteArraySet<Binding>> _bindingsByKey =
             new ConcurrentHashMap<String, CopyOnWriteArraySet<Binding>>();
@@ -82,7 +83,7 @@ public class DirectExchange extends AbstractExchange
         return new DirectExchangeMBean(this);
     }
 
-    public Logger getLogger()
+    public Log getLogger()
     {
         return _logger;
     }

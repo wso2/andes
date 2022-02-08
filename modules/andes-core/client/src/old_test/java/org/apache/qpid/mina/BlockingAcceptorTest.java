@@ -20,7 +20,8 @@
  */
 package org.apache.qpid.mina;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,7 +33,7 @@ import junit.framework.TestCase;
 
 public class BlockingAcceptorTest extends TestCase
 {
-    private static final Logger _logger = Logger.getLogger(BlockingAcceptorTest.class);
+    private static final Log _logger = LogFactory.getLog(BlockingAcceptorTest.class);
 
     public static int PORT = 9999;
 

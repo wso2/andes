@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.state;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.*;
 import org.wso2.andes.protocol.AMQConstant;
@@ -35,7 +36,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
  */
 public class AMQStateManager implements AMQMethodListener
 {
-    private static final Logger _logger = Logger.getLogger(AMQStateManager.class);
+    private static final Log _logger = LogFactory.getLog(AMQStateManager.class);
 
     private final VirtualHostRegistry _virtualHostRegistry;
     private final AMQProtocolSession _protocolSession;

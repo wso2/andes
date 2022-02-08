@@ -22,11 +22,12 @@
 package org.wso2.andes.server.failure;
 
 import junit.framework.TestCase;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.wso2.andes.test.utils.QpidClientConnectionHelper;
 import org.wso2.andes.client.failover.FailoverException;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.protocol.AMQConstant;
-import org.apache.log4j.Logger;
 
 import javax.jms.JMSException;
 import javax.jms.DeliveryMode;
@@ -36,7 +37,7 @@ import java.io.IOException;
 /** Test Case provided by client Non-functional Test NF101: heap exhaustion behaviour */
 public class HeapExhaustion extends TestCase
 {
-    private static final Logger _logger = Logger.getLogger(HeapExhaustion.class);
+    private static final Logger _logger = LogManager.getLogger(HeapExhaustion.class);
 
     protected QpidClientConnectionHelper conn;
     protected final String BROKER = "localhost";

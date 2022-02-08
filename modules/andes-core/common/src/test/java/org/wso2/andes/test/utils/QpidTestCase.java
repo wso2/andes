@@ -32,12 +32,13 @@ import java.util.Map;
 import junit.framework.TestCase;
 import junit.framework.TestResult;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.org.apache.mina.util.AvailablePortFinder;
 
 public class QpidTestCase extends TestCase
 {
-    protected static final Logger _logger = Logger.getLogger(QpidTestCase.class);
+    protected static final Log _logger = LogFactory.getLog(QpidTestCase.class);
 
     private final Map<String, String> _propertiesSetForTest = new HashMap<String, String>();
 

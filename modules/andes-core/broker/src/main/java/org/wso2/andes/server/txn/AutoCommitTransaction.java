@@ -18,7 +18,8 @@
 package org.wso2.andes.server.txn;
 
 import org.apache.commons.lang.NotImplementedException;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQStoreException;
 import org.wso2.andes.server.message.EnqueableMessage;
@@ -40,7 +41,7 @@ import java.util.UUID;
  */
 public class AutoCommitTransaction implements ServerTransaction
 {
-    protected static final Logger _logger = Logger.getLogger(AutoCommitTransaction.class);
+    protected static final Log _logger = LogFactory.getLog(AutoCommitTransaction.class);
 
     private final TransactionLog _transactionLog;
 

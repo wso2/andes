@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.exchange;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.AMQUnknownExchangeType;
@@ -34,7 +35,7 @@ import java.util.Map;
 
 public class DefaultExchangeFactory implements ExchangeFactory
 {
-    private static final Logger _logger = Logger.getLogger(DefaultExchangeFactory.class);
+    private static final Log _logger = LogFactory.getLog(DefaultExchangeFactory.class);
 
     private Map<AMQShortString, ExchangeType<? extends Exchange>> _exchangeClassMap = new HashMap<AMQShortString, ExchangeType<? extends Exchange>>();
     private final VirtualHost _host;

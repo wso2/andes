@@ -19,14 +19,15 @@
 package org.wso2.andes.store;
 
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class FailureObservingStore<T extends HealthAwareStore> implements HealthAwareStore {
 
-    private static final Logger log = Logger.getLogger(FailureObservingStore.class);
+    private static final Log log = LogFactory.getLog(FailureObservingStore.class);
     /**
      * Variable that holds the operational status of the context store. True if store is operational.
      */

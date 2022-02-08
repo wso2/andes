@@ -22,7 +22,8 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.configuration.qpid.plugins.SlowConsumerDetectionQueueConfiguration;
 import org.wso2.andes.server.exchange.Exchange;
@@ -44,7 +45,7 @@ import org.wso2.andes.server.queue.AMQQueue;
  */
 public class ConfiguredQueueBindingListener implements BindingListener
 {
-    private static final Logger _log = Logger.getLogger(ConfiguredQueueBindingListener.class);
+    private static final Log _log = LogFactory.getLog(ConfiguredQueueBindingListener.class);
     
     private String _vhostName;
     private Set<AMQQueue> _cache = Collections.synchronizedSet(new HashSet<AMQQueue>());

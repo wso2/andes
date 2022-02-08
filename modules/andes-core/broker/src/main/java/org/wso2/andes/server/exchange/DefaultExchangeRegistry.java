@@ -21,7 +21,8 @@ import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.amqp.QpidAndesBridge;
@@ -32,7 +33,7 @@ import org.wso2.andes.server.virtualhost.VirtualHost;
 
 public class DefaultExchangeRegistry implements ExchangeRegistry
 {
-    private static final Logger _log = Logger.getLogger(DefaultExchangeRegistry.class);
+    private static final Log _log = LogFactory.getLog(DefaultExchangeRegistry.class);
 
     /**
      * Maps from exchange name to exchange instance

@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.server.ack.UnacknowledgedMessageMap;
 import org.wso2.andes.server.queue.QueueEntry;
@@ -29,7 +30,7 @@ import java.util.Map;
 
 public class ExtractResendAndRequeue implements UnacknowledgedMessageMap.Visitor
 {
-    private static final Logger _log = Logger.getLogger(ExtractResendAndRequeue.class);
+    private static final Log _log = LogFactory.getLog(ExtractResendAndRequeue.class);
 
     private final Map<Long, QueueEntry> _msgToRequeue;
     private final Map<Long, QueueEntry> _msgToResend;

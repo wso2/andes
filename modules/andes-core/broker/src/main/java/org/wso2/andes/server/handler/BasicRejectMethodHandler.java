@@ -27,11 +27,12 @@ import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.state.AMQStateManager;
 import org.wso2.andes.server.state.StateAwareMethodListener;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 public class BasicRejectMethodHandler implements StateAwareMethodListener<BasicRejectBody>
 {
-    private static final Logger _logger = Logger.getLogger(BasicRejectMethodHandler.class);
+    private static final Log _logger = LogFactory.getLog(BasicRejectMethodHandler.class);
 
     private static BasicRejectMethodHandler _instance = new BasicRejectMethodHandler();
 

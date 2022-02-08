@@ -25,7 +25,8 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestListener;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import org.wso2.andes.junit.extensions.ShutdownHookable;
 import org.wso2.andes.junit.extensions.util.TestContextProperties;
@@ -59,7 +60,7 @@ import java.util.TreeSet;
 public class CSVTestListener implements TestListener, TKTestListener, ShutdownHookable
 {
     /** Used for logging. */
-    private static final Logger log = Logger.getLogger(CSVTestListener.class);
+    private static final Log log = LogFactory.getLog(CSVTestListener.class);
 
     /** The timings file writer. */
     private Writer timingsWriter;

@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.message;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.ContentHeaderBody;
 import org.wso2.andes.framing.abstraction.MessagePublishInfo;
@@ -39,7 +40,7 @@ import java.nio.ByteBuffer;
 public class AMQMessage implements ServerMessage
 {
     /** Used for debugging purposes. */
-    private static final Logger _log = Logger.getLogger(AMQMessage.class);
+    private static final Log _log = LogFactory.getLog(AMQMessage.class);
 
     private final AtomicInteger _referenceCount = new AtomicInteger(0);
 

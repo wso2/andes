@@ -35,7 +35,8 @@ import javax.jms.TopicSubscriber;
 
 import junit.framework.Assert;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.wso2.andes.client.AMQConnection;
 import org.wso2.andes.client.AMQDestination;
 import org.wso2.andes.client.AMQQueue;
@@ -45,7 +46,7 @@ import org.wso2.andes.test.utils.QpidBrokerTestCase;
 
 public class TimeToLiveTest extends QpidBrokerTestCase
 {
-    private static final Logger _logger = Logger.getLogger(TimeToLiveTest.class);
+    private static final Logger _logger = LogManager.getLogger(TimeToLiveTest.class);
 
     protected final String QUEUE = "TimeToLiveQueue";
 

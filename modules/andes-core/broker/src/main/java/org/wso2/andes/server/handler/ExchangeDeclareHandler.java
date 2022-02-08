@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.handler;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQConnectionException;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQUnknownExchangeType;
@@ -36,7 +37,7 @@ import org.wso2.andes.server.virtualhost.VirtualHost;
 
 public class ExchangeDeclareHandler implements StateAwareMethodListener<ExchangeDeclareBody>
 {
-    private static final Logger _logger = Logger.getLogger(ExchangeDeclareHandler.class);
+    private static final Log _logger = LogFactory.getLog(ExchangeDeclareHandler.class);
 
     private static final ExchangeDeclareHandler _instance = new ExchangeDeclareHandler();
 

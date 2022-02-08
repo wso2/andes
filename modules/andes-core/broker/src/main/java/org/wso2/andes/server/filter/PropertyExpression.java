@@ -20,7 +20,8 @@ package org.wso2.andes.server.filter;
 // Based on like named file from r450141 of the Apache ActiveMQ project <http://www.activemq.org/site/home.html>
 //
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.queue.Filterable;
 
 import java.util.HashMap;
@@ -35,7 +36,7 @@ public class PropertyExpression implements Expression
 
     private static final int DEFAULT_PRIORITY = 4;
 
-    private static final Logger _logger = org.apache.log4j.Logger.getLogger(PropertyExpression.class);
+    private static final Log _logger = LogFactory.getLog(PropertyExpression.class);
 
     private static final HashMap<String, Expression> JMS_PROPERTY_EXPRESSIONS = new HashMap<String, Expression>();
 

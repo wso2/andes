@@ -19,7 +19,8 @@
 package org.wso2.andes.kernel.disruptor.delivery;
 
 import com.lmax.disruptor.EventFactory;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.kernel.subscription.AndesSubscription;
@@ -56,7 +57,7 @@ public class DeliveryEventData {
      */
     private final AtomicBoolean freshContent;
 
-    private static final Logger log = Logger.getLogger(DeliveryEventData.class);
+    private static final Log log = LogFactory.getLog(DeliveryEventData.class);
 
     public DeliveryEventData() {
         this.errorOccurred = false;

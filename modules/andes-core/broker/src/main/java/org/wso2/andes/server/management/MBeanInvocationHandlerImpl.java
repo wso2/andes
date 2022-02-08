@@ -38,7 +38,8 @@ import javax.management.remote.JMXPrincipal;
 import javax.management.remote.MBeanServerForwarder;
 import javax.security.auth.Subject;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.logging.actors.ManagementActor;
 import org.wso2.andes.server.logging.messages.ManagementConsoleMessages;
 import org.wso2.andes.server.registry.ApplicationRegistry;
@@ -51,7 +52,7 @@ import org.wso2.andes.server.security.access.Operation;
  */
 public class MBeanInvocationHandlerImpl implements InvocationHandler, NotificationListener
 {
-    private static final Logger _logger = Logger.getLogger(MBeanInvocationHandlerImpl.class);
+    private static final Log _logger = LogFactory.getLog(MBeanInvocationHandlerImpl.class);
 
     private final static String DELEGATE = "JMImplementation:type=MBeanServerDelegate";
     private MBeanServer _mbs;

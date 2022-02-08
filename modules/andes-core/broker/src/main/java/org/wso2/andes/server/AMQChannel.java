@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQInternalException;
 import org.wso2.andes.AMQSecurityException;
@@ -118,7 +119,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 {
     public static final int DEFAULT_PREFETCH = 5000;
 
-    private static final Logger _logger = Logger.getLogger(AMQChannel.class);
+    private static final Log _logger = LogFactory.getLog(AMQChannel.class);
 
     private static final boolean MSG_AUTH =
             ApplicationRegistry.getInstance().getConfiguration().getMsgAuth();

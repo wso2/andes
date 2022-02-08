@@ -20,7 +20,8 @@ package org.wso2.andes.server.handler;
 import javax.security.sasl.SaslException;
 import javax.security.sasl.SaslServer;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.framing.ConnectionCloseBody;
@@ -41,7 +42,7 @@ import org.wso2.andes.server.state.StateAwareMethodListener;
 
 public class ConnectionStartOkMethodHandler implements StateAwareMethodListener<ConnectionStartOkBody>
 {
-    private static final Logger _logger = Logger.getLogger(ConnectionStartOkMethodHandler.class);
+    private static final Log _logger = LogFactory.getLog(ConnectionStartOkMethodHandler.class);
 
     private static ConnectionStartOkMethodHandler _instance = new ConnectionStartOkMethodHandler();
 

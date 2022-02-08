@@ -20,8 +20,8 @@
  */
 package org.wso2.andes.junit.concurrency;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -69,7 +69,7 @@ import java.util.concurrent.ThreadFactory;
 public class ThreadTestCoordinator
 {
     /** Used for logging. */
-    private static final Logger log = LoggerFactory.getLogger(ThreadTestCoordinator.class);
+    private static final Log log = LogFactory.getLog(ThreadTestCoordinator.class);
 
     /** Keeps track of the test threads by their ids. */
     private TestRunnable[] testThreads; // = new TestRunnable[2];

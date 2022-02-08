@@ -21,7 +21,8 @@
 
 package org.wso2.andes.server.queue;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import org.wso2.andes.client.AMQDestination;
 import org.wso2.andes.client.AMQQueue;
@@ -47,7 +48,7 @@ public class ConflationQueueTest extends QpidBrokerTestCase
     private static final int TIMEOUT = 1500;
 
 
-    private static final Logger _logger = Logger.getLogger(ConflationQueueTest.class);
+    private static final Logger _logger = LogManager.getLogger(ConflationQueueTest.class);
 
 
 

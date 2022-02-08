@@ -20,7 +20,8 @@ package org.wso2.andes.configuration.qpid;
 
 import org.apache.commons.configuration.*;
 import org.apache.commons.configuration.Configuration;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.configuration.modules.JKSStore;
@@ -39,7 +40,7 @@ import java.util.Map.Entry;
 import static org.wso2.andes.transport.ConnectionSettings.WILDCARD_ADDRESS;
 
 public class ServerConfiguration extends ConfigurationPlugin implements SignalHandler {
-    protected static final Logger _logger = Logger.getLogger(ServerConfiguration.class);
+    protected static final Log _logger = LogFactory.getLog(ServerConfiguration.class);
 
     // Default Configuration values
     public static final int DEFAULT_BUFFER_SIZE = 262144;

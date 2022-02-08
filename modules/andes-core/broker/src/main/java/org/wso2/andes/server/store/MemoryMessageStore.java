@@ -22,7 +22,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.configuration.Configuration;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQStoreException;
 import org.wso2.andes.framing.AMQShortString;
@@ -37,7 +38,7 @@ import org.wso2.andes.server.queue.AMQQueue;
 /** A simple message store that stores the messages in a threadsafe structure in memory. */
 public class MemoryMessageStore implements MessageStore
 {
-    private static final Logger _log = Logger.getLogger(MemoryMessageStore.class);
+    private static final Log _log = LogFactory.getLog(MemoryMessageStore.class);
 
     private static final int DEFAULT_HASHTABLE_CAPACITY = 50000;
 

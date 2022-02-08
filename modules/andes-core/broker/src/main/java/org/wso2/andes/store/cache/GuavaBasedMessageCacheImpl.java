@@ -24,7 +24,8 @@ import com.google.common.cache.Weigher;
 import com.gs.collections.api.iterator.MutableLongIterator;
 import com.gs.collections.impl.list.mutable.primitive.LongArrayList;
 import com.gs.collections.impl.map.mutable.primitive.LongObjectHashMap;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesMessage;
@@ -42,7 +43,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class GuavaBasedMessageCacheImpl implements AndesMessageCache {
 
-    private static final Logger log = Logger.getLogger(GuavaBasedMessageCacheImpl.class);
+    private static final Log log = LogFactory.getLog(GuavaBasedMessageCacheImpl.class);
 
     /**
      * By default cache values will be kept using strong/ordinary references.

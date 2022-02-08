@@ -25,11 +25,12 @@ import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.state.AMQStateManager;
 import org.wso2.andes.server.state.StateAwareMethodListener;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 public class BasicCancelMethodHandler implements StateAwareMethodListener<BasicCancelBody>
 {
-    private static final Logger _log = Logger.getLogger(BasicCancelMethodHandler.class);
+    private static final Log _log = LogFactory.getLog(BasicCancelMethodHandler.class);
 
     private static final BasicCancelMethodHandler _instance = new BasicCancelMethodHandler();
 

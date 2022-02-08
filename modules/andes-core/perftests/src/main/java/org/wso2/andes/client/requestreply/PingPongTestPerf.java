@@ -24,7 +24,8 @@ import junit.framework.Assert;
 import junit.framework.Test;
 import junit.framework.TestSuite;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import org.wso2.andes.junit.extensions.AsymptoticTestCase;
 import org.wso2.andes.junit.extensions.util.ParsedProperties;
@@ -58,7 +59,7 @@ import javax.jms.*;
  */
 public class PingPongTestPerf extends AsymptoticTestCase
 {
-    private static Logger _logger = Logger.getLogger(PingPongTestPerf.class);
+    private static Log _logger = LogFactory.getLog(PingPongTestPerf.class);
 
     /** Thread local to hold the per-thread test setup fields. */
     ThreadLocal<PerThreadSetup> threadSetup = new ThreadLocal<PerThreadSetup>();

@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.security;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPluginFactory;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
@@ -27,7 +28,7 @@ import org.osgi.framework.BundleContext;
  */
 public abstract class SecurityPluginActivator implements BundleActivator
 {
-	private static final Logger _logger = Logger.getLogger(SecurityPluginActivator.class);
+	private static final Log _logger = LogFactory.getLog(SecurityPluginActivator.class);
 
     private SecurityPluginFactory _factory;
     private ConfigurationPluginFactory _config;

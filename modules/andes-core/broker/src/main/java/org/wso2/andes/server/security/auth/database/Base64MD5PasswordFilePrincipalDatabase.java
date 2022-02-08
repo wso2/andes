@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.security.auth.database;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.security.auth.management.AMQUserManagementMBean;
 import org.wso2.andes.server.security.auth.sasl.AuthenticationProviderInitialiser;
 import org.wso2.andes.server.security.auth.sasl.UsernamePrincipal;
@@ -52,7 +53,7 @@ import java.util.regex.Pattern;
  */
 public class Base64MD5PasswordFilePrincipalDatabase implements PrincipalDatabase
 {
-    private static final Logger _logger = Logger.getLogger(Base64MD5PasswordFilePrincipalDatabase.class);
+    private static final Log _logger = LogFactory.getLog(Base64MD5PasswordFilePrincipalDatabase.class);
 
     private File _passwordFile;
 

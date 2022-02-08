@@ -16,7 +16,8 @@
 package org.wso2.andes.server.cluster.coordination.rdbms;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
@@ -54,7 +55,7 @@ public class RDBMSClusterNotificationListenerImpl implements ClusterNotification
     /**
      * Logger to log information.
      */
-    private static final Logger log = Logger.getLogger(RDBMSClusterNotificationListenerImpl.class);
+    private static final Log log = LogFactory.getLog(RDBMSClusterNotificationListenerImpl.class);
 
     /**
      * Executor service for scheduling lister task on DB polling for notifications

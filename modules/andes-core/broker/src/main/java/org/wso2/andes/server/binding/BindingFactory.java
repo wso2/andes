@@ -18,7 +18,8 @@
 
 package org.wso2.andes.server.binding;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQInternalException;
 import org.wso2.andes.AMQSecurityException;
@@ -51,7 +52,7 @@ public class BindingFactory {
     private final DurableConfigurationStore.Source _configSource;
     private final Exchange _defaultExchange;
 
-    private static final Logger _logger = Logger.getLogger(BindingFactory.class);
+    private static final Log _logger = LogFactory.getLog(BindingFactory.class);
     private final ConcurrentHashMap<BindingImpl, BindingImpl> _bindings = new ConcurrentHashMap<BindingImpl, BindingImpl>();
 
 

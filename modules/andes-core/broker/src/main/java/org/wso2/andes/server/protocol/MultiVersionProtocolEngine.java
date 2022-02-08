@@ -18,7 +18,8 @@
 package org.wso2.andes.server.protocol;
 
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.protocol.ProtocolEngine;
 import org.wso2.andes.server.registry.IApplicationRegistry;
 import org.wso2.andes.server.transport.ServerConnection;
@@ -32,7 +33,7 @@ import java.util.Set;
 
 public class MultiVersionProtocolEngine implements ProtocolEngine
 {
-    private static final Logger _logger = Logger.getLogger(MultiVersionProtocolEngine.class);
+    private static final Log _logger = LogFactory.getLog(MultiVersionProtocolEngine.class);
 
     private Set<AmqpProtocolVersion> _supported;
     private String _fqdn;

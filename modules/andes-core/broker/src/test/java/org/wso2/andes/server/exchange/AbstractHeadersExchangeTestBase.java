@@ -20,7 +20,8 @@
  */
 package org.wso2.andes.server.exchange;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.AMQShortString;
@@ -63,7 +64,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class AbstractHeadersExchangeTestBase extends InternalBrokerBaseCase
 {
-    private static final Logger _log = Logger.getLogger(AbstractHeadersExchangeTestBase.class);
+    private static final Log _log = LogFactory.getLog(AbstractHeadersExchangeTestBase.class);
 
     private final HeadersExchange exchange = new HeadersExchange();
     protected final Set<TestQueue> queues = new HashSet<TestQueue>();

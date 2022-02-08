@@ -26,13 +26,14 @@ import org.wso2.andes.client.AMQSession;
 import org.wso2.andes.jms.Session;
 import org.apache.qpid.exchange.ExchangeDefaults;
 import org.apache.qpid.framing.AMQShortString;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.net.InetAddress;
 
 public class TestLargeSubscriber
 {
-    private static final Logger _logger = Logger.getLogger(TestLargeSubscriber.class);
+    private static final Log _logger = LogFactory.getLog(TestLargeSubscriber.class);
 
     private static MessageProducer _destinationProducer;
 

@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.handler;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.ConnectionTuneOkBody;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
@@ -27,7 +28,7 @@ import org.wso2.andes.server.state.StateAwareMethodListener;
 
 public class ConnectionTuneOkMethodHandler implements StateAwareMethodListener<ConnectionTuneOkBody>
 {
-    private static final Logger _logger = Logger.getLogger(ConnectionTuneOkMethodHandler.class);
+    private static final Log _logger = LogFactory.getLog(ConnectionTuneOkMethodHandler.class);
 
     private static ConnectionTuneOkMethodHandler _instance = new ConnectionTuneOkMethodHandler();
 

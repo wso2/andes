@@ -20,7 +20,8 @@
  */
 package org.wso2.andes.client.requestreply;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.log4j.NDC;
 
 import org.wso2.andes.test.framework.TestUtils;
@@ -124,7 +125,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class PingPongProducer implements Runnable, ExceptionListener
 {
     /** Used for debugging. */
-    private static final Logger log = Logger.getLogger(PingPongProducer.class);
+    private static final Log log = LogFactory.getLog(PingPongProducer.class);
 
     /** Holds the name of the property to determine whether of not client id is overridden at connection time.  */
     public static final String OVERRIDE_CLIENT_ID_PROPNAME = "overrideClientId";

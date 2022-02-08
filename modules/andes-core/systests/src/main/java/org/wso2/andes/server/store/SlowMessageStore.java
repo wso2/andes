@@ -21,7 +21,8 @@
 package org.wso2.andes.server.store;
 
 import org.apache.commons.configuration.Configuration;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQStoreException;
 import org.wso2.andes.framing.AMQShortString;
@@ -37,7 +38,7 @@ import java.nio.ByteBuffer;
 
 public class SlowMessageStore implements MessageStore
 {
-    private static final Logger _logger = Logger.getLogger(SlowMessageStore.class);
+    private static final Logger _logger = LogManager.getLogger(SlowMessageStore.class);
     private static final String DELAYS = "delays";
     private HashMap<String, Long> _preDelays = new HashMap<String, Long>();
     private HashMap<String, Long> _postDelays = new HashMap<String, Long>();

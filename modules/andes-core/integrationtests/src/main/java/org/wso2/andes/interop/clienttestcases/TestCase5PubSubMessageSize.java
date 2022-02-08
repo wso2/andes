@@ -20,7 +20,8 @@
  */
 package org.wso2.andes.interop.clienttestcases;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.test.framework.TestUtils;
 import org.wso2.andes.test.framework.distributedtesting.TestClient;
 import org.wso2.andes.test.framework.distributedtesting.TestClientControlledTest;
@@ -44,7 +45,7 @@ import javax.jms.*;
 public class TestCase5PubSubMessageSize implements TestClientControlledTest, MessageListener
 {
     /** Used for debugging. */
-    private static final Logger log = Logger.getLogger(TestCase5PubSubMessageSize.class);
+    private static final Log log = LogFactory.getLog(TestCase5PubSubMessageSize.class);
 
     /** Holds the count of test messages received. */
     private int messageCount;

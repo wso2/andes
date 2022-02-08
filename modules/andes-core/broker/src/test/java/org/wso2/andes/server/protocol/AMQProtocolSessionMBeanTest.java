@@ -20,7 +20,8 @@
  */
 package org.wso2.andes.server.protocol;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.management.common.mbeans.ManagedConnection;
@@ -42,7 +43,7 @@ import javax.management.openmbean.TabularData;
 public class AMQProtocolSessionMBeanTest extends InternalBrokerBaseCase
 {
     /** Used for debugging. */
-    private static final Logger log = Logger.getLogger(AMQProtocolSessionMBeanTest.class);
+    private static final Log log = LogFactory.getLog(AMQProtocolSessionMBeanTest.class);
 
     private MessageStore _messageStore = new SkeletonMessageStore();
     private AMQProtocolEngine _protocolSession;

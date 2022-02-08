@@ -16,7 +16,8 @@
 package org.wso2.andes.server.txn;
 
 import org.apache.commons.lang.NotImplementedException;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.kernel.Andes;
@@ -51,7 +52,7 @@ public class QpidDistributedTransaction implements ServerTransaction {
     /**
      * Class logger
      */
-    private static final Logger LOGGER = Logger.getLogger(QpidDistributedTransaction.class);
+    private static final Log LOGGER = LogFactory.getLog(QpidDistributedTransaction.class);
 
     /**
      * Object used to communicate with the Andes core

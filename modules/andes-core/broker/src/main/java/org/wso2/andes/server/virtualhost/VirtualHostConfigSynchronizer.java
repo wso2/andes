@@ -20,7 +20,8 @@ package org.wso2.andes.server.virtualhost;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQInternalException;
 import org.wso2.andes.AMQSecurityException;
@@ -51,7 +52,7 @@ public class VirtualHostConfigSynchronizer implements
         ConfigurationRecoveryHandler.BindingRecoveryHandler {
 
     private final VirtualHost _virtualHost;
-    private static final Logger _logger = Logger.getLogger(VirtualHostConfigSynchronizer.class);
+    private static final Log _logger = LogFactory.getLog(VirtualHostConfigSynchronizer.class);
     private static Log log = LogFactory.getLog(VirtualHostConfigSynchronizer.class);
 
 

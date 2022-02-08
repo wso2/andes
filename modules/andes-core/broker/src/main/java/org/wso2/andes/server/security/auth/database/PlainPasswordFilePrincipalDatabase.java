@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.security.auth.database;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.security.auth.sasl.AuthenticationProviderInitialiser;
 import org.wso2.andes.server.security.auth.sasl.UsernamePrincipal;
 import org.wso2.andes.server.security.auth.sasl.amqplain.AmqPlainInitialiser;
@@ -53,7 +54,7 @@ public class PlainPasswordFilePrincipalDatabase implements PrincipalDatabase
 {
     public static final String DEFAULT_ENCODING = "utf-8";
     
-    private static final Logger _logger = Logger.getLogger(PlainPasswordFilePrincipalDatabase.class);
+    private static final Log _logger = LogFactory.getLog(PlainPasswordFilePrincipalDatabase.class);
 
     private File _passwordFile;
 

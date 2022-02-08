@@ -24,7 +24,8 @@ import junit.framework.Test;
 import junit.framework.TestResult;
 import junit.framework.TestSuite;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import org.wso2.andes.junit.extensions.listeners.CSVTestListener;
 import org.wso2.andes.junit.extensions.listeners.ConsoleTestListener;
@@ -116,10 +117,10 @@ import java.util.List;
 public class TKTestRunner extends TestRunnerImprovedErrorHandling
 {
     /** Used for debugging. */
-    private static final Logger log = Logger.getLogger(TKTestRunner.class);
+    private static final Log log = LogFactory.getLog(TKTestRunner.class);
 
     /** Used for displaying information on the console. */
-    // private static final Logger console = Logger.getLogger("CONSOLE." + TKTestRunner.class.getName());
+    // private static final Log console = LogFactory.getLog("CONSOLE." + TKTestRunner.class.getName());
 
     /** Used for generating the timestamp when naming output files. */
     protected static final DateFormat TIME_STAMP_FORMAT = new SimpleDateFormat("yyyy-MM-dd-HH.mm.ss");

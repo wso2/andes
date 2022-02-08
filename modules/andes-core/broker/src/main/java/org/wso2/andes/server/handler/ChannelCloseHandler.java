@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.handler;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.AMQFrame;
 import org.wso2.andes.framing.ChannelCloseBody;
@@ -32,7 +33,7 @@ import org.wso2.andes.server.AMQChannel;
 
 public class ChannelCloseHandler implements StateAwareMethodListener<ChannelCloseBody>
 {
-    private static final Logger _logger = Logger.getLogger(ChannelCloseHandler.class);
+    private static final Log _logger = LogFactory.getLog(ChannelCloseHandler.class);
 
     private static ChannelCloseHandler _instance = new ChannelCloseHandler();
 

@@ -18,7 +18,8 @@
 package org.wso2.andes.server.registry;
 
 import org.apache.commons.configuration.ConfigurationException;
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.common.Closeable;
 import org.wso2.andes.common.QpidProperties;
@@ -61,7 +62,7 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public abstract class ApplicationRegistry implements IApplicationRegistry
 {
-    protected static final Logger _logger = Logger.getLogger(ApplicationRegistry.class);
+    protected static final Log _logger = LogFactory.getLog(ApplicationRegistry.class);
 
     private static AtomicReference<IApplicationRegistry> _instance = new AtomicReference<IApplicationRegistry>(null);
 

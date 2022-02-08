@@ -20,7 +20,8 @@
  */
 package org.apache.qpid.weblogic;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import javax.jms.*;
 import javax.naming.Context;
@@ -37,7 +38,7 @@ import java.util.Hashtable;
  */
 public class ServiceRequestingClient
 {
-    private static final Logger _log = Logger.getLogger(ServiceRequestingClient.class);
+    private static final Log _log = LogFactory.getLog(ServiceRequestingClient.class);
     private static final String JNDI_FACTORY = "weblogic.jndi.WLInitialContextFactory";
     private static final String JMS_FACTORY = "transientJMSConnectionFactory";
 

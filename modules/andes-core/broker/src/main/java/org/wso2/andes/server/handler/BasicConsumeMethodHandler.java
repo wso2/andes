@@ -17,7 +17,8 @@
  */
 package org.wso2.andes.server.handler;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.AMQMethodBody;
 import org.wso2.andes.framing.AMQShortString;
@@ -34,7 +35,7 @@ import org.wso2.andes.server.virtualhost.VirtualHost;
 
 public class BasicConsumeMethodHandler implements StateAwareMethodListener<BasicConsumeBody>
 {
-    private static final Logger _logger = Logger.getLogger(BasicConsumeMethodHandler.class);
+    private static final Log _logger = LogFactory.getLog(BasicConsumeMethodHandler.class);
 
     private static final BasicConsumeMethodHandler _instance = new BasicConsumeMethodHandler();
 
