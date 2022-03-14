@@ -48,6 +48,7 @@ import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
 import org.wso2.carbon.metrics.manager.Timer.Context;
 
+import java.io.ByteArrayInputStream;
 import java.sql.BatchUpdateException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -220,7 +221,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             throws SQLException {
         preparedStatement.setLong(1, messagePart.getMessageID());
         preparedStatement.setInt(2, messagePart.getOffset());
-        preparedStatement.setBytes(3, messagePart.getData());
+        preparedStatement.setBinaryStream(3, new ByteArrayInputStream(messagePart.getData()));
         preparedStatement.addBatch();
     }
 
@@ -476,7 +477,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             metadata = message.getMetadata();
             storeMetadataPS.setLong(1, metadata.getMessageID());
             storeMetadataPS.setInt(2, getCachedQueueID(metadata.getStorageQueueName()));
-            storeMetadataPS.setBytes(3, metadata.getMetadata());
+            storeMetadataPS.setBinaryStream(3, new ByteArrayInputStream(metadata.getMetadata()));
             storeMetadataPS.execute();
 
             for (AndesMessagePart messagePart : message.getContentChunkList()) {
@@ -654,7 +655,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
             for (AndesMessageMetadata metadata : metadataList) {
                 preparedStatement.setInt(1, getCachedQueueID(metadata.getStorageQueueName()));
-                preparedStatement.setBytes(2, metadata.getMetadata());
+                preparedStatement.setBinaryStream(2, new ByteArrayInputStream(metadata.getMetadata()));
                 preparedStatement.setLong(3, metadata.getMessageID());
                 preparedStatement.setInt(4, getCachedQueueID(currentQueueName));
                 preparedStatement.addBatch();
@@ -695,7 +696,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         try {
             preparedStatement.setLong(1, metadata.getMessageID());
             preparedStatement.setInt(2, getCachedQueueID(queueName));
-            preparedStatement.setBytes(3, metadata.getMetadata());
+            preparedStatement.setBinaryStream(3, new ByteArrayInputStream(metadata.getMetadata()));
             preparedStatement.addBatch();
         } catch (SQLException e) {
             throw rdbmsStoreUtils.convertSQLException(
@@ -2245,7 +2246,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
             // update metadata
             updateMetadataPreparedStatement.setLong(1, metadata.getMessageID());
-            updateMetadataPreparedStatement.setBytes(2, metadata.getMetadata());
+            updateMetadataPreparedStatement.setBinaryStream(2, new ByteArrayInputStream(metadata.getMetadata()));
             updateMetadataPreparedStatement.setInt(3, retainedItemData.topicID);
             updateMetadataPreparedStatement.addBatch();
 
@@ -2255,7 +2256,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             for (AndesMessagePart messagePart : message.getContentChunkList()) {
                 insertContentPreparedStatement.setLong(1, metadata.getMessageID());
                 insertContentPreparedStatement.setInt(2, messagePart.getOffset());
-                insertContentPreparedStatement.setBytes(3, messagePart.getData());
+                insertContentPreparedStatement.setBinaryStream(3, new ByteArrayInputStream(messagePart.getData()));
                 insertContentPreparedStatement.addBatch();
             }
         }
@@ -2323,7 +2324,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             preparedStatementForMetadata.setInt(1, topicID);
             preparedStatementForMetadata.setString(2, destination);
             preparedStatementForMetadata.setLong(3, messageID);
-            preparedStatementForMetadata.setBytes(4, metadata.getMetadata());
+            preparedStatementForMetadata.setBinaryStream(4, new ByteArrayInputStream(metadata.getMetadata()));
             preparedStatementForMetadata.addBatch();
 
             // create content
@@ -2331,7 +2332,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             for (AndesMessagePart messagePart : message.getContentChunkList()) {
                 preparedStatementForContent.setLong(1, messageID);
                 preparedStatementForContent.setInt(2, messagePart.getOffset());
-                preparedStatementForContent.setBytes(3, messagePart.getData());
+                preparedStatementForContent.setBinaryStream(3, new ByteArrayInputStream(messagePart.getData()));
                 preparedStatementForContent.addBatch();
             }
 

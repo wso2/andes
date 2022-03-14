@@ -29,6 +29,7 @@ import org.wso2.andes.kernel.dtx.AndesPreparedMessageMetadata;
 import org.wso2.andes.kernel.dtx.DtxBranch;
 import org.wso2.andes.server.ClusterResourceHolder;
 
+import java.io.ByteArrayInputStream;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -123,7 +124,8 @@ public class RDBMSDtxStoreImpl implements DtxStore {
                 storeDequeueRecordMetadataPS.setLong(1, internalXid);
                 storeDequeueRecordMetadataPS.setLong(2, messageMetadata.getMessageID());
                 storeDequeueRecordMetadataPS.setString(3, messageMetadata.getStorageQueueName());
-                storeDequeueRecordMetadataPS.setBytes(4, messageMetadata.getMetadata());
+                storeDequeueRecordMetadataPS.setBinaryStream(4,
+                        new ByteArrayInputStream(messageMetadata.getMetadata()));
                 storeDequeueRecordMetadataPS.addBatch();
 
                 backupDequeueMessagesPS.setLong(1, internalXid);
@@ -163,14 +165,14 @@ public class RDBMSDtxStoreImpl implements DtxStore {
                 AndesMessageMetadata metadata = message.getMetadata();
                 storeMetadataPS.setLong(1, internalXid);
                 storeMetadataPS.setLong(2, temporaryMessageId);
-                storeMetadataPS.setBytes(3, metadata.getMetadata());
+                storeMetadataPS.setBinaryStream(3, new ByteArrayInputStream(metadata.getMetadata()));
                 storeMetadataPS.addBatch();
 
                 for (AndesMessagePart messagePart : message.getContentChunkList()) {
                     storeContentPS.setLong(1,internalXid);
                     storeContentPS.setLong(2, temporaryMessageId);
                     storeContentPS.setInt(3, messagePart.getOffset());
-                    storeContentPS.setBytes(4, messagePart.getData());
+                    storeContentPS.setBinaryStream(4, new ByteArrayInputStream(messagePart.getData()));
                     storeContentPS.addBatch();
                 }
             }
@@ -200,8 +202,8 @@ public class RDBMSDtxStoreImpl implements DtxStore {
             storeXidPS.setLong(1, internalXid);
             storeXidPS.setString(2, nodeId);
             storeXidPS.setInt(3, xid.getFormatId());
-            storeXidPS.setBytes(4, xid.getGlobalTransactionId());
-            storeXidPS.setBytes(5, xid.getBranchQualifier());
+            storeXidPS.setBinaryStream(4, new ByteArrayInputStream(xid.getGlobalTransactionId()));
+            storeXidPS.setBinaryStream(5, new ByteArrayInputStream(xid.getBranchQualifier()));
             storeXidPS.executeUpdate();
             return internalXid;
         } finally {
@@ -452,8 +454,8 @@ public class RDBMSDtxStoreImpl implements DtxStore {
         try {
             retreiveXidPS = connection.prepareStatement(RDBMSConstants.PS_SELECT_INTERNAL_XID);
             retreiveXidPS.setLong(1, xid.getFormatId());
-            retreiveXidPS.setBytes(2, xid.getBranchQualifier());
-            retreiveXidPS.setBytes(3, xid.getGlobalTransactionId());
+            retreiveXidPS.setBinaryStream(2, new ByteArrayInputStream(xid.getBranchQualifier()));
+            retreiveXidPS.setBinaryStream(3, new ByteArrayInputStream(xid.getGlobalTransactionId()));
             retreiveXidPS.setString(4, nodeId);
             ResultSet resultSet = retreiveXidPS.executeQuery();
 
@@ -494,7 +496,7 @@ public class RDBMSDtxStoreImpl implements DtxStore {
                 storeMetadataPS.setLong(1, metadata.getMessageID());
                 storeMetadataPS.setLong(2,
                                         rdbmsMessageStore.getCachedQueueID( metadata.getStorageQueueName()));
-                storeMetadataPS.setBytes(3, metadata.getMetadata());
+                storeMetadataPS.setBinaryStream(3, new ByteArrayInputStream(metadata.getMetadata()));
                 storeMetadataPS.addBatch();
 
                 restoreContentPS.setLong(1, metadata.getMessageID());
