@@ -31,6 +31,7 @@ import org.wso2.andes.server.ClusterResourceHolder;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -327,12 +328,15 @@ public class RDBMSDtxStoreImpl implements DtxStore {
             resultSet = preparedStatement.executeQuery();
 
             while (resultSet.next()) {
-                        InputStream inputStreamBranchId = resultSet.getBinaryStream(RDBMSConstants.DTX_BRANCH_ID);
-                        byte[] b1 = rdbmsStoreUtils.getBytesFromInputStream(inputStreamBranchId);
-                        InputStream inputStreamGlobalId = resultSet.getBinaryStream(RDBMSConstants.DTX_GLOBAL_ID);
-                        byte[] b2 = rdbmsStoreUtils.getBytesFromInputStream(inputStreamGlobalId);
-                        XidImpl xid = new XidImpl(b1, resultSet.getInt(RDBMSConstants.DTX_FORMAT), b2);
-                        xidSet.add(xid);
+                try (InputStream inputStreamBranchId = resultSet.getBinaryStream(RDBMSConstants.DTX_BRANCH_ID);
+                        InputStream inputStreamGlobalId = resultSet.getBinaryStream(RDBMSConstants.DTX_GLOBAL_ID)) {
+                    byte[] b1 = rdbmsStoreUtils.getBytesFromInputStream(inputStreamBranchId);
+                    byte[] b2 = rdbmsStoreUtils.getBytesFromInputStream(inputStreamGlobalId);
+                    XidImpl xid = new XidImpl(b1, resultSet.getInt(RDBMSConstants.DTX_FORMAT), b2);
+                    xidSet.add(xid);
+                } catch (IOException e) {
+                    log.error("Error while retrieving data", e);
+                }
             }
             connection.commit();
             return xidSet;
@@ -364,13 +368,16 @@ public class RDBMSDtxStoreImpl implements DtxStore {
 
             List<AndesPreparedMessageMetadata> dtxMetadataList = new ArrayList<>();
             while (resultSet.next()) {
-                InputStream inputStream = resultSet.getBinaryStream(RDBMSConstants.METADATA);
-                byte[] b = rdbmsStoreUtils.getBytesFromInputStream(inputStream);
-                AndesMessageMetadata metadata = new AndesMessageMetadata(
-                        resultSet.getLong(RDBMSConstants.MESSAGE_ID), b, true);
-                metadata.setStorageQueueName(resultSet.getString(RDBMSConstants.QUEUE_NAME));
-                AndesPreparedMessageMetadata dtxMetadata = new AndesPreparedMessageMetadata(metadata);
-                dtxMetadataList.add(dtxMetadata);
+                try (InputStream inputStream = resultSet.getBinaryStream(RDBMSConstants.METADATA)) {
+                    byte[] b = rdbmsStoreUtils.getBytesFromInputStream(inputStream);
+                    AndesMessageMetadata metadata = new AndesMessageMetadata(
+                            resultSet.getLong(RDBMSConstants.MESSAGE_ID), b, true);
+                    metadata.setStorageQueueName(resultSet.getString(RDBMSConstants.QUEUE_NAME));
+                    AndesPreparedMessageMetadata dtxMetadata = new AndesPreparedMessageMetadata(metadata);
+                    dtxMetadataList.add(dtxMetadata);
+                } catch (IOException e) {
+                    log.error("Error while retrieving metadata", e);
+                }
             }
             branch.setMessagesToRestore(dtxMetadataList);
         } catch (SQLException e) {
@@ -402,12 +409,15 @@ public class RDBMSDtxStoreImpl implements DtxStore {
             metadataResultSet = retrieveMetadataPS.executeQuery();
             Map<Long, AndesMessage> messageMap = new HashMap<>();
             while (metadataResultSet.next()) {
-                InputStream inputStream = metadataResultSet.getBinaryStream(RDBMSConstants.METADATA);
-                byte[] b = rdbmsStoreUtils.getBytesFromInputStream(inputStream);
-                AndesMessageMetadata metadata = new AndesMessageMetadata(
-                        metadataResultSet.getLong(RDBMSConstants.MESSAGE_ID), b, true);
-                AndesMessage andesMessage = new AndesMessage(metadata);
-                messageMap.put(metadata.getMessageID(), andesMessage);
+                try (InputStream inputStream = metadataResultSet.getBinaryStream(RDBMSConstants.METADATA)) {
+                    byte[] b = rdbmsStoreUtils.getBytesFromInputStream(inputStream);
+                    AndesMessageMetadata metadata = new AndesMessageMetadata(
+                            metadataResultSet.getLong(RDBMSConstants.MESSAGE_ID), b, true);
+                    AndesMessage andesMessage = new AndesMessage(metadata);
+                    messageMap.put(metadata.getMessageID(), andesMessage);
+                } catch (IOException e) {
+                    log.error("Error while retrieving metadata", e);
+                }
             }
             retrieveContentPS.setLong(1, internalXid);
             contentResultSet = retrieveContentPS.executeQuery();
@@ -419,10 +429,12 @@ public class RDBMSDtxStoreImpl implements DtxStore {
 
                 contentChunk.setMessageID(messageId);
                 contentChunk.setOffSet(contentResultSet.getInt(RDBMSConstants.MSG_OFFSET));
-                InputStream inputStream = contentResultSet.getBinaryStream(RDBMSConstants.MESSAGE_CONTENT);
-                byte[] data = rdbmsStoreUtils.getBytesFromInputStream(inputStream);
-                contentChunk.setData(data);
-
+                try (InputStream inputStream = contentResultSet.getBinaryStream(RDBMSConstants.MESSAGE_CONTENT)) {
+                    byte[] data = rdbmsStoreUtils.getBytesFromInputStream(inputStream);
+                    contentChunk.setData(data);
+                } catch (IOException e) {
+                    log.error("Error while retrieving message content", e);
+                }
                 message.addMessagePart(contentChunk);
             }
             branch.setMessagesToStore(messageMap.values());
