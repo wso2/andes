@@ -410,7 +410,7 @@ public class RDBMSDtxStoreImpl implements DtxStore {
                 messageMap.put(metadata.getMessageID(), andesMessage);
             }
             retrieveContentPS.setLong(1, internalXid);
-            contentcResultSet = retrieveContentPS.executeQuery();
+            contentResultSet = retrieveContentPS.executeQuery();
             while (contentResultSet.next()) {
                 long messageId = contentResultSet.getLong(RDBMSConstants.MESSAGE_ID);
                 AndesMessage message = messageMap.get(messageId);
