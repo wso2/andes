@@ -28,6 +28,8 @@ import org.wso2.andes.kernel.DtxStore;
 import org.wso2.andes.kernel.dtx.AndesPreparedMessageMetadata;
 import org.wso2.andes.kernel.dtx.DtxBranch;
 import org.wso2.andes.server.ClusterResourceHolder;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -52,6 +54,8 @@ public class RDBMSDtxStoreImpl implements DtxStore {
     private RDBMSMessageStoreImpl rdbmsMessageStore;
 
     private RDBMSStoreUtils rdbmsStoreUtils;
+
+    private static final Log log = LogFactory.getLog(RDBMSDtxStoreImpl.class);
 
     /**
      * Instead of using auto increment IDs which is JDBS driver dependant, we can use this
