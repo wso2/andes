@@ -30,6 +30,7 @@ import org.wso2.andes.kernel.dtx.DtxBranch;
 import org.wso2.andes.server.ClusterResourceHolder;
 
 import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -326,11 +327,11 @@ public class RDBMSDtxStoreImpl implements DtxStore {
             resultSet = preparedStatement.executeQuery();
 
             while (resultSet.next()) {
-
-                        XidImpl xid = new XidImpl(resultSet.getBytes(RDBMSConstants.DTX_BRANCH_ID),
-                                                  resultSet.getInt(RDBMSConstants.DTX_FORMAT),
-                                                  resultSet.getBytes(RDBMSConstants.DTX_GLOBAL_ID)
-                        );
+                        InputStream inputStreamBranchId = resultSet.getBinaryStream(RDBMSConstants.DTX_BRANCH_ID);
+                        byte[] b1 = rdbmsStoreUtils.getBytesFromInputStream(inputStreamBranchId);
+                        InputStream inputStreamGlobalId = resultSet.getBinaryStream(RDBMSConstants.DTX_GLOBAL_ID);
+                        byte[] b2 = rdbmsStoreUtils.getBytesFromInputStream(inputStreamGlobalId);
+                        XidImpl xid = new XidImpl(b1, resultSet.getInt(RDBMSConstants.DTX_FORMAT), b2);
                         xidSet.add(xid);
             }
             connection.commit();
@@ -363,11 +364,10 @@ public class RDBMSDtxStoreImpl implements DtxStore {
 
             List<AndesPreparedMessageMetadata> dtxMetadataList = new ArrayList<>();
             while (resultSet.next()) {
+                InputStream inputStream = resultSet.getBinaryStream(RDBMSConstants.METADATA);
+                byte[] b = rdbmsStoreUtils.getBytesFromInputStream(inputStream);
                 AndesMessageMetadata metadata = new AndesMessageMetadata(
-                        resultSet.getLong(RDBMSConstants.MESSAGE_ID),
-                        resultSet.getBytes(RDBMSConstants.METADATA),
-                        true
-                        );
+                        resultSet.getLong(RDBMSConstants.MESSAGE_ID), b, true);
                 metadata.setStorageQueueName(resultSet.getString(RDBMSConstants.QUEUE_NAME));
                 AndesPreparedMessageMetadata dtxMetadata = new AndesPreparedMessageMetadata(metadata);
                 dtxMetadataList.add(dtxMetadata);
@@ -402,16 +402,15 @@ public class RDBMSDtxStoreImpl implements DtxStore {
             metadataResultSet = retrieveMetadataPS.executeQuery();
             Map<Long, AndesMessage> messageMap = new HashMap<>();
             while (metadataResultSet.next()) {
+                InputStream inputStream = metadataResultSet.getBinaryStream(RDBMSConstants.METADATA);
+                byte[] b = rdbmsStoreUtils.getBytesFromInputStream(inputStream);
                 AndesMessageMetadata metadata = new AndesMessageMetadata(
-                        metadataResultSet.getLong(RDBMSConstants.MESSAGE_ID),
-                        metadataResultSet.getBytes(RDBMSConstants.METADATA),
-                        true
-                );
+                        metadataResultSet.getLong(RDBMSConstants.MESSAGE_ID), b, true);
                 AndesMessage andesMessage = new AndesMessage(metadata);
                 messageMap.put(metadata.getMessageID(), andesMessage);
             }
             retrieveContentPS.setLong(1, internalXid);
-            contentResultSet = retrieveContentPS.executeQuery();
+            contentcResultSet = retrieveContentPS.executeQuery();
             while (contentResultSet.next()) {
                 long messageId = contentResultSet.getLong(RDBMSConstants.MESSAGE_ID);
                 AndesMessage message = messageMap.get(messageId);
@@ -420,7 +419,8 @@ public class RDBMSDtxStoreImpl implements DtxStore {
 
                 contentChunk.setMessageID(messageId);
                 contentChunk.setOffSet(contentResultSet.getInt(RDBMSConstants.MSG_OFFSET));
-                byte[] data = contentResultSet.getBytes(RDBMSConstants.MESSAGE_CONTENT);
+                InputStream inputStream = contentResultSet.getBinaryStream(RDBMSConstants.MESSAGE_CONTENT);
+                byte[] data = rdbmsStoreUtils.getBytesFromInputStream(inputStream);
                 contentChunk.setData(data);
 
                 message.addMessagePart(contentChunk);

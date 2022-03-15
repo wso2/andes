@@ -38,7 +38,10 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.io.IOException;
+import java.io.InputStream;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -506,6 +509,24 @@ public class RDBMSStoreUtils {
             return sqlState;
         }
         return sqlState.substring(0, 2);
+    }
+
+    /**
+     * Function converts IS to byte[]
+     *
+     * Used for handling inputstreams
+     *
+     * @param is - The Input Stream
+     * @return - The inputStream as a byte array
+     */
+    public byte[] getBytesFromInputStream(InputStream is) {
+        byte[] byteArray = null;
+        try {
+            byteArray = IOUtils.toByteArray(is);
+        } catch (IOException e) {
+            log.error("Error occurred while converting input stream to byte array.", e);
+        }
+        return byteArray;
     }
 
 }
