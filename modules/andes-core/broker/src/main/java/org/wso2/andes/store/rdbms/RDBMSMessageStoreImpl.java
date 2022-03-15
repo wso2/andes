@@ -48,6 +48,9 @@ import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
 import org.wso2.carbon.metrics.manager.Timer.Context;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.io.IOException;
 import java.sql.BatchUpdateException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -220,7 +223,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             throws SQLException {
         preparedStatement.setLong(1, messagePart.getMessageID());
         preparedStatement.setInt(2, messagePart.getOffset());
-        preparedStatement.setBytes(3, messagePart.getData());
+        preparedStatement.setBinaryStream(3, new ByteArrayInputStream(messagePart.getData()));
         preparedStatement.addBatch();
     }
 
@@ -353,12 +356,15 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     }
 
     private AndesMessagePart createMessagePart(ResultSet results, long messageId, int offsetValue) throws SQLException {
-        byte[] b = results.getBytes(MESSAGE_CONTENT);
         AndesMessagePart messagePart = new AndesMessagePart();
-        messagePart.setMessageID(messageId);
-        messagePart.setData(b);
-        messagePart.setOffSet(offsetValue);
-
+        try (InputStream inputStream = results.getBinaryStream(MESSAGE_CONTENT)) {
+            byte[] b = rdbmsStoreUtils.getBytesFromInputStream(inputStream);
+            messagePart.setMessageID(messageId);
+            messagePart.setData(b);
+            messagePart.setOffSet(offsetValue);
+        } catch (IOException e) {
+            log.error("Error while retrieving message content", e);
+        }
         return messagePart;
     }
 
@@ -476,7 +482,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             metadata = message.getMetadata();
             storeMetadataPS.setLong(1, metadata.getMessageID());
             storeMetadataPS.setInt(2, getCachedQueueID(metadata.getStorageQueueName()));
-            storeMetadataPS.setBytes(3, metadata.getMetadata());
+            storeMetadataPS.setBinaryStream(3, new ByteArrayInputStream(metadata.getMetadata()));
             storeMetadataPS.execute();
 
             for (AndesMessagePart messagePart : message.getContentChunkList()) {
@@ -654,7 +660,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
             for (AndesMessageMetadata metadata : metadataList) {
                 preparedStatement.setInt(1, getCachedQueueID(metadata.getStorageQueueName()));
-                preparedStatement.setBytes(2, metadata.getMetadata());
+                preparedStatement.setBinaryStream(2, new ByteArrayInputStream(metadata.getMetadata()));
                 preparedStatement.setLong(3, metadata.getMessageID());
                 preparedStatement.setInt(4, getCachedQueueID(currentQueueName));
                 preparedStatement.addBatch();
@@ -695,7 +701,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         try {
             preparedStatement.setLong(1, metadata.getMessageID());
             preparedStatement.setInt(2, getCachedQueueID(queueName));
-            preparedStatement.setBytes(3, metadata.getMetadata());
+            preparedStatement.setBinaryStream(3, new ByteArrayInputStream(metadata.getMetadata()));
             preparedStatement.addBatch();
         } catch (SQLException e) {
             throw rdbmsStoreUtils.convertSQLException(
@@ -748,8 +754,12 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             preparedStatement.setLong(1, messageId);
             results = preparedStatement.executeQuery();
             if (results.next()) {
-                byte[] b = results.getBytes(RDBMSConstants.METADATA);
-                md = new AndesMessageMetadata(messageId, b, true);
+                try (InputStream inputStream = results.getBinaryStream(RDBMSConstants.METADATA)) {
+                    byte[] b = rdbmsStoreUtils.getBytesFromInputStream(inputStream);
+                    md = new AndesMessageMetadata(messageId, b, true);
+                } catch (IOException e) {
+                    log.error("Error while retrieving metadata", e);
+                }
             }
             connection.commit();
         } catch (SQLException e) {
@@ -798,13 +808,17 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             }
 
             while (resultSet.next()) {
-                DeliverableAndesMetadata md = new DeliverableAndesMetadata(slot,
-                        resultSet.getLong(RDBMSConstants.MESSAGE_ID), resultSet.getBytes(RDBMSConstants.METADATA),
-                        true);
-                md.setStorageQueueName(storageQueueName);
-                metadataList.add(md);
-                //Tracing message
-                MessageTracer.trace(md, slot, MessageTracer.METADATA_READ_FROM_DB);
+                try (InputStream inputStream = resultSet.getBinaryStream(RDBMSConstants.METADATA)) {
+                    byte[] b = rdbmsStoreUtils.getBytesFromInputStream(inputStream);
+                    DeliverableAndesMetadata md = new DeliverableAndesMetadata(slot,
+                            resultSet.getLong(RDBMSConstants.MESSAGE_ID), b, true);
+                    md.setStorageQueueName(storageQueueName);
+                    metadataList.add(md);
+                    //Tracing message
+                    MessageTracer.trace(md, slot, MessageTracer.METADATA_READ_FROM_DB);
+                } catch (IOException e) {
+                    log.error("Error while retrieving metadata", e);
+                }
             }
             if (log.isDebugEnabled()) {
                 log.debug("request: metadata range (" + firstMsgId + " , " + lastMsgID + ") in destination queue "
@@ -987,11 +1001,15 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 if (resultCount == count) {
                     break;
                 }
-
-                AndesMessageMetadata md = new AndesMessageMetadata(results.getLong(RDBMSConstants.MESSAGE_ID),
-                        results.getBytes(RDBMSConstants.METADATA), true);
-                md.setStorageQueueName(storageQueueName);
-                mdList.add(md);
+                try (InputStream inputStream = results.getBinaryStream(RDBMSConstants.METADATA)) {
+                    byte[] b = rdbmsStoreUtils.getBytesFromInputStream(inputStream);
+                    AndesMessageMetadata md = new AndesMessageMetadata(results.getLong(RDBMSConstants.MESSAGE_ID), b,
+                            true);
+                    md.setStorageQueueName(storageQueueName);
+                    mdList.add(md);
+                } catch (IOException e) {
+                    log.error("Error while retrieving metadata", e);
+                }
                 resultCount++;
             }
             connection.commit();
@@ -1036,11 +1054,15 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 if (resultCount == count) {
                     break;
                 }
-
-                AndesMessageMetadata md = new AndesMessageMetadata(results.getLong(RDBMSConstants.MESSAGE_ID),
-                        results.getBytes(RDBMSConstants.METADATA), true);
-                md.setStorageQueueName(storageQueueName);
-                mdList.add(md);
+                try (InputStream inputStream = results.getBinaryStream(RDBMSConstants.METADATA)) {
+                    byte[] b = rdbmsStoreUtils.getBytesFromInputStream(inputStream);
+                    AndesMessageMetadata md = new AndesMessageMetadata(results.getLong(RDBMSConstants.MESSAGE_ID), b,
+                            true);
+                    md.setStorageQueueName(storageQueueName);
+                    mdList.add(md);
+                } catch (IOException e) {
+                    log.error("Error while retrieving metadata", e);
+                }
                 resultCount++;
             }
             connection.commit();
@@ -1084,11 +1106,15 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 if (resultCount == count) {
                     break;
                 }
-
-                AndesMessageMetadata md = new AndesMessageMetadata(results.getLong(RDBMSConstants.MESSAGE_ID),
-                        results.getBytes(RDBMSConstants.METADATA), true);
-                md.setStorageQueueName(dlcQueueName);
-                mdList.add(md);
+                try (InputStream inputStream = results.getBinaryStream(RDBMSConstants.METADATA)) {
+                    byte[] b = rdbmsStoreUtils.getBytesFromInputStream(inputStream);
+                    AndesMessageMetadata md = new AndesMessageMetadata(results.getLong(RDBMSConstants.MESSAGE_ID), b,
+                            true);
+                    md.setStorageQueueName(dlcQueueName);
+                    mdList.add(md);
+                } catch (IOException e) {
+                    log.error("Error while retrieving metadata", e);
+                }
                 resultCount++;
             }
             connection.commit();
@@ -2245,7 +2271,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
             // update metadata
             updateMetadataPreparedStatement.setLong(1, metadata.getMessageID());
-            updateMetadataPreparedStatement.setBytes(2, metadata.getMetadata());
+            updateMetadataPreparedStatement.setBinaryStream(2, new ByteArrayInputStream(metadata.getMetadata()));
             updateMetadataPreparedStatement.setInt(3, retainedItemData.topicID);
             updateMetadataPreparedStatement.addBatch();
 
@@ -2255,7 +2281,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             for (AndesMessagePart messagePart : message.getContentChunkList()) {
                 insertContentPreparedStatement.setLong(1, metadata.getMessageID());
                 insertContentPreparedStatement.setInt(2, messagePart.getOffset());
-                insertContentPreparedStatement.setBytes(3, messagePart.getData());
+                insertContentPreparedStatement.setBinaryStream(3, new ByteArrayInputStream(messagePart.getData()));
                 insertContentPreparedStatement.addBatch();
             }
         }
@@ -2323,7 +2349,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             preparedStatementForMetadata.setInt(1, topicID);
             preparedStatementForMetadata.setString(2, destination);
             preparedStatementForMetadata.setLong(3, messageID);
-            preparedStatementForMetadata.setBytes(4, metadata.getMetadata());
+            preparedStatementForMetadata.setBinaryStream(4, new ByteArrayInputStream(metadata.getMetadata()));
             preparedStatementForMetadata.addBatch();
 
             // create content
@@ -2331,7 +2357,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             for (AndesMessagePart messagePart : message.getContentChunkList()) {
                 preparedStatementForContent.setLong(1, messageID);
                 preparedStatementForContent.setInt(2, messagePart.getOffset());
-                preparedStatementForContent.setBytes(3, messagePart.getData());
+                preparedStatementForContent.setBinaryStream(3, new ByteArrayInputStream(messagePart.getData()));
                 preparedStatementForContent.addBatch();
             }
 
@@ -2401,9 +2427,13 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             results = preparedStatement.executeQuery();
 
             if (results.next()) {
-                byte[] b = results.getBytes(RDBMSConstants.METADATA);
-                long messageId = results.getLong(RDBMSConstants.MESSAGE_ID);
-                metadata = new DeliverableAndesMetadata(null, messageId, b, true);
+                try (InputStream inputStream = results.getBinaryStream(RDBMSConstants.METADATA)) {
+                    byte[] b = rdbmsStoreUtils.getBytesFromInputStream(inputStream);
+                    long messageId = results.getLong(RDBMSConstants.MESSAGE_ID);
+                    metadata = new DeliverableAndesMetadata(null, messageId, b, true);
+                } catch (IOException e) {
+                    log.error("Error while retrieving metadata", e);
+                }
             }
             connection.commit();
         } catch (SQLException e) {
@@ -2440,15 +2470,19 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             results = preparedStatement.executeQuery();
 
             while (results.next()) {
-                byte[] b = results.getBytes(RDBMSConstants.MESSAGE_CONTENT);
-                int offset = results.getInt(RDBMSConstants.MSG_OFFSET);
+                try (InputStream inputStream = results.getBinaryStream(RDBMSConstants.MESSAGE_CONTENT)) {
+                    byte[] b = rdbmsStoreUtils.getBytesFromInputStream(inputStream);
+                    int offset = results.getInt(RDBMSConstants.MSG_OFFSET);
 
-                AndesMessagePart messagePart = new AndesMessagePart();
+                    AndesMessagePart messagePart = new AndesMessagePart();
 
-                messagePart.setMessageID(messageID);
-                messagePart.setData(b);
-                messagePart.setOffSet(offset);
-                contentParts.put(offset, messagePart);
+                    messagePart.setMessageID(messageID);
+                    messagePart.setData(b);
+                    messagePart.setOffSet(offset);
+                    contentParts.put(offset, messagePart);
+                } catch (IOException e) {
+                    log.error("Error while retrieving message content", e);
+                }
             }
             connection.commit();
         } catch (SQLException e) {
