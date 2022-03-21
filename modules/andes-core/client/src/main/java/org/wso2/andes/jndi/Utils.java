@@ -31,6 +31,8 @@ public class Utils {
     public static final String ENV_VAR_PLACEHOLDER_PREFIX = "$env{";
     public static final String DYNAMIC_PROPERTY_PLACEHOLDER_PREFIX = "${";
     public static final String PLACEHOLDER_SUFFIX = "}";
+    public static final String SEC_PREFIX = "$secret{";
+    public static final String TEMP_PLACEHOLDER = "_TEMP_";
 
     private static Log log = LogFactory.getLog(Utils.class);
 
@@ -61,6 +63,11 @@ public class Utils {
 
         int indexOfStartingChars = -1;
         int indexOfClosingBrace;
+        
+        // Temporarily replace the secure vault alias ($secret{alias}) with a placeholder
+        String secAlias = StringUtils.substringBetween(text, SEC_PREFIX, PLACEHOLDER_SUFFIX);
+        String secAliasRef = SEC_PREFIX + secAlias + PLACEHOLDER_SUFFIX;
+        text = text.replace(secAliasRef, TEMP_PLACEHOLDER);
 
         // The following condition deals with properties.
         // Properties are specified as ${system.property},
@@ -82,6 +89,10 @@ public class Utils {
                 text = new File(".").getAbsolutePath() + File.separator + text;
             }
         }
+        
+        // Replace the temporary placeholder with the secure vault alias ($secret{alias}) 
+        text = text.replace(TEMP_PLACEHOLDER, secAliasRef);
+        
         return text;
     }
 }
