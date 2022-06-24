@@ -35,8 +35,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
 
     /**
      * Enabling this will make the cluster notifications such as Queue changes(additions and deletions), Subscription
-     * changes, etc. sent within the cluster be synchronized using RDBMS. If set to false, Hazelcast will be used for
-     * this purpose.
+     * changes, etc. sent within the cluster be synchronized using RDBMS.
      */
     CLUSTER_EVENT_SYNC_MODE_RDBMS_ENABLED("coordination/rdbmsBasedClusterEventSynchronization/@enabled", "true",
             Boolean.class),
