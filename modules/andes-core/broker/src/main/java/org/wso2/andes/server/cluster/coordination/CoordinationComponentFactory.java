@@ -47,12 +47,11 @@ public class CoordinationComponentFactory {
     public ClusterNotificationListenerManager createClusterNotificationListener() throws AndesException {
         initConfiguration();
         ClusterNotificationListenerManager clusterNotificationListenerManager = null;
-        if (ClusterResourceHolder.getInstance().getClusterManager().isClusteringEnabled()) {
-            if (isRDBMSBasedCoordinationEnabled) {
-                log.info("Broker is initialized with RDBMS based cluster event synchronization.");
-                AndesContextStore contextStore = AndesContext.getInstance().getAndesContextStore();
-                clusterNotificationListenerManager = new RDBMSClusterNotificationListenerImpl(contextStore);
-            }
+        if (ClusterResourceHolder.getInstance().getClusterManager().isClusteringEnabled()
+                && isRDBMSBasedCoordinationEnabled) {
+            log.info("Broker is initialized with RDBMS based cluster event synchronization.");
+            AndesContextStore contextStore = AndesContext.getInstance().getAndesContextStore();
+            clusterNotificationListenerManager = new RDBMSClusterNotificationListenerImpl(contextStore);
         }
         return clusterNotificationListenerManager;
 
@@ -71,10 +70,8 @@ public class CoordinationComponentFactory {
         initConfiguration();
         AndesContextStore contextStore = AndesContext.getInstance().getAndesContextStore();
         ClusterNotificationAgent clusterNotificationAgent = new StandaloneMockNotificationAgent();
-        if (isClusteringEnabled) {
-            if (isRDBMSBasedCoordinationEnabled) {
-                clusterNotificationAgent = new RDBMSBasedNotificationAgentImpl(contextStore);
-            }
+        if (isClusteringEnabled && isRDBMSBasedCoordinationEnabled) {
+            clusterNotificationAgent = new RDBMSBasedNotificationAgentImpl(contextStore);
         }
         return clusterNotificationAgent;
     }
