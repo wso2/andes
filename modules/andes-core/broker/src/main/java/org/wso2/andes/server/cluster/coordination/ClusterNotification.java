@@ -21,7 +21,7 @@ package org.wso2.andes.server.cluster.coordination;
 import java.io.Serializable;
 
 /**
- * This class represents a cluster notification to be transfer via HazelCast
+ * This class represents a cluster notification to be transfer
  */
 public class ClusterNotification implements Serializable {
     /**

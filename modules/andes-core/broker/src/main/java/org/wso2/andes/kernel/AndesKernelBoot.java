@@ -43,7 +43,6 @@ import org.wso2.andes.server.cluster.ClusterManagementInformationMBean;
 import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.cluster.coordination.ClusterNotificationListenerManager;
 import org.wso2.andes.server.cluster.coordination.CoordinationComponentFactory;
-import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.information.management.MessageStatusInformationMBean;
 import org.wso2.andes.server.information.management.SubscriptionManagementInformationMBean;
 import org.wso2.andes.server.queue.DLCQueueUtils;
@@ -150,27 +149,7 @@ public class AndesKernelBoot {
      * @throws AndesException
      */
     public static void clearMembershipEventsAndRecoverDistributedSlotMap() throws AndesException {
-        if (AndesContext.getInstance().isClusteringEnabled()) {
-            HazelcastAgent hazelcastAgent = HazelcastAgent.getInstance();
-            try {
-                hazelcastAgent.acquireInitializationLock();
-                if (!hazelcastAgent.isClusterInitializedSuccessfully()) {
-                    removeNonDurableQueues();
-                    removeAllSubscriptions();
-
-                    clearSlotStorage();
-
-                    // Initialize current node's last published ID
-                    ClusterAgent clusterAgent = AndesContext.getInstance().getClusterAgent();
-                    contextStore.setLocalSafeZoneOfNode(clusterAgent.getLocalNodeIdentifier(), 0);
-
-                    recoverMapsForEachQueue();
-                    hazelcastAgent.indicateSuccessfulInitilization();
-                }
-            } finally {
-                hazelcastAgent.releaseInitializationLock();
-            }
-        } else {
+        if (!AndesContext.getInstance().isClusteringEnabled()) {
             removeNonDurableQueues();
             removeAllSubscriptions();
             recoverMapsForEachQueue();

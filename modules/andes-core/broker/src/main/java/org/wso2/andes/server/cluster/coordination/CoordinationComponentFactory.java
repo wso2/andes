@@ -23,9 +23,6 @@ import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
-import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastBasedNotificationAgentImpl;
-import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastClusterNotificationListenerImpl;
 import org.wso2.andes.server.cluster.coordination.rdbms.RDBMSBasedNotificationAgentImpl;
 import org.wso2.andes.server.cluster.coordination.rdbms.RDBMSClusterNotificationListenerImpl;
 
@@ -49,19 +46,12 @@ public class CoordinationComponentFactory {
      */
     public ClusterNotificationListenerManager createClusterNotificationListener() throws AndesException {
         initConfiguration();
-        ClusterNotificationListenerManager clusterNotificationListenerManager;
-        if (ClusterResourceHolder.getInstance().getClusterManager().isClusteringEnabled()) {
-            if (isRDBMSBasedCoordinationEnabled) {
-                log.info("Broker is initialized with RDBMS based cluster event synchronization.");
-                AndesContextStore contextStore = AndesContext.getInstance().getAndesContextStore();
-                clusterNotificationListenerManager = new RDBMSClusterNotificationListenerImpl(contextStore);
-            } else {
-                log.info("Broker is initialized with HAZELCAST based cluster event synchronization.");
-                clusterNotificationListenerManager = new HazelcastClusterNotificationListenerImpl(HazelcastAgent
-                        .getInstance());
-            }
-        } else {
-            clusterNotificationListenerManager = null;
+        ClusterNotificationListenerManager clusterNotificationListenerManager = null;
+        if (ClusterResourceHolder.getInstance().getClusterManager().isClusteringEnabled()
+                && isRDBMSBasedCoordinationEnabled) {
+            log.info("Broker is initialized with RDBMS based cluster event synchronization.");
+            AndesContextStore contextStore = AndesContext.getInstance().getAndesContextStore();
+            clusterNotificationListenerManager = new RDBMSClusterNotificationListenerImpl(contextStore);
         }
         return clusterNotificationListenerManager;
 
@@ -79,25 +69,9 @@ public class CoordinationComponentFactory {
     public ClusterNotificationAgent createClusterNotificationAgent() throws AndesException {
         initConfiguration();
         AndesContextStore contextStore = AndesContext.getInstance().getAndesContextStore();
-        ClusterNotificationAgent clusterNotificationAgent;
-        if (isClusteringEnabled) {
-            if (isRDBMSBasedCoordinationEnabled) {
-                clusterNotificationAgent = new RDBMSBasedNotificationAgentImpl(contextStore);
-            } else {
-                HazelcastClusterNotificationListenerImpl hazelcastBasedListener =
-                        (HazelcastClusterNotificationListenerImpl) AndesContext.getInstance().
-                                getClusterNotificationListenerManager();
-                if (null != hazelcastBasedListener) {
-                    clusterNotificationAgent = new HazelcastBasedNotificationAgentImpl(
-                            hazelcastBasedListener.getClusterNotificationChannel(),
-                            hazelcastBasedListener.getDBSyncNotificationChannel());
-                } else {
-                    throw new AndesException("Cannot create HazelcastBasedNotificationAgentImpl. Create " +
-                            "HazelcastClusterNotificationListenerImpl first to register Hazelcast topics");
-                }
-            }
-        } else {
-            clusterNotificationAgent = new StandaloneMockNotificationAgent();
+        ClusterNotificationAgent clusterNotificationAgent = new StandaloneMockNotificationAgent();
+        if (isClusteringEnabled && isRDBMSBasedCoordinationEnabled) {
+            clusterNotificationAgent = new RDBMSBasedNotificationAgentImpl(contextStore);
         }
         return clusterNotificationAgent;
     }
