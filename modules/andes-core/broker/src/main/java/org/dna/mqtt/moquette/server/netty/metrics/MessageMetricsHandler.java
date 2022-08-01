@@ -7,10 +7,11 @@ import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.dna.mqtt.moquette.server.netty.metrics.MessageMetrics;
 
 public class MessageMetricsHandler extends ChannelDuplexHandler {
 
-    private static final AttributeKey<MessageMetrics> ATTR_KEY_METRICS = new AttributeKey<MessageMetrics>("MessageMetrics");
+    private static final AttributeKey<MessageMetrics> ATTR_KEY_METRICS = AttributeKey.newInstance("MessageMetrics");
 
     private MessageMetricsCollector m_collector;
 
