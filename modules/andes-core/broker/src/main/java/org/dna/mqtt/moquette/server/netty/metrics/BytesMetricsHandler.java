@@ -9,7 +9,7 @@ import io.netty.util.AttributeKey;
 
 public class BytesMetricsHandler extends ChannelDuplexHandler {
 
-    private static final AttributeKey<BytesMetrics> ATTR_KEY_METRICS = new AttributeKey<BytesMetrics>("BytesMetrics");
+    private static final AttributeKey<BytesMetrics> ATTR_KEY_METRICS = AttributeKey.newInstance("BytesMetrics");
 
     private BytesMetricsCollector m_collector;
 

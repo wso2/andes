@@ -22,10 +22,10 @@ public class NettyChannel implements ServerChannel {
     
     private Map<Object, AttributeKey<Object>> m_attributesKeys = new HashMap<Object, AttributeKey<Object>>();
     public static final String ATTR_USERNAME = "username";
-    
-    private static final AttributeKey<Object> ATTR_KEY_KEEPALIVE = new AttributeKey<Object>(Constants.KEEP_ALIVE);
-    private static final AttributeKey<Object> ATTR_KEY_CLEANSESSION = new AttributeKey<Object>(Constants.CLEAN_SESSION);
-    private static final AttributeKey<Object> ATTR_KEY_CLIENTID = new AttributeKey<Object>(Constants.ATTR_CLIENTID);
+
+    private static final AttributeKey<Object> ATTR_KEY_KEEPALIVE = AttributeKey.newInstance(Constants.KEEP_ALIVE);
+    private static final AttributeKey<Object> ATTR_KEY_CLEANSESSION = AttributeKey.newInstance(Constants.CLEAN_SESSION);
+    private static final AttributeKey<Object> ATTR_KEY_CLIENTID = AttributeKey.newInstance(Constants.ATTR_CLIENTID);
     public static final AttributeKey<Object> ATTR_KEY_USERNAME = AttributeKey.valueOf(ATTR_USERNAME);
     private final UUID uuid = UUID.randomUUID();
 
