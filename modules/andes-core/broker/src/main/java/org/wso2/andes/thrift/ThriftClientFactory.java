@@ -99,24 +99,4 @@ public class ThriftClientFactory extends BasePooledObjectFactory<SlotManagementS
         client.getObject().getInputProtocol().getTransport().close();
         super.destroyObject(client);
     }
-
-    /**
-     * When setTestOnBorrow is set to true in thrift connection pool. This validation method is called on each
-     * connection object taken from the pool. This method do a bogus thrift call and validate the connection is
-     * usable for next intended task.
-     *
-     * @param client client
-     * @return connection's usability
-     */
-    @Override
-    public boolean validateObject(PooledObject<SlotManagementService.Client> client) {
-        try {
-            return client.getObject().healthCheck();
-        } catch (TException e) {
-            if (log.isDebugEnabled()) {
-                log.debug("Connection is not active. Hence removing the connection from pool.", e);
-            }
-        }
-        return false;
-    }
 }
