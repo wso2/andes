@@ -90,8 +90,6 @@ public class MBThriftServer {
             server = new TThreadPoolServer(new TThreadPoolServer.Args(socket)
                     .processor(processor)
                     .inputProtocolFactory(protocolFactory)
-                    .requestTimeoutUnit(TimeUnit.SECONDS)
-                    .requestTimeout(THRIFT_SERVER_REQUEST_TIMEOUT)
                     .maxWorkerThreads(maxWorkerThreads));
 
             log.info("Starting the Message Broker Thrift server on host '" + hostName + "' on port '" + port
