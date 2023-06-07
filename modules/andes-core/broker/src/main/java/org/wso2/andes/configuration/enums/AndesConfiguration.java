@@ -178,6 +178,12 @@ public enum AndesConfiguration implements ConfigurationProperty {
             "true", Boolean.class),
 
     /**
+     *  Disabling this configuration will prevent the server from authorizing the client when
+     *  creating queues
+     */
+    AUTHORIZATION("transports/amqp/security/authorization", "REQUIRED", String.class),
+
+    /**
      * Enable this to support lightweight messaging with the MQTT protocol.
      */
     TRANSPORTS_MQTT_ENABLED("transports/mqtt/@enabled", "true", Boolean.class),
