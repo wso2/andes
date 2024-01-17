@@ -58,7 +58,7 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
                 storageQueue.getBoundSubscriptions();
 
         List<org.wso2.andes.kernel.subscription.AndesSubscription> currentSubscriptions =
-                Collections.unmodifiableList(subscriptions4Queue);
+                new ArrayList<>(subscriptions4Queue);
 
         while (iterator.hasNext()) {
 
