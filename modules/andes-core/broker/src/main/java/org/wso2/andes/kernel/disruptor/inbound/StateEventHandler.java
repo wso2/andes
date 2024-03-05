@@ -82,7 +82,8 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
     private void updateTrackerWithAck(InboundEventContainer event) throws AndesException {
         DeliverableAndesMetadata acknowledgedMessage = event.ackData.getMetadataReference();
         //we need both conditions to prevent multiple events seeing that message is deleted
-        if (acknowledgedMessage.getLatestState().equals(MessageStatus.DELETED)
+        // if acknowledgedMessage is not null
+        if (acknowledgedMessage != null && acknowledgedMessage.getLatestState().equals(MessageStatus.DELETED)
                 && event.ackData.isBaringMessageRemovable()) {
             acknowledgedMessage.getSlot().decrementPendingMessageCount();
         }

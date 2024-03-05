@@ -106,6 +106,9 @@ public class AckHandler implements StoreHealthListener {
 
             ack.setMetadataReference();
 
+            if (ack.getMetadataReference() == null) {
+                continue;
+            }
             boolean messageRemovable = ack.processEvent();
 
             if (messageRemovable) {
