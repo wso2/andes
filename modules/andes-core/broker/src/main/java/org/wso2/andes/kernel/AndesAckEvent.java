@@ -75,9 +75,13 @@ public class AndesAckEvent {
         } else {
             this.metadataReference = localSubscription.
                     getSubscriberConnection().getUnAckedMessage(ackData.getMessageId());
-
         }
-        addTraceLog();
+        if (this.metadataReference != null) {
+            addTraceLog();
+        } else {
+            log.error("Error processing acknowledgment. Message reference not found for message ID: "
+                    + ackData.getMessageId() + " received from channel ID: " + ackData.getChannelId().toString());
+        }
     }
 
     /**
