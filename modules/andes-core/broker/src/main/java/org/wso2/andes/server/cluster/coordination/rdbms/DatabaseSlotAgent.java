@@ -39,6 +39,8 @@ import java.util.HashSet;
 import java.util.TreeSet;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * If the slotManagement is set to "RDBMS" in broker.xml all operations related to slots are handled through this class
@@ -50,6 +52,7 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
      * marked as volatile since this value could be set from a different thread
      */
     private volatile SettableFuture<Boolean> messageStoresUnavailable;
+    private static final Lock lock = new ReentrantLock();
 
     /**
      * Used for logging purposes
@@ -701,8 +704,9 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
             }
         } catch (AndesException e) {
             log.error("Error occurred while re-assigning the slot to slot manager", e);
+        } finally {
+            messageStoresUnavailable.set(false);
         }
-        messageStoresUnavailable.set(false);
     }
 
     /**
@@ -710,7 +714,21 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
      */
     @Override
     public void storeNonOperational(HealthAwareStore store, Exception ex) {
-        log.info("Context store became non-operational. Therefore, blocking Database Slot Agent");
-        messageStoresUnavailable = SettableFuture.create();
+
+        log.info("Context store became non-operational. Therefore, need to block Database Slot Agent, but prior " +
+                "to block, will be checked for the existing SettableFutures.");
+        if (messageStoresUnavailable == null) {
+            lock.lock();
+            try {
+                if (messageStoresUnavailable == null) {
+                    log.debug("Context store became non-operational. Therefore, blocking Database Slot Agent");
+                    messageStoresUnavailable = SettableFuture.create();
+                }
+            } catch (Exception e) {
+                log.error("Exception occurred when creating the Future to block the Database Slot Agent");
+            } finally {
+                lock.unlock();
+            }
+        }
     }
 }
