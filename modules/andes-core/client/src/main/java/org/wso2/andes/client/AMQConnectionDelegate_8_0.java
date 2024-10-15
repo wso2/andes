@@ -95,6 +95,7 @@ public class AMQConnectionDelegate_8_0 implements AMQConnectionDelegate
         settings.setHost(brokerDetail.getHost());
         settings.setPort(brokerDetail.getPort());
         settings.setProtocol(brokerDetail.getTransport());
+        settings.setTransportTimeout(brokerDetail.getTimeout());
 
         // if there are ssl options mentioned in current broker options SSLConfiguration is genereated with them
         boolean sslEnabled = Boolean.parseBoolean(brokerDetail.getProperty(AMQBrokerDetails.OPTIONS_SSL));

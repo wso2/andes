@@ -176,6 +176,7 @@ public class MinaNetworkTransport implements OutgoingNetworkTransport, IncomingN
             final SocketAddress address;
             final String protocol = settings.getProtocol();
             final int port = settings.getPort();
+            final long timeout = settings.getTransportTimeout();
 
             if (Transport.TCP.equalsIgnoreCase(protocol))
             {
@@ -218,10 +219,11 @@ public class MinaNetworkTransport implements OutgoingNetworkTransport, IncomingN
             }
 
             ConnectFuture future = ioConnector.connect(address, new MinaNetworkHandler(null), ioConnector.getDefaultConfig());
-            future.join();
+            future.join(timeout);
             if (!future.isConnected())
             {
-                throw new TransportException("Could not open connection");
+                throw new TransportException(
+                        "Could not open connection within " + timeout + " milliseconds on Port: " + port);
             }
             IoSession session = future.getSession();
             session.setAttachment(receiver);

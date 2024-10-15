@@ -59,7 +59,7 @@ public interface BrokerDetails
     public static final String URL_FORMAT_EXAMPLE =
             "<transport>://<hostname>[:<port Default=\"" + DEFAULT_PORT + "\">][?<option>='<value>'[,<option>='<value>']]";
 
-    public static final long DEFAULT_CONNECT_TIMEOUT = 30000L;
+    public static final long DEFAULT_CONNECT_TIMEOUT = 120000L;
     public static final boolean USE_SSL_DEFAULT = false;
 
     // pulled these properties from the new BrokerDetails class in the qpid package
