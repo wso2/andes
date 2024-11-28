@@ -300,6 +300,9 @@ public class AMQProtocolHandler implements ProtocolEngine
             failoverThread.setName("Failover");
             // Do not inherit daemon-ness from current thread as this can be a daemon
             // thread such as a AnonymousIoService thread.
+            _logger.info("The fail-over thread, '" + failoverThread.getName() + " - " + failoverThread.getId() + "' " +
+                    "will be started soon. The fail-over thread submitted via the thread, '" +
+                    Thread.currentThread().getName() + " - " + Thread.currentThread().getId() + "'");
             failoverThread.setDaemon(false);
             failoverThread.start();
         }
