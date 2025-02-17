@@ -66,6 +66,7 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
 
     private ConnectionListener connectionListener = null;
     private ThreadLocal<Boolean> removeBURL = new ThreadLocal<Boolean>();
+    protected boolean _isSequentialFailoverFromBeginning = false;
 
     private static final Logger log = LoggerFactory.getLogger(AMQConnectionFactory.class);
 
@@ -81,6 +82,15 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
     public AMQConnectionFactory(String url) throws URLSyntaxException
     {
         _connectionDetails = new AMQConnectionURL(url);
+    }
+
+    /**
+     * This constructor is used to configure whether failover starts from the beginning.
+     */
+    public AMQConnectionFactory(String url, boolean isSequentialFailoverFromBeginning) throws URLSyntaxException
+    {
+        _connectionDetails = new AMQConnectionURL(url);
+        _isSequentialFailoverFromBeginning = isSequentialFailoverFromBeginning;
     }
 
     /**
@@ -325,7 +335,8 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
                     _sslConfig.setTrustStorePassword(_connectionDetails.getTrustStorePassword());
 
                 }*/
-                AMQConnection amqConnection = new AMQConnection(_connectionDetails, _sslConfig);
+                AMQConnection amqConnection = new AMQConnection(_connectionDetails, _sslConfig,
+                        _isSequentialFailoverFromBeginning);
                 if (logger.isDebugEnabled()) {
                     Throwable t = new Throwable();
                     logger.debug("Setting connection listener to newly created connection from stack : " + displayStack(t).toString());
@@ -385,7 +396,8 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
                 _connectionDetails.setPassword(password);
                 _connectionDetails.setClientName(id);
 
-                AMQConnection amqConnection = new AMQConnection(_connectionDetails, _sslConfig);
+                AMQConnection amqConnection = new AMQConnection(_connectionDetails, _sslConfig,
+                        _isSequentialFailoverFromBeginning);
                 if (logger.isDebugEnabled()) {
                     Throwable t = new Throwable();
                     logger.debug("Setting connection listener while creating connection from stack : " + displayStack(t).toString());

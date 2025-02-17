@@ -79,6 +79,14 @@ public class FailoverSingleServer implements FailoverMethod
         return _brokerDetail;
     }
 
+    public BrokerDetails getLastBrokerDetails(){
+        return _brokerDetail;
+    }
+
+    public int getCurrentBrokerIndex(BrokerDetails broker) {
+        return 0;
+    }
+
     public BrokerDetails getNextBrokerDetails()
     {
         if (_currentRetries == _retries)

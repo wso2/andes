@@ -192,6 +192,9 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
     // new amqp-0-10 encoded format.
     private boolean _useLegacyMapMessageFormat;
 
+    // Indicates whether the sequential failover process starts from the beginning
+    private boolean _isSequentialFailoverFromBeginning = false;
+
     /**
      * @param broker      brokerdetails
      * @param username    username
@@ -208,7 +211,7 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
         this(new AMQConnectionURL(
                 ConnectionURL.AMQ_PROTOCOL + "://" + username + ":" + password + "@"
                 + ((clientName == null) ? "" : clientName) + "/" + virtualHost + "?brokerlist='"
-                + AMQBrokerDetails.checkTransport(broker) + "'"), null);
+                + AMQBrokerDetails.checkTransport(broker) + "'"), null, false);
     }
 
     /**
@@ -227,7 +230,7 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
         this(new AMQConnectionURL(
                 ConnectionURL.AMQ_PROTOCOL + "://" + username + ":" + password + "@"
                 + ((clientName == null) ? "" : clientName) + "/" + virtualHost + "?brokerlist='"
-                + AMQBrokerDetails.checkTransport(broker) + "'"), sslConfig);
+                + AMQBrokerDetails.checkTransport(broker) + "'"), sslConfig, false);
     }
 
     public AMQConnection(String host, int port, String username, String password, String clientName, String virtualHost)
@@ -252,25 +255,26 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
                    + "'" + "," + BrokerDetails.OPTIONS_SSL + "='true'")
                 : (ConnectionURL.AMQ_PROTOCOL + "://" + username + ":" + password + "@"
                    + ((clientName == null) ? "" : clientName) + virtualHost + "?brokerlist='tcp://" + host + ":" + port
-                   + "'" + "," + BrokerDetails.OPTIONS_SSL + "='false'")), sslConfig);
+                   + "'" + "," + BrokerDetails.OPTIONS_SSL + "='false'")), sslConfig, false);
     }
 
     public AMQConnection(String connection) throws AMQException, URLSyntaxException
     {
-        this(new AMQConnectionURL(connection), null);
+        this(new AMQConnectionURL(connection), null, false);
     }
 
     public AMQConnection(String connection, SSLConfiguration sslConfig) throws AMQException, URLSyntaxException
     {
-        this(new AMQConnectionURL(connection), sslConfig);
+        this(new AMQConnectionURL(connection), sslConfig, false);
     }
 
     /**
      * @todo Some horrible stuff going on here with setting exceptions to be non-null to detect if an exception
      * was thrown during the connection! Intention not clear. Use a flag anyway, not exceptions... Will fix soon.
      */
-    public AMQConnection(ConnectionURL connectionURL, SSLConfiguration sslConfig) throws AMQException
-    {
+    public AMQConnection(ConnectionURL connectionURL, SSLConfiguration sslConfig,
+            boolean isSequentialFailoverFromBeginning) throws AMQException {
+        _isSequentialFailoverFromBeginning = isSequentialFailoverFromBeginning;
         if (connectionURL == null)
         {
             throw new IllegalArgumentException("Connection must be specified");
@@ -601,6 +605,14 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
     public boolean attemptReconnection()
     {
         BrokerDetails broker = null;
+
+        if (_isSequentialFailoverFromBeginning) {
+            int currentBrokerIndex = _failoverPolicy.getCurrentBrokerIndex(_failoverPolicy.getCurrentBrokerDetails());
+            if (currentBrokerIndex > 0) {
+                _failoverPolicy.setBroker(_failoverPolicy.getLastBrokerDetails());
+            }
+        }
+
         while (_failoverPolicy.failoverAllowed() && (broker = _failoverPolicy.getNextBrokerDetails()) != null)
         {
             try

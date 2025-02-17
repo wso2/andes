@@ -70,6 +70,9 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
     private String TOPIC_PREFIX = "topic.";
     private static String SECRET_ALIAS_PREFIX = "secretAlias:";
     private static final String XA_CONNECTION_FACTORY_PREFIX ="xaconnectionfactory.";
+    private static final String SEQUENTIAL_FAILOVER_FROM_BEGINNING = "SequentialFailoverFromBeginning";
+
+    boolean sequentialFailoverFromBeginningConfig = false;
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
     public Context getInitialContext(Hashtable environment) throws NamingException
@@ -181,6 +184,15 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
     {
         resolveEncryptedProperties(environment);
 
+        for (Iterator iter = environment.entrySet().iterator(); iter.hasNext(); ) {
+            Map.Entry entry = (Map.Entry) iter.next();
+            String key = entry.getKey().toString();
+
+            if (key.startsWith(SEQUENTIAL_FAILOVER_FROM_BEGINNING)) {
+                sequentialFailoverFromBeginningConfig = Boolean.parseBoolean(entry.getValue().toString().trim());
+            }
+        }
+
         for (Iterator iter = environment.entrySet().iterator(); iter.hasNext();)
         {
             Map.Entry entry = (Map.Entry) iter.next();
@@ -188,7 +200,8 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
             if (key.startsWith(CONNECTION_FACTORY_PREFIX))
             {
                 String jndiName = key.substring(CONNECTION_FACTORY_PREFIX.length());
-                ConnectionFactory cf = createFactory(entry.getValue().toString().trim());
+                ConnectionFactory cf = createFactory(entry.getValue().toString().trim(),
+                        sequentialFailoverFromBeginningConfig);
                 if (cf != null)
                 {
                     data.put(jndiName, cf);
@@ -314,6 +327,23 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
         try
         {
             return new AMQConnectionFactory(url);
+        }
+        catch (URLSyntaxException urlse)
+        {
+            _logger.warn("Unable to create factory:" + urlse);
+
+            ConfigurationException ex = new ConfigurationException("Failed to parse entry: " + urlse + " due to : " +  urlse.getMessage());
+            ex.initCause(urlse);
+            throw ex;
+        }
+    }
+
+    protected ConnectionFactory createFactory(String url, boolean isSequentialFailoverFromBeginning)
+            throws ConfigurationException
+    {
+        try
+        {
+            return new AMQConnectionFactory(url, isSequentialFailoverFromBeginning);
         }
         catch (URLSyntaxException urlse)
         {

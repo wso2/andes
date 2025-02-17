@@ -110,6 +110,14 @@ public class FailoverRoundRobinServers implements FailoverMethod
         return _connectionDetails.getBrokerDetails(_currentBrokerIndex);
     }
 
+    public BrokerDetails getLastBrokerDetails(){
+        return _connectionDetails.getBrokerDetails(_connectionDetails.getBrokerCount() - 1);
+    }
+
+    public int getCurrentBrokerIndex(BrokerDetails broker) {
+        return _connectionDetails.getAllBrokerDetails().indexOf(broker);
+    }
+
     public BrokerDetails getNextBrokerDetails()
     {
         if (_currentBrokerIndex == (_connectionDetails.getBrokerCount() - 1))

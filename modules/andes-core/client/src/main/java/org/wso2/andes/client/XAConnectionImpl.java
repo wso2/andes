@@ -77,7 +77,7 @@ public class XAConnectionImpl extends AMQConnection implements XAConnection, XAQ
      */
     XAConnectionImpl(ConnectionURL connectionURL, SSLConfiguration sslConfig,
             ScheduledExecutorService scheduledExecutor) throws AMQException {
-        super(connectionURL, sslConfig);
+        super(connectionURL, sslConfig, false);
         this.connectionCloseTimeout = Integer.parseInt(System.getProperty("XaConnectionCloseWaitTimeOut", "60"));
         this.scheduledExecutor = scheduledExecutor;
     }
