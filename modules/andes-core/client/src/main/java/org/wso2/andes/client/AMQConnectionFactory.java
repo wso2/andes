@@ -66,7 +66,7 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
 
     private ConnectionListener connectionListener = null;
     private ThreadLocal<Boolean> removeBURL = new ThreadLocal<Boolean>();
-    protected boolean _isSequentialFailoverFromBeginning = false;
+    private boolean _isSequentialFailoverFromBeginning = false;
 
     private static final Logger log = LoggerFactory.getLogger(AMQConnectionFactory.class);
 
