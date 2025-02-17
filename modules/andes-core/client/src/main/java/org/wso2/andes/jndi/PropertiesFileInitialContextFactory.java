@@ -338,6 +338,9 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
         }
     }
 
+    /**
+     * Factory method to create a new Connection Factory instance with sequential failover enabled from the beginning.
+     */
     protected ConnectionFactory createFactory(String url, boolean isSequentialFailoverFromBeginning)
             throws ConfigurationException
     {
