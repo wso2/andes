@@ -211,7 +211,7 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
         this(new AMQConnectionURL(
                 ConnectionURL.AMQ_PROTOCOL + "://" + username + ":" + password + "@"
                 + ((clientName == null) ? "" : clientName) + "/" + virtualHost + "?brokerlist='"
-                + AMQBrokerDetails.checkTransport(broker) + "'"), null, false);
+                + AMQBrokerDetails.checkTransport(broker) + "'"), null);
     }
 
     /**
@@ -230,7 +230,7 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
         this(new AMQConnectionURL(
                 ConnectionURL.AMQ_PROTOCOL + "://" + username + ":" + password + "@"
                 + ((clientName == null) ? "" : clientName) + "/" + virtualHost + "?brokerlist='"
-                + AMQBrokerDetails.checkTransport(broker) + "'"), sslConfig, false);
+                + AMQBrokerDetails.checkTransport(broker) + "'"), sslConfig);
     }
 
     public AMQConnection(String host, int port, String username, String password, String clientName, String virtualHost)
@@ -255,26 +255,24 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
                    + "'" + "," + BrokerDetails.OPTIONS_SSL + "='true'")
                 : (ConnectionURL.AMQ_PROTOCOL + "://" + username + ":" + password + "@"
                    + ((clientName == null) ? "" : clientName) + virtualHost + "?brokerlist='tcp://" + host + ":" + port
-                   + "'" + "," + BrokerDetails.OPTIONS_SSL + "='false'")), sslConfig, false);
+                   + "'" + "," + BrokerDetails.OPTIONS_SSL + "='false'")), sslConfig);
     }
 
     public AMQConnection(String connection) throws AMQException, URLSyntaxException
     {
-        this(new AMQConnectionURL(connection), null, false);
+        this(new AMQConnectionURL(connection), null);
     }
 
     public AMQConnection(String connection, SSLConfiguration sslConfig) throws AMQException, URLSyntaxException
     {
-        this(new AMQConnectionURL(connection), sslConfig, false);
+        this(new AMQConnectionURL(connection), sslConfig);
     }
 
     /**
      * @todo Some horrible stuff going on here with setting exceptions to be non-null to detect if an exception
      * was thrown during the connection! Intention not clear. Use a flag anyway, not exceptions... Will fix soon.
      */
-    public AMQConnection(ConnectionURL connectionURL, SSLConfiguration sslConfig,
-            boolean isSequentialFailoverFromBeginning) throws AMQException {
-        _isSequentialFailoverFromBeginning = isSequentialFailoverFromBeginning;
+    public AMQConnection(ConnectionURL connectionURL, SSLConfiguration sslConfig) throws AMQException {
         if (connectionURL == null)
         {
             throw new IllegalArgumentException("Connection must be specified");
@@ -1570,6 +1568,11 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
     public boolean isUseLegacyMapMessageFormat()
     {
         return _useLegacyMapMessageFormat;
+    }
+
+    // Setter method for isSequentialFailoverFromBeginning
+    public void setSequentialFailoverFromBeginning(boolean isSequentialFailoverFromBeginning) {
+        this._isSequentialFailoverFromBeginning = isSequentialFailoverFromBeginning;
     }
 
     private void verifyClientID() throws AMQException

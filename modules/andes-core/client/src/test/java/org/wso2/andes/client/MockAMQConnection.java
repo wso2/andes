@@ -76,7 +76,7 @@ public class MockAMQConnection extends AMQConnection
     public MockAMQConnection(ConnectionURL connectionURL, SSLConfiguration sslConfig)
             throws AMQException
     {
-        super(connectionURL, sslConfig, false);
+        super(connectionURL, sslConfig);
     }
 
     @Override
