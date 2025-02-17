@@ -85,15 +85,6 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
     }
 
     /**
-     * This constructor is used to configure whether failover starts from the beginning.
-     */
-    public AMQConnectionFactory(String url, boolean isSequentialFailoverFromBeginning) throws URLSyntaxException
-    {
-        _connectionDetails = new AMQConnectionURL(url);
-        _isSequentialFailoverFromBeginning = isSequentialFailoverFromBeginning;
-    }
-
-    /**
      * This constructor is never used!
      */
     public AMQConnectionFactory(ConnectionURL url)
@@ -550,6 +541,11 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
 
     public void setConnectionListener(ConnectionListener connectionListener) {
         this.connectionListener = connectionListener;
+    }
+
+    // Setter method for isSequentialFailoverFromBeginning
+    public void setSequentialFailoverFromBeginning(boolean isSequentialFailoverFromBeginning) {
+        this._isSequentialFailoverFromBeginning = isSequentialFailoverFromBeginning;
     }
 
     private StringWriter displayStack(Throwable t) {

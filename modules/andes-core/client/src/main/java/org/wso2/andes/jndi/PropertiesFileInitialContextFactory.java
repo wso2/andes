@@ -200,8 +200,7 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
             if (key.startsWith(CONNECTION_FACTORY_PREFIX))
             {
                 String jndiName = key.substring(CONNECTION_FACTORY_PREFIX.length());
-                ConnectionFactory cf = createFactory(entry.getValue().toString().trim(),
-                        sequentialFailoverFromBeginningConfig);
+                ConnectionFactory cf = createFactory(entry.getValue().toString().trim());
                 if (cf != null)
                 {
                     data.put(jndiName, cf);
@@ -326,27 +325,9 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
     {
         try
         {
-            return new AMQConnectionFactory(url);
-        }
-        catch (URLSyntaxException urlse)
-        {
-            _logger.warn("Unable to create factory:" + urlse);
-
-            ConfigurationException ex = new ConfigurationException("Failed to parse entry: " + urlse + " due to : " +  urlse.getMessage());
-            ex.initCause(urlse);
-            throw ex;
-        }
-    }
-
-    /**
-     * Factory method to create a new Connection Factory instance with sequential failover enabled from the beginning.
-     */
-    protected ConnectionFactory createFactory(String url, boolean isSequentialFailoverFromBeginning)
-            throws ConfigurationException
-    {
-        try
-        {
-            return new AMQConnectionFactory(url, isSequentialFailoverFromBeginning);
+            AMQConnectionFactory amqConnectionFactory = new AMQConnectionFactory(url);
+            amqConnectionFactory.setSequentialFailoverFromBeginning(sequentialFailoverFromBeginningConfig);
+            return amqConnectionFactory;
         }
         catch (URLSyntaxException urlse)
         {
