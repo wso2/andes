@@ -56,6 +56,12 @@ public interface FailoverMethod
     BrokerDetails getCurrentBrokerDetails();
 
     /**
+     * Get the last available BrokerDetails.
+     * @return The last BrokerDetail value
+     */
+    BrokerDetails getLastBrokerDetails();
+
+    /**
      *  Move to the next BrokerDetails if one is available.
      * @return the next BrokerDetail or null if there is none.
      */
@@ -77,4 +83,11 @@ public interface FailoverMethod
      * @return The name of this method for display purposes.
      */
     String methodName();
+
+    /**
+     * Get the index of the current broker.
+     * @param broker The broker to get the index for
+     * @return The index of the broker
+     */
+    int getCurrentBrokerIndex(BrokerDetails broker);
 }

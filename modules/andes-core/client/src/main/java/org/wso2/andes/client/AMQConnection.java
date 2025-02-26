@@ -192,6 +192,9 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
     // new amqp-0-10 encoded format.
     private boolean _useLegacyMapMessageFormat;
 
+    // Indicates whether the sequential failover process starts from the beginning
+    private boolean _isSequentialFailoverFromBeginning = false;
+
     /**
      * @param broker      brokerdetails
      * @param username    username
@@ -601,6 +604,14 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
     public boolean attemptReconnection()
     {
         BrokerDetails broker = null;
+
+        if (_isSequentialFailoverFromBeginning) {
+            int currentBrokerIndex = _failoverPolicy.getCurrentBrokerIndex(_failoverPolicy.getCurrentBrokerDetails());
+            if (currentBrokerIndex > 0) {
+                _failoverPolicy.setBroker(_failoverPolicy.getLastBrokerDetails());
+            }
+        }
+
         while (_failoverPolicy.failoverAllowed() && (broker = _failoverPolicy.getNextBrokerDetails()) != null)
         {
             try
@@ -1558,6 +1569,11 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
     public boolean isUseLegacyMapMessageFormat()
     {
         return _useLegacyMapMessageFormat;
+    }
+
+    // Setter method for isSequentialFailoverFromBeginning
+    public void setSequentialFailoverFromBeginning(boolean isSequentialFailoverFromBeginning) {
+        this._isSequentialFailoverFromBeginning = isSequentialFailoverFromBeginning;
     }
 
     private void verifyClientID() throws AMQException

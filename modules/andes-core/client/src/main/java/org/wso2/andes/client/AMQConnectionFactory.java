@@ -66,6 +66,7 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
 
     private ConnectionListener connectionListener = null;
     private ThreadLocal<Boolean> removeBURL = new ThreadLocal<Boolean>();
+    private boolean _isSequentialFailoverFromBeginning = false;
 
     private static final Logger log = LoggerFactory.getLogger(AMQConnectionFactory.class);
 
@@ -331,6 +332,7 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
                     logger.debug("Setting connection listener to newly created connection from stack : " + displayStack(t).toString());
                 }
                 amqConnection.setConnectionListener(connectionListener);
+                amqConnection.setSequentialFailoverFromBeginning(_isSequentialFailoverFromBeginning);
                 return amqConnection;
             }
             else
@@ -338,6 +340,7 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
                 AMQConnection amqConnection = new AMQConnection(_host, _port, _defaultUsername, _defaultPassword, null,
                                                                 _virtualPath);
                 amqConnection.setConnectionListener(connectionListener);
+                amqConnection.setSequentialFailoverFromBeginning(_isSequentialFailoverFromBeginning);
                 return amqConnection;
             }
         }
@@ -391,12 +394,14 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
                     logger.debug("Setting connection listener while creating connection from stack : " + displayStack(t).toString());
                 }
                 amqConnection.setConnectionListener(connectionListener);
+                amqConnection.setSequentialFailoverFromBeginning(_isSequentialFailoverFromBeginning);
                 return amqConnection;
             }
             else
             {
                 AMQConnection amqConnection = new AMQConnection(_host, _port, userName, password, id, _virtualPath);
                 amqConnection.setConnectionListener(connectionListener);
+                amqConnection.setSequentialFailoverFromBeginning(_isSequentialFailoverFromBeginning);
                 return amqConnection;
             }
         }
@@ -482,6 +487,7 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
                 {
                     AMQConnection amqConnection = new AMQConnection((String) addr.getContent());
                     amqConnection.setConnectionListener(connectionListener);
+                    amqConnection.setSequentialFailoverFromBeginning(_isSequentialFailoverFromBeginning);
                     return amqConnection;
                 }
             }
@@ -535,6 +541,11 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
 
     public void setConnectionListener(ConnectionListener connectionListener) {
         this.connectionListener = connectionListener;
+    }
+
+    // Setter method for isSequentialFailoverFromBeginning
+    public void setSequentialFailoverFromBeginning(boolean isSequentialFailoverFromBeginning) {
+        this._isSequentialFailoverFromBeginning = isSequentialFailoverFromBeginning;
     }
 
     private StringWriter displayStack(Throwable t) {

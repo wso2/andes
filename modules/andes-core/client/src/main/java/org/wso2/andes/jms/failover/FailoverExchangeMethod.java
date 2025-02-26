@@ -192,7 +192,16 @@ public class FailoverExchangeMethod implements FailoverMethod, MessageListener
             _currentBrokerDetail = _connectionDetails.getBrokerDetails(_currentBrokerIndex);
             return _currentBrokerDetail;
         }
-    }   
+    }
+
+    public BrokerDetails getLastBrokerDetails(){
+        return _connectionDetails.getBrokerDetails(_connectionDetails.getBrokerCount() - 1);
+    }
+
+    public int getCurrentBrokerIndex(BrokerDetails broker)
+    {
+        return _connectionDetails.getAllBrokerDetails().indexOf(broker);
+    }
     
     public BrokerDetails getNextBrokerDetails()
     {

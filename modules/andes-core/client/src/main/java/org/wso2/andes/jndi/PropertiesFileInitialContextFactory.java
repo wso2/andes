@@ -70,6 +70,9 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
     private String TOPIC_PREFIX = "topic.";
     private static String SECRET_ALIAS_PREFIX = "secretAlias:";
     private static final String XA_CONNECTION_FACTORY_PREFIX ="xaconnectionfactory.";
+    private static final String SEQUENTIAL_FAILOVER_FROM_BEGINNING = "SequentialFailoverFromBeginning";
+
+    boolean sequentialFailoverFromBeginningConfig = false;
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
     public Context getInitialContext(Hashtable environment) throws NamingException
@@ -180,6 +183,15 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
     protected void createConnectionFactories(Map data, Hashtable environment) throws ConfigurationException
     {
         resolveEncryptedProperties(environment);
+
+        for (Iterator iter = environment.entrySet().iterator(); iter.hasNext(); ) {
+            Map.Entry entry = (Map.Entry) iter.next();
+            String key = entry.getKey().toString();
+
+            if (key.startsWith(SEQUENTIAL_FAILOVER_FROM_BEGINNING)) {
+                sequentialFailoverFromBeginningConfig = Boolean.parseBoolean(entry.getValue().toString().trim());
+            }
+        }
 
         for (Iterator iter = environment.entrySet().iterator(); iter.hasNext();)
         {
@@ -313,7 +325,9 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
     {
         try
         {
-            return new AMQConnectionFactory(url);
+            AMQConnectionFactory amqConnectionFactory = new AMQConnectionFactory(url);
+            amqConnectionFactory.setSequentialFailoverFromBeginning(sequentialFailoverFromBeginningConfig);
+            return amqConnectionFactory;
         }
         catch (URLSyntaxException urlse)
         {

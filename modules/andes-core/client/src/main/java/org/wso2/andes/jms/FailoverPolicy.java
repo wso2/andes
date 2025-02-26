@@ -260,6 +260,20 @@ public class FailoverPolicy
         return _methods[_currentMethod].getNextBrokerDetails();
     }
 
+    /**
+     * Get the last available broker details.
+     */
+    public BrokerDetails getLastBrokerDetails() {
+        return _methods[_currentMethod].getLastBrokerDetails();
+    }
+
+    /**
+     * Get the index of the current broker.
+     */
+    public int getCurrentBrokerIndex(BrokerDetails broker) {
+        return _methods[_currentMethod].getCurrentBrokerIndex(broker);
+    }
+
     public void setBroker(BrokerDetails broker)
     {
         _methods[_currentMethod].setBroker(broker);

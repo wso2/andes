@@ -308,6 +308,16 @@ public class FailoverPolicyTest extends TestCase
         }
 
         @Override
+        public BrokerDetails getLastBrokerDetails() {
+            return null;
+        }
+
+        @Override
+        public int getCurrentBrokerIndex(BrokerDetails broker) {
+            return 0;
+        }
+
+        @Override
         public BrokerDetails getNextBrokerDetails()
         {
             return null;
