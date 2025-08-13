@@ -19,7 +19,7 @@ package org.wso2.andes.server.store;
 
 import org.wso2.andes.server.logging.LogSubject;
 import org.wso2.andes.AMQStoreException;
-import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration2.Configuration;
 
 public interface TransactionLog
 {

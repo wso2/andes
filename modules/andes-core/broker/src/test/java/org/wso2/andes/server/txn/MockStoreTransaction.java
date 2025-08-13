@@ -20,7 +20,7 @@
  */
 package org.wso2.andes.server.txn;
 
-import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.lang.NotImplementedException;
 import org.wso2.andes.AMQStoreException;
 import org.wso2.andes.server.logging.LogSubject;

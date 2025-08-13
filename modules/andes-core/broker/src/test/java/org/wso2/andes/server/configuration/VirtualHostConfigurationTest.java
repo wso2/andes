@@ -20,7 +20,7 @@
 package org.wso2.andes.configuration.qpid;
 
 
-import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.server.queue.AMQPriorityQueue;
 import org.wso2.andes.server.queue.AMQQueue;

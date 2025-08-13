@@ -22,7 +22,7 @@ package org.wso2.andes.server.util;
 
 import java.util.Properties;
 
-import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.server.logging.NullRootMessageLogger;
 import org.wso2.andes.server.logging.actors.BrokerActor;

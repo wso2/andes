@@ -22,7 +22,7 @@ package org.wso2.andes.server.security.access.config;
 
 import java.io.File;
 
-import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 
 public interface ConfigurationFile
 {

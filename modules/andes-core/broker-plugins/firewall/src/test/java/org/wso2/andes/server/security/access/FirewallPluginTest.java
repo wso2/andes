@@ -25,8 +25,10 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 
-import org.apache.commons.configuration.ConfigurationException;
-import org.apache.commons.configuration.XMLConfiguration;
+import org.apache.commons.configuration2.builder.FileBasedConfigurationBuilder;
+import org.apache.commons.configuration2.builder.fluent.Parameters;
+import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.commons.configuration2.XMLConfiguration;
 import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.security.Result;
@@ -120,9 +122,17 @@ public class FirewallPluginTest extends QpidTestCase
         buf.write("</firewall>");
         buf.close();
 
+
+
         // Configure plugin
         FirewallConfiguration config = new FirewallConfiguration();
-        config.setConfiguration("", new XMLConfiguration(confFile));
+        Parameters params = new Parameters();
+        FileBasedConfigurationBuilder<XMLConfiguration> builder =
+                new FileBasedConfigurationBuilder<>(XMLConfiguration.class)
+                        .configure(params.xml()
+                                .setFile(confFile));
+
+        config.setConfiguration("", builder.getConfiguration());
         Firewall plugin = new Firewall();
         plugin.configure(config);
         return plugin;

@@ -19,7 +19,7 @@ package org.wso2.andes.server.registry;
 
 import java.io.File;
 
-import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.server.logging.actors.BrokerActor;

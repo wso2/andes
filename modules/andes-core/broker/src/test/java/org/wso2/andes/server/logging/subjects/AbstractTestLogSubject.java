@@ -20,9 +20,9 @@
  */
 package org.wso2.andes.server.logging.subjects;
 
-import org.apache.commons.configuration.Configuration;
-import org.apache.commons.configuration.ConfigurationException;
-import org.apache.commons.configuration.PropertiesConfiguration;
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.server.exchange.Exchange;

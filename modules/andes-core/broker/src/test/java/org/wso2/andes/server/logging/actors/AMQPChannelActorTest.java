@@ -22,7 +22,7 @@ package org.wso2.andes.server.logging.actors;
 
 import java.util.List;
 
-import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.wso2.andes.AMQException;
 
 /**

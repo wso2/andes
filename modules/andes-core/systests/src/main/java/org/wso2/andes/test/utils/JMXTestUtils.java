@@ -35,7 +35,7 @@ import javax.management.remote.JMXConnector;
 
 import junit.framework.TestCase;
 
-import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.wso2.andes.management.common.JMXConnnectionFactory;
 import org.wso2.andes.management.common.mbeans.ManagedBroker;
 import org.wso2.andes.management.common.mbeans.ManagedConnection;

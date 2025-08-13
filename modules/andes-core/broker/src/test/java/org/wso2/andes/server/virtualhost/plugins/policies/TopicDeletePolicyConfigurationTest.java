@@ -20,9 +20,9 @@
  */
 package org.wso2.andes.server.virtualhost.plugins.policies;
 
-import org.apache.commons.configuration.CompositeConfiguration;
-import org.apache.commons.configuration.ConfigurationException;
-import org.apache.commons.configuration.XMLConfiguration;
+import org.apache.commons.configuration2.CompositeConfiguration;
+import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.commons.configuration2.XMLConfiguration;
 import org.wso2.andes.server.util.InternalBrokerBaseCase;
 
 /**

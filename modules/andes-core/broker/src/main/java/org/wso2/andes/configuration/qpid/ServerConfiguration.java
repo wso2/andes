@@ -18,15 +18,21 @@
 
 package org.wso2.andes.configuration.qpid;
 
-import org.apache.commons.configuration.*;
-import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration2.*;
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.builder.FileBasedConfigurationBuilder;
+import org.apache.commons.configuration2.builder.fluent.Parameters;
+import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.commons.configuration2.interpol.ConfigurationInterpolator;
+import org.apache.commons.configuration2.interpol.Lookup;
+import org.apache.commons.configuration2.tree.MergeCombiner;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.configuration.modules.JKSStore;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
-import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.configuration.qpid.VirtualHostConfiguration;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostRegistry;
@@ -57,7 +63,7 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
     public static final String QPID_HOME = "QPID_HOME";
     public static final String QPID_WORK = "QPID_WORK";
 
-    private Map<String, VirtualHostConfiguration> _virtualHosts = new HashMap<String, VirtualHostConfiguration>();
+    private Map<String, VirtualHostConfiguration> _virtualHosts = new HashMap<String,VirtualHostConfiguration>();
 
     private File _configFile;
     private File _vhostsFile;
@@ -69,6 +75,13 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
     public static final String MGMT_CUSTOM_REGISTRY_SOCKET = "management.custom-registry-socket";
     public static final String STATUS_UPDATES = "status-updates";
     public static final String ADVANCED_LOCALE = "advanced.locale";
+
+    private static enum ConfigType {
+        XML,
+        PROPERTIES,
+        INI,
+        UNKNOWN
+    }
 
     static {
         envVarMap.put("QPID_ENABLEDIRECTBUFFERS", "advanced.enableDirectBuffers");
@@ -112,7 +125,7 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
      * {@link ApplicationRegistry#initialise()} method.
      *
      * @param configurationURL
-     * @throws org.apache.commons.configuration.ConfigurationException
+     * @throws org.apache.commons.configuration2.ex.ConfigurationException
      *
      */
     public ServerConfiguration(File configurationURL) throws ConfigurationException {
@@ -145,7 +158,7 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
      *
      * @param conf
      */
-    public ServerConfiguration(org.apache.commons.configuration.Configuration conf) {
+    public ServerConfiguration(org.apache.commons.configuration2.Configuration conf) {
         _configuration = conf;
     }
 
@@ -205,10 +218,10 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
      * both, as a fix for QPID-2360 and QPID-2361.
      */
     @SuppressWarnings("unchecked")
-    protected void setupVirtualHosts(org.apache.commons.configuration.Configuration conf) throws ConfigurationException {
+    protected void setupVirtualHosts(org.apache.commons.configuration2.Configuration conf) throws ConfigurationException {
         
         String[] vhostFiles = conf.getStringArray("virtualhosts");
-        org.apache.commons.configuration.Configuration vhostConfig = conf.subset("virtualhosts");
+        Configuration vhostConfig = conf.subset("virtualhosts");
 
         // Only one configuration mechanism allowed
         if (!(vhostFiles.length == 0) && !vhostConfig.subset("virtualhost").isEmpty()) {
@@ -222,7 +235,7 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
         }
 
         // Virtualhost configuration object
-        org.apache.commons.configuration.Configuration vhostConfiguration = new HierarchicalConfiguration();
+        org.apache.commons.configuration2.Configuration vhostConfiguration = null;
 
         // Load from embedded configuration if possible
         if (!vhostConfig.subset("virtualhost").isEmpty()) {
@@ -244,18 +257,20 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
         }
 
         // Now extract the virtual host names from the configuration object
-        List hosts = vhostConfiguration.getList("virtualhost.name");
-        for (Object host : hosts) {
-            String name = (String) host;
+        if (vhostConfiguration != null) {
+            List hosts = vhostConfiguration.getList("virtualhost.name");
+            for (Object host : hosts) {
+                String name = (String) host;
 
-            // Add the virtual hosts to the server configuration
-            VirtualHostConfiguration virtualhost = new VirtualHostConfiguration(name,
-                    vhostConfiguration.subset("virtualhost." + name));
-            _virtualHosts.put(virtualhost.getName(), virtualhost);
+                // Add the virtual hosts to the server configuration
+                VirtualHostConfiguration virtualhost = new VirtualHostConfiguration(name,
+                        vhostConfiguration.subset("virtualhost." + name));
+                _virtualHosts.put(virtualhost.getName(), virtualhost);
+            }
         }
     }
 
-    private static void substituteEnvironmentVariables(org.apache.commons.configuration.Configuration conf) {
+    private static void substituteEnvironmentVariables(org.apache.commons.configuration2.Configuration conf) {
         for (Entry<String, String> var : envVarMap.entrySet()) {
             String val = System.getenv(var.getKey());
             if (val != null) {
@@ -264,19 +279,61 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
         }
     }
 
-    private static org.apache.commons.configuration.Configuration parseConfig(File file) throws ConfigurationException {
-        ConfigurationFactory factory = new ConfigurationFactory();
-        factory.setConfigurationFileName(file.getAbsolutePath());
-        org.apache.commons.configuration.Configuration conf = factory.getConfiguration();
-
-        Iterator<?> keys = conf.getKeys();
-        if (!keys.hasNext()) {
-            conf = flatConfig(file);
+    private static org.apache.commons.configuration2.Configuration parseConfig(File file)
+            throws ConfigurationException {
+        Parameters params = new Parameters();
+        if (ConfigType.UNKNOWN.equals(getConfigType(file))) {
+            throw new ConfigurationException("Unknown File Type for parsing");
         }
 
-        substituteEnvironmentVariables(conf);
+        Configuration conf = null;
+
+        if (ConfigType.XML.equals(getConfigType(file))) {
+            FileBasedConfigurationBuilder<XMLConfiguration> factory = new FileBasedConfigurationBuilder<>(
+                    XMLConfiguration.class).configure(params.xml().setFile(file).setThrowExceptionOnMissing(true)
+                    .setValidating(false)); // disable DTD validation if not needed
+            conf = factory.getConfiguration();
+        } else if (ConfigType.PROPERTIES.equals(getConfigType(file))) {
+            FileBasedConfigurationBuilder<PropertiesConfiguration> factory = new FileBasedConfigurationBuilder<>(
+                    PropertiesConfiguration.class).configure(params.xml().setFile(file).setThrowExceptionOnMissing(true)
+                    .setValidating(false));
+            conf = factory.getConfiguration();
+        } else if (ConfigType.INI.equals(getConfigType(file))) {
+            FileBasedConfigurationBuilder<INIConfiguration> factory = new FileBasedConfigurationBuilder<>(
+                    INIConfiguration.class).configure(params.xml().setFile(file).setThrowExceptionOnMissing(true)
+                    .setValidating(false));
+            conf = factory.getConfiguration();
+        }
+
+        if (conf != null) {
+            Iterator<?> keys = conf.getKeys();
+            if (!keys.hasNext()) {
+                conf = flatConfig(file);
+            }
+
+            substituteEnvironmentVariables(conf);
+        }
 
         return conf;
+    }
+
+    private static ConfigType getConfigType(File file) {
+        if (file == null || !file.exists() || !file.isFile()) {
+            return ConfigType.UNKNOWN;
+        }
+
+        String fileName = file.getName().toLowerCase();
+        if (fileName == null)
+            return ConfigType.UNKNOWN;
+        if (fileName.endsWith(".xml")) {
+            return ConfigType.XML;
+        } else if (fileName.endsWith(".properties")) {
+            return ConfigType.PROPERTIES;
+        } else if (fileName.endsWith("ini")) {
+            return ConfigType.INI;
+        }
+
+        return ConfigType.UNKNOWN;
     }
 
     /**
@@ -340,23 +397,39 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
         }
     }
 
-    public static org.apache.commons.configuration.Configuration flatConfig(File file) throws ConfigurationException {
-        // We have to override the interpolate methods so that
-        // interpolation takes place accross the entirety of the
-        // composite configuration. Without doing this each
-        // configuration object only interpolates variables defined
-        // inside itself.
-        final MyConfiguration conf = new MyConfiguration();
-        conf.addConfiguration(new SystemConfiguration() {
-            protected String interpolate(String o) {
-                return conf.interpolate(o);
+    public static org.apache.commons.configuration2.Configuration flatConfig(File file) throws ConfigurationException {
+        Parameters params = new Parameters();
+
+        final CombinedConfiguration conf = new CombinedConfiguration(new MergeCombiner());
+
+        SystemConfiguration systemConfig = new SystemConfiguration();
+        conf.addConfiguration(systemConfig);
+
+        FileBasedConfigurationBuilder<XMLConfiguration> xmlBuilder =
+                new FileBasedConfigurationBuilder<>(XMLConfiguration.class)
+                        .configure(params.xml()
+                                .setFile(file)
+                                .setThrowExceptionOnMissing(true)
+                                .setValidating(false));
+
+        conf.addConfiguration(xmlBuilder.getConfiguration());
+
+        ConfigurationInterpolator interpolator = new ConfigurationInterpolator();
+
+        // Register a custom lookup for the default (unprefixed) lookup by adding a "" prefix
+        interpolator.registerLookup("", new Lookup() {
+            @Override
+            public String lookup(String key) {
+                return conf.getString(key);
             }
         });
-        conf.addConfiguration(new XMLConfiguration(file) {
-            protected String interpolate(String o) {
-                return conf.interpolate(o);
-            }
-        });
+
+        // Add the default prefix lookups too (env, sys, etc.)
+        Map<String, Lookup> prefixLookups = new HashMap<>(ConfigurationInterpolator.getDefaultPrefixLookups());
+        for (Map.Entry<String, Lookup> entry : prefixLookups.entrySet()) {
+            interpolator.registerLookup(entry.getKey(), entry.getValue());
+        }
+        conf.setInterpolator(interpolator);
         return conf;
     }
 
@@ -370,12 +443,12 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
 
     public void reparseConfigFileSecuritySections() throws ConfigurationException {
         if (_configFile != null) {
-            org.apache.commons.configuration.Configuration newConfig = parseConfig(_configFile);
+            org.apache.commons.configuration2.Configuration newConfig = parseConfig(_configFile);
             setConfiguration("", newConfig);
             ApplicationRegistry.getInstance().getSecurityManager().configureHostPlugins(this);
 
             // Reload virtualhosts from correct location
-            org.apache.commons.configuration.Configuration newVhosts;
+            org.apache.commons.configuration2.Configuration newVhosts;
             if (_vhostsFile == null) {
                 newVhosts = newConfig.subset("virtualhosts");
             } else {

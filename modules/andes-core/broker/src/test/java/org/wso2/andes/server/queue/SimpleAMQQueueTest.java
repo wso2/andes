@@ -21,7 +21,7 @@
 
 package org.wso2.andes.server.queue;
 
-import org.apache.commons.configuration.PropertiesConfiguration;
+import org.apache.commons.configuration2.PropertiesConfiguration;
 
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQInternalException;

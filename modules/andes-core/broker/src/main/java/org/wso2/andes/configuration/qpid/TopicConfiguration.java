@@ -17,8 +17,8 @@
  */
 package org.wso2.andes.configuration.qpid;
 
-import org.apache.commons.configuration.Configuration;
-import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPluginFactory;
@@ -110,7 +110,7 @@ public class TopicConfiguration extends ConfigurationPlugin implements ExchangeC
      * @param name
      * @param topic
      *
-     * @throws org.apache.commons.configuration.ConfigurationException
+     * @throws org.apache.commons.configuration2.ex.ConfigurationException
      *
      */
     private void processTopic(String name, TopicConfig topic) throws ConfigurationException
