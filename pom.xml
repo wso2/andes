@@ -551,7 +551,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>2.1</version>
+                <version>3.5.0</version>
                 <executions>
                     <execution>
                         <id>attach-javadocs</id>
@@ -688,7 +688,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>2.8</version>
+                <version>3.5.0</version>
             </plugin>
         </plugins>
     </reporting>
@@ -705,15 +705,25 @@
             </releases>
         </repository>
         <repository>
-            <id>com.springsource.repository.bundles.release</id>
-            <name>SpringSource Enterprise Bundle Repository - SpringSource Bundle Releases</name>
-            <url>https://repository.springsource.com/maven/bundles/release</url>
+            <id>eclipse-repo</id>
+            <name>Eclipse Releases Repository</name>
+            <url>https://repo.eclipse.org/content/groups/releases/</url>
         </repository>
         <repository>
-            <id>com.springsource.repository.bundles.external</id>
-            <name>SpringSource Enterprise Bundle Repository - External Bundle Releases</name>
-            <url>https://repository.springsource.com/maven/bundles/external</url>
+            <id>central</id>
+            <name>Maven Central</name>
+            <url>https://repo1.maven.org/maven2/</url>
         </repository>
+<!--        <repository>-->
+<!--            <id>com.springsource.repository.bundles.release</id>-->
+<!--            <name>SpringSource Enterprise Bundle Repository - SpringSource Bundle Releases</name>-->
+<!--            <url>https://repository.springsource.com/maven/bundles/release</url>-->
+<!--        </repository>-->
+<!--        <repository>-->
+<!--            <id>com.springsource.repository.bundles.external</id>-->
+<!--            <name>SpringSource Enterprise Bundle Repository - External Bundle Releases</name>-->
+<!--            <url>https://repository.springsource.com/maven/bundles/external</url>-->
+<!--        </repository>-->
         <repository>
             <id>jboss-maven-repository</id>
             <name>JBoss Maven Repository</name>
