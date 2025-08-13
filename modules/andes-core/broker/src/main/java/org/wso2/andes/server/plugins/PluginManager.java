@@ -17,7 +17,7 @@
  */
 package org.wso2.andes.server.plugins;
 
-import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.felix.framework.Felix;
 import org.apache.felix.framework.util.StringMap;
 import org.apache.commons.logging.Log;

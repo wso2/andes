@@ -18,7 +18,7 @@
 
 package org.wso2.andes.server;
 
-import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.commons.logging.Log;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.AMQPUtils;

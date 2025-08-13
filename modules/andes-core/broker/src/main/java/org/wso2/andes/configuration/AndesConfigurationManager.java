@@ -42,11 +42,15 @@ import org.apache.axiom.om.OMNode;
 import org.apache.axiom.om.impl.builder.StAXOMBuilder;
 import org.apache.axiom.om.impl.llom.OMElementImpl;
 import org.apache.axiom.om.xpath.AXIOMXPath;
-import org.apache.commons.configuration.CompositeConfiguration;
-import org.apache.commons.configuration.Configuration;
-import org.apache.commons.configuration.ConfigurationException;
-import org.apache.commons.configuration.XMLConfiguration;
-import org.apache.commons.configuration.tree.xpath.XPathExpressionEngine;
+import org.apache.commons.configuration2.CombinedConfiguration;
+import org.apache.commons.configuration2.CompositeConfiguration;
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.builder.FileBasedConfigurationBuilder;
+import org.apache.commons.configuration2.builder.fluent.Parameters;
+import org.apache.commons.configuration2.convert.DisabledListDelimiterHandler;
+import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.commons.configuration2.XMLConfiguration;
+import org.apache.commons.configuration2.tree.xpath.XPathExpressionEngine;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -165,15 +169,23 @@ public class AndesConfigurationManager {
         log.info("Main andes configuration located at : " + brokerConfigFilePath);
 
         try {
-
+            Parameters params = new Parameters();
+            FileBasedConfigurationBuilder<XMLConfiguration> builder =
+                    new FileBasedConfigurationBuilder<>(XMLConfiguration.class)
+                            .configure(params.xml()
+                                    .setFileName(brokerConfigFilePath)
+                                    .setThrowExceptionOnMissing(true)
+                                    .setValidating(false)
+                                    .setListDelimiterHandler(new DisabledListDelimiterHandler()));
             compositeConfiguration = new CompositeConfiguration();
-            compositeConfiguration.setDelimiterParsingDisabled(true);
+            XMLConfiguration rootConfiguration = builder.getConfiguration();
+            //compositeConfiguration.setDelimiterParsingDisabled(true);
 
-            XMLConfiguration rootConfiguration = new XMLConfiguration();
-            rootConfiguration.setDelimiterParsingDisabled(true);
-            rootConfiguration.setFileName(brokerConfigFilePath);
+//            XMLConfiguration rootConfiguration = new XMLConfiguration();
+//            rootConfiguration.setDelimiterParsingDisabled(true);
+//            rootConfiguration.setFileName(brokerConfigFilePath);
             rootConfiguration.setExpressionEngine(new XPathExpressionEngine());
-            rootConfiguration.load();
+            // rootConfiguration.load();
             compositeConfiguration.addConfiguration(rootConfiguration);
 
             //Decrypt and maintain secure vault property values in a map for cross-reference.

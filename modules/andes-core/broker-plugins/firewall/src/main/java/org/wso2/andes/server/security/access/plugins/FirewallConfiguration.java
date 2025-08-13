@@ -20,13 +20,16 @@
  */
 package org.wso2.andes.server.security.access.plugins;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 
-import org.apache.commons.configuration.CompositeConfiguration;
-import org.apache.commons.configuration.Configuration;
-import org.apache.commons.configuration.ConfigurationException;
-import org.apache.commons.configuration.XMLConfiguration;
+import org.apache.commons.configuration2.CompositeConfiguration;
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.builder.FileBasedConfigurationBuilder;
+import org.apache.commons.configuration2.builder.fluent.Parameters;
+import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.commons.configuration2.XMLConfiguration;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPluginFactory;
 import org.wso2.andes.server.security.Result;
@@ -86,9 +89,17 @@ public class FirewallConfiguration extends ConfigurationPlugin
         // Valid Configuration either has xml links to new files
         _finalConfig = new CompositeConfiguration(_configuration);
         List subFiles = _configuration.getList("xml[@fileName]");
+        Parameters params = new Parameters();
+
         for (Object subFile : subFiles)
         {
-            _finalConfig.addConfiguration(new XMLConfiguration((String) subFile));
+            FileBasedConfigurationBuilder<XMLConfiguration> builder =
+                    new FileBasedConfigurationBuilder<>(XMLConfiguration.class)
+                            .configure(params.xml()
+                                    .setFile(new File((String) subFile))
+                                    .setThrowExceptionOnMissing(true)
+                                    .setValidating(false));
+            _finalConfig.addConfiguration(builder.getConfiguration());
         }
 
         // all rules must have an access attribute or a default value

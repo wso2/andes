@@ -20,7 +20,7 @@
  */
 package org.wso2.andes.server.store;
 
-import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration2.Configuration;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 import org.wso2.andes.AMQException;

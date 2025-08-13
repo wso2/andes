@@ -20,7 +20,7 @@
  */
 package org.wso2.andes.server.logging.actors;
 
-import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.logging.NullRootMessageLogger;
@@ -67,7 +67,7 @@ public class CurrentActorTest extends BaseConnectionActorTestCase
      * in there being no actors set.
      *
      * @throws AMQException
-     * @throws org.apache.commons.configuration.ConfigurationException
+     * @throws org.apache.commons.configuration2.ex.ConfigurationException
      */
     public void testLIFO() throws AMQException, ConfigurationException
     {

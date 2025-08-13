@@ -22,8 +22,8 @@ package org.wso2.andes.server.logging.messages;
 
 import java.util.List;
 
-import org.apache.commons.configuration.Configuration;
-import org.apache.commons.configuration.PropertiesConfiguration;
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.wso2.andes.server.logging.LogActor;
 import org.wso2.andes.server.logging.LogMessage;
 import org.wso2.andes.server.logging.LogSubject;

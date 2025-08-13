@@ -25,7 +25,7 @@ import java.io.PrintWriter;
 
 import junit.framework.TestCase;
 
-import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.wso2.andes.server.security.access.config.ConfigurationFile;
 import org.wso2.andes.server.security.access.config.PlainConfiguration;
 
