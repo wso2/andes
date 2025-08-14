@@ -17,8 +17,8 @@
  */
 package org.wso2.andes.configuration.qpid.plugins;
 
-import org.apache.commons.configuration.Configuration;
-import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.wso2.andes.server.plugins.PluginManager;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.policies.SlowConsumerPolicyPlugin;

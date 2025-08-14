@@ -20,7 +20,7 @@
  */
 package org.wso2.andes.server.util;
 
-import org.apache.commons.configuration.XMLConfiguration;
+import org.apache.commons.configuration2.XMLConfiguration;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.common.AMQPFilterTypes;
 import org.wso2.andes.exchange.ExchangeDefaults;

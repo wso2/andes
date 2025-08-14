@@ -17,7 +17,7 @@
  */
 package org.wso2.andes.server.plugins;
 
-import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 
 public interface PluginFactory<P extends Plugin>

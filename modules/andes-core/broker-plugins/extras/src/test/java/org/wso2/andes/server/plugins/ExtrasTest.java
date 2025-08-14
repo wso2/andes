@@ -19,7 +19,7 @@
 package org.wso2.andes.server.plugins;
 
 import junit.framework.TestCase;
-import org.apache.commons.configuration.PropertiesConfiguration;
+import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.server.exchange.ExchangeType;
 import org.wso2.andes.server.registry.ApplicationRegistry;
