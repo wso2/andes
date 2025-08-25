@@ -357,6 +357,16 @@
                 <version>${javax.servlet-api.version}</version>
             </dependency>
             <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-text</artifactId>
+                <version>${commons.text.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>jakarta.servlet</groupId>
+                <artifactId>jakarta.servlet-api</artifactId>
+                <version>${jakarta.servlet.api.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-api</artifactId>
                 <version>${slf4j.version}</version>
@@ -629,6 +639,7 @@
         <slf4j.version>1.7.21</slf4j.version>
         <speed4j.version>0.9</speed4j.version>
         <uuid.version>3.2</uuid.version>
+        <commons.text.version>1.9</commons.text.version>
         <velocity.version>1.5</velocity.version>
         <xalan.version>2.7.0</xalan.version>
         <ant.version>1.8.1</ant.version>
@@ -638,6 +649,7 @@
         <org.wso2.carbon.metrics.manager.version>1.3.7</org.wso2.carbon.metrics.manager.version>
         <libthrift.version>0.16.0.wso2v1</libthrift.version>
         <h2.version>1.2.140</h2.version>
+        <jakarta.servlet.api.version>5.0.0</jakarta.servlet.api.version>
         <naming-factory.version>5.5.15</naming-factory.version>
         <naming-resources.version>5.5.15</naming-resources.version>
         <mysql-connector-java.version>5.1.31</mysql-connector-java.version>

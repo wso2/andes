@@ -51,8 +51,10 @@ import javax.naming.NamingException;
 
 import org.apache.commons.configuration2.builder.FileBasedConfigurationBuilder;
 import org.apache.commons.configuration2.builder.fluent.Parameters;
+import org.apache.commons.configuration2.convert.DisabledListDelimiterHandler;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.commons.configuration2.XMLConfiguration;
+import org.apache.commons.configuration2.io.FileHandler;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Logger;
@@ -666,18 +668,26 @@ public class QpidBrokerTestCase extends QpidTestCase
         // Specifiy the test config file
         String testConfig = getTestConfigFile();
         setSystemProperty("test.config", testConfig);
-        Parameters params = new Parameters();
-        FileBasedConfigurationBuilder<XMLConfiguration> builder =
-                new FileBasedConfigurationBuilder<>(XMLConfiguration.class)
-                        .configure(params.xml().setFile(new File(testConfig)));
-        _testConfiguration = builder.getConfiguration();
+
+        XMLConfiguration rootConfiguration = new XMLConfiguration();
+        rootConfiguration.setListDelimiterHandler(new DisabledListDelimiterHandler());
+        FileHandler xmlHandler = new FileHandler(rootConfiguration);
+        File file = new File(testConfig);
+        xmlHandler.load(file);
+        _testConfiguration = rootConfiguration;
+//        Parameters params = new Parameters();
+//        FileBasedConfigurationBuilder<XMLConfiguration> builder =
+//                new FileBasedConfigurationBuilder<>(XMLConfiguration.class)
+//                        .configure(params.xml().setFile(new File(testConfig)));
+//        _testConfiguration = builder.getConfiguration();
 
         // Create the file if configuration does not exist
         if (_testConfiguration.isEmpty())
         {
             _testConfiguration.addProperty("__ignore", "true");
         }
-        builder.save();
+        xmlHandler.save(file);
+        //builder.save();
         //_testConfiguration.save(testConfig);
     }
 
@@ -686,17 +696,24 @@ public class QpidBrokerTestCase extends QpidTestCase
         // Specifiy the test virtualhosts file
         String testVirtualhosts = getTestVirtualhostsFile();
         setSystemProperty("test.virtualhosts", testVirtualhosts);
-        Parameters params = new Parameters();
-        FileBasedConfigurationBuilder<XMLConfiguration> builder =
-                new FileBasedConfigurationBuilder<>(XMLConfiguration.class)
-                        .configure(params.xml().setFile(new File(testVirtualhosts)));
-        _testVirtualhosts = builder.getConfiguration();
+        XMLConfiguration rootConfiguration = new XMLConfiguration();
+        rootConfiguration.setListDelimiterHandler(new DisabledListDelimiterHandler());
+        FileHandler xmlHandler = new FileHandler(rootConfiguration);
+        File file = new File(testVirtualhosts);
+        xmlHandler.load(file);
+        _testVirtualhosts = rootConfiguration;
+//        Parameters params = new Parameters();
+//        FileBasedConfigurationBuilder<XMLConfiguration> builder =
+//                new FileBasedConfigurationBuilder<>(XMLConfiguration.class)
+//                        .configure(params.xml().setFile(new File(testVirtualhosts)));
+//        _testVirtualhosts = builder.getConfiguration();
         // Create the file if configuration does not exist
         if (_testVirtualhosts.isEmpty())
         {
             _testVirtualhosts.addProperty("__ignore", "true");
         }
-        builder.save();
+        xmlHandler.save(file);
+        //builder.save();
         //_testVirtualhosts.save(testVirtualhosts);
     }
 

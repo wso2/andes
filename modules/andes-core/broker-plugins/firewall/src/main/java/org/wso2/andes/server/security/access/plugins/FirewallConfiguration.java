@@ -28,8 +28,10 @@ import org.apache.commons.configuration2.CompositeConfiguration;
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.builder.FileBasedConfigurationBuilder;
 import org.apache.commons.configuration2.builder.fluent.Parameters;
+import org.apache.commons.configuration2.convert.DisabledListDelimiterHandler;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.commons.configuration2.XMLConfiguration;
+import org.apache.commons.configuration2.io.FileHandler;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPluginFactory;
 import org.wso2.andes.server.security.Result;
@@ -93,13 +95,18 @@ public class FirewallConfiguration extends ConfigurationPlugin
 
         for (Object subFile : subFiles)
         {
-            FileBasedConfigurationBuilder<XMLConfiguration> builder =
-                    new FileBasedConfigurationBuilder<>(XMLConfiguration.class)
-                            .configure(params.xml()
-                                    .setFile(new File((String) subFile))
-                                    .setThrowExceptionOnMissing(true)
-                                    .setValidating(false));
-            _finalConfig.addConfiguration(builder.getConfiguration());
+            XMLConfiguration rootConfiguration = new XMLConfiguration();
+            rootConfiguration.setListDelimiterHandler(new DisabledListDelimiterHandler());
+            FileHandler xmlHandler = new FileHandler(rootConfiguration);
+            xmlHandler.load((new File((String) subFile)));
+            _finalConfig.addConfiguration(rootConfiguration);
+//            FileBasedConfigurationBuilder<XMLConfiguration> builder =
+//                    new FileBasedConfigurationBuilder<>(XMLConfiguration.class)
+//                            .configure(params.xml()
+//                                    .setFile(new File((String) subFile))
+//                                    .setThrowExceptionOnMissing(true)
+//                                    .setValidating(false));
+//            _finalConfig.addConfiguration(builder.getConfiguration());
         }
 
         // all rules must have an access attribute or a default value

@@ -51,9 +51,13 @@ import org.wso2.andes.transport.network.mina.MinaNetworkTransport;
 
 import javax.management.JMException;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
@@ -263,7 +267,7 @@ public class Broker
             File configFile;
 
             configFile = getConfigFile(options.getConfigFile(),
-                    BrokerOptions.DEFAULT_ANDES_CONFIG_FILE, qpidHome, true);
+                    org.wso2.andes.server.BrokerOptions.DEFAULT_ANDES_CONFIG_FILE, qpidHome, true);
 
             log.info("Starting Qpid using configuration : " + configFile.getAbsolutePath());
 
@@ -275,7 +279,12 @@ public class Broker
             ConfigurationFileApplicationRegistry config = new ConfigurationFileApplicationRegistry(configFile);
             ServerConfiguration serverConfig = config.getConfiguration();
             updateManagementPort(serverConfig, options.getJmxPort());
-
+            try {
+                String lines = new String(Files.readAllBytes(Paths.get(configFile.getAbsolutePath())));
+                System.out.println(lines);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
             ApplicationRegistry.initialise(config);
 
             // We have already loaded the BrokerMessages class by this point so we

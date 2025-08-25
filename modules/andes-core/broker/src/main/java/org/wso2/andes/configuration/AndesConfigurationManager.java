@@ -22,6 +22,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
+import java.net.URL;
 import java.net.UnknownHostException;
 import java.nio.file.Paths;
 import java.text.DateFormat;
@@ -31,9 +32,11 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -45,11 +48,15 @@ import org.apache.axiom.om.xpath.AXIOMXPath;
 import org.apache.commons.configuration2.CombinedConfiguration;
 import org.apache.commons.configuration2.CompositeConfiguration;
 import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.builder.FileBasedBuilderParametersImpl;
 import org.apache.commons.configuration2.builder.FileBasedConfigurationBuilder;
 import org.apache.commons.configuration2.builder.fluent.Parameters;
 import org.apache.commons.configuration2.convert.DisabledListDelimiterHandler;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.commons.configuration2.XMLConfiguration;
+import org.apache.commons.configuration2.interpol.ConfigurationInterpolator;
+import org.apache.commons.configuration2.interpol.Lookup;
+import org.apache.commons.configuration2.io.FileHandler;
 import org.apache.commons.configuration2.tree.xpath.XPathExpressionEngine;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
@@ -169,23 +176,34 @@ public class AndesConfigurationManager {
         log.info("Main andes configuration located at : " + brokerConfigFilePath);
 
         try {
-            Parameters params = new Parameters();
-            FileBasedConfigurationBuilder<XMLConfiguration> builder =
-                    new FileBasedConfigurationBuilder<>(XMLConfiguration.class)
-                            .configure(params.xml()
-                                    .setFileName(brokerConfigFilePath)
-                                    .setThrowExceptionOnMissing(true)
-                                    .setValidating(false)
-                                    .setListDelimiterHandler(new DisabledListDelimiterHandler()));
-            compositeConfiguration = new CompositeConfiguration();
-            XMLConfiguration rootConfiguration = builder.getConfiguration();
-            //compositeConfiguration.setDelimiterParsingDisabled(true);
-
+            // Create concrete builder parameters
 //            XMLConfiguration rootConfiguration = new XMLConfiguration();
-//            rootConfiguration.setDelimiterParsingDisabled(true);
-//            rootConfiguration.setFileName(brokerConfigFilePath);
-            rootConfiguration.setExpressionEngine(new XPathExpressionEngine());
-            // rootConfiguration.load();
+//            rootConfiguration.setListDelimiterHandler(new DisabledListDelimiterHandler());
+
+            XMLConfiguration rootConfiguration = new XMLConfiguration();
+            rootConfiguration.setListDelimiterHandler(new DisabledListDelimiterHandler());
+
+            // Custom interpolator to ensure system properties are available
+            ConfigurationInterpolator interpolator = new ConfigurationInterpolator();
+            Map<String, Lookup> lookups = new HashMap<>(ConfigurationInterpolator.getDefaultPrefixLookups());
+            interpolator.addDefaultLookup(lookups.get("sys"));
+            rootConfiguration.setInterpolator(interpolator);
+
+            FileHandler xmlHandler = new FileHandler(rootConfiguration);
+            xmlHandler.load(new File(brokerConfigFilePath));
+
+//            Parameters params = new Parameters();
+//            FileBasedConfigurationBuilder<XMLConfiguration> builder =
+//                    new FileBasedConfigurationBuilder<>(XMLConfiguration.class)
+//                            .configure(params.xml()
+//                                    .setFileName(brokerConfigFilePath)
+//                                    .setThrowExceptionOnMissing(true)
+//                                    .setValidating(false)
+//                                    .setListDelimiterHandler(new DisabledListDelimiterHandler()));
+//            XMLConfiguration rootConfiguration = builder.getConfiguration();
+
+            compositeConfiguration = new CompositeConfiguration();
+            //rootConfiguration.load();
             compositeConfiguration.addConfiguration(rootConfiguration);
 
             //Decrypt and maintain secure vault property values in a map for cross-reference.
@@ -223,6 +241,9 @@ public class AndesConfigurationManager {
             String error = "Error occurred when trying to process cipher text in file : " + brokerConfigFilePath;
             log.error(error, e);
             throw new AndesException(error, e);
+        } catch (Throwable e) {
+            //log.error(e);
+            throw new AndesException("Error", e);
         }
     }
 

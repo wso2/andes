@@ -27,8 +27,10 @@ import java.net.SocketAddress;
 
 import org.apache.commons.configuration2.builder.FileBasedConfigurationBuilder;
 import org.apache.commons.configuration2.builder.fluent.Parameters;
+import org.apache.commons.configuration2.convert.DisabledListDelimiterHandler;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.commons.configuration2.XMLConfiguration;
+import org.apache.commons.configuration2.io.FileHandler;
 import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.security.Result;
@@ -126,13 +128,19 @@ public class FirewallPluginTest extends QpidTestCase
 
         // Configure plugin
         FirewallConfiguration config = new FirewallConfiguration();
-        Parameters params = new Parameters();
-        FileBasedConfigurationBuilder<XMLConfiguration> builder =
-                new FileBasedConfigurationBuilder<>(XMLConfiguration.class)
-                        .configure(params.xml()
-                                .setFile(confFile));
+        XMLConfiguration rootConfiguration = new XMLConfiguration();
+        rootConfiguration.setListDelimiterHandler(new DisabledListDelimiterHandler());
+        FileHandler xmlHandler = new FileHandler(rootConfiguration);
+        xmlHandler.load(confFile);
 
-        config.setConfiguration("", builder.getConfiguration());
+//        Parameters params = new Parameters();
+//        FileBasedConfigurationBuilder<XMLConfiguration> builder =
+//                new FileBasedConfigurationBuilder<>(XMLConfiguration.class)
+//                        .configure(params.xml()
+//                                .setFile(confFile));
+
+        config.setConfiguration("", rootConfiguration);
+        //config.setConfiguration("", builder.getConfiguration());
         Firewall plugin = new Firewall();
         plugin.configure(config);
         return plugin;

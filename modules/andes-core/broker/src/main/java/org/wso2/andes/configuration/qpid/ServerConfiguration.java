@@ -22,9 +22,11 @@ import org.apache.commons.configuration2.*;
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.builder.FileBasedConfigurationBuilder;
 import org.apache.commons.configuration2.builder.fluent.Parameters;
+import org.apache.commons.configuration2.convert.DisabledListDelimiterHandler;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.commons.configuration2.interpol.ConfigurationInterpolator;
 import org.apache.commons.configuration2.interpol.Lookup;
+import org.apache.commons.configuration2.io.FileHandler;
 import org.apache.commons.configuration2.tree.MergeCombiner;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -289,20 +291,35 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
         Configuration conf = null;
 
         if (ConfigType.XML.equals(getConfigType(file))) {
-            FileBasedConfigurationBuilder<XMLConfiguration> factory = new FileBasedConfigurationBuilder<>(
-                    XMLConfiguration.class).configure(params.xml().setFile(file).setThrowExceptionOnMissing(true)
-                    .setValidating(false)); // disable DTD validation if not needed
-            conf = factory.getConfiguration();
+            XMLConfiguration rootConfiguration = new XMLConfiguration();
+            rootConfiguration.setListDelimiterHandler(new DisabledListDelimiterHandler());
+            FileHandler xmlHandler = new FileHandler(rootConfiguration);
+            xmlHandler.load(file);
+            conf = rootConfiguration;
+//            FileBasedConfigurationBuilder<XMLConfiguration> factory = new FileBasedConfigurationBuilder<>(
+//                    XMLConfiguration.class).configure(params.xml().setFile(file).setThrowExceptionOnMissing(true)
+//                    .setValidating(false)); // disable DTD validation if not needed
+//            conf = factory.getConfiguration();
         } else if (ConfigType.PROPERTIES.equals(getConfigType(file))) {
-            FileBasedConfigurationBuilder<PropertiesConfiguration> factory = new FileBasedConfigurationBuilder<>(
-                    PropertiesConfiguration.class).configure(params.xml().setFile(file).setThrowExceptionOnMissing(true)
-                    .setValidating(false));
-            conf = factory.getConfiguration();
+            PropertiesConfiguration propertiesConfiguration = new PropertiesConfiguration();
+            propertiesConfiguration.setListDelimiterHandler(new DisabledListDelimiterHandler());
+            FileHandler propHandler = new FileHandler(propertiesConfiguration);
+            propHandler.load(file);
+            conf = propertiesConfiguration;
+//            FileBasedConfigurationBuilder<PropertiesConfiguration> factory = new FileBasedConfigurationBuilder<>(
+//                    PropertiesConfiguration.class).configure(params.xml().setFile(file).setThrowExceptionOnMissing(true)
+//                    .setValidating(false));
+//            conf = factory.getConfiguration();
         } else if (ConfigType.INI.equals(getConfigType(file))) {
-            FileBasedConfigurationBuilder<INIConfiguration> factory = new FileBasedConfigurationBuilder<>(
-                    INIConfiguration.class).configure(params.xml().setFile(file).setThrowExceptionOnMissing(true)
-                    .setValidating(false));
-            conf = factory.getConfiguration();
+            INIConfiguration iniConfiguration = new INIConfiguration();
+            iniConfiguration.setListDelimiterHandler(new DisabledListDelimiterHandler());
+            FileHandler fileHandler = new FileHandler(iniConfiguration);
+            fileHandler.load(file);
+            conf = iniConfiguration;
+//            FileBasedConfigurationBuilder<INIConfiguration> factory = new FileBasedConfigurationBuilder<>(
+//                    INIConfiguration.class).configure(params.xml().setFile(file).setThrowExceptionOnMissing(true)
+//                    .setValidating(false));
+//            conf = factory.getConfiguration();
         }
 
         if (conf != null) {
@@ -398,21 +415,27 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
     }
 
     public static org.apache.commons.configuration2.Configuration flatConfig(File file) throws ConfigurationException {
-        Parameters params = new Parameters();
+        //Parameters params = new Parameters();
 
         final CombinedConfiguration conf = new CombinedConfiguration(new MergeCombiner());
 
         SystemConfiguration systemConfig = new SystemConfiguration();
         conf.addConfiguration(systemConfig);
 
-        FileBasedConfigurationBuilder<XMLConfiguration> xmlBuilder =
-                new FileBasedConfigurationBuilder<>(XMLConfiguration.class)
-                        .configure(params.xml()
-                                .setFile(file)
-                                .setThrowExceptionOnMissing(true)
-                                .setValidating(false));
+        XMLConfiguration rootConfiguration = new XMLConfiguration();
+        rootConfiguration.setListDelimiterHandler(new DisabledListDelimiterHandler());
+        FileHandler xmlHandler = new FileHandler(rootConfiguration);
+        xmlHandler.load(file);
 
-        conf.addConfiguration(xmlBuilder.getConfiguration());
+//        FileBasedConfigurationBuilder<XMLConfiguration> xmlBuilder =
+//                new FileBasedConfigurationBuilder<>(XMLConfiguration.class)
+//                        .configure(params.xml()
+//                                .setFile(file)
+//                                .setThrowExceptionOnMissing(true)
+//                                .setValidating(false));
+//
+//        conf.addConfiguration(xmlBuilder.getConfiguration());
+        conf.addConfiguration(rootConfiguration);
 
         ConfigurationInterpolator interpolator = new ConfigurationInterpolator();
 

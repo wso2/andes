@@ -66,7 +66,15 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-configuration2</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
             <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.geronimo.specs.wso2</groupId>
@@ -152,8 +160,8 @@
                             !org.apache.log4j.xml.*,
                             org.wso2.andes.wso2.service.*,
                             org.apache.derby.jdbc,
-                            org.apache.commons.configuration2.*,
                             org.apache.commons.jxpath.*,
+                            jakarta.servlet.*,
                             org.fusesource.hawtbuf.*,
                             org.fusesource.hawtdb*,
                             org.wso2.andes.*;-split-package:=merge-last,
@@ -166,9 +174,12 @@
                             !org.wso2.andes.*,
                             !org.apache.derby.*,
                             org.apache.thrift.*;version="[0.9.wso2v1,1.0)",
+                            org.apache.commons.configuration2.*;version="[2.12,3)",
                             org.apache.commons.cli.*;version="1.2",
                             org.apache.commons.lang.*;version="2.3",
+                            jakarta.servlet.*,
                             org.apache.commons.logging.*,
+                            org.apache.commons.text.*;version="1.9",
                             com.google.common.base;version="19.0.0",
                             com.google.common.util.concurrent;version="19.0.0",
                             com.google.common.cache;version="19.0.0",
