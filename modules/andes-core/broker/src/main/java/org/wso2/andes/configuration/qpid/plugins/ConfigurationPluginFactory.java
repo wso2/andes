@@ -19,8 +19,8 @@ package org.wso2.andes.configuration.qpid.plugins;
 
 import java.util.List;
 
-import org.apache.commons.configuration.Configuration;
-import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 
 public interface ConfigurationPluginFactory
 {

@@ -17,7 +17,7 @@
  */
 package org.wso2.andes.configuration.qpid;
 
-import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration2.Configuration;
 
 
 public class ExchangeConfiguration

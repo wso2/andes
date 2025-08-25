@@ -27,8 +27,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Locale;
 
-import org.apache.commons.configuration.ConfigurationException;
-import org.apache.commons.configuration.XMLConfiguration;
+import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.commons.configuration2.XMLConfiguration;
 import org.wso2.andes.configuration.qpid.ExchangeConfiguration;
 import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.configuration.qpid.VirtualHostConfiguration;

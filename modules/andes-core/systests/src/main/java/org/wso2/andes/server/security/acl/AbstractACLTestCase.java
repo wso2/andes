@@ -34,7 +34,7 @@ import javax.jms.ExceptionListener;
 import javax.jms.JMSException;
 import javax.naming.NamingException;
 
-import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.commons.lang.StringUtils;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.client.AMQConnection;

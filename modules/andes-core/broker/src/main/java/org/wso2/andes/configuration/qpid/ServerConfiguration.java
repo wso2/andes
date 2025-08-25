@@ -18,8 +18,15 @@
 
 package org.wso2.andes.configuration.qpid;
 
-import org.apache.commons.configuration.*;
-import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration2.*;
+import org.apache.commons.configuration2.builder.FileBasedConfigurationBuilder;
+import org.apache.commons.configuration2.builder.combined.CombinedConfigurationBuilder;
+import org.apache.commons.configuration2.builder.fluent.Parameters;
+import org.apache.commons.configuration2.convert.DisabledListDelimiterHandler;
+import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.interpol.ConfigurationInterpolator;
+import org.apache.commons.configuration2.tree.OverrideCombiner;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -112,7 +119,7 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
      * {@link ApplicationRegistry#initialise()} method.
      *
      * @param configurationURL
-     * @throws org.apache.commons.configuration.ConfigurationException
+     * @throws org.apache.commons.configuration2.ex.ConfigurationException
      *
      */
     public ServerConfiguration(File configurationURL) throws ConfigurationException {
@@ -145,7 +152,7 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
      *
      * @param conf
      */
-    public ServerConfiguration(org.apache.commons.configuration.Configuration conf) {
+    public ServerConfiguration(org.apache.commons.configuration2.Configuration conf) {
         _configuration = conf;
     }
 
@@ -205,10 +212,10 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
      * both, as a fix for QPID-2360 and QPID-2361.
      */
     @SuppressWarnings("unchecked")
-    protected void setupVirtualHosts(org.apache.commons.configuration.Configuration conf) throws ConfigurationException {
+    protected void setupVirtualHosts(org.apache.commons.configuration2.Configuration conf) throws ConfigurationException {
         
         String[] vhostFiles = conf.getStringArray("virtualhosts");
-        org.apache.commons.configuration.Configuration vhostConfig = conf.subset("virtualhosts");
+        org.apache.commons.configuration2.Configuration vhostConfig = conf.subset("virtualhosts");
 
         // Only one configuration mechanism allowed
         if (!(vhostFiles.length == 0) && !vhostConfig.subset("virtualhost").isEmpty()) {
@@ -222,7 +229,7 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
         }
 
         // Virtualhost configuration object
-        org.apache.commons.configuration.Configuration vhostConfiguration = new HierarchicalConfiguration();
+        org.apache.commons.configuration2.Configuration vhostConfiguration = new BaseHierarchicalConfiguration();
 
         // Load from embedded configuration if possible
         if (!vhostConfig.subset("virtualhost").isEmpty()) {
@@ -255,7 +262,7 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
         }
     }
 
-    private static void substituteEnvironmentVariables(org.apache.commons.configuration.Configuration conf) {
+    private static void substituteEnvironmentVariables(org.apache.commons.configuration2.Configuration conf) {
         for (Entry<String, String> var : envVarMap.entrySet()) {
             String val = System.getenv(var.getKey());
             if (val != null) {
@@ -264,10 +271,12 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
         }
     }
 
-    private static org.apache.commons.configuration.Configuration parseConfig(File file) throws ConfigurationException {
-        ConfigurationFactory factory = new ConfigurationFactory();
-        factory.setConfigurationFileName(file.getAbsolutePath());
-        org.apache.commons.configuration.Configuration conf = factory.getConfiguration();
+    private static org.apache.commons.configuration2.Configuration parseConfig(File file) throws ConfigurationException {
+        CombinedConfigurationBuilder builder =
+                new CombinedConfigurationBuilder()
+                        .configure(new Parameters().xml().setFileName(file.getAbsolutePath()));
+
+        CombinedConfiguration conf = builder.getConfiguration();
 
         Iterator<?> keys = conf.getKeys();
         if (!keys.hasNext()) {
@@ -340,24 +349,32 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
         }
     }
 
-    public static org.apache.commons.configuration.Configuration flatConfig(File file) throws ConfigurationException {
-        // We have to override the interpolate methods so that
-        // interpolation takes place accross the entirety of the
-        // composite configuration. Without doing this each
-        // configuration object only interpolates variables defined
-        // inside itself.
-        final MyConfiguration conf = new MyConfiguration();
-        conf.addConfiguration(new SystemConfiguration() {
-            protected String interpolate(String o) {
-                return conf.interpolate(o);
-            }
-        });
-        conf.addConfiguration(new XMLConfiguration(file) {
-            protected String interpolate(String o) {
-                return conf.interpolate(o);
-            }
-        });
-        return conf;
+    public static CombinedConfiguration flatConfig(File file) throws ConfigurationException {
+        Parameters params = new Parameters();
+        FileBasedConfigurationBuilder<XMLConfiguration> xmlBuilder =
+                new FileBasedConfigurationBuilder<>(XMLConfiguration.class)
+                        .configure(params.xml()
+                                .setFile(file)
+                                // mirrors setDelimiterParsingDisabled(true)
+                                .setListDelimiterHandler(DisabledListDelimiterHandler.INSTANCE));
+
+        XMLConfiguration xml = xmlBuilder.getConfiguration();
+        SystemConfiguration sys = new SystemConfiguration();
+
+        // Create a "flat" combined config where later additions override earlier ones
+        CombinedConfiguration combined = new CombinedConfiguration(new OverrideCombiner());
+
+        // Make interpolation work across the whole combined config:
+        // children delegate unresolved variables up to the combined's interpolator.
+        ConfigurationInterpolator parent = combined.getInterpolator();
+        xml.setParentInterpolator(parent);
+        sys.setParentInterpolator(parent);
+
+        // Order matters if you want system props to be visible to XML via interpolation
+        combined.addConfiguration(sys);  // first
+        combined.addConfiguration(xml);  // then XML
+
+        return combined;
     }
 
     public void handle(Signal arg0) {
@@ -370,12 +387,12 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
 
     public void reparseConfigFileSecuritySections() throws ConfigurationException {
         if (_configFile != null) {
-            org.apache.commons.configuration.Configuration newConfig = parseConfig(_configFile);
+            org.apache.commons.configuration2.Configuration newConfig = parseConfig(_configFile);
             setConfiguration("", newConfig);
             ApplicationRegistry.getInstance().getSecurityManager().configureHostPlugins(this);
 
             // Reload virtualhosts from correct location
-            org.apache.commons.configuration.Configuration newVhosts;
+            org.apache.commons.configuration2.Configuration newVhosts;
             if (_vhostsFile == null) {
                 newVhosts = newConfig.subset("virtualhosts");
             } else {

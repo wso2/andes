@@ -23,8 +23,8 @@ package org.wso2.andes.server.security.access.plugins;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 
-import org.apache.commons.configuration.Configuration;
-import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 import org.wso2.andes.server.security.AbstractPlugin;
 import org.wso2.andes.server.security.Result;

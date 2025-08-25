@@ -18,7 +18,7 @@
 package org.wso2.andes.server.store;
 
 import org.wso2.andes.server.logging.LogSubject;
-import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration2.Configuration;
 
 /**
  * MessageStore defines the interface to a storage area, which can be used to preserve the state of messages.

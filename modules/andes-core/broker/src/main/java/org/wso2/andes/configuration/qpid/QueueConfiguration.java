@@ -17,8 +17,8 @@
  */
 package org.wso2.andes.configuration.qpid;
 
-import org.apache.commons.configuration.CompositeConfiguration;
-import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration2.CompositeConfiguration;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.wso2.andes.exchange.ExchangeDefaults;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 

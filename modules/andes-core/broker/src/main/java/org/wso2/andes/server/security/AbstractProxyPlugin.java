@@ -17,7 +17,7 @@
  */
 package org.wso2.andes.server.security;
 
-import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration2.Configuration;
 import org.wso2.andes.server.security.access.ObjectProperties;
 import org.wso2.andes.server.security.access.ObjectType;
 import org.wso2.andes.server.security.access.Operation;
