@@ -22,7 +22,9 @@ package org.wso2.andes.server.security.access.plugins;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.configuration2.CompositeConfiguration;
 import org.apache.commons.configuration2.Configuration;
@@ -31,6 +33,8 @@ import org.apache.commons.configuration2.builder.fluent.Parameters;
 import org.apache.commons.configuration2.convert.DisabledListDelimiterHandler;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.commons.configuration2.XMLConfiguration;
+import org.apache.commons.configuration2.interpol.ConfigurationInterpolator;
+import org.apache.commons.configuration2.interpol.Lookup;
 import org.apache.commons.configuration2.io.FileHandler;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPluginFactory;
@@ -97,6 +101,21 @@ public class FirewallConfiguration extends ConfigurationPlugin
         {
             XMLConfiguration rootConfiguration = new XMLConfiguration();
             rootConfiguration.setListDelimiterHandler(new DisabledListDelimiterHandler());
+            ConfigurationInterpolator interpolator = rootConfiguration.getInterpolator();
+            Map<String, Lookup> lookups = new HashMap<>(ConfigurationInterpolator.getDefaultPrefixLookups());
+            interpolator.addDefaultLookup(lookups.get("sys"));
+            interpolator.registerLookup("", new Lookup() {
+                @Override
+                public Object lookup(String key) {
+                    String value = System.getProperty(key);
+                    if (value != null) {
+                        return value;
+                    }
+                    value = System.getenv(key);
+                    return value;
+                }
+            });
+            rootConfiguration.setInterpolator(interpolator);
             FileHandler xmlHandler = new FileHandler(rootConfiguration);
             xmlHandler.load((new File((String) subFile)));
             _finalConfig.addConfiguration(rootConfiguration);

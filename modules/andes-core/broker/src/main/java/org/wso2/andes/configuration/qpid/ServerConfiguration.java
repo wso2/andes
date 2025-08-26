@@ -293,6 +293,21 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
         if (ConfigType.XML.equals(getConfigType(file))) {
             XMLConfiguration rootConfiguration = new XMLConfiguration();
             rootConfiguration.setListDelimiterHandler(new DisabledListDelimiterHandler());
+            ConfigurationInterpolator interpolator = rootConfiguration.getInterpolator();
+            Map<String, Lookup> lookups = new HashMap<>(ConfigurationInterpolator.getDefaultPrefixLookups());
+            interpolator.addDefaultLookup(lookups.get("sys"));
+            interpolator.registerLookup("", new Lookup() {
+                @Override
+                public Object lookup(String key) {
+                    String value = System.getProperty(key);
+                    if (value != null) {
+                        return value;
+                    }
+                    value = System.getenv(key);
+                    return value;
+                }
+            });
+            rootConfiguration.setInterpolator(interpolator);
             FileHandler xmlHandler = new FileHandler(rootConfiguration);
             xmlHandler.load(file);
             conf = rootConfiguration;
@@ -424,6 +439,21 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
 
         XMLConfiguration rootConfiguration = new XMLConfiguration();
         rootConfiguration.setListDelimiterHandler(new DisabledListDelimiterHandler());
+        ConfigurationInterpolator interpolator = rootConfiguration.getInterpolator();
+        Map<String, Lookup> lookups = new HashMap<>(ConfigurationInterpolator.getDefaultPrefixLookups());
+        interpolator.addDefaultLookup(lookups.get("sys"));
+        interpolator.registerLookup("", new Lookup() {
+            @Override
+            public Object lookup(String key) {
+                String value = System.getProperty(key);
+                if (value != null) {
+                    return value;
+                }
+                value = System.getenv(key);
+                return value;
+            }
+        });
+        rootConfiguration.setInterpolator(interpolator);
         FileHandler xmlHandler = new FileHandler(rootConfiguration);
         xmlHandler.load(file);
 
@@ -437,22 +467,22 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
 //        conf.addConfiguration(xmlBuilder.getConfiguration());
         conf.addConfiguration(rootConfiguration);
 
-        ConfigurationInterpolator interpolator = new ConfigurationInterpolator();
-
-        // Register a custom lookup for the default (unprefixed) lookup by adding a "" prefix
-        interpolator.registerLookup("", new Lookup() {
-            @Override
-            public String lookup(String key) {
-                return conf.getString(key);
-            }
-        });
-
-        // Add the default prefix lookups too (env, sys, etc.)
-        Map<String, Lookup> prefixLookups = new HashMap<>(ConfigurationInterpolator.getDefaultPrefixLookups());
-        for (Map.Entry<String, Lookup> entry : prefixLookups.entrySet()) {
-            interpolator.registerLookup(entry.getKey(), entry.getValue());
-        }
-        conf.setInterpolator(interpolator);
+//        ConfigurationInterpolator interpolator = new ConfigurationInterpolator();
+//
+//        // Register a custom lookup for the default (unprefixed) lookup by adding a "" prefix
+//        interpolator.registerLookup("", new Lookup() {
+//            @Override
+//            public String lookup(String key) {
+//                return conf.getString(key);
+//            }
+//        });
+//
+//        // Add the default prefix lookups too (env, sys, etc.)
+//        Map<String, Lookup> prefixLookups = new HashMap<>(ConfigurationInterpolator.getDefaultPrefixLookups());
+//        for (Map.Entry<String, Lookup> entry : prefixLookups.entrySet()) {
+//            interpolator.registerLookup(entry.getKey(), entry.getValue());
+//        }
+//        conf.setInterpolator(interpolator);
         return conf;
     }
 

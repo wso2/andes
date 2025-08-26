@@ -184,9 +184,36 @@ public class AndesConfigurationManager {
             rootConfiguration.setListDelimiterHandler(new DisabledListDelimiterHandler());
 
             // Custom interpolator to ensure system properties are available
-            ConfigurationInterpolator interpolator = new ConfigurationInterpolator();
+            ConfigurationInterpolator interpolator = rootConfiguration.getInterpolator();
+//            interpolator.registerLookup("", key -> {
+//                // Lookup order: system properties first, then default map
+//                String value = System.getProperty(key);
+//                if (value != null) {
+//                    return value;
+//                }
+//                // Example default values
+//                Map<String, String> defaults = new HashMap<>();
+//                defaults.put("brokerHome", "/opt/broker");
+//                defaults.put("workDir", "/tmp/broker-work");
+//                return defaults.get(key);
+//            });
             Map<String, Lookup> lookups = new HashMap<>(ConfigurationInterpolator.getDefaultPrefixLookups());
             interpolator.addDefaultLookup(lookups.get("sys"));
+            interpolator.registerLookup("", new Lookup() {
+                @Override
+                public Object lookup(String key) {
+                    String value = System.getProperty(key);
+                    if (value != null) {
+                        return value;
+                    }
+                    value = System.getenv(key);
+                    //                    // Default values
+                    //                    Map<String, String> defaults = new HashMap<>();
+                    //                    defaults.put("brokerHome", "/opt/broker");
+                    //                    defaults.put("workDir", "/tmp/broker-work");
+                    return value;
+                }
+            });
             rootConfiguration.setInterpolator(interpolator);
 
             FileHandler xmlHandler = new FileHandler(rootConfiguration);

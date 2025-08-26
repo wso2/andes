@@ -24,6 +24,10 @@ import org.wso2.andes.AMQException;
 import org.wso2.andes.common.Closeable;
 import org.wso2.andes.common.QpidProperties;
 import org.wso2.andes.configuration.qpid.*;
+import org.wso2.andes.configuration.qpid.BrokerConfig;
+import org.wso2.andes.configuration.qpid.ConfigStore;
+import org.wso2.andes.configuration.qpid.SystemConfig;
+import org.wso2.andes.configuration.qpid.SystemConfigImpl;
 import org.wso2.andes.qmf.QMFService;
 import org.wso2.andes.configuration.qpid.*;
 import org.wso2.andes.server.logging.CompositeStartupMessageLogger;
@@ -118,7 +122,7 @@ public abstract class ApplicationRegistry implements IApplicationRegistry
         return _shutdownHook;
     }
 
-    public static void initialise(IApplicationRegistry instance) throws Exception
+    public static void initialise(org.wso2.andes.server.registry.IApplicationRegistry instance) throws Exception
     {
         if(instance == null)
         {
@@ -137,7 +141,7 @@ public abstract class ApplicationRegistry implements IApplicationRegistry
         store.setRoot(new SystemConfigImpl(store));
         instance.setConfigStore(store);
 
-        BrokerConfig broker = new BrokerConfigAdapter(instance);
+        BrokerConfig broker = new org.wso2.andes.server.registry.BrokerConfigAdapter(instance);
 
         SystemConfig system = (SystemConfig) store.getRoot();
         system.addBroker(broker);

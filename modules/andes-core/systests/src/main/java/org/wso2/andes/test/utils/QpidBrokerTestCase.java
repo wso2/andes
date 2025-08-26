@@ -54,6 +54,8 @@ import org.apache.commons.configuration2.builder.fluent.Parameters;
 import org.apache.commons.configuration2.convert.DisabledListDelimiterHandler;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.commons.configuration2.XMLConfiguration;
+import org.apache.commons.configuration2.interpol.ConfigurationInterpolator;
+import org.apache.commons.configuration2.interpol.Lookup;
 import org.apache.commons.configuration2.io.FileHandler;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.Level;
@@ -671,6 +673,21 @@ public class QpidBrokerTestCase extends QpidTestCase
 
         XMLConfiguration rootConfiguration = new XMLConfiguration();
         rootConfiguration.setListDelimiterHandler(new DisabledListDelimiterHandler());
+        ConfigurationInterpolator interpolator = rootConfiguration.getInterpolator();
+        Map<String, Lookup> lookups = new HashMap<>(ConfigurationInterpolator.getDefaultPrefixLookups());
+        interpolator.addDefaultLookup(lookups.get("sys"));
+        interpolator.registerLookup("", new Lookup() {
+            @Override
+            public Object lookup(String key) {
+                String value = System.getProperty(key);
+                if (value != null) {
+                    return value;
+                }
+                value = System.getenv(key);
+                return value;
+            }
+        });
+        rootConfiguration.setInterpolator(interpolator);
         FileHandler xmlHandler = new FileHandler(rootConfiguration);
         File file = new File(testConfig);
         xmlHandler.load(file);
@@ -698,6 +715,21 @@ public class QpidBrokerTestCase extends QpidTestCase
         setSystemProperty("test.virtualhosts", testVirtualhosts);
         XMLConfiguration rootConfiguration = new XMLConfiguration();
         rootConfiguration.setListDelimiterHandler(new DisabledListDelimiterHandler());
+        ConfigurationInterpolator interpolator = rootConfiguration.getInterpolator();
+        Map<String, Lookup> lookups = new HashMap<>(ConfigurationInterpolator.getDefaultPrefixLookups());
+        interpolator.addDefaultLookup(lookups.get("sys"));
+        interpolator.registerLookup("", new Lookup() {
+            @Override
+            public Object lookup(String key) {
+                String value = System.getProperty(key);
+                if (value != null) {
+                    return value;
+                }
+                value = System.getenv(key);
+                return value;
+            }
+        });
+        rootConfiguration.setInterpolator(interpolator);
         FileHandler xmlHandler = new FileHandler(rootConfiguration);
         File file = new File(testVirtualhosts);
         xmlHandler.load(file);
