@@ -798,7 +798,7 @@ public class QpidBrokerTestCase extends QpidTestCase
      *
      * @return the requested String Value
      *
-     * @throws org.apache.commons.configuration.ConfigurationException
+     * @throws org.apache.commons.configuration2.ex.ConfigurationException
      *
      */
     protected String getConfigurationStringProperty(String property) throws ConfigurationException

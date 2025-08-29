@@ -223,6 +223,8 @@ public class AndesConfigurationManager {
             String error = "Error occurred when trying to process cipher text in file : " + brokerConfigFilePath;
             log.error(error, e);
             throw new AndesException(error, e);
+        } catch (Throwable e) {
+            log.error("Error occurred when trying to initialize AndesConfigurationManager.", e);
         }
     }
 

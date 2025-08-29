@@ -60,8 +60,18 @@
             </dependency>
             <dependency>
                 <groupId>commons-beanutils</groupId>
-                <artifactId>commons-beanutils-core</artifactId>
+                <artifactId>commons-beanutils</artifactId>
                 <version>${commons-beanutils-core.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-text</artifactId>
+                <version>${commons-text.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>${commons-lang3.version}</version>
             </dependency>
             <dependency>
                 <groupId>commons-cli</groupId>
@@ -551,7 +561,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>2.1</version>
+                <version>3.5.0</version>
                 <executions>
                     <execution>
                         <id>attach-javadocs</id>
@@ -581,7 +591,9 @@
         <jython-standalone.version>2.5.2</jython-standalone.version>
         <bnd.version>0.0.384</bnd.version>
         <icu4j.version>3.8</icu4j.version>
-        <commons-beanutils-core.version>1.8.0</commons-beanutils-core.version>
+        <commons-beanutils-core.version>1.11.0</commons-beanutils-core.version>
+        <commons-text.version>1.13.1</commons-text.version>
+        <commons-lang3.version>3.18.0</commons-lang3.version>
         <commons-collections.version>3.2</commons-collections.version>
         <commons-jxpath.version>1.3</commons-jxpath.version>
         <commons-digester.version>1.8.1</commons-digester.version>
@@ -688,7 +700,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>2.8</version>
+                <version>3.5.0</version>
             </plugin>
         </plugins>
     </reporting>

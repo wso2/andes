@@ -33,7 +33,6 @@ import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.configuration.modules.JKSStore;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
-import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostRegistry;
@@ -272,20 +271,28 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
     }
 
     private static org.apache.commons.configuration2.Configuration parseConfig(File file) throws ConfigurationException {
-        CombinedConfigurationBuilder builder =
-                new CombinedConfigurationBuilder()
-                        .configure(new Parameters().xml().setFileName(file.getAbsolutePath()));
+        CombinedConfiguration conf;
+        try {
+            CombinedConfigurationBuilder builder =
+                    new CombinedConfigurationBuilder()
+                            .configure(new Parameters().xml().setFileName(file.getAbsolutePath()));
 
-        CombinedConfiguration conf = builder.getConfiguration();
+            conf = builder.getConfiguration();
 
-        Iterator<?> keys = conf.getKeys();
-        if (!keys.hasNext()) {
+            Iterator<?> keys = conf.getKeys();
+            if (!keys.hasNext()) {
+                conf = flatConfig(file);
+            }
+        } catch (ConfigurationException e) {
+            // The file is likely not a CombinedConfiguration definition (e.g., contains 'prefix' elements/attributes).
+            // Fall back to a plain XML + System configuration model.
             conf = flatConfig(file);
         }
 
         substituteEnvironmentVariables(conf);
 
         return conf;
+
     }
 
     /**

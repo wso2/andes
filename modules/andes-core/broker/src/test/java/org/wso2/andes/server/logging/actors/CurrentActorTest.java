@@ -67,7 +67,7 @@ public class CurrentActorTest extends BaseConnectionActorTestCase
      * in there being no actors set.
      *
      * @throws AMQException
-     * @throws org.apache.commons.configuration.ConfigurationException
+     * @throws org.apache.commons.configuration2.ex.ConfigurationException
      */
     public void testLIFO() throws AMQException, ConfigurationException
     {
