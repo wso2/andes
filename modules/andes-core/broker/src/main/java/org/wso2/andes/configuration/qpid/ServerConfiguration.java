@@ -18,7 +18,11 @@
 
 package org.wso2.andes.configuration.qpid;
 
-import org.apache.commons.configuration2.*;
+import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
+import org.apache.commons.configuration2.CombinedConfiguration;
+import org.apache.commons.configuration2.CompositeConfiguration;
+import org.apache.commons.configuration2.SystemConfiguration;
+import org.apache.commons.configuration2.XMLConfiguration;
 import org.apache.commons.configuration2.builder.FileBasedConfigurationBuilder;
 import org.apache.commons.configuration2.builder.combined.CombinedConfigurationBuilder;
 import org.apache.commons.configuration2.builder.fluent.Parameters;
@@ -43,7 +47,6 @@ import java.io.File;
 import java.util.*;
 import java.util.Map.Entry;
 
-import static org.wso2.andes.transport.ConnectionSettings.WILDCARD_ADDRESS;
 
 public class ServerConfiguration extends ConfigurationPlugin implements SignalHandler {
     protected static final Log _logger = LogFactory.getLog(ServerConfiguration.class);
@@ -356,6 +359,12 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
         }
     }
 
+    /**
+     * Create a "flat" configuration from the given file.
+     * @param file Config file
+     * @return CombinedConfiguration
+     * @throws ConfigurationException
+     */
     public static CombinedConfiguration flatConfig(File file) throws ConfigurationException {
         Parameters params = new Parameters();
         FileBasedConfigurationBuilder<XMLConfiguration> xmlBuilder =
