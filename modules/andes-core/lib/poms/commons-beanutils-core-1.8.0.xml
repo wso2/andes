@@ -17,6 +17,6 @@
 -->
 <dep>
   <groupId>commons-beanutils</groupId>
-  <artifactId>commons-beanutils-core</artifactId>
-  <version>1.8.0</version>
+  <artifactId>commons-beanutils</artifactId>
+  <version>1.11.0</version>
 </dep>

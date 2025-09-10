@@ -17,8 +17,8 @@
  */
 package org.wso2.andes.configuration.qpid;
 
-import org.apache.commons.configuration.ConfigurationException;
-import org.apache.commons.configuration.PropertiesConfiguration;
+import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 
 public class TopicConfig extends ConfigurationPlugin

@@ -19,7 +19,7 @@ package org.wso2.andes.server.management;
 
 import javax.management.JMException;
 
-import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.wso2.andes.common.Closeable;
 
 import java.io.IOException;

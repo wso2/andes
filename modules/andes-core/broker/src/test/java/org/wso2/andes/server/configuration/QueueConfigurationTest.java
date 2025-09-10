@@ -21,9 +21,9 @@
 package org.wso2.andes.configuration.qpid;
 
 import junit.framework.TestCase;
-import org.apache.commons.configuration.CompositeConfiguration;
-import org.apache.commons.configuration.ConfigurationException;
-import org.apache.commons.configuration.PropertiesConfiguration;
+import org.apache.commons.configuration2.CompositeConfiguration;
+import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.wso2.andes.configuration.qpid.QueueConfiguration;
 import org.wso2.andes.configuration.qpid.VirtualHostConfiguration;
 

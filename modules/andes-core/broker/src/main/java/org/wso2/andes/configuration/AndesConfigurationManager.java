@@ -42,11 +42,17 @@ import org.apache.axiom.om.OMNode;
 import org.apache.axiom.om.impl.builder.StAXOMBuilder;
 import org.apache.axiom.om.impl.llom.OMElementImpl;
 import org.apache.axiom.om.xpath.AXIOMXPath;
-import org.apache.commons.configuration.CompositeConfiguration;
-import org.apache.commons.configuration.Configuration;
-import org.apache.commons.configuration.ConfigurationException;
-import org.apache.commons.configuration.XMLConfiguration;
-import org.apache.commons.configuration.tree.xpath.XPathExpressionEngine;
+import org.apache.commons.configuration2.CombinedConfiguration;
+import org.apache.commons.configuration2.CompositeConfiguration;
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.XMLConfiguration;
+import org.apache.commons.configuration2.builder.FileBasedConfigurationBuilder;
+import org.apache.commons.configuration2.builder.fluent.Parameters;
+import org.apache.commons.configuration2.convert.DisabledListDelimiterHandler;
+import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.commons.configuration2.tree.NodeCombiner;
+import org.apache.commons.configuration2.tree.OverrideCombiner;
+import org.apache.commons.configuration2.tree.xpath.XPathExpressionEngine;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -166,14 +172,20 @@ public class AndesConfigurationManager {
 
         try {
 
-            compositeConfiguration = new CompositeConfiguration();
-            compositeConfiguration.setDelimiterParsingDisabled(true);
+            FileBasedConfigurationBuilder<XMLConfiguration> builder =
+                    new FileBasedConfigurationBuilder<>(XMLConfiguration.class)
+                            .configure(new Parameters().xml()
+                                    .setFileName(brokerConfigFilePath)
+                                    .setListDelimiterHandler(DisabledListDelimiterHandler.INSTANCE)
+                                    .setExpressionEngine(new XPathExpressionEngine()));
 
-            XMLConfiguration rootConfiguration = new XMLConfiguration();
-            rootConfiguration.setDelimiterParsingDisabled(true);
-            rootConfiguration.setFileName(brokerConfigFilePath);
-            rootConfiguration.setExpressionEngine(new XPathExpressionEngine());
-            rootConfiguration.load();
+            XMLConfiguration rootConfiguration = builder.getConfiguration();
+
+            // Create CombinedConfiguration (replacement for CompositeConfiguration)
+            compositeConfiguration = new CompositeConfiguration();
+            compositeConfiguration.setListDelimiterHandler(DisabledListDelimiterHandler.INSTANCE);
+
+            // Add root config
             compositeConfiguration.addConfiguration(rootConfiguration);
 
             //Decrypt and maintain secure vault property values in a map for cross-reference.
@@ -211,6 +223,8 @@ public class AndesConfigurationManager {
             String error = "Error occurred when trying to process cipher text in file : " + brokerConfigFilePath;
             log.error(error, e);
             throw new AndesException(error, e);
+        } catch (Throwable e) {
+            log.error("Error occurred when trying to initialize AndesConfigurationManager.", e);
         }
     }
 

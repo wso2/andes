@@ -20,7 +20,7 @@
  */
 package org.wso2.andes.systest;
 
-import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 
 import javax.naming.NamingException;
 import java.io.IOException;

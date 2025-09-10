@@ -19,14 +19,16 @@
 package org.wso2.andes.server.security.access;
 
 import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 
-import org.apache.commons.configuration.ConfigurationException;
-import org.apache.commons.configuration.XMLConfiguration;
+import org.apache.commons.configuration2.XMLConfiguration;
+import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.commons.configuration2.io.FileHandler;
 import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.security.Result;
@@ -96,33 +98,36 @@ public class FirewallPluginTest extends QpidTestCase
     private Firewall initialisePlugin(String defaultAction, RuleInfo[] rules) throws IOException, ConfigurationException
     {
         // Create sample config file
-        File confFile = File.createTempFile(getClass().getSimpleName()+"conffile", null);
-        confFile.deleteOnExit();
-        BufferedWriter buf = new BufferedWriter(new FileWriter(confFile));
-        buf.write("<firewall default-action=\""+defaultAction+"\">\n");
-        if (rules != null)
-        {
-            for (RuleInfo rule : rules)
-            {
-                buf.write("<rule");
-                buf.write(" access=\""+rule.getAccess()+"\"");
-                if (rule.getHostname() != null)
-                {
-                    buf.write(" hostname=\""+rule.getHostname()+"\"");
-                }
-                if (rule.getNetwork() != null)
-                {
-                    buf.write(" network=\""+rule.getNetwork()+"\"");
-                }
-                buf.write("/>\n");
-            }
-        }
-        buf.write("</firewall>");
-        buf.close();
+        Path confFile = Files.createTempFile(getClass().getSimpleName() + "conffile", ".xml");
+        confFile.toFile().deleteOnExit();
 
-        // Configure plugin
+        try (BufferedWriter buf = Files.newBufferedWriter(confFile, StandardCharsets.UTF_8)) {
+            buf.write("<firewall default-action=\"" + defaultAction + "\">\n");
+            if (rules != null) {
+                for (RuleInfo rule : rules) {
+                    buf.write("<rule");
+                    buf.write(" access=\"" + rule.getAccess() + "\"");
+                    if (rule.getHostname() != null) {
+                        buf.write(" hostname=\"" + rule.getHostname() + "\"");
+                    }
+                    if (rule.getNetwork() != null) {
+                        buf.write(" network=\"" + rule.getNetwork() + "\"");
+                    }
+                    buf.write("/>\n");
+                }
+            }
+            buf.write("</firewall>");
+        }
+
+        // Load XML into an XMLConfiguration (2.x way)
+        XMLConfiguration xml = new XMLConfiguration();
+        FileHandler fh = new FileHandler(xml);
+        fh.load(confFile.toFile()); // or fh.load(confFile.toString())
+
+        // Configure plugin (same as before, but pass the loaded 2.x XMLConfiguration)
         FirewallConfiguration config = new FirewallConfiguration();
-        config.setConfiguration("", new XMLConfiguration(confFile));
+        config.setConfiguration("", xml);
+
         Firewall plugin = new Firewall();
         plugin.configure(config);
         return plugin;

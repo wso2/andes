@@ -49,8 +49,9 @@ import javax.jms.TextMessage;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 
-import org.apache.commons.configuration.ConfigurationException;
-import org.apache.commons.configuration.XMLConfiguration;
+import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.commons.configuration2.XMLConfiguration;
+import org.apache.commons.configuration2.io.FileHandler;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Logger;
@@ -661,30 +662,51 @@ public class QpidBrokerTestCase extends QpidTestCase
 
     protected void saveTestConfiguration() throws ConfigurationException
     {
-        // Specifiy the test config file
         String testConfig = getTestConfigFile();
-        setSystemProperty("test.config", testConfig);
+        System.setProperty("test.config", testConfig); // your setSystemProperty(...) wrapper
 
-        // Create the file if configuration does not exist
-        if (_testConfiguration.isEmpty())
-        {
+        XMLConfiguration _testConfiguration = new XMLConfiguration();
+
+        // If you want to ensure the file exists with at least one property:
+        if (_testConfiguration.isEmpty()) {
             _testConfiguration.addProperty("__ignore", "true");
         }
-        _testConfiguration.save(testConfig);
+
+        // Ensure parent dirs exist (optional but handy)
+        File out = new File(testConfig);
+        File parent = out.getParentFile();
+        if (parent != null && !parent.exists()) {
+            parent.mkdirs();
+        }
+
+        // Save via FileHandler
+        FileHandler fh = new FileHandler(_testConfiguration);
+        fh.save(out);
     }
 
     protected void saveTestVirtualhosts() throws ConfigurationException
     {
-        // Specifiy the test virtualhosts file
+
         String testVirtualhosts = getTestVirtualhostsFile();
         setSystemProperty("test.virtualhosts", testVirtualhosts);
 
-        // Create the file if configuration does not exist
-        if (_testVirtualhosts.isEmpty())
-        {
-            _testVirtualhosts.addProperty("__ignore", "true");
+        XMLConfiguration _testConfiguration = new XMLConfiguration();
+
+        // If you want to ensure the file exists with at least one property:
+        if (_testConfiguration.isEmpty()) {
+            _testConfiguration.addProperty("__ignore", "true");
         }
-        _testVirtualhosts.save(testVirtualhosts);
+
+        // Ensure parent dirs exist (optional but handy)
+        File out = new File(testVirtualhosts);
+        File parent = out.getParentFile();
+        if (parent != null && !parent.exists()) {
+            parent.mkdirs();
+        }
+
+        // Save via FileHandler
+        FileHandler fh = new FileHandler(_testConfiguration);
+        fh.save(out);
     }
 
     public void cleanBroker()
@@ -776,7 +798,7 @@ public class QpidBrokerTestCase extends QpidTestCase
      *
      * @return the requested String Value
      *
-     * @throws org.apache.commons.configuration.ConfigurationException
+     * @throws org.apache.commons.configuration2.ex.ConfigurationException
      *
      */
     protected String getConfigurationStringProperty(String property) throws ConfigurationException

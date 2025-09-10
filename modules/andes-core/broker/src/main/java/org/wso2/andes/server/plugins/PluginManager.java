@@ -17,7 +17,7 @@
  */
 package org.wso2.andes.server.plugins;
 
-import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.felix.framework.Felix;
 import org.apache.felix.framework.util.StringMap;
 import org.apache.commons.logging.Log;
@@ -171,7 +171,7 @@ public class PluginManager implements Closeable
                 "org.wso2.andes.server.virtualhost; " + QPID_VER_SUFFIX +
                 "org.wso2.andes.server.virtualhost.plugins; " + QPID_VER_SUFFIX +
                 "org.wso2.andes.util; " + QPID_VER_SUFFIX +
-                "org.apache.commons.configuration; version=1.0.0," +
+                "org.apache.commons.configuration2; version=2.0.0," +
                 "org.apache.commons.lang; version=1.0.0," +
                 "org.apache.commons.lang.builder; version=1.0.0," +
                 "org.apache.commons.logging; version=1.0.0," +
