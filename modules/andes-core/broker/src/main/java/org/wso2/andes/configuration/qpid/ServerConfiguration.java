@@ -273,6 +273,19 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
         }
     }
 
+    /**
+     * Parses the given file and returns a Commons Configuration object.
+     * <p/>
+     * This method will attempt to parse the file as a CombinedConfiguration
+     * definition. If this fails then a plain XML + System configuration model
+     * will be used.
+     * <p/>
+     * The returned configuration object will be a {@link MyConfiguration} which
+     * allows interpolation of environment variables.
+     * @param file The file to parse
+     * @return A Commons Configuration object
+     * @throws ConfigurationException If the file cannot be parsed
+     */
     private static org.apache.commons.configuration2.Configuration parseConfig(File file) throws ConfigurationException {
         CombinedConfiguration conf;
         try {
