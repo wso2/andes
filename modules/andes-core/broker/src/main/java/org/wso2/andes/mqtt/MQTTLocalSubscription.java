@@ -23,7 +23,6 @@ import org.dna.mqtt.wso2.QOSLevel;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.kernel.subscription.OutboundSubscription;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.nio.ByteBuffer;
 import java.util.UUID;
@@ -150,7 +149,7 @@ public class MQTTLocalSubscription implements OutboundSubscription {
      */
     @Override
     public void forcefullyDisconnect() throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**

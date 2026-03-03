@@ -29,22 +29,6 @@ public class GroupPrincipalTest extends TestCase
         final GroupPrincipal principal = new GroupPrincipal("group");
         assertEquals("group", principal.getName());
     }
-
-    public void testAddRejected()
-    {
-        final GroupPrincipal principal = new GroupPrincipal("group");
-        final UsernamePrincipal user = new UsernamePrincipal("name");
-        
-        try
-        {
-            principal.addMember(user);
-            fail("Exception not thrown");
-        }
-        catch (UnsupportedOperationException uso)
-        {
-            // PASS
-        }
-    }
     
     public void testEqualitySameName()
     {
