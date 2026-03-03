@@ -18,16 +18,14 @@
 package org.wso2.andes.server.security.auth.sasl;
 
 import java.security.Principal;
-import java.security.acl.Group;
-import java.util.Enumeration;
 
 /**
- * Immutable representation of a user group.  In Qpid, groups do <b>not</b> know
- * about their membership, and therefore the {@link #addMember(Principal)}
- * methods etc throw {@link UnsupportedOperationException}.
+ * Immutable representation of a user group principal.
+ * This is a simple Principal implementation for groups.
+ * Note: The java.security.acl.Group interface was removed in JDK 14.
  *
  */
-public class GroupPrincipal implements Group
+public class GroupPrincipal implements Principal
 {
     /** Name of the group */
     private final String _groupName;
@@ -40,26 +38,6 @@ public class GroupPrincipal implements Group
     public String getName()
     {
         return _groupName;
-    }
-
-    public boolean addMember(Principal user)
-    {
-        throw new UnsupportedOperationException("Not supported");
-    }
-
-    public boolean removeMember(Principal user)
-    {
-        throw new UnsupportedOperationException("Not supported");
-    }
-
-    public boolean isMember(Principal member)
-    {
-        throw new UnsupportedOperationException("Not supported");
-    }
-
-    public Enumeration<? extends Principal> members()
-    {
-        throw new UnsupportedOperationException("Not supported");
     }
 
     /**

@@ -46,8 +46,8 @@
     <property name="build.coveragereport"  location="${build}/coverage"/>
     <property name="build.findbugs"        location="${build}/findbugs"/>
 
-    <property name="java.target"           value="1.7"/>
-    <property name="java.source"           value="1.7"/>
+    <property name="java.target"           value="21"/>
+    <property name="java.source"           value="21"/>
 
     <property name="release"               location="${project.root}/release"/>
 
@@ -140,7 +140,14 @@
             <!--jython.dependency property value should be change according to dependency value  in pom.xml in andes-core-->
             <property name="jython.dependency" value="jython-standalone-2.5.2.jar"/>
             <java jar="${project.root}/lib/${jython.dependency}" fork="true" failonerror="true">
-                <arg value="-Dpython.path=@{path}"/>
+                <jvmarg value="-Dpython.path=@{path}"/>
+                <!-- JDK 21 compatibility flags for old Jython version -->
+                <jvmarg value="--add-opens=java.base/java.lang=ALL-UNNAMED"/>
+                <jvmarg value="--add-opens=java.base/java.io=ALL-UNNAMED"/>
+                <jvmarg value="--add-opens=java.base/java.util=ALL-UNNAMED"/>
+                <jvmarg value="--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"/>
+                <jvmarg value="--add-opens=java.xml/com.sun.org.apache.xerces.internal.jaxp=ALL-UNNAMED"/>
+                <jvmarg value="--add-opens=java.xml/com.sun.org.apache.xerces.internal.parsers=ALL-UNNAMED"/>
                 <args/>
             </java>
         </sequential>
