@@ -22,7 +22,7 @@ import java.security.Principal;
 /**
  * Immutable representation of a user group principal.
  * This is a simple Principal implementation for groups.
- * Note: The java.security.acl.Group interface was removed in JDK 21.
+ * Note: The java.security.acl.Group interface was removed in JDK 14.
  *
  */
 public class GroupPrincipal implements Principal
