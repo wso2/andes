@@ -288,7 +288,9 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
      */
     private static org.apache.commons.configuration2.Configuration parseConfig(File file) throws ConfigurationException {
         CombinedConfiguration conf;
+        ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
         try {
+            Thread.currentThread().setContextClassLoader(ServerConfiguration.class.getClassLoader());
             CombinedConfigurationBuilder builder =
                     new CombinedConfigurationBuilder()
                             .configure(new Parameters().xml().setFileName(file.getAbsolutePath()));
@@ -303,6 +305,8 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
             // The file is likely not a CombinedConfiguration definition (e.g., contains 'prefix' elements/attributes).
             // Fall back to a plain XML + System configuration model.
             conf = flatConfig(file);
+        } finally {
+            Thread.currentThread().setContextClassLoader(originalClassLoader);
         }
 
         substituteEnvironmentVariables(conf);
