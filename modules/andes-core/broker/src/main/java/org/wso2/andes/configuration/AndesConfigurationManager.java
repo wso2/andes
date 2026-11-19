@@ -170,7 +170,9 @@ public class AndesConfigurationManager {
 
         log.info("Main andes configuration located at : " + brokerConfigFilePath);
 
+        ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
         try {
+            Thread.currentThread().setContextClassLoader(AndesConfigurationManager.class.getClassLoader());
 
             FileBasedConfigurationBuilder<XMLConfiguration> builder =
                     new FileBasedConfigurationBuilder<>(XMLConfiguration.class)
@@ -225,6 +227,9 @@ public class AndesConfigurationManager {
             throw new AndesException(error, e);
         } catch (Throwable e) {
             log.error("Error occurred when trying to initialize AndesConfigurationManager.", e);
+            throw new AndesException("Failed to initialize AndesConfigurationManager.", e);
+        } finally {
+            Thread.currentThread().setContextClassLoader(originalClassLoader);
         }
     }
 
